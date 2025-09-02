@@ -4,7 +4,9 @@
   "description": "Um Site para eu analisar os Dados da minha empresa Hero-Pet",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev"
+    "dev": "next dev",
+    "lint:prettier:check": "prettier --check .",
+    "lint:prettier:fix": "prettier --write ."
   },
   "author": "",
   "license": "MIT",
@@ -12,5 +14,8 @@
     "next": "^15.5.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
   }
 }
