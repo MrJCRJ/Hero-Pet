@@ -1,0 +1,16 @@
+{
+  "name": "hero-pet",
+  "version": "1.0.0",
+  "description": "Um Site para eu analisar os Dados da minha empresa Hero-Pet",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "next": "^15.5.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  }
+}
