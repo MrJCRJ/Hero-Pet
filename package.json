@@ -8,16 +8,23 @@
     "lint:prettier:check": "prettier --check .",
     "lint:prettier:fix": "prettier --write .",
     "test": "npm run services:up && concurrently -n next,jest --hide next -k -s command-jest \"next dev\" \"jest --runInBand --verbose\"",
-    "test:watch": "jest --watchAll --runInBand"
+    "test:watch": "jest --watchAll --runInBand",
+    "services:up": "docker compose -f infra/compose.yaml up -d",
+    "services:down": "docker compose -f infra/compose.yaml down",
+    "services:prune": "docker system prune -a"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^17.2.2",
+    "dotenv-expand": "^12.0.3",
     "next": "^15.5.2",
+    "pg": "^8.16.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "axios": "^1.11.0",
     "jest": "^30.1.3",
     "prettier": "^3.6.2"
   }
