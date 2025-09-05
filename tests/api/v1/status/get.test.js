@@ -1,5 +1,10 @@
 // tests/api/v1/status/get.test.js
 import axios from 'axios';
+import orchestrator from "tests/orchestrator.js";
+
+beforeAll(async () => {
+  await orchestrator.waitForAllServices();
+});
 
 // Helper para evitar repetição de request
 const getStatus = (queryParams = '') =>
