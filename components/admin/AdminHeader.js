@@ -1,7 +1,17 @@
+// components/admin/AdminHeader.js
+
+import { StatusNav } from "../dashboard/StatusNav";
+
 // 🔹 Componente de header do admin
-export const AdminHeader = ({ onLogout }) => (
+export const AdminHeader = ({ onLogout, status }) => (
   <div className="flex justify-between items-center mb-3">
-    <h2 className="text-base font-semibold">Painel de Status</h2>
+    {/* Esquerda → título + status inline */}
+    <div className="flex items-center space-x-4">
+      <h2 className="text-base font-semibold">Painel de Status</h2>
+      <StatusNav status={status} compact />
+    </div>
+
+    {/* Direita → botão sair */}
     <button
       type="button"
       onClick={onLogout}

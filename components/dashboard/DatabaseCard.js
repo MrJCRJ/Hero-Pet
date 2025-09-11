@@ -1,26 +1,28 @@
-import { Card } from "components/common/Card";
+// components/dashboard/DatabaseCard.js
 import { Info } from "components/common/Info";
 import { InfoList } from "components/common/InfoList";
 import { Section } from "components/common/Section";
 
-// 🔹 Componente de card do banco de dados
-export function DatabaseCard({ database }) {
-  const latencyData = {
-    "Primeira query": database.latency.first_query.toFixed(2),
-    "Segunda query": database.latency.second_query.toFixed(2),
-    "Terceira query": database.latency.third_query.toFixed(2),
+function mapLatency(latency) {
+  return {
+    "Primeira query": latency.first_query.toFixed(2),
+    "Segunda query": latency.second_query.toFixed(2),
+    "Terceira query": latency.third_query.toFixed(2),
   };
+}
 
+export function DatabaseCard({ database, compact = false }) {
   return (
-    <Card title="Banco de Dados" status={database.status}>
+    <div>
+      {!compact && <h3 className="font-semibold mb-2">Banco de Dados</h3>}
       <Info label="Versão" value={database.version} />
       <Info
         label="Conexões"
         value={`${database.current_connections} / ${database.max_connections}`}
       />
       <Section title="Latência (ms)">
-        <InfoList data={latencyData} />
+        <InfoList data={mapLatency(database.latency)} />
       </Section>
-    </Card>
+    </div>
   );
 }

@@ -1,20 +1,24 @@
-import { Card } from "components/common/Card";
+// components/dashboard/WebserverCard.js
 import { InfoList } from "components/common/InfoList";
+import { Section } from "components/common/Section";
 
-// 🔹 Componente de card do webserver
-export function WebserverCard({ webserver }) {
-  const region = webserver.vercel_region || webserver.aws_region || "N/A";
-  const infoData = {
+function mapWebserverInfo(webserver) {
+  return {
     Provedor: webserver.provider,
     Ambiente: webserver.environment,
-    Região: region,
+    Região: webserver.vercel_region || webserver.aws_region || "N/A",
     "Fuso horário": webserver.timezone,
     Versão: webserver.version,
   };
+}
 
+export function WebserverCard({ webserver, compact = false }) {
   return (
-    <Card title="Web Server" status={webserver.status}>
-      <InfoList data={infoData} />
-    </Card>
+    <div>
+      {!compact && <h3 className="font-semibold mb-2">Web Server</h3>}
+      <Section title="Configuração">
+        <InfoList data={mapWebserverInfo(webserver)} />
+      </Section>
+    </div>
   );
 }
