@@ -1,5 +1,6 @@
 // pages/api/v1/status/index.js
 import database from "infra/database";
+import pkg from "package.json";
 
 async function status(request, response) {
   // 🔹 Adiciona headers de CORS
@@ -64,7 +65,7 @@ async function status(request, response) {
         aws_region: process.env.AWS_REGION || null,
         vercel_region: process.env.VERCEL_REGION || null,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        version: process.env.WEBSERVER_VERSION || "v1.0.0",
+        version: pkg.version,
       },
     },
   });
