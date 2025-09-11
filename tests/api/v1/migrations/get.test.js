@@ -25,7 +25,7 @@ describe("GET /api/v1/migrations", () => {
     expect(responseBody.length).toBeGreaterThan(0);
 
     // Verifica se cada item tem a estrutura esperada
-    responseBody.forEach(migration => {
+    responseBody.forEach((migration) => {
       expect(migration).toHaveProperty("name");
       expect(migration).toHaveProperty("path");
       expect(typeof migration.name).toBe("string");
@@ -35,9 +35,12 @@ describe("GET /api/v1/migrations", () => {
 
   test("Deve retornar array vazio quando não há migrações pendentes", async () => {
     // Executa todas as migrações primeiro
-    const postResponse = await fetch("http://localhost:3000/api/v1/migrations", {
-      method: "POST"
-    });
+    const postResponse = await fetch(
+      "http://localhost:3000/api/v1/migrations",
+      {
+        method: "POST",
+      },
+    );
 
     expect([201, 200]).toContain(postResponse.status);
 
@@ -64,7 +67,7 @@ describe("GET /api/v1/migrations", () => {
 
     for (const method of methods) {
       const response = await fetch("http://localhost:3000/api/v1/migrations", {
-        method: method
+        method: method,
       });
 
       expect(response.status).toBe(405);

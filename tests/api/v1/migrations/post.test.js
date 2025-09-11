@@ -9,12 +9,17 @@ beforeAll(async () => {
 
 describe("POST /api/v1/migrations", () => {
   test("Deve retornar 201 ao executar migrações pela primeira vez", async () => {
-    const primeiraResposta = await fetch("http://localhost:3000/api/v1/migrations", {
-      method: "POST",
-    });
+    const primeiraResposta = await fetch(
+      "http://localhost:3000/api/v1/migrations",
+      {
+        method: "POST",
+      },
+    );
 
     expect(primeiraResposta.status).toBe(201);
-    expect(primeiraResposta.headers.get("content-type")).toMatch(/application\/json/);
+    expect(primeiraResposta.headers.get("content-type")).toMatch(
+      /application\/json/,
+    );
 
     const corpoPrimeiraResposta = await primeiraResposta.json();
 
@@ -66,7 +71,9 @@ describe("POST /api/v1/migrations", () => {
 
     // Verifica se temos pelo menos a tabela de migrações
     expect(todasTabelas.rows.length).toBeGreaterThan(0);
-    expect(todasTabelas.rows.some(tabela => tabela.table_name === 'pgmigrations')).toBe(true);
+    expect(
+      todasTabelas.rows.some((tabela) => tabela.table_name === "pgmigrations"),
+    ).toBe(true);
   });
 
   test("Deve retornar 405 para métodos não permitidos", async () => {
@@ -74,7 +81,7 @@ describe("POST /api/v1/migrations", () => {
 
     for (const metodo of metodosNaoPermitidos) {
       const resposta = await fetch("http://localhost:3000/api/v1/migrations", {
-        method: metodo
+        method: metodo,
       });
 
       expect(resposta.status).toBe(405);
@@ -83,6 +90,5 @@ describe("POST /api/v1/migrations", () => {
       expect(corpoResposta).toHaveProperty("error");
       expect(corpoResposta.error).toContain(metodo);
     }
-
   });
 });

@@ -45,7 +45,6 @@ export default async function migrations(request, response) {
     const statusCode = determineStatus(request.method, migrationsResult);
 
     return response.status(statusCode).json(migrationsResult);
-
   } catch (error) {
     console.error("Migration error:", error);
     return response.status(500).json({
