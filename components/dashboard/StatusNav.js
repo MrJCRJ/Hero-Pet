@@ -60,7 +60,11 @@ export function StatusNav({ status, lastUpdate, compact = false }) {
   const { database, webserver } = status.dependencies;
 
   const items = [
-    { id: "database", label: compact ? "DB" : "Banco de Dados", data: database },
+    {
+      id: "database",
+      label: compact ? "DB" : "Banco de Dados",
+      data: database,
+    },
     { id: "webserver", label: compact ? "WS" : "Web Server", data: webserver },
   ];
 
@@ -79,7 +83,8 @@ export function StatusNav({ status, lastUpdate, compact = false }) {
     <div className="flex flex-col space-y-1" ref={cardRef}>
       <div className="flex space-x-4">
         {items.map((item) => {
-          const CardComponent = item.id === "database" ? DatabaseCard : WebserverCard;
+          const CardComponent =
+            item.id === "database" ? DatabaseCard : WebserverCard;
           const isOpen = openCard === item.id;
 
           return (

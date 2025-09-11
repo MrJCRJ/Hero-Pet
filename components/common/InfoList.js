@@ -8,7 +8,11 @@ export const InfoList = ({ data, className = "" }) => {
     <div className={`space-y-2 ${className}`}>
       {Object.entries(data).map(([label, value]) => {
         // Se for um objeto complexo com propriedades específicas
-        if (value && typeof value === 'object' && !React.isValidElement(value)) {
+        if (
+          value &&
+          typeof value === "object" &&
+          !React.isValidElement(value)
+        ) {
           const {
             value: displayValue,
             status,
@@ -26,7 +30,7 @@ export const InfoList = ({ data, className = "" }) => {
             healthy: "text-green-600",
             degraded: "text-yellow-600",
             offline: "text-red-600",
-            error: "text-red-600"
+            error: "text-red-600",
           };
 
           const statusClass = statusClasses[status] || "";
@@ -36,7 +40,10 @@ export const InfoList = ({ data, className = "" }) => {
               key={label}
               label={label}
               value={
-                <span className={`${statusClass} ${valueClassName || ""}`} {...extraProps}>
+                <span
+                  className={`${statusClass} ${valueClassName || ""}`}
+                  {...extraProps}
+                >
                   {icon && <span className="mr-1">{icon}</span>}
                   {title || displayValue || JSON.stringify(value)}
                 </span>
@@ -47,23 +54,11 @@ export const InfoList = ({ data, className = "" }) => {
 
         // Se for um elemento React válido
         if (React.isValidElement(value)) {
-          return (
-            <Info
-              key={label}
-              label={label}
-              value={value}
-            />
-          );
+          return <Info key={label} label={label} value={value} />;
         }
 
         // Valor simples (string, número, etc.)
-        return (
-          <Info
-            key={label}
-            label={label}
-            value={value}
-          />
-        );
+        return <Info key={label} label={label} value={value} />;
       })}
     </div>
   );
