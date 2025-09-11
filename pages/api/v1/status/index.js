@@ -53,8 +53,8 @@ async function status(request, response) {
         status: "healthy",
         version: postgresVersion.rows[0].server_version,
         max_connections: parseInt(maxConnections.rows[0].max_connections),
-        current_connections: currentConnections.rows[0].count, // ✅ compatível com teste
-        opened_connections: currentConnections.rows[0].count, // sua nova propriedade
+        current_connections: currentConnections.rows[0].count,
+        opened_connections: currentConnections.rows[0].count,
         latency: timings,
       },
       webserver: {
@@ -64,9 +64,6 @@ async function status(request, response) {
         aws_region: process.env.AWS_REGION || null,
         vercel_region: process.env.VERCEL_REGION || null,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        last_commit_author: process.env.LAST_COMMIT_AUTHOR || null,
-        last_commit_message: process.env.LAST_COMMIT_MESSAGE || null,
-        last_commit_message_sha: process.env.LAST_COMMIT_SHA || null,
         version: process.env.WEBSERVER_VERSION || "v1.0.0",
       },
     },

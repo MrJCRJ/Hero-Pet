@@ -1,12 +1,12 @@
+// pages/index.js
 import { useStatus } from "../hooks/useStatus";
 import { useAuth } from "../hooks/useAuth";
 import { AccessForm } from "../components/admin/AccessForm";
 import { AdminHeader } from "../components/admin/AdminHeader";
-import { Dashboard } from "../components/dashboard/Dashboard";
+import { StatusNav } from "../components/dashboard/StatusNav";
 
-// 🔹 Componente principal
 function Home() {
-  const { status, loading, lastUpdate, fetchStatus } = useStatus();
+  const { status, loading, lastUpdate } = useStatus();
   const {
     showAdminPanel,
     accessCode,
@@ -34,12 +34,9 @@ function Home() {
         />
       ) : (
         <>
-          <AdminHeader onLogout={handleLogout} />
-          <Dashboard
-            status={status}
-            lastUpdate={lastUpdate}
-            onRefresh={fetchStatus}
-          />
+          <AdminHeader onLogout={handleLogout} user={{ name: "José" }}>
+            <StatusNav status={status} lastUpdate={lastUpdate} compact />
+          </AdminHeader>
         </>
       )}
     </div>

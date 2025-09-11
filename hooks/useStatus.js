@@ -1,3 +1,5 @@
+// hooks/useStatus.js
+
 import { useState, useEffect, useCallback } from "react";
 
 // 🔹 Custom Hook para gerenciar o estado do status
@@ -22,7 +24,7 @@ export function useStatus() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000);
+    const interval = setInterval(fetchStatus, 60000);
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
