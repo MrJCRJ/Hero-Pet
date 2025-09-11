@@ -1,29 +1,45 @@
 // components/dashboard/StatusNav.js
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DatabaseCard } from "./DatabaseCard";
 import { WebserverCard } from "./WebserverCard";
+import { StatusDot } from "../common/StatusDot.js";
 
-function StatusDot({ status }) {
-  const normalized = String(status).toLowerCase();
-  const colors = {
-    healthy: "bg-green-500",
-    degraded: "bg-yellow-500",
-    warning: "bg-yellow-500",
-    offline: "bg-red-500",
-    error: "bg-red-500",
-    down: "bg-red-500",
-  };
-
+function StatusPopover({ children, open, hover }) {
   return (
-    <span
-      className={`inline-block w-3 h-3 rounded-full ${colors[normalized] || "bg-gray-400"
-        }`}
-    />
+    <div
+      className={`
+        absolute top-full left-0 mt-2 z-20 shadow-lg
+        ${hover ? "hidden group-hover:block" : ""}
+      `}
+    >
+      {open && (
+        <div className="bg-white border border-gray-200 rounded-md p-3 w-64">
+          {children}
+          {!hover && (
+            <div className="mt-2 text-xs text-gray-500 text-center">
+              Clique em qualquer lugar para fechar
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-export function StatusNav({ status, compact = false }) {
+export function StatusNav({ status, lastUpdate, compact = false }) {
   const [openCard, setOpenCard] = useState(null);
+  const cardRef = useRef(null);
+
+  // Fechar ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (cardRef.current && !cardRef.current.contains(event.target)) {
+        setOpenCard(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (!status) {
     return (
@@ -41,43 +57,41 @@ export function StatusNav({ status, compact = false }) {
   ];
 
   return (
-    <div className="flex space-x-4">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className="relative group cursor-pointer"
-          onClick={() => setOpenCard(openCard === item.id ? null : item.id)}
-        >
-          <div className="flex items-center space-x-1">
-            <span className="text-xs font-medium">{item.label}</span>
-            <StatusDot status={item.data.status} />
-          </div>
+    <div className="flex space-x-4" ref={cardRef}>
+      {items.map((item) => {
+        const CardComponent = item.id === "database" ? DatabaseCard : WebserverCard;
+        const isOpen = openCard === item.id;
 
-          {/* Tooltip ao passar o mouse */}
-          <div className="absolute hidden group-hover:block top-full left-0 mt-2 z-10">
-            <div className="bg-white border shadow-lg rounded-md p-3 w-64">
-              {item.id === "database" ? (
-                <DatabaseCard database={item.data} compact />
-              ) : (
-                <WebserverCard webserver={item.data} compact />
-              )}
+        return (
+          <div
+            key={item.id}
+            className="relative group cursor-pointer"
+            onClick={() => setOpenCard(isOpen ? null : item.id)}
+          >
+            {/* Label + status */}
+            <div className="flex items-center space-x-2 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors">
+              <StatusDot status={item.data.status} />
+              <span className="text-xs font-medium">{item.label}</span>
             </div>
-          </div>
 
-          {/* Clique → mantém aberto */}
-          {openCard === item.id && (
-            <div className="absolute top-full left-0 mt-2 z-20">
-              <div className="bg-white border shadow-xl rounded-md p-3 w-64">
-                {item.id === "database" ? (
-                  <DatabaseCard database={item.data} compact />
-                ) : (
-                  <WebserverCard webserver={item.data} compact />
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
+            {/* Tooltip hover */}
+            <StatusPopover open hover>
+              <CardComponent {...{ [item.id]: item.data }} compact />
+            </StatusPopover>
+
+            {/* Clique → mantém aberto */}
+            <StatusPopover open={isOpen}>
+              <CardComponent {...{ [item.id]: item.data }} compact />
+            </StatusPopover>
+          </div>
+        );
+      })}
+      {/* Última atualização */}
+      {lastUpdate && (
+        <span className="text-xs text-gray-500 text-center">
+          Última atualização: {new Date(lastUpdate).toLocaleTimeString()}
+        </span>
+      )}
     </div>
   );
 }

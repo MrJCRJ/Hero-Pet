@@ -3,9 +3,10 @@ import { useStatus } from "../hooks/useStatus";
 import { useAuth } from "../hooks/useAuth";
 import { AccessForm } from "../components/admin/AccessForm";
 import { AdminHeader } from "../components/admin/AdminHeader";
+import { StatusNav } from "../components/dashboard/StatusNav";
 
 function Home() {
-  const { status, loading } = useStatus();
+  const { status, loading, lastUpdate } = useStatus();
   const {
     showAdminPanel,
     accessCode,
@@ -33,7 +34,9 @@ function Home() {
         />
       ) : (
         <>
-          <AdminHeader onLogout={handleLogout} status={status} />
+          <AdminHeader onLogout={handleLogout} user={{ name: "José" }}>
+            <StatusNav status={status} lastUpdate={lastUpdate} compact />
+          </AdminHeader>
 
         </>
       )}
