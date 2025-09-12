@@ -26,9 +26,7 @@ function Home() {
   return (
     <div className="max-w-4xl mx-auto p-4 min-h-screen text-sm transition-colors">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-lg font-bold text-center">
-          Sistema Hero-Pet
-        </h1>
+        <h1 className="text-lg font-bold text-center">Sistema Hero-Pet</h1>
         <ThemeToggle />
       </div>
 

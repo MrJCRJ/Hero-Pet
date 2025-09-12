@@ -73,7 +73,10 @@ export function DatabaseCard({ database, compact = false }) {
       {!compact && (
         <div className="flex items-center mb-3">
           <DatabaseIcon />
-          <h3 className="font-semibold" style={{ color: "var(--color-text-primary)" }}>
+          <h3
+            className="font-semibold"
+            style={{ color: "var(--color-text-primary)" }}
+          >
             Banco de Dados
           </h3>
         </div>
@@ -86,12 +89,13 @@ export function DatabaseCard({ database, compact = false }) {
 
         <div className="w-full bg-[var(--color-border)] rounded-full h-1.5">
           <div
-            className={`h-1.5 rounded-full ${connectionStatus === "good"
+            className={`h-1.5 rounded-full ${
+              connectionStatus === "good"
                 ? "bg-green-500"
                 : connectionStatus === "warning"
                   ? "bg-yellow-500"
                   : "bg-red-500"
-              }`}
+            }`}
             style={{ width: `${Math.min(100, connectionPercentage)}%` }}
           ></div>
         </div>
@@ -102,7 +106,10 @@ export function DatabaseCard({ database, compact = false }) {
       </Section>
 
       {!compact && database.opened_connections !== undefined && (
-        <div className="mt-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+        <div
+          className="mt-3 text-xs"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
           Conexões abertas: {database.opened_connections}
         </div>
       )}

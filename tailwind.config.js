@@ -1,7 +1,7 @@
 // tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 const config = {
-  darkMode: 'class',
+  darkMode: "class",
   content: [
     "./app/**/*.{js,ts,jsx,tsx}",
     "./pages/**/*.{js,ts,jsx,tsx}",
@@ -16,17 +16,17 @@ const config = {
           dark: "#3730a3",
         },
         dark: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#e5e5e5',
-          300: '#d4d4d4',
-          400: '#a3a3a3',
-          500: '#737373',
-          600: '#525252',
-          700: '#404040',
-          800: '#262626',
-          900: '#171717',
-        }
+          50: "#fafafa",
+          100: "#f5f5f5",
+          200: "#e5e5e5",
+          300: "#d4d4d4",
+          400: "#a3a3a3",
+          500: "#737373",
+          600: "#525252",
+          700: "#404040",
+          800: "#262626",
+          900: "#171717",
+        },
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui"],
@@ -42,8 +42,7 @@ const config = {
       },
     },
   },
-  plugins: [require("@tailwindcss/forms"),
-  require("@tailwindcss/typography"),],
+  plugins: [require("@tailwindcss/forms"), require("@tailwindcss/typography")],
 };
 
 export default config;

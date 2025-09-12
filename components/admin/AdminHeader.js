@@ -33,7 +33,9 @@ export const AdminHeader = ({ onLogout, user, children }) => {
     <header className="flex justify-between items-center mb-6 p-4 rounded-lg shadow-sm bg-[var(--color-bg-primary)] ">
       {/* Esquerda → título + conteúdo extra (status etc.) */}
       <div className="flex items-center space-x-4">
-        <h2 className="text-lg font-semibold">{children ? children : "Painel de Status"}</h2>
+        <h2 className="text-lg font-semibold">
+          {children ? children : "Painel de Status"}
+        </h2>
       </div>
 
       {/* Direita → usuário + logout */}
