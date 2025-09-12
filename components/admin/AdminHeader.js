@@ -22,7 +22,7 @@ export const AdminHeader = ({ onLogout, user, children }) => {
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <header className="flex justify-between">
+    <header className="flex  items-center  gap-4">
       <p>{children}</p>
 
       <div className="flex items-center space-x-4 relative">

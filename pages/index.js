@@ -25,23 +25,36 @@ function Home() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 min-h-screen text-sm transition-colors">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-lg font-bold text-center">Sistema Hero-Pet</h1>
-        <ThemeToggle />
-      </div>
+
 
       {!showAdminPanel ? (
-        <AccessForm
-          accessCode={accessCode}
-          setAccessCode={setAccessCode}
-          onSubmit={handleAccessCodeSubmit}
-          incorrectCode={incorrectCode}
-        />
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-lg font-bold text-center">Hero-Pet</h1>
+            <ThemeToggle />
+
+
+          </div>
+          <AccessForm
+            accessCode={accessCode}
+            setAccessCode={setAccessCode}
+            onSubmit={handleAccessCodeSubmit}
+            incorrectCode={incorrectCode}
+          />
+        </>
       ) : (
         <>
-          <AdminHeader onLogout={handleLogout} user={{ name: "José" }}>
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-lg font-bold text-center">Sistema Hero-Pet</h1>
             <StatusNav status={status} lastUpdate={lastUpdate} compact />
-          </AdminHeader>
+
+            <div className="flex items-center gap-4">
+              <ThemeToggle />
+              <AdminHeader onLogout={handleLogout} user={{ name: "José" }} />
+            </div>
+
+          </div>
+
         </>
       )}
     </div>
