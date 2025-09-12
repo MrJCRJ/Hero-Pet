@@ -1,34 +1,44 @@
 /* pages/globals.css */
 
-/* Import Tailwind */
+/* ============================= */
+/* 🎨 Importando Tailwind CSS */
+/* ============================= */
 @import "tailwindcss";
 
 /* ============================= */
-/* 🎨 Paleta de cores (variáveis) */
+/* 🎨 Variáveis de cores e dark mode */
 /* ============================= */
 :root {
-  --color-bg-primary: #ffffff;
+  --color-bg-primary: #e0dede46;
   --color-bg-secondary: #f9fafb;
-  --color-text-primary: #1f2937;
+  --color-text-primary: #03275a;
   --color-text-secondary: #6b7280;
-  --color-accent: #2563eb;
-  --color-accent-hover: #1d4ed8;
+  --color-accent: #088a06;
+  --color-accent-hover: #088a06cc;
+  --color-accent-cancel: #c5b5ab;
+  --color-accent-cancel-hover: #c5b5abcc;
   --color-border: #e5e7eb;
+
   --radius-default: 0.5rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
 }
 
 .dark {
-  --color-bg-primary: #0f172a;
+  --color-bg-primary: #071433;
   --color-bg-secondary: #1e293b;
   --color-text-primary: #f8fafc;
   --color-text-secondary: #94a3b8;
   --color-accent: #38bdf8;
   --color-accent-hover: #0ea5e9;
+  --color-accent-cancel: #419c6f;
+  --color-accent-cancel-hover: #419c6fcc;
   --color-border: #334155;
 }
 
+/* ============================= */
+/* 📝 Estilos globais básicos */
+/* ============================= */
 body {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
@@ -38,18 +48,11 @@ body {
     color 0.8s ease-in-out;
 }
 
-a,
-button,
-input,
-textarea,
-select,
-.glow-card {
-  transition: all 0.8s ease-in-out;
-}
-
-/* Scrollbar */
+/* ============================= */
+/* 🖱 Scrollbar personalizado (Webkit) */
+/* ============================= */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-bg-secondary);
@@ -62,43 +65,4 @@ select,
 }
 .dark ::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent-hover);
-}
-
-/* Inputs */
-input,
-textarea,
-select {
-  border-radius: var(--radius-default);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg-secondary);
-  color: var(--color-text-primary);
-  padding: 0.5rem;
-}
-
-/* Cards */
-.glow-card {
-  border-radius: var(--radius-lg);
-  transition:
-    background-color 1.2s ease-in-out,
-    box-shadow 1.2s ease-in-out;
-}
-.dark .glow-card {
-  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.15);
-}
-.dark .glow-card:hover {
-  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.3);
-}
-
-/* Gradientes */
-.gradient-bg {
-  background: linear-gradient(
-    135deg,
-    var(--color-bg-primary) 0%,
-    var(--color-bg-secondary) 100%
-  );
-}
-
-/* Transição lenta opcional */
-.transition-slow {
-  transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
