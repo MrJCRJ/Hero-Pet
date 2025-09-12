@@ -4,7 +4,8 @@ import React from "react";
 const buttonStyles = {
   variants: {
     primary: "bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] ",
-    secondary: "bg-[var(--color-accent-cancel)] hover:bg-[var(--color-accent-cancel-hover)]",
+    secondary:
+      "bg-[var(--color-accent-cancel)] hover:bg-[var(--color-accent-cancel-hover)]",
   },
   sizes: {
     sm: "px-3 py-1 text-sm",
@@ -57,5 +58,3 @@ export const ConfirmDialog = ({
     </div>
   </div>
 );
-
-

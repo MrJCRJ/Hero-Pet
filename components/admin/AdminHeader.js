@@ -27,7 +27,9 @@ export const AdminHeader = ({ onLogout, user, children }) => {
 
       <div className="flex items-center space-x-4 relative">
         {user && (
-          <span>Olá, <span>{user.name}</span></span>
+          <span>
+            Olá, <span>{user.name}</span>
+          </span>
         )}
 
         <Button
@@ -49,4 +51,3 @@ export const AdminHeader = ({ onLogout, user, children }) => {
     </header>
   );
 };
-

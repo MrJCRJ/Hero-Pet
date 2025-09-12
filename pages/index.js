@@ -42,8 +42,6 @@ function Home() {
           <AdminHeader onLogout={handleLogout} user={{ name: "José" }}>
             <StatusNav status={status} lastUpdate={lastUpdate} compact />
           </AdminHeader>
-
-
         </>
       )}
     </div>
