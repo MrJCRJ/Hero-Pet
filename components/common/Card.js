@@ -17,7 +17,7 @@ export function Card({ title, status, children }) {
           </span>
         )}
       </h2>
-      {children}
+      <div>{children}</div>
     </div>
   );
 }

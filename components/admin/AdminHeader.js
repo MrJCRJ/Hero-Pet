@@ -30,19 +30,18 @@ export const AdminHeader = ({ onLogout, user, children }) => {
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <header className="flex justify-between items-center mb-6 p-4 bg-white rounded-lg shadow-sm">
+    <header className="flex justify-between items-center mb-6 p-4 rounded-lg shadow-sm bg-[var(--color-bg-primary)] ">
       {/* Esquerda → título + conteúdo extra (status etc.) */}
       <div className="flex items-center space-x-4">
-        <h2 className="text-lg font-semibold text-gray-800">
-          Painel de Status
+        <h2 className="text-lg font-semibold">
+          {children ? children : "Painel de Status"}
         </h2>
-        {children}
       </div>
 
       {/* Direita → usuário + logout */}
       <div className="flex items-center space-x-4">
         {user && (
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-[var(--color-text-secondary)]">
             Olá, <span className="font-medium">{user.name}</span>
           </span>
         )}
@@ -51,27 +50,27 @@ export const AdminHeader = ({ onLogout, user, children }) => {
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="flex items-center space-x-1 bg-red-500 text-white rounded-md px-3 py-2 text-xs font-semibold hover:bg-red-600 transition-colors"
+            className="flex items-center space-x-1 rounded-md px-3 py-2 text-xs font-semibold bg-[var(--color-accent)] text-[var(--color-bg-primary)] hover:bg-[var(--color-accent-hover)]"
           >
             <LogoutIcon />
             <span>Sair</span>
           </button>
 
           {confirming && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-white p-3 rounded-md shadow-lg border border-gray-200 z-10">
-              <p className="text-sm text-gray-700 mb-2">
+            <div className="absolute right-0 top-full mt-2 w-48 p-3 rounded-md shadow-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]  z-10">
+              <p className="text-sm text-[var(--color-text-secondary)] mb-2">
                 Deseja realmente sair?
               </p>
               <div className="flex space-x-2">
                 <button
                   onClick={() => setConfirming(false)}
-                  className="flex-1 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                  className="flex-1 py-1 text-xs rounded bg-[var(--color-bg-secondary)]  hover:bg-[var(--color-bg-primary)]"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={onLogout}
-                  className="flex-1 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                  className="flex-1 py-1 text-xs rounded bg-[var(--color-accent)] text-[var(--color-bg-primary)] hover:bg-[var(--color-accent-hover)]"
                 >
                   Sair
                 </button>

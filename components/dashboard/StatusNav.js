@@ -13,10 +13,10 @@ function StatusPopover({ children, open, hover }) {
       `}
     >
       {open && (
-        <div className="bg-white border border-gray-200 rounded-md p-3 w-64 transition-opacity duration-300">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md p-3 w-64">
           {children}
           {!hover && (
-            <div className="mt-2 text-xs text-gray-500 text-center">
+            <div className="mt-2 text-xs text-[var(--color-text-secondary)] text-center">
               Clique em qualquer lugar para fechar
             </div>
           )}
@@ -31,14 +31,12 @@ export function StatusNav({ status, lastUpdate, compact = false }) {
   const [openCard, setOpenCard] = useState(null);
   const cardRef = useRef(null);
 
-  // Atualiza o relógio a cada segundo
   const [currentTime, setCurrentTime] = useState(new Date());
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Fecha popover ao clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (cardRef.current && !cardRef.current.contains(event.target)) {
@@ -68,13 +66,11 @@ export function StatusNav({ status, lastUpdate, compact = false }) {
     { id: "webserver", label: compact ? "WS" : "Web Server", data: webserver },
   ];
 
-  // Diferença em segundos desde o último fetch
   const secondsSinceUpdate = lastUpdate
     ? Math.floor((currentTime - new Date(lastUpdate)) / 1000)
     : 0;
 
-  // Define cores da última atualização
-  let updateColor = "text-gray-500";
+  let updateColor = "text-[var(--color-text-secondary)]";
   if (secondsSinceUpdate <= 30) updateColor = "text-green-500";
   else if (secondsSinceUpdate <= 50) updateColor = "text-yellow-500";
   else updateColor = "text-red-500";
@@ -94,7 +90,7 @@ export function StatusNav({ status, lastUpdate, compact = false }) {
               onClick={() => setOpenCard(isOpen ? null : item.id)}
             >
               {/* Label + bolinha de status */}
-              <div className="flex items-center space-x-2 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors">
+              <div className="flex items-center space-x-2 px-3 py-1 rounded-md hover:bg-gray-100">
                 <StatusDot status={item.data.status} />
                 <span className="text-xs font-medium">{item.label}</span>
               </div>
@@ -113,11 +109,10 @@ export function StatusNav({ status, lastUpdate, compact = false }) {
         })}
       </div>
 
-      {/* Última atualização dinâmica com animação de pulso */}
       {lastUpdate && (
         <div
           className={`
-            text-xs text-center mt-1 transition-colors duration-500
+            text-xs text-center mt-1
             ${updateColor} ${secondsSinceUpdate <= 30 ? "animate-pulse" : ""}
           `}
         >

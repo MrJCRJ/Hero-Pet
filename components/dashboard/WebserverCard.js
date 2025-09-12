@@ -1,4 +1,3 @@
-// components/dashboard/WebserverCard.js
 import { InfoList } from "components/common/InfoList";
 import { Section } from "components/common/Section";
 
@@ -20,11 +19,7 @@ const ServerIcon = () => (
 );
 
 function mapWebserverInfo(webserver) {
-  const providerIcons = {
-    vercel: "▲",
-    aws: "☁️",
-    local: "💻",
-  };
+  const providerIcons = { vercel: "▲", aws: "☁️", local: "💻" };
 
   const environmentClasses = {
     production: "text-red-600 bg-red-100",
