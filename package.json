@@ -1,6 +1,6 @@
 {
   "name": "hero-pet",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "Um Site para eu analisar os Dados da minha empresa Hero-Pet",
   "main": "index.js",
   "scripts": {
@@ -28,6 +28,8 @@
     "dotenv-expand": "^12.0.3",
     "eslint": "^9.35.0",
     "eslint-config-next": "^15.5.3",
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^0.544.0",
     "next": "^15.5.3",
     "node-pg-migrate": "^6.2.2",
     "pg": "^8.16.3",

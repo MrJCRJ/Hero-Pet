@@ -9,7 +9,7 @@ const DatabaseIcon = () => (
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
     fill="currentColor"
-    className="w-5 h-5 inline mr-2 text-blue-500"
+    className="w-5 h-5 inline mr-2 text-[var(--color-accent)]"
   >
     <path d="M21 6.375c0 2.692-4.03 4.875-9 4.875S3 9.067 3 6.375 7.03 1.5 12 1.5s9 2.183 9 4.875z" />
     <path d="M12 12.75c2.685 0 5.19-.586 7.078-1.609a8.283 8.283 0 001.897-1.384c.016.121.025.244.025.368C21 12.817 16.97 15 12 15s-9-2.183-9-4.875c0-.124.009-.247.025-.368a8.285 8.285 0 001.897 1.384C6.809 12.164 9.315 12.75 12 12.75z" />
@@ -69,11 +69,13 @@ export function DatabaseCard({ database, compact = false }) {
   };
 
   return (
-    <div className="database-card">
+    <div className="database-card bg-[var(--color-bg-secondary)] rounded-lg shadow-md p-4">
       {!compact && (
         <div className="flex items-center mb-3">
           <DatabaseIcon />
-          <h3 className="font-semibold text-gray-800">Banco de Dados</h3>
+          <h3 className="font-semibold" style={{ color: "var(--color-text-primary)" }}>
+            Banco de Dados
+          </h3>
         </div>
       )}
 
@@ -82,15 +84,14 @@ export function DatabaseCard({ database, compact = false }) {
 
         <InfoList data={connectionData} />
 
-        <div className="w-full bg-gray-200 rounded-full h-1.5">
+        <div className="w-full bg-[var(--color-border)] rounded-full h-1.5">
           <div
-            className={`h-1.5 rounded-full ${
-              connectionStatus === "good"
+            className={`h-1.5 rounded-full ${connectionStatus === "good"
                 ? "bg-green-500"
                 : connectionStatus === "warning"
                   ? "bg-yellow-500"
                   : "bg-red-500"
-            }`}
+              }`}
             style={{ width: `${Math.min(100, connectionPercentage)}%` }}
           ></div>
         </div>
@@ -101,7 +102,7 @@ export function DatabaseCard({ database, compact = false }) {
       </Section>
 
       {!compact && database.opened_connections !== undefined && (
-        <div className="mt-3 text-xs text-gray-500">
+        <div className="mt-3 text-xs" style={{ color: "var(--color-text-secondary)" }}>
           Conexões abertas: {database.opened_connections}
         </div>
       )}
