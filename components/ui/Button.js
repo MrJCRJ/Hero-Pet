@@ -8,7 +8,7 @@ const buttonStyles = {
       "bg-[var(--color-accent-cancel)] hover:bg-[var(--color-accent-cancel-hover)]",
   },
   sizes: {
-    sm: "px-3 py-1 text-sm",
+    sm: "px-3 py-1.5 text-sm",
   },
   base: "items-center rounded-md font-semibold ",
 };
@@ -16,7 +16,7 @@ const buttonStyles = {
 export const Button = ({
   variant = "primary",
   size = "sm",
-  fullWidth = false,
+  fullWidth = true,
   icon: Icon,
   children,
   onClick,

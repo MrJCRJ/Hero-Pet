@@ -34,6 +34,7 @@ export const AdminHeader = ({ onLogout, user, children }) => {
 
         <Button
           variant="primary"
+          fullWidth={false}
           icon={LogoutIcon}
           onClick={() => setConfirming(true)}
         />

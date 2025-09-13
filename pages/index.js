@@ -2,7 +2,7 @@ import { useStatus } from "../hooks/useStatus";
 import { useAuth } from "../hooks/useAuth";
 import { AccessForm } from "../components/admin/AccessForm";
 import { AdminHeader } from "../components/admin/AdminHeader";
-import { StatusNav } from "../components/dashboard/StatusNav";
+import { StatusNav } from "../components/layout/StatusNav";
 import { ThemeToggle } from "../components/ThemeToggle";
 
 function Home() {
