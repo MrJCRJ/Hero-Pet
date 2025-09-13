@@ -25,15 +25,11 @@ function Home() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 min-h-screen text-sm transition-colors">
-
-
       {!showAdminPanel ? (
         <>
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-lg font-bold text-center">Hero-Pet</h1>
             <ThemeToggle />
-
-
           </div>
           <AccessForm
             accessCode={accessCode}
@@ -52,9 +48,7 @@ function Home() {
               <ThemeToggle />
               <AdminHeader onLogout={handleLogout} user={{ name: "José" }} />
             </div>
-
           </div>
-
         </>
       )}
     </div>
