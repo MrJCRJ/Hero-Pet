@@ -26,10 +26,13 @@ export function useAuth() {
     return isValid;
   }, []);
 
-  const handleAccessCodeSubmit = useCallback((e) => {
-    e.preventDefault();
-    authenticate(accessCode);
-  }, [accessCode, authenticate]);
+  const handleAccessCodeSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      authenticate(accessCode);
+    },
+    [accessCode, authenticate],
+  );
 
   const handleLogout = useCallback(() => {
     setShowAdminPanel(false);

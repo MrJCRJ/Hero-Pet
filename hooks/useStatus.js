@@ -26,13 +26,13 @@ export function useStatus() {
       setStatusData({
         status: data,
         lastUpdate: new Date(),
-        error: null
+        error: null,
       });
     } catch (err) {
       console.error("Erro ao buscar status:", err);
-      setStatusData(prev => ({
+      setStatusData((prev) => ({
         ...prev,
-        error: err.message
+        error: err.message,
       }));
     } finally {
       setLoading(false);
@@ -52,6 +52,6 @@ export function useStatus() {
     error: statusData.error,
     loading,
     refetch: fetchStatus,
-    refreshInterval: REFRESH_INTERVAL
+    refreshInterval: REFRESH_INTERVAL,
   };
 }
