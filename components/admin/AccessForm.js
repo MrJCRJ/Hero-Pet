@@ -1,4 +1,6 @@
 // components/admin/AccessForm.js
+import { Button } from "components/ui/Button";
+
 export function AccessForm({
   accessCode,
   setAccessCode,
@@ -18,12 +20,9 @@ export function AccessForm({
           autoComplete="off"
           className="border rounded-md p-1.5 text-sm focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)] focus:ring-1 outline-none"
         />
-        <button
-          type="submit"
-          className="bg-[var(--color-accent)] rounded-md py-1.5 text-sm font-semibold hover:bg-[var(--color-accent-hover)]"
-        >
+        <Button type="submit" variant="primary">
           Acessar
-        </button>
+        </Button>
       </form>
       {incorrectCode && (
         <p className="text-red-500 mt-2 text-xs">

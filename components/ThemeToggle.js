@@ -1,3 +1,5 @@
+// components/ThemeToggle.js
+
 "use client";
 import { useTheme } from "../contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
