@@ -5,8 +5,8 @@ import { AdminHeader } from "../components/admin/AdminHeader";
 import { StatusNav } from "../components/layout/StatusNav";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { ClientForm } from "../components/ClientForm";
-import { SupplierForm } from "../components/SupplierForm";
-import { OrderForm } from "../components/OrderForm";
+import { FornecedorForm } from "../components/FornecedorForm";
+import { PedidoForm } from "../components/PedidoForm";
 import { Button } from "../components/ui/Button";
 import React from "react";
 
@@ -23,7 +23,25 @@ function Home() {
   // Estados para controlar exibição dos formulários
   const [showClientForm, setShowClientForm] = React.useState(false);
   const [showSupplierForm, setShowSupplierForm] = React.useState(false);
+  // Estado do formulário de fornecedor e etapa
+  const [supplierForm, setSupplierForm] = React.useState({
+    nomeEmpresa: "",
+    cnpj: "",
+    endereco: "",
+    telefone: "",
+    email: "",
+    ativo: true,
+  });
+  const [supplierStep, setSupplierStep] = React.useState(1);
   const [showOrderForm, setShowOrderForm] = React.useState(false);
+  // Estado do formulário de pedido e etapa
+  const [orderForm, setOrderForm] = React.useState({
+    clienteId: "",
+    produto: "",
+    quantidade: 1,
+    observacao: "",
+  });
+  const [orderStep, setOrderStep] = React.useState(1);
 
   // Estado do formulário de cliente e etapa
   const [clientForm, setClientForm] = React.useState({
@@ -121,8 +139,22 @@ function Home() {
               setStep={setClientStep}
             />
           )}
-          {showSupplierForm && <SupplierForm />}
-          {showOrderForm && <OrderForm />}
+          {showSupplierForm && (
+            <FornecedorForm
+              form={supplierForm}
+              setForm={setSupplierForm}
+              step={supplierStep}
+              setStep={setSupplierStep}
+            />
+          )}
+          {showOrderForm && (
+            <PedidoForm
+              form={orderForm}
+              setForm={setOrderForm}
+              step={orderStep}
+              setStep={setOrderStep}
+            />
+          )}
         </>
       )}
     </div>

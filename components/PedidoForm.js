@@ -1,6 +1,6 @@
 import React from "react";
 
-export function OrderForm() {
+export function PedidoForm() {
   return (
     <form className="mb-4 p-4 border rounded">
       <h2 className="font-bold mb-2">Formulário de Pedido</h2>
