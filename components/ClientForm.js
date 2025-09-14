@@ -37,15 +37,15 @@ export function ClientForm({ form, setForm, step, setStep }) {
       {step === 1 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
-            label="Nome do Cliente"
+            label="Nome"
             name="nome"
-            placeholder="Nome do Cliente"
+            placeholder="Nome completo"
             value={form.nome}
             onChange={handleChange}
             required
           />
           <FormField
-            label="CPF ou CNPJ"
+            label="Documento (CPF/CNPJ)"
             name="documento"
             placeholder="CPF ou CNPJ"
             value={form.documento}
@@ -64,15 +64,15 @@ export function ClientForm({ form, setForm, step, setStep }) {
             onChange={handleChange}
           />
           <FormField
-            label="Número do Endereço"
+            label="Número"
             name="numero"
-            placeholder="Número do Endereço"
+            placeholder="Número do endereço"
             value={form.numero}
             onChange={handleChange}
           />
           <div className="md:col-span-2">
             <FormField
-              label="Complemento (opcional)"
+              label="Complemento"
               name="complemento"
               placeholder="Complemento (opcional)"
               value={form.complemento}

@@ -20,10 +20,10 @@ export function FornecedorForm({ form, setForm, step, setStep }) {
     <FormContainer title="Formulário do Fornecedor">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
-          label="Nome da Empresa"
-          name="nomeEmpresa"
-          placeholder="Nome da Empresa"
-          value={form.nomeEmpresa}
+          label="Razão Social"
+          name="nome"
+          placeholder="Razão Social"
+          value={form.nome}
           onChange={handleChange}
           required
         />
@@ -34,6 +34,27 @@ export function FornecedorForm({ form, setForm, step, setStep }) {
           value={form.cnpj}
           onChange={handleChange}
           required
+        />
+        <FormField
+          label="Telefone"
+          name="telefone"
+          placeholder="Telefone"
+          value={form.telefone}
+          onChange={handleChange}
+        />
+        <FormField
+          label="Email"
+          name="email"
+          placeholder="Email"
+          value={form.email}
+          onChange={handleChange}
+        />
+        <FormField
+          label="CEP"
+          name="cep"
+          placeholder="CEP"
+          value={form.cep}
+          onChange={handleChange}
         />
       </div>
       <div className="flex justify-end mt-8">
