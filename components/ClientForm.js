@@ -1,17 +1,5 @@
-import React, { useState } from "react";
 
-export function ClientForm() {
-  const [form, setForm] = useState({
-    nome: "",
-    documento: "",
-    cep: "",
-    numero: "",
-    complemento: "",
-    telefone: "",
-    email: "",
-    ativo: true,
-  });
-  const [step, setStep] = useState(1);
+export function ClientForm({ form, setForm, step, setStep }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

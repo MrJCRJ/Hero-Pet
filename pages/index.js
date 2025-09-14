@@ -7,6 +7,7 @@ import { ThemeToggle } from "../components/ThemeToggle";
 import { ClientForm } from "../components/ClientForm";
 import { SupplierForm } from "../components/SupplierForm";
 import { OrderForm } from "../components/OrderForm";
+import { Button } from "../components/ui/Button";
 import React from "react";
 
 function Home() {
@@ -23,6 +24,19 @@ function Home() {
   const [showClientForm, setShowClientForm] = React.useState(false);
   const [showSupplierForm, setShowSupplierForm] = React.useState(false);
   const [showOrderForm, setShowOrderForm] = React.useState(false);
+
+  // Estado do formulário de cliente e etapa
+  const [clientForm, setClientForm] = React.useState({
+    nome: "",
+    documento: "",
+    cep: "",
+    numero: "",
+    complemento: "",
+    telefone: "",
+    email: "",
+    ativo: true,
+  });
+  const [clientStep, setClientStep] = React.useState(1);
 
   // Handlers para alternar exibição dos formulários
   const handleShowClientForm = () => {
@@ -77,26 +91,36 @@ function Home() {
             </div>
           </div>
           <div className="flex gap-2 mb-4">
-            <button
+            <Button
               onClick={handleShowClientForm}
-              className="px-3 py-1 bg-blue-200 rounded"
+              variant={showClientForm ? "primary" : "secondary"}
+              fullWidth={false}
             >
               Cliente
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleShowSupplierForm}
-              className="px-3 py-1 bg-green-200 rounded"
+              variant={showSupplierForm ? "primary" : "secondary"}
+              fullWidth={false}
             >
               Fornecedor
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleShowOrderForm}
-              className="px-3 py-1 bg-purple-200 rounded"
+              variant={showOrderForm ? "primary" : "secondary"}
+              fullWidth={false}
             >
               Pedido
-            </button>
+            </Button>
           </div>
-          {showClientForm && <ClientForm />}
+          {showClientForm && (
+            <ClientForm
+              form={clientForm}
+              setForm={setClientForm}
+              step={clientStep}
+              setStep={setClientStep}
+            />
+          )}
           {showSupplierForm && <SupplierForm />}
           {showOrderForm && <OrderForm />}
         </>
