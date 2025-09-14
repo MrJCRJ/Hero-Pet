@@ -1,22 +1,35 @@
 import React from "react";
+import { Button } from "./ui/Button";
+import { FormContainer, FormField } from "./ui/Form";
 
 export function PedidoForm() {
   return (
-    <form className="mb-4 p-4 border rounded">
-      <h2 className="font-bold mb-2">Formulário de Pedido</h2>
-      <input className="border p-1 mb-2 w-full" placeholder="ID do Cliente" />
-      <input className="border p-1 mb-2 w-full" placeholder="Produto" />
-      <input
-        className="border p-1 mb-2 w-full"
-        placeholder="Quantidade"
-        type="number"
-      />
-      <button
-        type="submit"
-        className="bg-purple-500 text-white px-4 py-1 rounded"
-      >
-        Enviar
-      </button>
-    </form>
+    <FormContainer title="Formulário de Pedido">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          label="ID do Cliente"
+          name="clienteId"
+          placeholder="ID do Cliente"
+        />
+        <FormField
+          label="Produto"
+          name="produto"
+          placeholder="Produto"
+        />
+        <div className="md:col-span-2">
+          <FormField
+            label="Quantidade"
+            name="quantidade"
+            placeholder="Quantidade"
+            type="number"
+          />
+        </div>
+      </div>
+      <div className="flex justify-end mt-8">
+        <Button type="submit" variant="primary" size="sm" fullWidth={false}>
+          Enviar
+        </Button>
+      </div>
+    </FormContainer>
   );
 }

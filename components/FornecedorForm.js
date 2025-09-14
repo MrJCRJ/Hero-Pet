@@ -1,4 +1,6 @@
 import React from "react";
+import { Button } from "./ui/Button";
+import { FormContainer, FormField } from "./ui/Form";
 
 export function FornecedorForm({ form, setForm, step, setStep }) {
   const handleChange = (e) => {
@@ -15,28 +17,31 @@ export function FornecedorForm({ form, setForm, step, setStep }) {
   };
 
   return (
-    <form className="mb-4 p-4 border rounded" onSubmit={handleSubmit}>
-      <h2 className="font-bold mb-2">Formulário do Fornecedor</h2>
-      <input
-        className="border p-1 mb-2 w-full"
-        placeholder="Nome da Empresa"
-        name="nomeEmpresa"
-        value={form.nomeEmpresa}
-        onChange={handleChange}
-      />
-      <input
-        className="border p-1 mb-2 w-full"
-        placeholder="CNPJ"
-        name="cnpj"
-        value={form.cnpj}
-        onChange={handleChange}
-      />
-      <button
-        type="submit"
-        className="bg-green-500 text-white px-4 py-1 rounded"
-      >
-        Enviar
-      </button>
-    </form>
+    <FormContainer title="Formulário do Fornecedor">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          label="Nome da Empresa"
+          name="nomeEmpresa"
+          placeholder="Nome da Empresa"
+          value={form.nomeEmpresa}
+          onChange={handleChange}
+          required
+        />
+        <FormField
+          label="CNPJ"
+          name="cnpj"
+          placeholder="CNPJ"
+          value={form.cnpj}
+          onChange={handleChange}
+          required
+        />
+      </div>
+      <div className="flex justify-end mt-8">
+        <Button type="submit" variant="primary" size="sm" fullWidth={false}>
+          Enviar
+        </Button>
+      </div>
+    </FormContainer>
   );
+
 }

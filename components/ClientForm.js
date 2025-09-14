@@ -1,4 +1,6 @@
-// components/ClientForm.js
+import { Button } from "./ui/Button";
+import { FormField } from "./ui/Form";
+
 export function ClientForm({ form, setForm, step, setStep }) {
 
   const handleChange = (e) => {
@@ -34,93 +36,69 @@ export function ClientForm({ form, setForm, step, setStep }) {
       <h2 className="text-xl font-bold mb-4 text-[var(--color-accent)]">Formulário do Cliente</h2>
       {step === 1 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[var(--color-text-secondary)] mb-1 font-medium">Nome do Cliente</label>
-            <input
-              name="nome"
-              placeholder="Nome do Cliente"
-              value={form.nome}
-              onChange={handleChange}
-              required
-              type="text"
-              className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:outline-none focus:border-[var(--color-accent)] bg-transparent text-[var(--color-text-primary)]"
-            />
-          </div>
-          <div>
-            <label className="block text-[var(--color-text-secondary)] mb-1 font-medium">CPF ou CNPJ</label>
-            <input
-              name="documento"
-              placeholder="CPF ou CNPJ"
-              value={form.documento}
-              onChange={handleChange}
-              required
-              type="text"
-              className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:outline-none focus:border-[var(--color-accent)] bg-transparent text-[var(--color-text-primary)]"
-            />
-          </div>
+          <FormField
+            label="Nome do Cliente"
+            name="nome"
+            placeholder="Nome do Cliente"
+            value={form.nome}
+            onChange={handleChange}
+            required
+          />
+          <FormField
+            label="CPF ou CNPJ"
+            name="documento"
+            placeholder="CPF ou CNPJ"
+            value={form.documento}
+            onChange={handleChange}
+            required
+          />
         </div>
       )}
       {step === 2 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[var(--color-text-secondary)] mb-1 font-medium">CEP</label>
-            <input
-              name="cep"
-              placeholder="CEP"
-              value={form.cep}
-              onChange={handleChange}
-              type="text"
-              className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:outline-none focus:border-[var(--color-accent)] bg-transparent text-[var(--color-text-primary)]"
-            />
-          </div>
-          <div>
-            <label className="block text-[var(--color-text-secondary)] mb-1 font-medium">Número do Endereço</label>
-            <input
-              name="numero"
-              placeholder="Número do Endereço"
-              value={form.numero}
-              onChange={handleChange}
-              type="text"
-              className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:outline-none focus:border-[var(--color-accent)] bg-transparent text-[var(--color-text-primary)]"
-            />
-          </div>
+          <FormField
+            label="CEP"
+            name="cep"
+            placeholder="CEP"
+            value={form.cep}
+            onChange={handleChange}
+          />
+          <FormField
+            label="Número do Endereço"
+            name="numero"
+            placeholder="Número do Endereço"
+            value={form.numero}
+            onChange={handleChange}
+          />
           <div className="md:col-span-2">
-            <label className="block text-[var(--color-text-secondary)] mb-1 font-medium">Complemento (opcional)</label>
-            <input
+            <FormField
+              label="Complemento (opcional)"
               name="complemento"
               placeholder="Complemento (opcional)"
               value={form.complemento}
               onChange={handleChange}
-              type="text"
-              className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:outline-none focus:border-[var(--color-accent)] bg-transparent text-[var(--color-text-primary)]"
             />
           </div>
         </div>
       )}
       {step === 3 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[var(--color-text-secondary)] mb-1 font-medium">Telefone</label>
-            <input
-              name="telefone"
-              placeholder="Telefone"
-              value={form.telefone}
-              onChange={handleChange}
-              type="tel"
-              className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:outline-none focus:border-[var(--color-accent)] bg-transparent text-[var(--color-text-primary)]"
-            />
-          </div>
-          <div>
-            <label className="block text-[var(--color-text-secondary)] mb-1 font-medium">Email</label>
-            <input
-              name="email"
-              placeholder="Email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              className="w-full border border-[var(--color-border)] rounded px-3 py-2 focus:outline-none focus:border-[var(--color-accent)] bg-transparent text-[var(--color-text-primary)]"
-            />
-          </div>
+          <FormField
+            label="Telefone"
+            name="telefone"
+            placeholder="Telefone"
+            value={form.telefone}
+            onChange={handleChange}
+            type="tel"
+          />
+          <FormField
+            label="Email"
+            name="email"
+            placeholder="Email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+          />
           <div className="md:col-span-2 flex items-center gap-2 mt-4 mb-6">
             <input
               type="checkbox"
@@ -135,29 +113,37 @@ export function ClientForm({ form, setForm, step, setStep }) {
       )}
       <div className="flex justify-between mt-8">
         {step > 1 && (
-          <button
+          <Button
             type="button"
             onClick={handleBack}
-            className="bg-[var(--color-accent-cancel)] hover:bg-[var(--color-accent-cancel-hover)] text-white font-semibold py-2 px-6 rounded shadow transition-colors"
+            variant="secondary"
+            size="sm"
+            fullWidth={false}
           >
             Voltar
-          </button>
+          </Button>
         )}
         {step < 3 && (
-          <button
+          <Button
             type="submit"
-            className="bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-semibold py-2 px-8 rounded shadow transition-colors ml-auto"
+            variant="primary"
+            size="sm"
+            fullWidth={false}
+            className="ml-auto"
           >
             Próximo
-          </button>
+          </Button>
         )}
         {step === 3 && (
-          <button
+          <Button
             type="submit"
-            className="bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-semibold py-2 px-8 rounded shadow transition-colors ml-auto"
+            variant="primary"
+            size="sm"
+            fullWidth={false}
+            className="ml-auto"
           >
             Enviar
-          </button>
+          </Button>
         )}
       </div>
     </form>
