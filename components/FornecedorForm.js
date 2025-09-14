@@ -64,5 +64,4 @@ export function FornecedorForm({ form, setForm, step, setStep }) {
       </div>
     </FormContainer>
   );
-
 }

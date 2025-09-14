@@ -3,17 +3,34 @@
 
 export function FormContainer({ title, children, ...props }) {
   return (
-    <form className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-md p-6 max-w-lg mx-auto mt-4" {...props}>
-      <h2 className="text-xl font-bold mb-4 text-[var(--color-accent)]">{title}</h2>
+    <form
+      className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-md p-6 max-w-lg mx-auto mt-4"
+      {...props}
+    >
+      <h2 className="text-xl font-bold mb-4 text-[var(--color-accent)]">
+        {title}
+      </h2>
       {children}
     </form>
   );
 }
 
-export function FormField({ label, name, value, onChange, type = "text", placeholder = "", required = false, ...props }) {
+export function FormField({
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+  required = false,
+  ...props
+}) {
   return (
     <div>
-      <label className="block text-[var(--color-text-secondary)] mb-1 font-medium" htmlFor={name}>
+      <label
+        className="block text-[var(--color-text-secondary)] mb-1 font-medium"
+        htmlFor={name}
+      >
         {label}
       </label>
       <input

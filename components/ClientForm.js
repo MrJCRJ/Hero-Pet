@@ -2,7 +2,6 @@ import { Button } from "./ui/Button";
 import { FormField } from "./ui/Form";
 
 export function ClientForm({ form, setForm, step, setStep }) {
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({
@@ -10,7 +9,6 @@ export function ClientForm({ form, setForm, step, setStep }) {
       [name]: type === "checkbox" ? checked : value,
     }));
   };
-
 
   const handleNext = (e) => {
     e.preventDefault();
@@ -33,7 +31,9 @@ export function ClientForm({ form, setForm, step, setStep }) {
       onSubmit={step === 3 ? handleSubmit : handleNext}
       className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-md p-6 max-w-lg mx-auto mt-4"
     >
-      <h2 className="text-xl font-bold mb-4 text-[var(--color-accent)]">Formulário do Cliente</h2>
+      <h2 className="text-xl font-bold mb-4 text-[var(--color-accent)]">
+        Formulário do Cliente
+      </h2>
       {step === 1 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField

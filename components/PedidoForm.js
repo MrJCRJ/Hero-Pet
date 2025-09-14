@@ -11,11 +11,7 @@ export function PedidoForm() {
           name="clienteId"
           placeholder="ID do Cliente"
         />
-        <FormField
-          label="Produto"
-          name="produto"
-          placeholder="Produto"
-        />
+        <FormField label="Produto" name="produto" placeholder="Produto" />
         <div className="md:col-span-2">
           <FormField
             label="Quantidade"
