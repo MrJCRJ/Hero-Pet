@@ -18,6 +18,28 @@ clientes (
 )
 ```
 
+#### Fluxo de Trabalho (Clientes)
+
+1. Cadastro de novo cliente via formulário.
+2. Validação de documento (CPF/CNPJ único).
+3. Salvamento no banco de dados.
+4. Cliente pode ser ativado/inativado.
+
+#### Exemplo de Cliente
+
+```json
+{
+  "nome": "Maria Oliveira",
+  "documento": "987.654.321-00",
+  "cep": "12345-678",
+  "numero": "100",
+  "complemento": "Apto 12",
+  "telefone": "(11) 98888-7777",
+  "email": "maria@email.com",
+  "ativo": true
+}
+```
+
 ### **Fornecedores**
 
 ```sql
@@ -30,6 +52,26 @@ fornecedores (
   cep,           -- Similar ao de clientes
   ativo          -- Status do fornecedor
 )
+```
+
+#### Fluxo de Trabalho (Fornecedores)
+
+1. Cadastro de fornecedor via formulário.
+2. Validação de CNPJ único.
+3. Salvamento no banco de dados.
+4. Fornecedor pode ser ativado/inativado.
+
+#### Exemplo de Fornecedor
+
+```json
+{
+  "nome": "Distribuidora Pet Ltda",
+  "cnpj": "12.345.678/0001-99",
+  "telefone": "(11) 97777-6666",
+  "email": "contato@distribuidorapet.com",
+  "cep": "12345-678",
+  "ativo": true
+}
 ```
 
 ### **Produtos**
@@ -53,6 +95,15 @@ produtos (
   dataCadastro
 )
 ```
+
+#### Fluxo de Trabalho (Produtos)
+
+1. Cadastro de produto via formulário.
+2. Validação dos campos obrigatórios.
+3. Cálculo automático da margem de lucro.
+4. Salvamento no banco de dados.
+5. Atualização de estoque conforme entradas/saídas.
+6. Alertas automáticos se estoque baixo.
 
 #### **Exemplo de Produto**
 
@@ -154,6 +205,27 @@ movimento_estoque (
 )
 ```
 
+#### Fluxo de Trabalho (Movimento de Estoque)
+
+1. Registro de entrada (compra), saída (venda) ou ajuste (inventário).
+2. Atualização do estoque do produto relacionado.
+3. Registro do movimento com usuário e documento.
+
+#### Exemplo de Movimento
+
+```json
+{
+  "produto_id": "abc123",
+  "tipo": "ENTRADA",
+  "quantidade": 30,
+  "valor_unitario": 85.0,
+  "documento": "NF12345",
+  "observacao": "Compra mensal",
+  "data_movimento": "2025-09-14",
+  "usuario": "admin"
+}
+```
+
 #### **Categorias de Produtos**
 
 ```sql
@@ -175,7 +247,7 @@ categorias_produtos (
 
 ---
 
-## Pedidos
+### **Pedidos**
 
 ### **Pedidos**
 
@@ -225,6 +297,30 @@ pedidos (
 )
 ```
 
+#### Fluxo de Trabalho (Pedidos)
+
+1. Criação de pedido de venda ou compra.
+2. Adição de itens ao pedido.
+3. Cálculo automático de totais, descontos e frete.
+4. Definição de status (pendente, pago, entregue, etc).
+5. Geração de parcelas se parcelado.
+6. Atualização do estoque (baixa ou entrada).
+
+#### Exemplo de Pedido
+
+```json
+{
+  "tipo": "VENDA",
+  "status": "PENDENTE",
+  "cliente_id": "cli123",
+  "dataPedido": "2025-09-14",
+  "totalProdutos": 240.0,
+  "desconto": 10.0,
+  "valorFrete": 15.0,
+  "totalPedido": 245.0
+}
+```
+
 ### **Itens do Pedido**
 
 ```sql
@@ -238,6 +334,26 @@ pedido_itens (
   totalItem,     -- quantidade * precoUnitario
   descontoItem
 )
+```
+
+#### Fluxo de Trabalho (Itens do Pedido)
+
+1. Adição de itens ao pedido (produto, quantidade, preço).
+2. Cálculo do total de cada item.
+3. Atualização do estoque do produto ao finalizar pedido.
+
+#### Exemplo de Item do Pedido
+
+```json
+{
+  "pedido_id": "ped123",
+  "produto_id": "prod456",
+  "nomeProduto": "Ração Premium",
+  "quantidade": 2,
+  "precoUnitario": 120.0,
+  "totalItem": 240.0,
+  "descontoItem": 0
+}
 ```
 
 ### **Parcelas**
@@ -255,9 +371,29 @@ parcelas (
 )
 ```
 
+#### Fluxo de Trabalho (Parcelas)
+
+1. Geração automática das parcelas ao criar pedido parcelado.
+2. Controle de status (pendente, pago, atrasado).
+3. Registro de pagamento e atualização de status.
+
+#### Exemplo de Parcela
+
+```json
+{
+  "pedido_id": "ped123",
+  "numeroParcela": 1,
+  "valorParcela": 122.5,
+  "dataVencimento": "2025-10-14",
+  "dataPagamento": null,
+  "status": "PENDENTE",
+  "formaPagamento": "PIX"
+}
+```
+
 ---
 
-## Despesas
+### **Despesas**
 
 ```sql
 despesas (
@@ -275,4 +411,27 @@ despesas (
   numeroParcelas,
   fornecedor_id    -- Relacionamento (se aplicável)
 )
+```
+
+#### Fluxo de Trabalho (Despesas)
+
+1. Cadastro de despesa fixa, variável ou ocasional.
+2. Definição de categoria, valor, vencimento e recorrência.
+3. Controle de status (pendente, pago, atrasado).
+4. Registro de pagamento e atualização de status.
+
+#### Exemplo de Despesa
+
+```json
+{
+  "tipo": "FIXA",
+  "descricao": "Aluguel Loja",
+  "categoria": "ALUGUEL",
+  "valor": 2500.0,
+  "dataVencimento": "2025-09-30",
+  "status": "PENDENTE",
+  "recorrente": true,
+  "numeroParcelas": 0,
+  "fornecedor_id": "forn789"
+}
 ```
