@@ -2,18 +2,13 @@ import React from "react";
 import { Button } from "./ui/Button";
 import { FormContainer, FormField } from "./ui/Form";
 
-export function FornecedorForm({ form, setForm, step, setStep }) {
+export function FornecedorForm({ form, setForm }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
       [name]: value,
     }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    alert("Fornecedor cadastrado!\n" + JSON.stringify(form, null, 2));
   };
 
   return (
