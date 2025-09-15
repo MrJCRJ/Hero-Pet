@@ -18,62 +18,64 @@ export function ClientForm({ form, setForm }) {
   };
 
   return (
-    <FormContainer title="Formulário do Cliente">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          label="Nome"
-          name="nome"
-          placeholder="Nome completo"
-          value={form.nome}
-          onChange={handleChange}
-          required
-        />
-        <FormField
-          label="Documento (CPF/CNPJ)"
-          name="documento"
-          placeholder="CPF ou CNPJ"
-          value={form.documento}
-          onChange={handleChange}
-          required
-        />
-        <FormField
-          label="CEP"
-          name="cep"
-          placeholder="CEP"
-          value={form.cep}
-          onChange={handleChange}
-        />
-        <FormField
-          label="Número"
-          name="numero"
-          placeholder="Número do endereço"
-          value={form.numero}
-          onChange={handleChange}
-        />
-        <FormField
-          label="Complemento"
-          name="complemento"
-          placeholder="Complemento (opcional)"
-          value={form.complemento}
-          onChange={handleChange}
-        />
-        <FormField
-          label="Telefone"
-          name="telefone"
-          placeholder="Telefone"
-          value={form.telefone}
-          onChange={handleChange}
-          type="tel"
-        />
-        <FormField
-          label="Email"
-          name="email"
-          placeholder="Email"
-          type="email"
-          value={form.email}
-          onChange={handleChange}
-        />
-        <div className="md:col-span-2 flex items-center gap-2 mt-4 mb-6">
+    <FormContainer title="Formulário do Cliente" onSubmit={handleSubmit}>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            label="Nome"
+            name="nome"
+            value={form.nome}
+            onChange={handleChange}
+            required
+          />
+          <FormField
+            label="Documento (CPF/CNPJ)"
+            name="documento"
+            value={form.documento}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <FormField
+            label="CEP"
+            name="cep"
+            value={form.cep}
+            onChange={handleChange}
+          />
+          <FormField
+            label="Número"
+            name="numero"
+            value={form.numero}
+            onChange={handleChange}
+          />
+          <FormField
+            label="Complemento"
+            name="complemento"
+            value={form.complemento}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            label="Email"
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+          />
+          <FormField
+            label="Telefone"
+            name="telefone"
+            value={form.telefone}
+            onChange={handleChange}
+            type="tel"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
           <input
             type="checkbox"
             name="ativo"
@@ -84,6 +86,7 @@ export function ClientForm({ form, setForm }) {
           <span className="text-[var(--color-text-secondary)]">Ativo</span>
         </div>
       </div>
+
       <div className="flex justify-end mt-8">
         <Button type="submit" variant="primary" size="sm" fullWidth={false}>
           Enviar

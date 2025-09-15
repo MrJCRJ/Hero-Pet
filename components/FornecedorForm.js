@@ -12,46 +12,49 @@ export function FornecedorForm({ form, setForm }) {
   };
 
   return (
-    <FormContainer title="Formulário do Fornecedor">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          label="Razão Social"
-          name="nome"
-          placeholder="Razão Social"
-          value={form.nome}
-          onChange={handleChange}
-          required
-        />
-        <FormField
-          label="CNPJ"
-          name="cnpj"
-          placeholder="CNPJ"
-          value={form.cnpj}
-          onChange={handleChange}
-          required
-        />
-        <FormField
-          label="Telefone"
-          name="telefone"
-          placeholder="Telefone"
-          value={form.telefone}
-          onChange={handleChange}
-        />
-        <FormField
-          label="Email"
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-        />
-        <FormField
-          label="CEP"
-          name="cep"
-          placeholder="CEP"
-          value={form.cep}
-          onChange={handleChange}
-        />
+    <FormContainer title="Formulário do Fornecedor" onSubmit={(e) => e.preventDefault()}>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            label="Razão Social"
+            name="nome"
+            value={form.nome}
+            onChange={handleChange}
+            required
+          />
+          <FormField
+            label="CNPJ"
+            name="cnpj"
+            value={form.cnpj}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <FormField
+            label="CEP"
+            name="cep"
+            value={form.cep}
+            onChange={handleChange}
+          />
+          <FormField
+            label="Telefone"
+            name="telefone"
+            value={form.telefone}
+            onChange={handleChange}
+            type="tel"
+          />
+          <FormField
+            label="Email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            type="email"
+          />
+        </div>
       </div>
+
       <div className="flex justify-end mt-8">
         <Button type="submit" variant="primary" size="sm" fullWidth={false}>
           Enviar
