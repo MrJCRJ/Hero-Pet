@@ -19,7 +19,9 @@ export function FornecedorForm({ form, setForm }) {
       <div className="space-y-8">
         {/* Dados da Empresa */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Dados da Empresa</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Dados da Empresa
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               label="Razão Social"
@@ -40,7 +42,9 @@ export function FornecedorForm({ form, setForm }) {
 
         {/* Endereço */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Endereço</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Endereço
+          </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="col-span-1">
               <FormField
@@ -71,7 +75,9 @@ export function FornecedorForm({ form, setForm }) {
 
         {/* Contato */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Contato</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Contato
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               label="Telefone"

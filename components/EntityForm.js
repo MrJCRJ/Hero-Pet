@@ -24,7 +24,10 @@ export function EntityForm({ form, setForm }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Aqui você pode adicionar a lógica de envio para o backend
-    alert(`${form.entityType === "client" ? "Cliente" : "Fornecedor"} cadastrado!\n` + JSON.stringify(form, null, 2));
+    alert(
+      `${form.entityType === "client" ? "Cliente" : "Fornecedor"} cadastrado!\n` +
+        JSON.stringify(form, null, 2),
+    );
   };
 
   const isClient = form.entityType === "client";
@@ -37,7 +40,9 @@ export function EntityForm({ form, setForm }) {
       <div className="space-y-8">
         {/* Tipo de Entidade */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Tipo de Entidade</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Tipo de Entidade
+          </h3>
           <div className="flex items-center gap-4 mb-6">
             <div className="flex items-center gap-2 cursor-pointer">
               <input
@@ -97,13 +102,20 @@ export function EntityForm({ form, setForm }) {
               required
               maxLength={isDocumentCnpj ? 14 : 11}
               pattern={isDocumentCnpj ? "[0-9]{14}" : "[0-9]{11}"}
-              title={isDocumentCnpj ? "Digite os 14 números do CNPJ" : "Digite os 11 números do CPF"}></FormField>
+              title={
+                isDocumentCnpj
+                  ? "Digite os 14 números do CNPJ"
+                  : "Digite os 11 números do CPF"
+              }
+            ></FormField>
           </div>
         </div>
 
         {/* Endereço */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Endereço</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Endereço
+          </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="col-span-1">
               <FormField
@@ -134,7 +146,9 @@ export function EntityForm({ form, setForm }) {
 
         {/* Contato */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Contato</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Contato
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               label="Email"
@@ -155,7 +169,9 @@ export function EntityForm({ form, setForm }) {
 
         {/* Status */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Status</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Status
+          </h3>
           <div className="flex items-center gap-2">
             <input
               type="checkbox"

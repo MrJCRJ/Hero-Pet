@@ -45,7 +45,7 @@ export function useFormManager() {
         },
       };
     });
-  }
+  };
 
   // Handler para alternar visibilidade dos formulários
   const handleShowForm = (formType) => {

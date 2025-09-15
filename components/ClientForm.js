@@ -22,7 +22,9 @@ export function ClientForm({ form, setForm }) {
       <div className="space-y-8">
         {/* Dados Pessoais */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Dados Pessoais</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Dados Pessoais
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               label="Nome"
@@ -43,7 +45,9 @@ export function ClientForm({ form, setForm }) {
 
         {/* Endereço */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Endereço</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Endereço
+          </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="col-span-1">
               <FormField
@@ -74,7 +78,9 @@ export function ClientForm({ form, setForm }) {
 
         {/* Contato */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Contato</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Contato
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               label="Email"
@@ -95,7 +101,9 @@ export function ClientForm({ form, setForm }) {
 
         {/* Status */}
         <div>
-          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Status</h3>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
+            Status
+          </h3>
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
