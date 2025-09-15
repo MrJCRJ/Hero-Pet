@@ -10,6 +10,7 @@ import { PedidoForm } from "../components/PedidoForm";
 import { Button } from "../components/ui/Button";
 import { formatCpfCnpj } from "components/entity/utils";
 import React, { useState } from "react";
+import { usePaginatedEntities } from "hooks/usePaginatedEntities";
 
 const formConfig = {
   entity: {
@@ -107,75 +108,12 @@ export default Home;
 // --- LISTAGEM DE ENTIDADES INLINE ---
 
 function EntitiesList() {
-  const [statusFilter, setStatusFilter] = useState("");
-  const [pendingOnly, setPendingOnly] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [rows, setRows] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState(null);
-  const [error, setError] = useState(null);
-  const [page, setPage] = useState(0);
-  const LIMIT = 20;
-  const abortRef = React.useRef(null);
-
-  const queryString = React.useMemo(() => {
-    const params = new URLSearchParams();
-    if (statusFilter) params.set("status", statusFilter);
-    if (pendingOnly) params.set("pending", "true");
-    params.set("meta", "1");
-    params.set("limit", String(LIMIT));
-    params.set("offset", String(page * LIMIT));
-    return params.toString();
-  }, [statusFilter, pendingOnly, page]);
-
-  // reset page ao mudar filtros
-  React.useEffect(() => {
-    setPage(0);
-  }, [statusFilter, pendingOnly]);
-
-  React.useEffect(() => {
-    async function load() {
-      const incremental = page > 0;
-      if (incremental) setLoadingMore(true); else setLoading(true);
-      setError(null);
-      if (abortRef.current) abortRef.current.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-      try {
-        const res = await fetch(`/api/v1/entities?${queryString}`, { signal: controller.signal });
-        if (!res.ok) throw new Error(`Falha ao carregar entities: ${res.status}`);
-        const data = await res.json();
-        if (incremental) {
-          setRows(prev => [...prev, ...data.data]);
-          setTotal(data.total);
-        } else {
-          setRows(data.data);
-          setTotal(data.total);
-        }
-      } catch (e) {
-        if (e.name !== 'AbortError') setError(e.message);
-      } finally {
-        if (incremental) setLoadingMore(false); else setLoading(false);
-      }
-    }
-    load();
-    return () => { if (abortRef.current) abortRef.current.abort(); };
-  }, [queryString, page]);
-
-  React.useEffect(() => {
-    async function loadSummary() {
-      try {
-        const res = await fetch(`/api/v1/entities/summary`);
-        if (!res.ok) return;
-        const data = await res.json();
-        setSummary(data);
-      } catch (e) {
-        // Ignorar erro de summary; não crítico para uso da página.
-      }
-    }
-    loadSummary();
-  }, []);
+  const {
+    rows, total, summary,
+    loading, loadingMore, error,
+    statusFilter, pendingOnly, canLoadMore,
+    setStatusFilter, setPendingOnly, loadMore
+  } = usePaginatedEntities({ limit: 20 });
 
   return (
     <div className="space-y-4">
@@ -210,8 +148,8 @@ function EntitiesList() {
         rows={rows}
         loading={loading}
         total={total}
-        onLoadMore={() => setPage(p => p + 1)}
-        canLoadMore={rows.length < total && !loading && !loadingMore}
+        onLoadMore={loadMore}
+        canLoadMore={canLoadMore}
         loadingMore={loadingMore}
       />
     </div>
