@@ -16,10 +16,35 @@ beforeAll(async () => {
   }
 });
 
-describe("GET /api/v1/entities (TDD inicial)", () => {
-  test("Fase vermelha: atualmente deve retornar 404 antes de implementação", async () => {
+describe("GET /api/v1/entities", () => {
+  test("Deve retornar 200 e array vazio inicialmente", async () => {
     const response = await fetch("http://localhost:3000/api/v1/entities");
-    // Enquanto endpoint não existe esperamos 404. Assim que criarmos, atualizaremos para 200 + corpo.
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBe(0);
+  });
+
+  test("Após criar registros deve retornar lista com itens", async () => {
+    // cria duas entidades
+    for (const name of ["ALFA", "BETA"]) {
+      await fetch("http://localhost:3000/api/v1/entities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          entity_type: "PF",
+          document_digits: "39053344705", // válido
+          document_pending: false,
+        }),
+      });
+    }
+    const response = await fetch("http://localhost:3000/api/v1/entities");
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.length).toBeGreaterThanOrEqual(2);
+    // Ordem DESC created_at => último criado primeiro (BETA antes de ALFA)
+    const names = body.map((r) => r.name);
+    expect(names[0]).toBe("BETA");
   });
 });

@@ -16,18 +16,52 @@ beforeAll(async () => {
   }
 });
 
-describe("GET /api/v1/entities filtros (fase vermelha)", () => {
-  test("Filtro status=pending deve eventualmente retornar apenas registros pending", async () => {
-    const response = await fetch(
-      "http://localhost:3000/api/v1/entities?status=pending",
-    );
-    expect(response.status).toBe(404); // Atualizaremos após implementação
+describe("GET /api/v1/entities filtros", () => {
+  beforeAll(async () => {
+    // cria diferentes combinações
+    const registros = [
+      { name: "PENDENTE", entity_type: "PF", document_digits: "", document_pending: true },
+      { name: "PROVISORIO", entity_type: "PF", document_digits: "12345", document_pending: false },
+      { name: "VALIDO", entity_type: "PF", document_digits: "39053344705", document_pending: false },
+    ];
+    for (const r of registros) {
+      await fetch("http://localhost:3000/api/v1/entities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(r),
+      });
+    }
   });
 
-  test("Filtro pending=true deve eventualmente retornar apenas document_pending=true", async () => {
-    const response = await fetch(
-      "http://localhost:3000/api/v1/entities?pending=true",
-    );
-    expect(response.status).toBe(404);
+  test("Filtro status=pending retorna apenas pending", async () => {
+    const res = await fetch("http://localhost:3000/api/v1/entities?status=pending");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.length).toBeGreaterThanOrEqual(1);
+    body.forEach((row) => expect(row.document_status).toBe("pending"));
+  });
+
+  test("Filtro status=provisional retorna apenas provisional", async () => {
+    const res = await fetch("http://localhost:3000/api/v1/entities?status=provisional");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.length).toBeGreaterThanOrEqual(1);
+    body.forEach((row) => expect(row.document_status).toBe("provisional"));
+  });
+
+  test("Filtro status=valid retorna apenas valid", async () => {
+    const res = await fetch("http://localhost:3000/api/v1/entities?status=valid");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.length).toBeGreaterThanOrEqual(1);
+    body.forEach((row) => expect(row.document_status).toBe("valid"));
+  });
+
+  test("Filtro pending=true retorna apenas document_pending true", async () => {
+    const res = await fetch("http://localhost:3000/api/v1/entities?pending=true");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.length).toBeGreaterThanOrEqual(1);
+    body.forEach((row) => expect(row.document_pending).toBe(true));
   });
 });

@@ -58,8 +58,44 @@ async function postEntity(req, res) {
 }
 
 async function getEntities(req, res) {
-  // Será implementado posteriormente
-  return res.status(404).json({ error: "Not implemented" });
+  try {
+    const { status, pending, limit } = req.query;
+    const clauses = [];
+    const values = [];
+
+    if (status) {
+      const allowed = ["pending", "provisional", "valid"];
+      if (!allowed.includes(status)) {
+        return res.status(400).json({ error: "Invalid status filter" });
+      }
+      values.push(status);
+      clauses.push(`document_status = $${values.length}`);
+    }
+
+    if (pending !== undefined) {
+      if (!["true", "false"].includes(String(pending))) {
+        return res.status(400).json({ error: "Invalid pending filter" });
+      }
+      values.push(pending === "true");
+      clauses.push(`document_pending = $${values.length}`);
+    }
+
+    const effectiveLimit = Math.min(parseInt(limit || "100", 10) || 100, 500);
+    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+    const query = {
+      text: `SELECT id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, created_at, updated_at
+             FROM entities
+             ${where}
+             ORDER BY created_at DESC
+             LIMIT ${effectiveLimit}`,
+      values,
+    };
+    const result = await database.query(query);
+    return res.status(200).json(result.rows);
+  } catch (e) {
+    console.error("GET /entities error", e);
+    return res.status(500).json({ error: "Internal error" });
+  }
 }
 
 export default handler;
