@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // 🔹 Constantes para configuração
 const STATUS_API_URL = "/api/v1/status";
@@ -12,6 +12,7 @@ export function useStatus() {
     error: null,
   });
   const [loading, setLoading] = useState(true);
+  const intervalRef = useRef(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -40,11 +41,47 @@ export function useStatus() {
   }, []);
 
   useEffect(() => {
+    // Busca inicial do status
     fetchStatus();
 
-    const interval = setInterval(fetchStatus, REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchStatus]);
+    // Limpa o intervalo anterior se existir
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Configura o novo intervalo
+    intervalRef.current = setInterval(() => {
+      fetch(STATUS_API_URL)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          setStatusData(prev => ({
+            ...prev,
+            status: data,
+            lastUpdate: new Date(),
+            error: null,
+          }));
+        })
+        .catch(err => {
+          console.error("Erro ao buscar status:", err);
+          setStatusData(prev => ({
+            ...prev,
+            error: err.message,
+          }));
+        });
+    }, REFRESH_INTERVAL);
+
+    // Limpa o intervalo quando o componente for desmontado
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
 
   return {
     status: statusData.status,

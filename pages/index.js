@@ -1,5 +1,6 @@
 import { useStatus } from "../hooks/useStatus";
 import { useAuth } from "../hooks/useAuth";
+import { useFormManager } from "../hooks/useFormManager";
 import { AccessForm } from "../components/admin/AccessForm";
 import { AdminHeader } from "../components/admin/AdminHeader";
 import { StatusNav } from "../components/layout/StatusNav";
@@ -9,6 +10,21 @@ import { FornecedorForm } from "../components/FornecedorForm";
 import { PedidoForm } from "../components/PedidoForm";
 import { Button } from "../components/ui/Button";
 import React from "react";
+
+const formConfig = {
+  client: {
+    label: "Cliente",
+    Component: ClientForm,
+  },
+  supplier: {
+    label: "Fornecedor",
+    Component: FornecedorForm,
+  },
+  order: {
+    label: "Pedido",
+    Component: PedidoForm,
+  },
+};
 
 function Home() {
   const { status, loading, lastUpdate } = useStatus();
@@ -20,62 +36,8 @@ function Home() {
     handleAccessCodeSubmit,
     handleLogout,
   } = useAuth();
-  // Estados para controlar exibição dos formulários
-  const [showClientForm, setShowClientForm] = React.useState(false);
-  const [showSupplierForm, setShowSupplierForm] = React.useState(false);
-  // Estado do formulário de fornecedor e etapa
-  const [supplierForm, setSupplierForm] = React.useState({
-    nomeEmpresa: "",
-    cnpj: "",
-    endereco: "",
-    telefone: "",
-    email: "",
-    ativo: true,
-  });
-  const [supplierStep, setSupplierStep] = React.useState(1);
-  const [showOrderForm, setShowOrderForm] = React.useState(false);
-  // Estado do formulário de pedido e etapa
-  const [orderForm, setOrderForm] = React.useState({
-    clienteId: "",
-    produto: "",
-    quantidade: 1,
-    observacao: "",
-  });
-  const [orderStep, setOrderStep] = React.useState(1);
+  const { handleShowForm, getFormProps, isFormVisible } = useFormManager();
 
-  // Estado do formulário de cliente e etapa
-  const [clientForm, setClientForm] = React.useState({
-    nome: "",
-    documento: "",
-    cep: "",
-    numero: "",
-    complemento: "",
-    telefone: "",
-    email: "",
-    ativo: true,
-  });
-  const [clientStep, setClientStep] = React.useState(1);
-
-  // Handlers para alternar exibição dos formulários
-  const handleShowClientForm = () => {
-    setShowClientForm(true);
-    setShowSupplierForm(false);
-    setShowOrderForm(false);
-  };
-
-  const handleShowSupplierForm = () => {
-    setShowSupplierForm(true);
-    setShowClientForm(false);
-    setShowOrderForm(false);
-  };
-
-  const handleShowOrderForm = () => {
-    setShowOrderForm(true);
-    setShowClientForm(false);
-    setShowSupplierForm(false);
-  };
-
-  // ...existing code...
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center transition-colors">
@@ -109,51 +71,21 @@ function Home() {
             </div>
           </div>
           <div className="flex gap-2 mb-4">
-            <Button
-              onClick={handleShowClientForm}
-              variant={showClientForm ? "primary" : "secondary"}
-              fullWidth={false}
-            >
-              Cliente
-            </Button>
-            <Button
-              onClick={handleShowSupplierForm}
-              variant={showSupplierForm ? "primary" : "secondary"}
-              fullWidth={false}
-            >
-              Fornecedor
-            </Button>
-            <Button
-              onClick={handleShowOrderForm}
-              variant={showOrderForm ? "primary" : "secondary"}
-              fullWidth={false}
-            >
-              Pedido
-            </Button>
+            {Object.entries(formConfig).map(([key, { label }]) => (
+              <Button
+                key={key}
+                onClick={() => handleShowForm(key)}
+                variant={isFormVisible(key) ? "primary" : "secondary"}
+                fullWidth={false}
+              >
+                {label}
+              </Button>
+            ))}
           </div>
-          {showClientForm && (
-            <ClientForm
-              form={clientForm}
-              setForm={setClientForm}
-              step={clientStep}
-              setStep={setClientStep}
-            />
-          )}
-          {showSupplierForm && (
-            <FornecedorForm
-              form={supplierForm}
-              setForm={setSupplierForm}
-              step={supplierStep}
-              setStep={setSupplierStep}
-            />
-          )}
-          {showOrderForm && (
-            <PedidoForm
-              form={orderForm}
-              setForm={setOrderForm}
-              step={orderStep}
-              setStep={setOrderStep}
-            />
+          {Object.entries(formConfig).map(([key, { Component }]) =>
+            isFormVisible(key) ? (
+              <Component key={key} {...getFormProps(key)} />
+            ) : null
           )}
         </>
       )}
