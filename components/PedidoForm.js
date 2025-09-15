@@ -5,20 +5,20 @@ import { FormContainer, FormField } from "./ui/Form";
 export function PedidoForm() {
   return (
     <FormContainer title="Formulário de Pedido">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          label="ID do Cliente"
-          name="clienteId"
-          placeholder="ID do Cliente"
-        />
-        <FormField label="Produto" name="produto" placeholder="Produto" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <FormField label="ID do Cliente" name="clienteId" required />
         <div className="md:col-span-2">
-          <FormField
-            label="Quantidade"
-            name="quantidade"
-            placeholder="Quantidade"
-            type="number"
-          />
+          <FormField label="Produto" name="produto" required />
+        </div>
+        <FormField
+          label="Quantidade"
+          name="quantidade"
+          type="number"
+          min="1"
+          required
+        />
+        <div className="md:col-span-2">
+          <FormField label="Observação" name="observacao" />
         </div>
       </div>
       <div className="flex justify-end mt-8">
