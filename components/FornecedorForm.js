@@ -16,45 +16,78 @@ export function FornecedorForm({ form, setForm }) {
       title="Formulário do Fornecedor"
       onSubmit={(e) => e.preventDefault()}
     >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            label="Razão Social"
-            name="nome"
-            value={form.nome}
-            onChange={handleChange}
-            required
-          />
-          <FormField
-            label="CNPJ"
-            name="cnpj"
-            value={form.cnpj}
-            onChange={handleChange}
-            required
-          />
+      <div className="space-y-8">
+        {/* Dados da Empresa */}
+        <div>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Dados da Empresa</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              label="Razão Social"
+              name="nome"
+              value={form.nome}
+              onChange={handleChange}
+              required
+            />
+            <FormField
+              label="CNPJ"
+              name="cnpj"
+              value={form.cnpj}
+              onChange={handleChange}
+              required
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FormField
-            label="CEP"
-            name="cep"
-            value={form.cep}
-            onChange={handleChange}
-          />
-          <FormField
-            label="Telefone"
-            name="telefone"
-            value={form.telefone}
-            onChange={handleChange}
-            type="tel"
-          />
-          <FormField
-            label="Email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            type="email"
-          />
+        {/* Endereço */}
+        <div>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Endereço</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="col-span-1">
+              <FormField
+                label="CEP"
+                name="cep"
+                value={form.cep}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="col-span-1">
+              <FormField
+                label="Número"
+                name="numero"
+                value={form.numero}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="col-span-2">
+              <FormField
+                label="Complemento"
+                name="complemento"
+                value={form.complemento}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Contato */}
+        <div>
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">Contato</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              label="Telefone"
+              name="telefone"
+              value={form.telefone}
+              onChange={handleChange}
+              type="tel"
+            />
+            <FormField
+              label="Email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              type="email"
+            />
+          </div>
         </div>
       </div>
 

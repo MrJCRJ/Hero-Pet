@@ -5,20 +5,15 @@ import { AccessForm } from "../components/admin/AccessForm";
 import { AdminHeader } from "../components/admin/AdminHeader";
 import { StatusNav } from "../components/layout/StatusNav";
 import { ThemeToggle } from "../components/ThemeToggle";
-import { ClientForm } from "../components/ClientForm";
-import { FornecedorForm } from "../components/FornecedorForm";
+import { EntityForm } from "../components/EntityForm";
 import { PedidoForm } from "../components/PedidoForm";
 import { Button } from "../components/ui/Button";
 import React from "react";
 
 const formConfig = {
-  client: {
-    label: "Cliente",
-    Component: ClientForm,
-  },
-  supplier: {
-    label: "Fornecedor",
-    Component: FornecedorForm,
+  entity: {
+    label: "Cadastro",
+    Component: EntityForm,
   },
   order: {
     label: "Pedido",

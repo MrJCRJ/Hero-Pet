@@ -2,25 +2,15 @@
 import React from "react";
 
 const initialForms = {
-  client: {
+  entity: {
     show: false,
     form: {
+      entityType: "client",
       nome: "",
       documento: "",
       cep: "",
       numero: "",
       complemento: "",
-      telefone: "",
-      email: "",
-      ativo: true,
-    },
-  },
-  supplier: {
-    show: false,
-    form: {
-      nomeEmpresa: "",
-      cnpj: "",
-      endereco: "",
       telefone: "",
       email: "",
       ativo: true,
@@ -42,14 +32,20 @@ export function useFormManager() {
 
   // Handler para atualizar o estado do formulário
   const handleFormData = (formType, newData) => {
-    setForms((prev) => ({
-      ...prev,
-      [formType]: {
-        ...prev[formType],
-        form: newData,
-      },
-    }));
-  };
+    setForms((prev) => {
+      const prevForm = prev[formType].form;
+      // Permite função (prev => next) ou objeto direto
+      const nextForm =
+        typeof newData === "function" ? newData(prevForm) : newData;
+      return {
+        ...prev,
+        [formType]: {
+          ...prev[formType],
+          form: nextForm,
+        },
+      };
+    });
+  }
 
   // Handler para alternar visibilidade dos formulários
   const handleShowForm = (formType) => {
