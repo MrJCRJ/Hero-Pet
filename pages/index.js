@@ -110,41 +110,58 @@ function EntitiesList() {
   const [statusFilter, setStatusFilter] = useState("");
   const [pendingOnly, setPendingOnly] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(0);
+  const LIMIT = 20;
+  const abortRef = React.useRef(null);
 
   const queryString = React.useMemo(() => {
     const params = new URLSearchParams();
     if (statusFilter) params.set("status", statusFilter);
     if (pendingOnly) params.set("pending", "true");
     params.set("meta", "1");
+    params.set("limit", String(LIMIT));
+    params.set("offset", String(page * LIMIT));
     return params.toString();
+  }, [statusFilter, pendingOnly, page]);
+
+  // reset page ao mudar filtros
+  React.useEffect(() => {
+    setPage(0);
   }, [statusFilter, pendingOnly]);
 
   React.useEffect(() => {
-    let cancelled = false;
     async function load() {
-      setLoading(true);
+      const incremental = page > 0;
+      if (incremental) setLoadingMore(true); else setLoading(true);
       setError(null);
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
       try {
-        const res = await fetch(`/api/v1/entities?${queryString}`);
+        const res = await fetch(`/api/v1/entities?${queryString}`, { signal: controller.signal });
         if (!res.ok) throw new Error(`Falha ao carregar entities: ${res.status}`);
         const data = await res.json();
-        if (!cancelled) {
+        if (incremental) {
+          setRows(prev => [...prev, ...data.data]);
+          setTotal(data.total);
+        } else {
           setRows(data.data);
           setTotal(data.total);
         }
       } catch (e) {
-        if (!cancelled) setError(e.message);
+        if (e.name !== 'AbortError') setError(e.message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (incremental) setLoadingMore(false); else setLoading(false);
       }
     }
     load();
-    return () => { cancelled = true; };
-  }, [queryString]);
+    return () => { if (abortRef.current) abortRef.current.abort(); };
+  }, [queryString, page]);
 
   React.useEffect(() => {
     async function loadSummary() {
@@ -189,7 +206,14 @@ function EntitiesList() {
       {error && (
         <div className="text-red-600 text-xs border border-red-300 bg-red-50 px-3 py-2 rounded">{error}</div>
       )}
-      <EntitiesTable rows={rows} loading={loading} total={total} />
+      <EntitiesTable
+        rows={rows}
+        loading={loading}
+        total={total}
+        onLoadMore={() => setPage(p => p + 1)}
+        canLoadMore={rows.length < total && !loading && !loadingMore}
+        loadingMore={loadingMore}
+      />
     </div>
   );
 }
@@ -226,7 +250,7 @@ function Filters({ statusFilter, onStatusChange, pendingOnly, onPendingChange, l
   );
 }
 
-function EntitiesTable({ rows, loading, total }) {
+function EntitiesTable({ rows, loading, total, onLoadMore, canLoadMore, loadingMore }) {
   return (
     <div className="border rounded overflow-x-auto">
       <table className="min-w-full text-xs">
@@ -262,7 +286,26 @@ function EntitiesTable({ rows, loading, total }) {
         <tfoot>
           <tr className="bg-gray-50 text-[10px] text-gray-600">
             <td colSpan={6} className="px-3 py-2">
-              Total exibido: {rows.length} / Total filtrado: {total}
+              <div className="flex items-center justify-between gap-2">
+                <span>Total exibido: {rows.length} / Total filtrado: {total}</span>
+                <div className="flex items-center gap-2">
+                  {loading && <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>}
+                  {canLoadMore && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      fullWidth={false}
+                      onClick={onLoadMore}
+                      loading={loadingMore}
+                    >
+                      Carregar mais
+                    </Button>
+                  )}
+                  {!canLoadMore && !loading && rows.length > 0 && (
+                    <span className="text-[10px] text-gray-500">Fim dos resultados</span>
+                  )}
+                </div>
+              </div>
             </td>
           </tr>
         </tfoot>

@@ -23,6 +23,13 @@ module.exports = plugin(function ({ addComponents, addUtilities, theme }) {
       color: 'var(--color-text-primary)'
     }),
     '.btn:hover': { background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border-strong)' },
+    '.btn-loading': {
+      position: 'relative',
+      pointerEvents: 'none'
+    },
+    '.btn-loading > svg': {
+      marginRight: '.35rem'
+    },
     '.btn-primary': Object.assign({}, baseBtn, {
       background: accent,
       color: '#fff',

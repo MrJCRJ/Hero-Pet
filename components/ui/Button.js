@@ -21,6 +21,7 @@ export const Button = ({
   size = "sm",
   fullWidth = true,
   icon: Icon,
+  loading = false,
   children,
   onClick,
   type = "button",
@@ -34,11 +35,37 @@ export const Button = ({
     <button
       type={type}
       onClick={onClick}
-      className={`btn ${variantClass} ${sizeClass} ${widthClass} ${className}`}
+      aria-busy={loading ? 'true' : undefined}
+      disabled={props.disabled || loading}
+      className={`btn ${variantClass} ${sizeClass} ${widthClass} ${loading ? 'btn-loading' : ''} ${className}`}
       {...props}
     >
-      {Icon && <Icon className="mr-1 w-4 h-4" />}
-      {children}
+      {loading && (
+        <svg
+          className="animate-spin h-4 w-4 text-current"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          role="status"
+          aria-label="carregando"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+          />
+        </svg>
+      )}
+      {!loading && Icon && <Icon className="mr-1 w-4 h-4" />}
+      <span className={loading ? 'opacity-90' : ''}>{children}</span>
     </button>
   );
 };

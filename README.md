@@ -19,6 +19,20 @@ Hero-Pet é um sistema para gestão de estoque e financeiro, desenvolvido em Jav
 - **Docker Compose**: Orquestração de infraestrutura
 - **Node.js**: Backend e scripts
 
+### Utilitários de UI (Tailwind Plugin)
+
+O projeto inclui um plugin Tailwind customizado (`tailwind-plugins/ui.js`) que disponibiliza classes semânticas:
+
+- Botões: `btn`, `btn-primary`, `btn-secondary`, `btn-danger`, `btn-outline`, modificadores `btn-sm`, `btn-lg`, `btn-block`.
+- Estado de carregamento: adicionar prop `loading` no componente `<Button />` aplica spinner e classe `btn-loading` (desabilita clique e mostra indicador). Ex:
+   ```jsx
+   <Button variant="primary" loading>Salvando...</Button>
+   ```
+- Badges: `badge`, `badge-soft`, `badge-success`, `badge-warning`, `badge-info`, `badge-danger`.
+- Superfícies: `card`, `surface`, `divider`.
+
+Isso reduz CSS manual em `globals.css` e centraliza consistência visual.
+
 ## Estrutura Principal
 
 - `components/`: Componentes React reutilizáveis (formulários, navegação, UI)

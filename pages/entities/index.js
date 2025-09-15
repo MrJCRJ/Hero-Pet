@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Button } from "components/ui/Button";
 import Head from "next/head";
 import { formatCpfCnpj } from "components/entity/utils";
 
@@ -7,37 +8,75 @@ export default function EntitiesPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [pendingOnly, setPendingOnly] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(0); // página zero-based
+  const LIMIT = 20;
+  const abortRef = useRef(null);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     if (statusFilter) params.set("status", statusFilter);
     if (pendingOnly) params.set("pending", "true");
     params.set("meta", "1");
+    params.set("limit", String(LIMIT));
+    params.set("offset", String(page * LIMIT));
     return params.toString();
+  }, [statusFilter, pendingOnly, page]);
+
+  // Reset de paginação quando filtros mudam
+  useEffect(() => {
+    setPage(0);
   }, [statusFilter, pendingOnly]);
 
   useEffect(() => {
     async function load() {
-      setLoading(true);
+      // Se page === 0 é um carregamento completo, senão incremental
+      const incremental = page > 0;
+      if (incremental) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
+
+      // Cancelamento de requisição anterior se ainda em andamento
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortRef.current = controller;
       try {
-        const res = await fetch(`/api/v1/entities?${queryString}`);
+        const res = await fetch(`/api/v1/entities?${queryString}`, { signal: controller.signal });
         if (!res.ok) throw new Error(`Falha ao carregar entities: ${res.status}`);
         const data = await res.json();
-        setRows(data.data);
-        setTotal(data.total);
+        if (incremental) {
+          setRows(prev => [...prev, ...data.data]);
+          setTotal(data.total); // total é sempre filtrado global
+        } else {
+          setRows(data.data);
+          setTotal(data.total);
+        }
       } catch (e) {
-        setError(e.message);
+        if (e.name !== 'AbortError') {
+          setError(e.message);
+        }
       } finally {
-        setLoading(false);
+        if (incremental) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
       }
     }
     load();
-  }, [queryString]);
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [queryString, page]);
 
   useEffect(() => {
     async function loadSummary() {
@@ -88,7 +127,14 @@ export default function EntitiesPage() {
           </div>
         )}
 
-        <Table rows={rows} loading={loading} total={total} />
+        <Table
+          rows={rows}
+          loading={loading}
+          total={total}
+          onLoadMore={() => setPage(p => p + 1)}
+          canLoadMore={rows.length < total && !loading && !loadingMore}
+          loadingMore={loadingMore}
+        />
       </div>
     </>
   );
@@ -126,7 +172,7 @@ function Filters({ statusFilter, onStatusChange, pendingOnly, onPendingChange, l
   );
 }
 
-function Table({ rows, loading, total }) {
+function Table({ rows, loading, total, onLoadMore, canLoadMore, loadingMore }) {
   return (
     <div className="border rounded overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -164,7 +210,26 @@ function Table({ rows, loading, total }) {
         <tfoot>
           <tr className="bg-gray-50 text-xs text-gray-600">
             <td colSpan={6} className="px-3 py-2">
-              Total exibido: {rows.length} / Total filtrado: {total}
+              <div className="flex items-center justify-between gap-4">
+                <span>Total exibido: {rows.length} / Total filtrado: {total}</span>
+                <div className="flex items-center gap-2">
+                  {loading && <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>}
+                  {canLoadMore && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      fullWidth={false}
+                      onClick={onLoadMore}
+                      loading={loadingMore}
+                    >
+                      Carregar mais
+                    </Button>
+                  )}
+                  {!canLoadMore && !loading && rows.length > 0 && (
+                    <span className="text-[10px] text-gray-500">Fim dos resultados</span>
+                  )}
+                </div>
+              </div>
             </td>
           </tr>
         </tfoot>
