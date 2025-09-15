@@ -10,9 +10,13 @@ jest.setTimeout(35000);
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", { method: "POST" });
+  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+    method: "POST",
+  });
   if (![200, 201].includes(mig.status)) {
-    throw new Error(`Falha ao aplicar migrações (get.entities). Status: ${mig.status}`);
+    throw new Error(
+      `Falha ao aplicar migrações (get.entities). Status: ${mig.status}`,
+    );
   }
 });
 
@@ -49,7 +53,9 @@ describe("GET /api/v1/entities", () => {
   });
 
   test("Deve retornar objeto com data e total quando meta=1", async () => {
-    const response = await fetch("http://localhost:3000/api/v1/entities?meta=1");
+    const response = await fetch(
+      "http://localhost:3000/api/v1/entities?meta=1",
+    );
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toHaveProperty("data");

@@ -34,10 +34,9 @@ async function waitForAllServices() {
 
     async function fetchStatusPage() {
       attemptCounter++;
-      const response = await axios.get(
-        "http://localhost:3000/api/v1/status",
-        { timeout: 4000 },
-      );
+      const response = await axios.get("http://localhost:3000/api/v1/status", {
+        timeout: 4000,
+      });
       if (process.env.DEBUG_ORCHESTRATOR) {
         console.log(
           `[orchestrator] attempt=${attemptCounter} status=${response.status}`,

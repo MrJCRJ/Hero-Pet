@@ -80,11 +80,11 @@ function Home() {
               </Button>
             ))}
             <Button
-              onClick={() => setShowEntitiesList(v => !v)}
+              onClick={() => setShowEntitiesList((v) => !v)}
               variant={showEntitiesList ? "primary" : "secondary"}
               fullWidth={false}
             >
-              {showEntitiesList ? 'Fechar Lista' : 'Listar Entidades'}
+              {showEntitiesList ? "Fechar Lista" : "Listar Entidades"}
             </Button>
           </div>
           {Object.entries(formConfig).map(([key, { Component }]) =>
@@ -109,10 +109,18 @@ export default Home;
 
 function EntitiesList() {
   const {
-    rows, total, summary,
-    loading, loadingMore, error,
-    statusFilter, pendingOnly, canLoadMore,
-    setStatusFilter, setPendingOnly, loadMore
+    rows,
+    total,
+    summary,
+    loading,
+    loadingMore,
+    error,
+    statusFilter,
+    pendingOnly,
+    canLoadMore,
+    setStatusFilter,
+    setPendingOnly,
+    loadMore,
   } = usePaginatedEntities({ limit: 20 });
 
   return (
@@ -120,7 +128,9 @@ function EntitiesList() {
       <div className="flex justify-between items-start flex-wrap gap-4">
         <div className="space-y-2">
           <h2 className="font-semibold">Entidades Cadastradas</h2>
-          <p className="text-xs text-gray-500">Filtros não bloqueiam uso dos formulários acima.</p>
+          <p className="text-xs text-gray-500">
+            Filtros não bloqueiam uso dos formulários acima.
+          </p>
           {summary && (
             <div className="flex gap-2 flex-wrap text-xs">
               <Badge label="Total" value={summary.total} />
@@ -142,7 +152,9 @@ function EntitiesList() {
         />
       </div>
       {error && (
-        <div className="text-red-600 text-xs border border-red-300 bg-red-50 px-3 py-2 rounded">{error}</div>
+        <div className="text-red-600 text-xs border border-red-300 bg-red-50 px-3 py-2 rounded">
+          {error}
+        </div>
       )}
       <EntitiesTable
         rows={rows}
@@ -156,11 +168,22 @@ function EntitiesList() {
   );
 }
 
-function Filters({ statusFilter, onStatusChange, pendingOnly, onPendingChange, loading }) {
+function Filters({
+  statusFilter,
+  onStatusChange,
+  pendingOnly,
+  onPendingChange,
+  loading,
+}) {
   return (
     <div className="flex flex-wrap gap-4 items-end">
       <div className="flex flex-col">
-        <label htmlFor="entities-status-filter" className="text-xs font-medium mb-1">Status</label>
+        <label
+          htmlFor="entities-status-filter"
+          className="text-xs font-medium mb-1"
+        >
+          Status
+        </label>
         <select
           id="entities-status-filter"
           disabled={loading}
@@ -183,12 +206,23 @@ function Filters({ statusFilter, onStatusChange, pendingOnly, onPendingChange, l
         />
         Apenas marcados como pending
       </label>
-      {loading && <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>}
+      {loading && (
+        <span className="text-[10px] text-gray-500 animate-pulse">
+          Carregando...
+        </span>
+      )}
     </div>
   );
 }
 
-function EntitiesTable({ rows, loading, total, onLoadMore, canLoadMore, loadingMore }) {
+function EntitiesTable({
+  rows,
+  loading,
+  total,
+  onLoadMore,
+  canLoadMore,
+  loadingMore,
+}) {
   return (
     <div className="border rounded overflow-x-auto">
       <table className="min-w-full text-xs">
@@ -210,13 +244,21 @@ function EntitiesTable({ rows, loading, total, onLoadMore, canLoadMore, loadingM
               </td>
             </tr>
           )}
-          {rows.map(r => (
+          {rows.map((r) => (
             <tr key={r.id} className="border-t hover:bg-gray-50">
               <Td>{r.name}</Td>
               <Td>{r.entity_type}</Td>
-              <Td>{r.document_digits ? formatCpfCnpj(r.document_digits) : (r.document_pending ? '(pendente)' : '—')}</Td>
-              <Td><StatusBadge status={r.document_status} /></Td>
-              <Td>{r.document_pending ? 'Sim' : 'Não'}</Td>
+              <Td>
+                {r.document_digits
+                  ? formatCpfCnpj(r.document_digits)
+                  : r.document_pending
+                    ? "(pendente)"
+                    : "—"}
+              </Td>
+              <Td>
+                <StatusBadge status={r.document_status} />
+              </Td>
+              <Td>{r.document_pending ? "Sim" : "Não"}</Td>
               <Td>{new Date(r.created_at).toLocaleDateString()}</Td>
             </tr>
           ))}
@@ -225,9 +267,15 @@ function EntitiesTable({ rows, loading, total, onLoadMore, canLoadMore, loadingM
           <tr className="bg-gray-50 text-[10px] text-gray-600">
             <td colSpan={6} className="px-3 py-2">
               <div className="flex items-center justify-between gap-2">
-                <span>Total exibido: {rows.length} / Total filtrado: {total}</span>
+                <span>
+                  Total exibido: {rows.length} / Total filtrado: {total}
+                </span>
                 <div className="flex items-center gap-2">
-                  {loading && <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>}
+                  {loading && (
+                    <span className="text-[10px] text-gray-500 animate-pulse">
+                      Carregando...
+                    </span>
+                  )}
                   {canLoadMore && (
                     <Button
                       variant="secondary"
@@ -240,7 +288,9 @@ function EntitiesTable({ rows, loading, total, onLoadMore, canLoadMore, loadingM
                     </Button>
                   )}
                   {!canLoadMore && !loading && rows.length > 0 && (
-                    <span className="text-[10px] text-gray-500">Fim dos resultados</span>
+                    <span className="text-[10px] text-gray-500">
+                      Fim dos resultados
+                    </span>
                   )}
                 </div>
               </div>
@@ -252,19 +302,27 @@ function EntitiesTable({ rows, loading, total, onLoadMore, canLoadMore, loadingM
   );
 }
 
-function Th({ children }) { return <th className="text-left px-3 py-2 font-medium">{children}</th>; }
-function Td({ children }) { return <td className="px-3 py-2 whitespace-nowrap align-top">{children}</td>; }
+function Th({ children }) {
+  return <th className="text-left px-3 py-2 font-medium">{children}</th>;
+}
+function Td({ children }) {
+  return <td className="px-3 py-2 whitespace-nowrap align-top">{children}</td>;
+}
 
 function StatusBadge({ status }) {
   const map = {
-    valid: 'badge badge-success',
-    pending: 'badge badge-warning',
-    provisional: 'badge badge-info'
+    valid: "badge badge-success",
+    pending: "badge badge-warning",
+    provisional: "badge badge-info",
   };
-  const cls = map[status] || 'badge';
+  const cls = map[status] || "badge";
   return <span className={cls}>{status}</span>;
 }
 
 function Badge({ label, value }) {
-  return <span className="badge badge-soft"><strong className="mr-1">{label}:</strong> {value}</span>;
+  return (
+    <span className="badge badge-soft">
+      <strong className="mr-1">{label}:</strong> {value}
+    </span>
+  );
 }

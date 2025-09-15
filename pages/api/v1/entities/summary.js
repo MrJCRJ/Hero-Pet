@@ -12,11 +12,19 @@ export default async function summary(req, res) {
     const byPending = await database.query({
       text: `SELECT document_pending AS pending, COUNT(*)::int AS count FROM entities GROUP BY document_pending`,
     });
-    const total = await database.query("SELECT COUNT(*)::int AS total FROM entities");
+    const total = await database.query(
+      "SELECT COUNT(*)::int AS total FROM entities",
+    );
     res.status(200).json({
       total: total.rows[0].total,
-      by_status: byStatus.rows.reduce((acc, r) => { acc[r.status] = r.count; return acc; }, {}),
-      by_pending: byPending.rows.reduce((acc, r) => { acc[r.pending] = r.count; return acc; }, {}),
+      by_status: byStatus.rows.reduce((acc, r) => {
+        acc[r.status] = r.count;
+        return acc;
+      }, {}),
+      by_pending: byPending.rows.reduce((acc, r) => {
+        acc[r.pending] = r.count;
+        return acc;
+      }, {}),
     });
   } catch (e) {
     console.error("GET /entities/summary error", e);

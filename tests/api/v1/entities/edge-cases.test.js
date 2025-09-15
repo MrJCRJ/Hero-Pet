@@ -10,8 +10,11 @@ jest.setTimeout(35000);
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", { method: "POST" });
-  if (![200, 201].includes(mig.status)) throw new Error("Falha migrações edge-cases");
+  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+    method: "POST",
+  });
+  if (![200, 201].includes(mig.status))
+    throw new Error("Falha migrações edge-cases");
 });
 
 describe("Entities edge cases", () => {
@@ -23,7 +26,9 @@ describe("Entities edge cases", () => {
   });
 
   test("Filtro pending inválido deve retornar 400", async () => {
-    const res = await fetch("http://localhost:3000/api/v1/entities?pending=maybe");
+    const res = await fetch(
+      "http://localhost:3000/api/v1/entities?pending=maybe",
+    );
     expect(res.status).toBe(400);
   });
 

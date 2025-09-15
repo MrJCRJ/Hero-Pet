@@ -3,17 +3,17 @@ import React from "react";
 
 // Mapeia variants legacy -> classes do plugin
 const variantMap = {
-  primary: 'btn-primary',
-  secondary: 'btn-secondary',
-  danger: 'btn-danger',
-  outline: 'btn-outline',
-  default: 'btn'
+  primary: "btn-primary",
+  secondary: "btn-secondary",
+  danger: "btn-danger",
+  outline: "btn-outline",
+  default: "btn",
 };
 
 const sizeMap = {
-  sm: 'btn-sm',
-  md: '',
-  lg: 'btn-lg'
+  sm: "btn-sm",
+  md: "",
+  lg: "btn-lg",
 };
 
 export const Button = ({
@@ -30,14 +30,14 @@ export const Button = ({
 }) => {
   const widthClass = fullWidth ? "btn-block" : "inline-flex";
   const variantClass = variantMap[variant] || variantMap.default;
-  const sizeClass = sizeMap[size] || '';
+  const sizeClass = sizeMap[size] || "";
   return (
     <button
       type={type}
       onClick={onClick}
-      aria-busy={loading ? 'true' : undefined}
+      aria-busy={loading ? "true" : undefined}
       disabled={props.disabled || loading}
-      className={`btn ${variantClass} ${sizeClass} ${widthClass} ${loading ? 'btn-loading' : ''} ${className}`}
+      className={`btn ${variantClass} ${sizeClass} ${widthClass} ${loading ? "btn-loading" : ""} ${className}`}
       {...props}
     >
       {loading && (
@@ -65,7 +65,7 @@ export const Button = ({
         </svg>
       )}
       {!loading && Icon && <Icon className="mr-1 w-4 h-4" />}
-      <span className={loading ? 'opacity-90' : ''}>{children}</span>
+      <span className={loading ? "opacity-90" : ""}>{children}</span>
     </button>
   );
 };

@@ -28,7 +28,6 @@ const isValidISO8601 = (dateString) => {
 };
 
 describe("GET /api/v1/status", () => {
-
   test("deve retornar status code 200", async () => {
     const response = await getStatus();
     expect(response.status).toBe(200);

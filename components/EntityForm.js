@@ -6,7 +6,14 @@ import { DocumentSection } from "./entity/DocumentSection";
 import { AddressSection } from "./entity/AddressSection";
 import { ContactSection } from "./entity/ContactSection";
 import { StatusToggle } from "./entity/StatusToggle";
-import { isDocumentCnpj, formatCpfCnpj, formatCep, formatTelefone, stripDigits, classifyDocument } from "./entity/utils";
+import {
+  isDocumentCnpj,
+  formatCpfCnpj,
+  formatCep,
+  formatTelefone,
+  stripDigits,
+  classifyDocument,
+} from "./entity/utils";
 
 export function EntityForm({ form, setForm }) {
   const handleChange = (e) => {
@@ -81,7 +88,7 @@ export function EntityForm({ form, setForm }) {
     // Aqui você pode adicionar a lógica de envio para o backend
     alert(
       `${form.entityType === "client" ? "Cliente" : "Fornecedor"} cadastrado!\n` +
-      JSON.stringify(form, null, 2),
+        JSON.stringify(form, null, 2),
     );
   };
 

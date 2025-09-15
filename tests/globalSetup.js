@@ -6,10 +6,14 @@ module.exports = async () => {
   const statusUrl = "http://localhost:3000/api/v1/status";
   try {
     await axios.get(statusUrl, { timeout: 1200 });
-    console.log("[globalSetup] Reutilizando servidor Next existente na porta 3000");
+    console.log(
+      "[globalSetup] Reutilizando servidor Next existente na porta 3000",
+    );
     return;
   } catch (err) {
-    console.log("[globalSetup] Nenhum servidor detectado; iniciando instância de teste...");
+    console.log(
+      "[globalSetup] Nenhum servidor detectado; iniciando instância de teste...",
+    );
   }
 
   const dev = true;

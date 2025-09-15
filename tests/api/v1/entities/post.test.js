@@ -13,9 +13,13 @@ beforeAll(async () => {
   // Isola ambiente limpando schema para previsibilidade
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
   // Aplica migrações (cria tabela entities)
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", { method: "POST" });
+  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+    method: "POST",
+  });
   if (![200, 201].includes(mig.status)) {
-    throw new Error(`Falha ao aplicar migrações para teste entities. Status: ${mig.status}`);
+    throw new Error(
+      `Falha ao aplicar migrações para teste entities. Status: ${mig.status}`,
+    );
   }
 });
 

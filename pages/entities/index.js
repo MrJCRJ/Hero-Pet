@@ -7,10 +7,18 @@ import { usePaginatedEntities } from "hooks/usePaginatedEntities";
 // Simples UI de listagem de entidades com filtros status/pending
 export default function EntitiesPage() {
   const {
-    rows, total, summary,
-    loading, loadingMore, error,
-    statusFilter, pendingOnly, canLoadMore,
-    setStatusFilter, setPendingOnly, loadMore
+    rows,
+    total,
+    summary,
+    loading,
+    loadingMore,
+    error,
+    statusFilter,
+    pendingOnly,
+    canLoadMore,
+    setStatusFilter,
+    setPendingOnly,
+    loadMore,
   } = usePaginatedEntities({ limit: 20 });
 
   return (
@@ -60,11 +68,19 @@ export default function EntitiesPage() {
   );
 }
 
-function Filters({ statusFilter, onStatusChange, pendingOnly, onPendingChange, loading }) {
+function Filters({
+  statusFilter,
+  onStatusChange,
+  pendingOnly,
+  onPendingChange,
+  loading,
+}) {
   return (
     <div className="flex flex-wrap gap-4 items-end">
       <div className="flex flex-col">
-        <label htmlFor="filtro-status" className="text-xs font-medium mb-1">Status</label>
+        <label htmlFor="filtro-status" className="text-xs font-medium mb-1">
+          Status
+        </label>
         <select
           id="filtro-status"
           disabled={loading}
@@ -87,7 +103,11 @@ function Filters({ statusFilter, onStatusChange, pendingOnly, onPendingChange, l
         />
         Apenas marcados como pending (checkbox)
       </label>
-      {loading && <span className="text-xs text-gray-500 animate-pulse">Carregando...</span>}
+      {loading && (
+        <span className="text-xs text-gray-500 animate-pulse">
+          Carregando...
+        </span>
+      )}
     </div>
   );
 }
@@ -118,7 +138,13 @@ function Table({ rows, loading, total, onLoadMore, canLoadMore, loadingMore }) {
             <tr key={r.id} className="border-t hover:bg-gray-50">
               <Td>{r.name}</Td>
               <Td>{r.entity_type}</Td>
-              <Td>{r.document_digits ? formatCpfCnpj(r.document_digits) : (r.document_pending ? "(pendente)" : "—")}</Td>
+              <Td>
+                {r.document_digits
+                  ? formatCpfCnpj(r.document_digits)
+                  : r.document_pending
+                    ? "(pendente)"
+                    : "—"}
+              </Td>
               <Td>
                 <StatusBadge status={r.document_status} />
               </Td>
@@ -131,9 +157,15 @@ function Table({ rows, loading, total, onLoadMore, canLoadMore, loadingMore }) {
           <tr className="bg-gray-50 text-xs text-gray-600">
             <td colSpan={6} className="px-3 py-2">
               <div className="flex items-center justify-between gap-4">
-                <span>Total exibido: {rows.length} / Total filtrado: {total}</span>
+                <span>
+                  Total exibido: {rows.length} / Total filtrado: {total}
+                </span>
                 <div className="flex items-center gap-2">
-                  {loading && <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>}
+                  {loading && (
+                    <span className="text-[10px] text-gray-500 animate-pulse">
+                      Carregando...
+                    </span>
+                  )}
                   {canLoadMore && (
                     <Button
                       variant="secondary"
@@ -146,7 +178,9 @@ function Table({ rows, loading, total, onLoadMore, canLoadMore, loadingMore }) {
                     </Button>
                   )}
                   {!canLoadMore && !loading && rows.length > 0 && (
-                    <span className="text-[10px] text-gray-500">Fim dos resultados</span>
+                    <span className="text-[10px] text-gray-500">
+                      Fim dos resultados
+                    </span>
                   )}
                 </div>
               </div>
@@ -167,14 +201,18 @@ function Td({ children }) {
 
 function StatusBadge({ status }) {
   const map = {
-    valid: 'badge badge-success',
-    pending: 'badge badge-warning',
-    provisional: 'badge badge-info'
+    valid: "badge badge-success",
+    pending: "badge badge-warning",
+    provisional: "badge badge-info",
   };
-  const cls = map[status] || 'badge';
+  const cls = map[status] || "badge";
   return <span className={cls}>{status}</span>;
 }
 
 function Badge({ label, value }) {
-  return <span className="badge badge-soft"><strong className="mr-1">{label}:</strong> {value}</span>;
+  return (
+    <span className="badge badge-soft">
+      <strong className="mr-1">{label}:</strong> {value}
+    </span>
+  );
 }

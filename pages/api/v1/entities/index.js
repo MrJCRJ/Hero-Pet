@@ -1,6 +1,9 @@
 // pages/api/v1/entities/index.js
 import database from "infra/database";
-import { classifyDocument as sharedClassify, stripDigits as sharedStrip } from "lib/validation/document";
+import {
+  classifyDocument as sharedClassify,
+  stripDigits as sharedStrip,
+} from "lib/validation/document";
 
 // Nota: classifyDocument do front retorna objeto { status, valid, type }
 function deriveStatus(rawDigits, pendingFlag) {
@@ -28,7 +31,8 @@ async function postEntity(req, res) {
     const rawDigits = stripDigits(body.document_digits || "");
 
     if (!name) return res.status(400).json({ error: "Name is required" });
-    if (!["PF", "PJ"].includes(entityType)) return res.status(400).json({ error: "Invalid entity_type" });
+    if (!["PF", "PJ"].includes(entityType))
+      return res.status(400).json({ error: "Invalid entity_type" });
 
     const status = deriveStatus(rawDigits, documentPending);
 
@@ -36,7 +40,7 @@ async function postEntity(req, res) {
       text: `INSERT INTO entities
         (name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, created_at, updated_at)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOW(), NOW())
-        RETURNING id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, created_at, updated_at` ,
+        RETURNING id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, created_at, updated_at`,
       values: [
         name,
         entityType,
@@ -98,7 +102,9 @@ async function getEntities(req, res) {
         values,
       };
       const countResult = await database.query(countQuery);
-      return res.status(200).json({ data: result.rows, total: countResult.rows[0].total });
+      return res
+        .status(200)
+        .json({ data: result.rows, total: countResult.rows[0].total });
     }
 
     return res.status(200).json(result.rows);
