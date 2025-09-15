@@ -10,7 +10,7 @@ async function waitForAllServices() {
   await waitForWebServer();
 
   async function waitForWebServer() {
-  const maxWaitMs = Number(process.env.ORCHESTRATOR_MAX_WAIT_MS || 90000);
+    const maxWaitMs = Number(process.env.ORCHESTRATOR_MAX_WAIT_MS || 90000);
     const startedAt = Date.now();
     let attemptCounter = 0;
 
