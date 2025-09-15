@@ -34,12 +34,19 @@ export function EntityForm({ form, setForm }) {
         break;
     }
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: name === "nome" || name === "complemento" || name === "numero" || name === "email"
-        ? value
-        : digits,
-    }));
+    // Campos textuais específicos
+    if (name === "nome") {
+      // Nome / Razão Social sempre em caixa alta
+      setForm((prev) => ({ ...prev, [name]: value.toUpperCase() }));
+      return;
+    }
+
+    if (name === "complemento" || name === "numero" || name === "email") {
+      setForm((prev) => ({ ...prev, [name]: value }));
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, [name]: digits }));
   };
 
   // Detecta se é CPF ou CNPJ baseado no número de caracteres usando helper
