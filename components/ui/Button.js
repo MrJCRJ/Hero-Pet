@@ -1,16 +1,19 @@
 // components/ui/Button.js
 import React from "react";
 
-const buttonStyles = {
-  variants: {
-    primary: "bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] ",
-    secondary:
-      "bg-[var(--color-accent-cancel)] hover:bg-[var(--color-accent-cancel-hover)]",
-  },
-  sizes: {
-    sm: "px-3 py-1.5 text-sm",
-  },
-  base: "items-center rounded-md font-semibold ",
+// Mapeia variants legacy -> classes do plugin
+const variantMap = {
+  primary: 'btn-primary',
+  secondary: 'btn-secondary',
+  danger: 'btn-danger',
+  outline: 'btn-outline',
+  default: 'btn'
+};
+
+const sizeMap = {
+  sm: 'btn-sm',
+  md: '',
+  lg: 'btn-lg'
 };
 
 export const Button = ({
@@ -24,12 +27,14 @@ export const Button = ({
   className = "",
   ...props
 }) => {
-  const widthClass = fullWidth ? "w-full" : "inline-flex";
+  const widthClass = fullWidth ? "btn-block" : "inline-flex";
+  const variantClass = variantMap[variant] || variantMap.default;
+  const sizeClass = sizeMap[size] || '';
   return (
     <button
       type={type}
       onClick={onClick}
-      className={`${buttonStyles.base} ${buttonStyles.variants[variant]} ${buttonStyles.sizes[size]} ${widthClass} ${className}`}
+      className={`btn ${variantClass} ${sizeClass} ${widthClass} ${className}`}
       {...props}
     >
       {Icon && <Icon className="mr-1 w-4 h-4" />}
@@ -49,10 +54,10 @@ export const ConfirmDialog = ({
   <div className="absolute right-0 top-full mt-2 w-48 p-3 rounded-md shadow-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]">
     <p className="mb-2 text-center">{message}</p>
     <div className="flex space-x-2">
-      <Button variant="secondary" onClick={onCancel}>
+      <Button variant="secondary" onClick={onCancel} fullWidth={false}>
         {cancelLabel}
       </Button>
-      <Button variant="primary" onClick={onConfirm}>
+      <Button variant="primary" onClick={onConfirm} fullWidth={false}>
         {confirmLabel}
       </Button>
     </div>

@@ -275,19 +275,15 @@ function Th({ children }) { return <th className="text-left px-3 py-2 font-mediu
 function Td({ children }) { return <td className="px-3 py-2 whitespace-nowrap align-top">{children}</td>; }
 
 function StatusBadge({ status }) {
-  const base = 'inline-block px-2 py-0.5 rounded text-[10px] font-medium';
-  const color = status === 'valid'
-    ? 'bg-green-100 text-green-700 border border-green-200'
-    : status === 'pending'
-      ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-      : 'bg-blue-100 text-blue-700 border border-blue-200';
-  return <span className={`${base} ${color}`}>{status}</span>;
+  const map = {
+    valid: 'badge badge-success',
+    pending: 'badge badge-warning',
+    provisional: 'badge badge-info'
+  };
+  const cls = map[status] || 'badge';
+  return <span className={cls}>{status}</span>;
 }
 
 function Badge({ label, value }) {
-  return (
-    <span className="inline-flex items-center gap-1 bg-gray-100 border border-gray-200 px-2 py-1 rounded text-[10px]">
-      <strong>{label}:</strong> {value}
-    </span>
-  );
+  return <span className="badge badge-soft"><strong className="mr-1">{label}:</strong> {value}</span>;
 }

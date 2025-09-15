@@ -42,7 +42,11 @@ const config = {
       },
     },
   },
-  plugins: [require("@tailwindcss/forms"), require("@tailwindcss/typography")],
+  plugins: [
+    require("@tailwindcss/forms"),
+    require("@tailwindcss/typography"),
+    require("./tailwind-plugins/ui.js"),
+  ],
 };
 
 export default config;
