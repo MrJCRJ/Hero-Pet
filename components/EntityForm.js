@@ -19,6 +19,14 @@ export function EntityForm({ form, setForm }) {
   const handleChange = (e) => {
     const { name, value, type: inputType, checked } = e.target;
 
+    // Radios / selects / valores textuais que não devem ser digit-normalized
+    if (inputType === 'radio') {
+      if (name === 'entityType') {
+        setForm(prev => ({ ...prev, entityType: value }));
+        return;
+      }
+    }
+
     if (inputType === "checkbox") {
       if (name === "documento_pendente") {
         // Ao marcar pendente limpamos documento e status volta a pending
@@ -88,7 +96,7 @@ export function EntityForm({ form, setForm }) {
     // Aqui você pode adicionar a lógica de envio para o backend
     alert(
       `${form.entityType === "client" ? "Cliente" : "Fornecedor"} cadastrado!\n` +
-        JSON.stringify(form, null, 2),
+      JSON.stringify(form, null, 2),
     );
   };
 
@@ -99,47 +107,45 @@ export function EntityForm({ form, setForm }) {
       title={`Formulário de ${isClient ? "Cliente" : "Fornecedor"}`}
       onSubmit={handleSubmit}
     >
-      <div className="space-y-8">
-        {/* Tipo de Entidade */}
-        <EntityTypeSelector value={form.entityType} onChange={handleChange} />
-
-        {/* Dados Principais */}
-        <DocumentSection
-          form={{
-            ...form,
-            documento: formatCpfCnpj(form.documento),
-          }}
-          isDocumentCnpj={documentIsCnpj}
-          onChange={handleChange}
-          onBlurDocumento={handleBlurDocumento}
-        />
-
-        {/* Endereço */}
-        <AddressSection
-          form={{
-            ...form,
-            cep: formatCep(form.cep),
-          }}
-          onChange={handleChange}
-        />
-
-        {/* Contato */}
-        <ContactSection
-          form={{
-            ...form,
-            telefone: formatTelefone(form.telefone),
-          }}
-          onChange={handleChange}
-        />
-
-        {/* Status */}
-        <StatusToggle checked={form.ativo} onChange={handleChange} />
-      </div>
-
-      <div className="flex justify-end mt-8">
-        <Button type="submit" variant="primary" size="sm" fullWidth={false}>
-          Enviar
-        </Button>
+      <div className="space-y-10">
+        <div className="space-y-6 card p-5">
+          <EntityTypeSelector value={form.entityType} onChange={handleChange} />
+          <DocumentSection
+            form={{
+              ...form,
+              documento: formatCpfCnpj(form.documento),
+            }}
+            isDocumentCnpj={documentIsCnpj}
+            onChange={handleChange}
+            onBlurDocumento={handleBlurDocumento}
+          />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="card p-5 space-y-6">
+            <AddressSection
+              form={{
+                ...form,
+                cep: formatCep(form.cep),
+              }}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="card p-5 space-y-6">
+            <ContactSection
+              form={{
+                ...form,
+                telefone: formatTelefone(form.telefone),
+              }}
+              onChange={handleChange}
+            />
+            <StatusToggle checked={form.ativo} onChange={handleChange} />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Button type="submit" variant="primary" size="sm" fullWidth={false}>
+            Salvar
+          </Button>
+        </div>
       </div>
     </FormContainer>
   );

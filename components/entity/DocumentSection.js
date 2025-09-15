@@ -1,10 +1,10 @@
 import React from "react";
 import { FormField } from "../ui/Form";
 
-const STATUS_STYLES = {
-  pending: "bg-gray-200 text-gray-700",
-  provisional: "bg-amber-200 text-amber-800",
-  valid: "bg-emerald-200 text-emerald-800",
+const STATUS_CLASSES = {
+  pending: 'badge badge-warning',
+  provisional: 'badge badge-info',
+  valid: 'badge badge-success'
 };
 
 export function DocumentSection({
@@ -13,8 +13,7 @@ export function DocumentSection({
   onChange,
   onBlurDocumento,
 }) {
-  const badgeClass =
-    STATUS_STYLES[form.document_status] || "bg-gray-100 text-gray-600";
+  const badgeClass = STATUS_CLASSES[form.document_status] || 'badge';
   const labelDoc = isDocumentCnpj ? "CNPJ" : "CPF";
   const labelNome = isDocumentCnpj ? "Razão Social" : "Nome";
   const statusLabel =
@@ -27,20 +26,13 @@ export function DocumentSection({
           : "";
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
+    <div className="space-y-4">
+      <div className="flex items-center flex-wrap gap-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
           {isDocumentCnpj ? "Dados da Empresa" : "Dados Pessoais"}
         </h3>
-        {statusLabel && (
-          <span
-            className={`text-xs px-2 py-1 rounded font-medium ${badgeClass}`}
-          >
-            {statusLabel}
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-3 mb-4">
+        {statusLabel && (<span className={badgeClass}>{statusLabel}</span>)}
+        <div className="h-4 w-px bg-[var(--color-border)]" />
         <input
           type="checkbox"
           id="documento_pendente"
@@ -51,7 +43,7 @@ export function DocumentSection({
         />
         <label
           htmlFor="documento_pendente"
-          className="text-sm text-[var(--color-text-secondary)]"
+          className="text-xs text-[var(--color-text-secondary)]"
         >
           Documento ainda não disponível
         </label>
@@ -88,7 +80,7 @@ export function DocumentSection({
           </p>
         )}
       {form.documento_pendente && (
-        <p className="mt-2 text-xs text-gray-600">
+        <p className="mt-1 text-[10px] text-gray-500">
           Marcação de pendência: você pode salvar sem informar o documento
           agora.
         </p>

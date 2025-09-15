@@ -3,10 +3,8 @@ import { FormField } from "../ui/Form";
 
 export function AddressSection({ form, onChange }) {
   return (
-    <div>
-      <h3 className="text-lg font-semibold mb-4 text-[var(--color-text-primary)]">
-        Endereço
-      </h3>
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">Endereço</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <div className="col-span-1">
           <FormField

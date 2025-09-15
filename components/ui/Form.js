@@ -33,12 +33,15 @@ export function FormField({
   value,
   onChange,
   type = "text",
-  placeholder = " ",
+  placeholder = "",
   required = false,
   ...props
 }) {
   return (
-    <div className="relative z-0 w-full mb-1 group min-w-[200px]">
+    <div className="flex flex-col gap-1 w-full min-w-[200px]">
+      <label htmlFor={name} className="text-xs font-medium text-[var(--color-text-secondary)] tracking-wide">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
       <input
         id={name}
         name={name}
@@ -48,16 +51,9 @@ export function FormField({
         placeholder={placeholder}
         required={required}
         autoComplete="on"
-        className="block py-2 px-3 w-full text-sm bg-transparent border-0 border-b-2 border-[var(--color-border)] appearance-none text-[var(--color-text-primary)] focus:outline-none focus:ring-0 focus:border-[var(--color-accent)] peer autofill:!bg-[var(--color-bg-secondary)] autofill:!text-[var(--color-text-primary)] z-10"
+        className="py-2 px-3 w-full text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] transition disabled:opacity-60 disabled:cursor-not-allowed"
         {...props}
       />
-      <label
-        htmlFor={name}
-        className="peer-focus:font-medium absolute text-sm text-[var(--color-text-secondary)] duration-500 transform -translate-y-6 scale-75 top-3 z-20 origin-[0] peer-focus:start-0 rtl:peer-focus:translate-x-1/4 peer-focus:text-[var(--color-accent)] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
-      >
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
     </div>
   );
 }
