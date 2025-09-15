@@ -6,13 +6,23 @@ import { DocumentSection } from "./entity/DocumentSection";
 import { AddressSection } from "./entity/AddressSection";
 import { ContactSection } from "./entity/ContactSection";
 import { StatusToggle } from "./entity/StatusToggle";
-import { isDocumentCnpj, formatCpfCnpj, formatCep, formatTelefone, stripDigits } from "./entity/utils";
+import { isDocumentCnpj, formatCpfCnpj, formatCep, formatTelefone, stripDigits, classifyDocument } from "./entity/utils";
 
 export function EntityForm({ form, setForm }) {
   const handleChange = (e) => {
     const { name, value, type: inputType, checked } = e.target;
 
     if (inputType === "checkbox") {
+      if (name === "documento_pendente") {
+        // Ao marcar pendente limpamos documento e status volta a pending
+        setForm((prev) => ({
+          ...prev,
+          documento_pendente: checked,
+          documento: checked ? "" : prev.documento,
+          document_status: checked ? "pending" : prev.document_status,
+        }));
+        return;
+      }
       setForm((prev) => ({ ...prev, [name]: checked }));
       return;
     }
@@ -46,7 +56,21 @@ export function EntityForm({ form, setForm }) {
       return;
     }
 
+    if (name === "documento") {
+      setForm((prev) => ({ ...prev, [name]: digits }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: digits }));
+  };
+
+  const handleBlurDocumento = (e) => {
+    const digits = stripDigits(e.target.value);
+    if (form.documento_pendente) {
+      // se pendente ignoramos validação
+      return;
+    }
+    const { status } = classifyDocument(digits);
+    setForm((prev) => ({ ...prev, document_status: status }));
   };
 
   // Detecta se é CPF ou CNPJ baseado no número de caracteres usando helper
@@ -80,6 +104,7 @@ export function EntityForm({ form, setForm }) {
           }}
           isDocumentCnpj={documentIsCnpj}
           onChange={handleChange}
+          onBlurDocumento={handleBlurDocumento}
         />
 
         {/* Endereço */}
