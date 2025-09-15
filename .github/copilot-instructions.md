@@ -120,6 +120,64 @@ Quando for persistir `document_status` e `documento_pendente`:
 - Atualizar endpoints POST/PUT para recalcular status server-side usando a mesma lógica (duplicar util ou mover para pacote compartilhado/node). Ideal: extrair lógica para módulo compartilhado (ex.: `lib/validation/document.js`).
 - Adicionar endpoint/listagem de entidades pendentes para auditoria operacional.
 
+## Entities Persistence (Implementado)
+
+Tabela `entities` criada via migração dedicada com campos:
+
+- id (PK)
+- name (TEXT, uppercased no servidor)
+- entity_type ('PF' | 'PJ')
+- document_digits (somente dígitos)
+- document_status ('pending' | 'provisional' | 'valid')
+- document_pending (boolean)
+- cep, telefone, email (TEXT opcionais)
+- created_at, updated_at (timestamptz)
+
+### Endpoints
+
+- `POST /api/v1/entities`: Normaliza e grava; recalcula status server-side (não confia no front).
+- `GET /api/v1/entities`: Lista com filtros:
+  - `status`: pending | provisional | valid
+  - `pending`: true | false
+  - `limit`: padrão 100 (máx 500)
+
+### Regras de Status (Servidor)
+
+1. `pending` se checkbox marcado ou sem dígitos.
+2. Comprimento incompleto (CPF <11 / CNPJ <14) => `provisional`.
+3. Comprimento completo inválido algorítmicamente => `provisional`.
+4. Completo e válido => `valid`.
+
+### Consistência
+
+- Reuso da função de classificação do front (import direto de `components/entity/utils.js`).
+- Nome uppercased garante busca/padrão consistente.
+- Índices em `document_status`, `document_pending`, `entity_type`, `created_at` para filtros comuns.
+
+### Test Coverage
+
+- Criação (pendente, provisional, valid).
+- Filtros por status e pending.
+- Filtros inválidos retornam 400.
+- Algoritmos de CPF/CNPJ refletidos via classificação.
+
+### Próximos Passos Recomendados
+
+- Extrair lógica de classificação para módulo compartilhado (evitar import de `components/` no backend).
+- Adicionar paginação (cursor ou offset) e campo `total`.
+- Endpoint de agregados (ex: `/api/v1/entities/summary`).
+- Histórico de mudanças (audit trail) se houver necessidade regulatória.
+
+### Audit Trail (Planejado)
+
+Caso seja necessário rastrear alterações de status/documento:
+
+1. Criar tabela `entity_events` (id, entity_id, old_status, new_status, occurred_at, actor/contexto).
+2. Trigger (ou lógica na camada POST/PUT futura) insere registro quando `document_status` mudar.
+3. Endpoint `/api/v1/entities/:id/history` retorna eventos ordenados.
+4. Evitar armazenar dados redundantes (somente difs relevantes).
+5. Adicionar índice em (entity_id, occurred_at DESC) para paginação eficiente.
+
 ## Performance & Stability Notes
 
 - Reuso de servidor de teste reduz latência total da suíte.

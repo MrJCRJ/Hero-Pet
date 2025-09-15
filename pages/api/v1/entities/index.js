@@ -1,16 +1,15 @@
 // pages/api/v1/entities/index.js
 import database from "infra/database";
-import { classifyDocument as uiClassify, stripDigits as uiStrip } from "components/entity/utils";
+import { classifyDocument as sharedClassify, stripDigits as sharedStrip } from "lib/validation/document";
 
 // Nota: classifyDocument do front retorna objeto { status, valid, type }
 function deriveStatus(rawDigits, pendingFlag) {
-  if (pendingFlag || !rawDigits) return "pending";
-  const r = uiClassify(rawDigits);
+  const r = sharedClassify(rawDigits, pendingFlag);
   return r.status;
 }
 
 function stripDigits(value = "") {
-  return uiStrip(value || "");
+  return sharedStrip(value || "");
 }
 
 async function handler(req, res) {
@@ -59,7 +58,7 @@ async function postEntity(req, res) {
 
 async function getEntities(req, res) {
   try {
-    const { status, pending, limit } = req.query;
+    const { status, pending, limit, meta } = req.query;
     const clauses = [];
     const values = [];
 
@@ -91,6 +90,17 @@ async function getEntities(req, res) {
       values,
     };
     const result = await database.query(query);
+
+    if (meta === "1") {
+      // total sem limit para contagem real dos filtros
+      const countQuery = {
+        text: `SELECT COUNT(*)::int AS total FROM entities ${where}`,
+        values,
+      };
+      const countResult = await database.query(countQuery);
+      return res.status(200).json({ data: result.rows, total: countResult.rows[0].total });
+    }
+
     return res.status(200).json(result.rows);
   } catch (e) {
     console.error("GET /entities error", e);

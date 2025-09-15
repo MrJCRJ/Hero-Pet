@@ -47,4 +47,15 @@ describe("GET /api/v1/entities", () => {
     const names = body.map((r) => r.name);
     expect(names[0]).toBe("BETA");
   });
+
+  test("Deve retornar objeto com data e total quando meta=1", async () => {
+    const response = await fetch("http://localhost:3000/api/v1/entities?meta=1");
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toHaveProperty("data");
+    expect(body).toHaveProperty("total");
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(typeof body.total).toBe("number");
+    expect(body.total).toBeGreaterThanOrEqual(body.data.length);
+  });
 });
