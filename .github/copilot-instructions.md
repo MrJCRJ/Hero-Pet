@@ -46,6 +46,7 @@ O antigo `components/EntityForm.js` foi segmentado para facilitar manutenção, 
 - `entity/utils.js`: Funções utilitárias de máscara e validação (fonte única de verdade para formatação e classificação).
 
 ### Regras de Estado
+
 O estado interno armazena somente valores "limpos" (apenas dígitos para CPF/CNPJ/CEP/telefone). A formatação (máscaras) é aplicada na renderização ou em handlers de exibição sem corromper o estado base.
 
 ## Masking & Validation Guidelines
@@ -58,11 +59,12 @@ Centralizado em `components/entity/utils.js`:
 - `formatTelefone(digits)`: Suporta (XX) 9XXXX-XXXX ou (XX) XXXX-XXXX conforme comprimento.
 - `isValidCPF(digits)` / `isValidCNPJ(digits)`: Validação algorítmica (dígitos verificadores). Não lança; retorna boolean.
 - `classifyDocument(digits, isPendingFlag)`: Retorna um dos `pending | provisional | valid`:
-	- pending: Checkbox marcado ou nenhum dígito.
-	- provisional: Estrutura incompleta ou inválida mas há algum progresso (ex.: 5 dígitos CPF ou CNPJ parcial).
-	- valid: Passou validação algorítmica e comprimento correto.
+  - pending: Checkbox marcado ou nenhum dígito.
+  - provisional: Estrutura incompleta ou inválida mas há algum progresso (ex.: 5 dígitos CPF ou CNPJ parcial).
+  - valid: Passou validação algorítmica e comprimento correto.
 
 ### Princípios
+
 1. UI nunca bloqueia submit em estados `pending` ou `provisional` (soft validation).
 2. Armazene sempre só dígitos crus no estado/base de dados.
 3. Máscaras não devem reformatar agressivamente entradas parciais (evitar salto de cursor ou perda de dígitos).
@@ -71,20 +73,23 @@ Centralizado em `components/entity/utils.js`:
 ## Testing Strategy
 
 ### Stack
+
 - Jest 29.x (compatibilidade sólida com jsdom atual).
 - Ambientes distintos:
-	- UI: `testEnvironment: jsdom` (padrão config principal).
-	- API: Arquivos de teste com `@jest-environment node` no topo para evitar sobrecarga jsdom.
+  - UI: `testEnvironment: jsdom` (padrão config principal).
+  - API: Arquivos de teste com `@jest-environment node` no topo para evitar sobrecarga jsdom.
 - `globalSetup` / `globalTeardown`: Sobe o servidor Next uma única vez; evita criar múltiplos processos.
 - Orquestrador (`tests/orchestrator.js`): Faz polling HTTP com retries exponenciais até readiness.
 
 ### Convenções de Teste
+
 - Integração UI (ex.: `tests/integration/DocumentStatus.integration.test.js`): Simula digitação progressiva e usa `user.tab()` para mudar foco (evita warnings de act()).
 - Teste de máscaras isoladas usa wrapper local com `useState` para garantir re-render.
 - Validação algorítmica coberta indiretamente via classificação de status.
 - Evite testes ultra unitários de funções simples de formatação — preferir validar comportamento final via fluxo.
 
 ### Boas Práticas
+
 - Nunca iniciar `next dev` manualmente durante `npm test`; confiar no setup global.
 - Se adicionar novo endpoint, criar pasta espelhada em `tests/api/v1/<endpoint>`.
 - Para novos componentes de formulário, criar teste de integração adicionando casos: entrada parcial, máscara completa, blur, classificação.
@@ -100,6 +105,7 @@ Centralizado em `components/entity/utils.js`:
 ## Document Status Extension
 
 Para adicionar novo status (ex.: `expired`):
+
 1. Ajustar `classifyDocument` para retornar novo rótulo baseado em regra.
 2. Atualizar mapa de estilos em `DocumentSection` (`STATUS_STYLES`).
 3. Adicionar casos de teste cobrindo transição e apresentação.
@@ -108,6 +114,7 @@ Para adicionar novo status (ex.: `expired`):
 ## Backend Persistence (Futuro)
 
 Quando for persistir `document_status` e `documento_pendente`:
+
 - Criar migração adicionando colunas (`document_status VARCHAR(20)`, `documento_pendente BOOLEAN`).
 - Garantir default coerente (`document_status` -> 'pending', `documento_pendente` -> FALSE).
 - Atualizar endpoints POST/PUT para recalcular status server-side usando a mesma lógica (duplicar util ou mover para pacote compartilhado/node). Ideal: extrair lógica para módulo compartilhado (ex.: `lib/validation/document.js`).
@@ -121,12 +128,12 @@ Quando for persistir `document_status` e `documento_pendente`:
 
 ## Common Pitfalls
 
-| Problema | Causa | Solução |
-|----------|-------|---------|
-| EADDRINUSE ao rodar testes | Servidor Next duplicado | Remover execução manual e confiar no globalSetup |
-| Warnings de act() | Interações sem mudança de foco controlada | Usar `user.tab()` ou wrap em `await act(async () => ...)` |
-| Máscara sobrescreve entrada parcial | Função não idempotente | Garantir formatação incremental e baseada em comprimento |
-| Validação bloqueando fluxo | Uso de validação hard | Manter classifyDocument soft e não impedir submit |
+| Problema                            | Causa                                     | Solução                                                   |
+| ----------------------------------- | ----------------------------------------- | --------------------------------------------------------- |
+| EADDRINUSE ao rodar testes          | Servidor Next duplicado                   | Remover execução manual e confiar no globalSetup          |
+| Warnings de act()                   | Interações sem mudança de foco controlada | Usar `user.tab()` ou wrap em `await act(async () => ...)` |
+| Máscara sobrescreve entrada parcial | Função não idempotente                    | Garantir formatação incremental e baseada em comprimento  |
+| Validação bloqueando fluxo          | Uso de validação hard                     | Manter classifyDocument soft e não impedir submit         |
 
 ## Quick Reference: utils.js
 
@@ -156,4 +163,5 @@ classifyDocument(digits, isPending) -> 'pending' | 'provisional' | 'valid'
 5. Documentação (este arquivo) atualizada se introduziu novo padrão?
 
 ---
+
 Se manter estes princípios, o código permanece previsível, testável e fácil de evoluir. Bons commits!
