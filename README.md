@@ -40,26 +40,47 @@ Isso reduz CSS manual em `globals.css` e centraliza consistência visual.
 O hook `usePaginatedEntities` (arquivo `hooks/usePaginatedEntities.js`) abstrai filtros e paginação incremental de entidades.
 
 API retornada:
+
 - `rows`, `total`, `summary`
 - Estados: `loading`, `loadingMore`, `error`, `statusFilter`, `pendingOnly`, `canLoadMore`
 - Ações: `setStatusFilter(v)`, `setPendingOnly(bool)`, `loadMore()`, `refresh()`, `loadSummary()`
 
 Exemplo:
+
 ```jsx
-import { usePaginatedEntities } from 'hooks/usePaginatedEntities';
+import { usePaginatedEntities } from "hooks/usePaginatedEntities";
 
 function EntitiesWidget() {
-  const { rows, total, loading, canLoadMore, loadMore, statusFilter, setStatusFilter } = usePaginatedEntities();
+  const {
+    rows,
+    total,
+    loading,
+    canLoadMore,
+    loadMore,
+    statusFilter,
+    setStatusFilter,
+  } = usePaginatedEntities();
   return (
     <div>
-      <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-        <option value=''>Todos</option>
-        <option value='pending'>Pending</option>
-        <option value='provisional'>Provisional</option>
-        <option value='valid'>Valid</option>
+      <select
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+      >
+        <option value="">Todos</option>
+        <option value="pending">Pending</option>
+        <option value="provisional">Provisional</option>
+        <option value="valid">Valid</option>
       </select>
-      <ul>{rows.map(r => <li key={r.id}>{r.name}</li>)}</ul>
-      {canLoadMore && <button onClick={loadMore} disabled={loading}>Carregar mais</button>}
+      <ul>
+        {rows.map((r) => (
+          <li key={r.id}>{r.name}</li>
+        ))}
+      </ul>
+      {canLoadMore && (
+        <button onClick={loadMore} disabled={loading}>
+          Carregar mais
+        </button>
+      )}
       <p>Total filtrado: {total}</p>
     </div>
   );
