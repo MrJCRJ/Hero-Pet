@@ -81,7 +81,7 @@ export function useStatus() {
         clearInterval(intervalRef.current);
       }
     };
-  }, []);
+  }, [fetchStatus]);
 
   return {
     status: statusData.status,
