@@ -11,6 +11,9 @@ export function StatusDot({ status, className = "" }) {
     degraded: "bg-yellow-500",
     warning: "bg-yellow-500",
 
+    provisional: "bg-orange-500",
+    progressing: "bg-orange-500",
+
     offline: "bg-red-500",
     error: "bg-red-500",
     down: "bg-red-500",

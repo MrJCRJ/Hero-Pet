@@ -86,19 +86,19 @@ module.exports = plugin(function ({ addComponents, addUtilities, theme }) {
       color: accent,
     },
     ".badge-success": {
-      background: "var(--color-success)",
-      border: "1px solid var(--color-success)",
+      background: "var(--color-success,#22c55e)",
+      border: "1px solid var(--color-success,#22c55e)",
       color: "#fff",
     },
     ".badge-warning": {
-      background: "var(--color-warning)",
-      border: "1px solid var(--color-warning)",
+      background: "var(--color-warning,#facc15)",
+      border: "1px solid var(--color-warning,#facc15)",
       color: "#1a1a1a",
     },
     ".badge-info": {
-      background: "var(--color-bg-accent-soft)",
-      border: "1px solid var(--color-border-accent)",
-      color: "var(--color-accent)",
+      background: "var(--color-bg-accent-soft,#e0f2fe)",
+      border: "1px solid var(--color-border-accent,#93c5fd)",
+      color: "var(--color-accent,#2563eb)",
     },
     ".badge-danger": {
       background: "var(--color-accent-cancel)",

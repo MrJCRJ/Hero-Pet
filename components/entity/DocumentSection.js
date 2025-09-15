@@ -1,11 +1,6 @@
 import React from "react";
 import { FormField } from "../ui/Form";
-
-const STATUS_CLASSES = {
-  pending: 'badge badge-warning',
-  provisional: 'badge badge-info',
-  valid: 'badge badge-success'
-};
+import { StatusDot } from "../common/StatusDot";
 
 export function DocumentSection({
   form,
@@ -13,17 +8,9 @@ export function DocumentSection({
   onChange,
   onBlurDocumento,
 }) {
-  const badgeClass = STATUS_CLASSES[form.document_status] || 'badge';
   const labelDoc = isDocumentCnpj ? "CNPJ" : "CPF";
   const labelNome = isDocumentCnpj ? "Razão Social" : "Nome";
-  const statusLabel =
-    form.document_status === "pending"
-      ? "PENDENTE"
-      : form.document_status === "provisional"
-        ? "PROVISÓRIO"
-        : form.document_status === "valid"
-          ? "VALIDADO"
-          : "";
+  const statusLabel = form.document_status || '';
 
   return (
     <div className="space-y-4">
@@ -31,7 +18,22 @@ export function DocumentSection({
         <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
           {isDocumentCnpj ? "Dados da Empresa" : "Dados Pessoais"}
         </h3>
-        {statusLabel && (<span className={badgeClass}>{statusLabel}</span>)}
+        {statusLabel && (
+          <div className="flex items-center gap-2" title={statusLabel.toUpperCase()}>
+            <StatusDot
+              status={
+                statusLabel === 'valid'
+                  ? 'healthy'
+                  : statusLabel === 'pending'
+                    ? 'warning'
+                    : statusLabel === 'provisional'
+                      ? 'provisional'
+                      : statusLabel
+              }
+              className="shadow ring-1 ring-[var(--color-border)]"
+            />
+          </div>
+        )}
         <div className="h-4 w-px bg-[var(--color-border)]" />
         <input
           type="checkbox"

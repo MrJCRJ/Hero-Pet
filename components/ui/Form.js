@@ -51,7 +51,7 @@ export function FormField({
         placeholder={placeholder}
         required={required}
         autoComplete="on"
-        className="py-2 px-3 w-full text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="px-0 pb-2 pt-2 w-full text-sm bg-transparent border-0 border-b border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:ring-0 focus:border-[var(--color-accent)] transition-colors duration-500 disabled:opacity-60 disabled:cursor-not-allowed placeholder:text-[var(--color-text-secondary)]"
         {...props}
       />
     </div>
