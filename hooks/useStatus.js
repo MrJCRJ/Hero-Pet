@@ -52,23 +52,23 @@ export function useStatus() {
     // Configura o novo intervalo
     intervalRef.current = setInterval(() => {
       fetch(STATUS_API_URL)
-        .then(response => {
+        .then((response) => {
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           return response.json();
         })
-        .then(data => {
-          setStatusData(prev => ({
+        .then((data) => {
+          setStatusData((prev) => ({
             ...prev,
             status: data,
             lastUpdate: new Date(),
             error: null,
           }));
         })
-        .catch(err => {
+        .catch((err) => {
           console.error("Erro ao buscar status:", err);
-          setStatusData(prev => ({
+          setStatusData((prev) => ({
             ...prev,
             error: err.message,
           }));

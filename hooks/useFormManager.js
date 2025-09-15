@@ -1,5 +1,5 @@
 // hooks/useFormManager.js
-import React from 'react';
+import React from "react";
 
 const initialForms = {
   client: {
@@ -13,7 +13,7 @@ const initialForms = {
       telefone: "",
       email: "",
       ativo: true,
-    }
+    },
   },
   supplier: {
     show: false,
@@ -24,7 +24,7 @@ const initialForms = {
       telefone: "",
       email: "",
       ativo: true,
-    }
+    },
   },
   order: {
     show: false,
@@ -33,13 +33,12 @@ const initialForms = {
       produto: "",
       quantidade: 1,
       observacao: "",
-    }
+    },
   },
 };
 
 export function useFormManager() {
   const [forms, setForms] = React.useState(initialForms);
-
 
   // Handler para atualizar o estado do formulário
   const handleFormData = (formType, newData) => {
@@ -75,7 +74,7 @@ export function useFormManager() {
   // Getters para facilitar acesso aos dados
   const getFormProps = (formType) => ({
     form: forms[formType].form,
-    setForm: (newData) => handleFormData(formType, newData)
+    setForm: (newData) => handleFormData(formType, newData),
   });
 
   const isFormVisible = (formType) => forms[formType].show;

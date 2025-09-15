@@ -85,7 +85,7 @@ function Home() {
           {Object.entries(formConfig).map(([key, { Component }]) =>
             isFormVisible(key) ? (
               <Component key={key} {...getFormProps(key)} />
-            ) : null
+            ) : null,
           )}
         </>
       )}

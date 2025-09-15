@@ -6,17 +6,9 @@ export function PedidoForm() {
   return (
     <FormContainer title="Formulário de Pedido">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <FormField
-          label="ID do Cliente"
-          name="clienteId"
-          required
-        />
+        <FormField label="ID do Cliente" name="clienteId" required />
         <div className="md:col-span-2">
-          <FormField
-            label="Produto"
-            name="produto"
-            required
-          />
+          <FormField label="Produto" name="produto" required />
         </div>
         <FormField
           label="Quantidade"
@@ -26,10 +18,7 @@ export function PedidoForm() {
           required
         />
         <div className="md:col-span-2">
-          <FormField
-            label="Observação"
-            name="observacao"
-          />
+          <FormField label="Observação" name="observacao" />
         </div>
       </div>
       <div className="flex justify-end mt-8">
