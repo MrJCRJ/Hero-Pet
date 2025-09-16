@@ -1,7 +1,5 @@
-// components/entity/ContactSection.js
-
 import React from "react";
-import { FormField } from "../ui/Form";
+import { FormField } from "components/ui/Form";
 
 export function ContactSection({ form, onChange }) {
   return (

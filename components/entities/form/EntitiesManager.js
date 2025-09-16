@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { useToast } from "../ui/ToastProvider";
-import { Button } from "../ui/Button";
+import { useToast } from "components/entities/shared/toast";
+import { Button } from "components/ui/Button";
+import { EntitiesBrowser } from "../list/EntitiesBrowser";
 import {
-  EntitiesBrowser,
   EntityTypeSelector,
   DocumentSection,
   AddressSection,
@@ -13,14 +13,14 @@ import {
   computeDerived,
   createInitialEntityForm,
 } from "./index";
-import { FormContainer } from "../ui/Form";
+import { FormContainer } from "components/ui/Form";
 
 export function EntitiesManager({ browserLimit = 20 }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(() => createInitialEntityForm());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // força remontar browser pós criação
+  const [refreshKey, setRefreshKey] = useState(0);
   const { push } = useToast();
 
   const toggleMode = () => setShowForm((v) => !v);
@@ -56,7 +56,6 @@ export function EntitiesManager({ browserLimit = 20 }) {
         }
         throw new Error(data.error || `Falha ao salvar (status ${res.status})`);
       }
-      // sucesso
       setForm(createInitialEntityForm());
       setShowForm(false);
       setRefreshKey((k) => k + 1);

@@ -2,7 +2,7 @@ import {
   formatCpfCnpj,
   formatCep,
   formatTelefone,
-} from "components/entity/utils";
+} from "components/entities/shared/masks";
 
 describe("Máscaras Utilitárias (integração leve)", () => {
   test("CPF", () => {

@@ -125,10 +125,10 @@ async function getEntities(req, res) {
     console.error("GET /entities error", e);
     if (isRelationMissing(e)) {
       return res.status(503).json({
-        error: 'Schema not migrated (entities table missing)',
-        dependency: 'database',
+        error: "Schema not migrated (entities table missing)",
+        dependency: "database",
         code: e.code,
-        action: 'Run migrations endpoint or apply migrations before use',
+        action: "Run migrations endpoint or apply migrations before use",
       });
     }
     if (isConnectionError(e)) {

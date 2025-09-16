@@ -1,13 +1,9 @@
-// components/entity/EntitiesBrowser.js
 import React from "react";
 import { Button } from "components/ui/Button";
 import { usePaginatedEntities } from "hooks/usePaginatedEntities";
-import { formatCpfCnpj } from "./utils";
+import { formatCpfCnpj } from "../shared/masks";
 
-// Opções de status reutilizadas em filtro e potencialmente em badges futuras
 const STATUS_OPTIONS = ["", "pending", "provisional", "valid"];
-
-// Cabeçalhos da tabela declarativos
 const COLUMN_DEFS = [
   { key: "name", label: "Nome" },
   { key: "entity_type", label: "Tipo" },
@@ -16,22 +12,18 @@ const COLUMN_DEFS = [
   { key: "document_pending", label: "Pending?" },
   { key: "created_at", label: "Criado" },
 ];
-
-// Mapeamento simples para classes de status
 const STATUS_CLASS = {
   valid: "badge badge-success",
   pending: "badge badge-warning",
   provisional: "badge badge-info",
 };
 
-// Função de formatação do documento (evita lógica inline na célula)
 function formatDocumentDigits(row) {
   if (row.document_digits) return formatCpfCnpj(row.document_digits);
   if (row.document_pending) return "(pendente)";
   return "—";
 }
 
-// Renderiza grupo de badges de summary (status ou pending) de modo uniforme
 function SummaryBadges({ entries, prefix }) {
   if (!entries) return null;
   return Object.entries(entries).map(([k, v]) => (
@@ -39,12 +31,6 @@ function SummaryBadges({ entries, prefix }) {
   ));
 }
 
-/**
- * Componente de listagem e filtros de Entities reutilizável.
- * Props:
- * - limit: número de registros por página (default 20)
- * - compact: reduz tipografia/padding (para uso inline no dashboard)
- */
 export function EntitiesBrowser({ limit = 20, compact = false }) {
   const state = usePaginatedEntities({ limit });
   const {
@@ -61,9 +47,7 @@ export function EntitiesBrowser({ limit = 20, compact = false }) {
     setPendingOnly,
     loadMore,
   } = state;
-
   const textSize = compact ? "text-xs" : "text-sm";
-
   return (
     <div className={`space-y-4 ${textSize}`}>
       <div className="flex justify-between items-start flex-wrap gap-4">
@@ -245,7 +229,6 @@ function Th({ children }) {
 function Td({ children }) {
   return <td className="px-3 py-2 whitespace-nowrap align-top">{children}</td>;
 }
-
 function StatusBadge({ status }) {
   return <span className={STATUS_CLASS[status] || "badge"}>{status}</span>;
 }

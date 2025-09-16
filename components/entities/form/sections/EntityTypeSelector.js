@@ -1,4 +1,3 @@
-// components/entity/EntityTypeSelector.js
 import React from "react";
 
 export function EntityTypeSelector({ value, onChange }) {

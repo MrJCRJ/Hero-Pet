@@ -11,7 +11,7 @@ import {
   applyDocumentBlur,
   computeDerived,
   getEntityLabel,
-} from "./entity";
+} from "./entities";
 
 export function EntityForm({ form, setForm }) {
   const handleChange = (e) => setForm((prev) => applyChange(prev, e.target));
