@@ -1,5 +1,6 @@
 // pages/api/v1/entities/index.js
 import database from "infra/database";
+import { isConnectionError } from "lib/errors";
 import {
   classifyDocument as sharedClassify,
   stripDigits as sharedStrip,
@@ -122,6 +123,15 @@ async function getEntities(req, res) {
     return res.status(200).json(result.rows);
   } catch (e) {
     console.error("GET /entities error", e);
+    if (isConnectionError(e)) {
+      return res.status(503).json({
+        error: 'Database unreachable',
+        dependency: 'database',
+        code: e.code,
+        host: process.env.POSTGRES_HOST,
+        port: process.env.POSTGRES_PORT,
+      });
+    }
     return res.status(500).json({ error: "Internal error" });
   }
 }

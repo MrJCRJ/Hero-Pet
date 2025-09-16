@@ -1,5 +1,6 @@
 // pages/api/v1/entities/summary.js
 import database from "infra/database";
+import { isConnectionError } from "lib/errors";
 
 export default async function summary(req, res) {
   if (req.method !== "GET") {
@@ -28,6 +29,15 @@ export default async function summary(req, res) {
     });
   } catch (e) {
     console.error("GET /entities/summary error", e);
+    if (isConnectionError(e)) {
+      return res.status(503).json({
+        error: 'Database unreachable',
+        dependency: 'database',
+        code: e.code,
+        host: process.env.POSTGRES_HOST,
+        port: process.env.POSTGRES_PORT,
+      });
+    }
     res.status(500).json({ error: "Internal error" });
   }
 }

@@ -18,7 +18,18 @@ export function useStatus() {
     try {
       setLoading(true);
       const response = await fetch(STATUS_API_URL);
-
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      if (response.status === 503) {
+        // Trata como indisponível mas sem lançar
+        const payload = isJson ? await response.json() : null;
+        setStatusData({
+          status: payload, // ainda expõe para UI decidir render
+          lastUpdate: new Date(),
+          error: null,
+          unreachable: true,
+        });
+        return;
+      }
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -28,6 +39,7 @@ export function useStatus() {
         status: data,
         lastUpdate: new Date(),
         error: null,
+        unreachable: false,
       });
     } catch (err) {
       console.error("Erro ao buscar status:", err);
@@ -52,18 +64,29 @@ export function useStatus() {
     // Configura o novo intervalo
     intervalRef.current = setInterval(() => {
       fetch(STATUS_API_URL)
-        .then((response) => {
+        .then(async (response) => {
+          const isJson = response.headers.get('content-type')?.includes('application/json');
+          if (response.status === 503) {
+            const payload = isJson ? await response.json() : null;
+            setStatusData((prev) => ({
+              ...prev,
+              status: payload,
+              lastUpdate: new Date(),
+              error: null,
+              unreachable: true,
+            }));
+            return;
+          }
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          return response.json();
-        })
-        .then((data) => {
+          const data = await response.json();
           setStatusData((prev) => ({
             ...prev,
             status: data,
             lastUpdate: new Date(),
             error: null,
+            unreachable: false,
           }));
         })
         .catch((err) => {
