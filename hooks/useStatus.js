@@ -18,7 +18,9 @@ export function useStatus() {
     try {
       setLoading(true);
       const response = await fetch(STATUS_API_URL);
-      const isJson = response.headers.get('content-type')?.includes('application/json');
+      const isJson = response.headers
+        .get("content-type")
+        ?.includes("application/json");
       if (response.status === 503) {
         // Trata como indisponível mas sem lançar
         const payload = isJson ? await response.json() : null;
@@ -65,7 +67,9 @@ export function useStatus() {
     intervalRef.current = setInterval(() => {
       fetch(STATUS_API_URL)
         .then(async (response) => {
-          const isJson = response.headers.get('content-type')?.includes('application/json');
+          const isJson = response.headers
+            .get("content-type")
+            ?.includes("application/json");
           if (response.status === 503) {
             const payload = isJson ? await response.json() : null;
             setStatusData((prev) => ({

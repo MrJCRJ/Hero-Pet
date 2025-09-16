@@ -35,34 +35,43 @@ async function status(request, response) {
   const MAX_RETRIES = 3;
   for (let i = 0; i < MAX_RETRIES; i++) {
     try {
-      postgresVersion = await runWithTiming('first_query', () => database.query('SHOW server_version;'));
-      maxConnections = await runWithTiming('second_query', () => database.query('SHOW max_connections;'));
+      postgresVersion = await runWithTiming("first_query", () =>
+        database.query("SHOW server_version;"),
+      );
+      maxConnections = await runWithTiming("second_query", () =>
+        database.query("SHOW max_connections;"),
+      );
       const databaseName = process.env.POSTGRES_DB;
-      currentConnections = await runWithTiming('third_query', () => database.query({
-        text: 'SELECT COUNT(*)::int FROM pg_stat_activity WHERE datname = $1;',
-        values: [databaseName],
-      }));
+      currentConnections = await runWithTiming("third_query", () =>
+        database.query({
+          text: "SELECT COUNT(*)::int FROM pg_stat_activity WHERE datname = $1;",
+          values: [databaseName],
+        }),
+      );
       break; // sucesso -> sai do loop
     } catch (err) {
       attempts.push({ attempt: i + 1, error: err.message });
       if (i === MAX_RETRIES - 1) {
-        console.error('Status DB check failed after retries:', attempts.map(a => a.error).join(' | '));
-        response.setHeader('Cache-Control', 'no-store');
+        console.error(
+          "Status DB check failed after retries:",
+          attempts.map((a) => a.error).join(" | "),
+        );
+        response.setHeader("Cache-Control", "no-store");
         return response.status(503).json({
           method_received: request.method,
           updated_at: new Date().toISOString(),
           dependencies: {
             database: {
-              status: 'unreachable',
-              error: attempts[attempts.length - 1].error || 'Unknown',
+              status: "unreachable",
+              error: attempts[attempts.length - 1].error || "Unknown",
               attempts,
               host: process.env.POSTGRES_HOST,
               port: process.env.POSTGRES_PORT,
             },
             webserver: {
-              status: 'healthy',
-              provider: process.env.VERCEL ? 'vercel' : 'local',
-              environment: process.env.NODE_ENV || 'development',
+              status: "healthy",
+              provider: process.env.VERCEL ? "vercel" : "local",
+              environment: process.env.NODE_ENV || "development",
               aws_region: process.env.AWS_REGION || null,
               vercel_region: process.env.VERCEL_REGION || null,
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -72,7 +81,7 @@ async function status(request, response) {
         });
       }
       // backoff simples
-      await new Promise(r => setTimeout(r, 120 * (i + 1)));
+      await new Promise((r) => setTimeout(r, 120 * (i + 1)));
     }
   }
 

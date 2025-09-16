@@ -45,7 +45,7 @@ async function postEntity(req, res) {
       };
       const dupResult = await database.query(dupQuery);
       if (dupResult.rows.length) {
-        return res.status(409).json({ error: 'Documento já cadastrado' });
+        return res.status(409).json({ error: "Documento já cadastrado" });
       }
     }
 
@@ -125,8 +125,8 @@ async function getEntities(req, res) {
     console.error("GET /entities error", e);
     if (isConnectionError(e)) {
       return res.status(503).json({
-        error: 'Database unreachable',
-        dependency: 'database',
+        error: "Database unreachable",
+        dependency: "database",
         code: e.code,
         host: process.env.POSTGRES_HOST,
         port: process.env.POSTGRES_PORT,

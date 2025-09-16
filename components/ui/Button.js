@@ -2,13 +2,17 @@
 import React from "react";
 
 // Estilos base do botão usando Tailwind + variáveis CSS
-const baseStyles = "inline-flex items-center justify-center font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none";
+const baseStyles =
+  "inline-flex items-center justify-center font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none";
 
 // Variants usando as variáveis CSS refatoradas
 const variants = {
-  primary: "bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]  shadow-sm",
-  secondary: "bg-[var(--color-accent-cancel)] hover:bg-[var(--color-accent-cancel-hover)] ",
-  outline: "border border-[var(--color-border)] bg-transparent hover:bg-[var(--color-bg-secondary)] ",
+  primary:
+    "bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]  shadow-sm",
+  secondary:
+    "bg-[var(--color-accent-cancel)] hover:bg-[var(--color-accent-cancel-hover)] ",
+  outline:
+    "border border-[var(--color-border)] bg-transparent hover:bg-[var(--color-bg-secondary)] ",
   ghost: "hover:bg-[var(--color-bg-secondary)] ",
 };
 
@@ -37,8 +41,10 @@ export const Button = ({
     sizes[size] || sizes.sm,
     fullWidth ? "w-full" : "",
     loading ? "pointer-events-none relative" : "",
-    className
-  ].filter(Boolean).join(" ");
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button
@@ -88,7 +94,9 @@ export const ConfirmDialog = ({
   cancelLabel = "Cancelar",
 }) => (
   <div className="absolute right-0 top-full mt-2 w-48 p-3 rounded-md shadow-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-    <p className="mb-3 text-center text-sm text-[var(--color-text-primary)]">{message}</p>
+    <p className="mb-3 text-center text-sm text-[var(--color-text-primary)]">
+      {message}
+    </p>
     <div className="flex gap-2">
       <Button variant="outline" onClick={onCancel} fullWidth={false} size="sm">
         {cancelLabel}

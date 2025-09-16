@@ -21,9 +21,9 @@ export function DocumentSection({
   const visualStatus = rawStatus;
 
   const STATUS_LABEL_PT = {
-    pending: 'PENDENTE',
-    provisional: 'PROVISÓRIO',
-    valid: 'VALIDADO',
+    pending: "PENDENTE",
+    provisional: "PROVISÓRIO",
+    valid: "VALIDADO",
   };
   const statusText = STATUS_LABEL_PT[rawStatus];
 
@@ -74,7 +74,9 @@ export function DocumentSection({
             checked={!!form.documento_pendente}
             onChange={onChange}
             className="h-4 w-4"
-            aria-describedby={form.documento_pendente ? pendingMsgId : undefined}
+            aria-describedby={
+              form.documento_pendente ? pendingMsgId : undefined
+            }
           />
           <label
             htmlFor="documento_pendente"
@@ -127,11 +129,7 @@ export function DocumentSection({
           </p>
         )}
       {form.documento_pendente && (
-        <p
-          id={pendingMsgId}
-          className=" text-xs text-gray-500"
-          role="note"
-        >
+        <p id={pendingMsgId} className=" text-xs text-gray-500" role="note">
           {MESSAGES.pending}
         </p>
       )}

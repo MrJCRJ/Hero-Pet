@@ -24,7 +24,7 @@ function Home() {
     handleAccessCodeSubmit,
     handleLogout,
   } = useAuth();
-  const [activeForm, setActiveForm] = useState('entities');
+  const [activeForm, setActiveForm] = useState("entities");
 
   if (loading)
     return (
@@ -75,15 +75,14 @@ function Home() {
               const active = formConfig[activeForm];
               if (!active) return null;
               const { Component } = active;
-              if (Component === EntitiesManager) return <Component browserLimit={20} />;
+              if (Component === EntitiesManager)
+                return <Component browserLimit={20} />;
               return <Component />;
             })()}
           </div>
         </>
       )}
-
     </div>
-
   );
 }
 

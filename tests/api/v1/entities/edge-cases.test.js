@@ -11,11 +11,14 @@ beforeAll(async () => {
   await orchestrator.waitForAllServices();
   // Garante que migrações globais já aplicadas permanecem; apenas limpa dados.
   try {
-    await database.query('TRUNCATE TABLE entities RESTART IDENTITY CASCADE;');
+    await database.query("TRUNCATE TABLE entities RESTART IDENTITY CASCADE;");
   } catch (_) {
     // se tabela não existe (primeira execução), chama endpoint para aplicar
-    const mig = await fetch('http://localhost:3000/api/v1/migrations', { method: 'POST' });
-    if (![200, 201].includes(mig.status)) throw new Error('Falha migrações edge-cases');
+    const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+      method: "POST",
+    });
+    if (![200, 201].includes(mig.status))
+      throw new Error("Falha migrações edge-cases");
   }
 });
 
@@ -76,12 +79,22 @@ describe("Entities edge cases", () => {
       document_pending: false,
     };
     // primeiro create
-    const first = await fetch("http://localhost:3000/api/v1/entities", { method: 'POST', headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const first = await fetch("http://localhost:3000/api/v1/entities", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     expect(first.status).toBe(201);
     // segundo igual
-    const second = await fetch("http://localhost:3000/api/v1/entities", { method: 'POST', headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const second = await fetch("http://localhost:3000/api/v1/entities", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     expect(second.status).toBe(409);
     const secondBody = await second.json();
-    expect(secondBody.error).toMatch(/Documento já cadastrado|entidade com este documento/i);
+    expect(secondBody.error).toMatch(
+      /Documento já cadastrado|entidade com este documento/i,
+    );
   });
 });

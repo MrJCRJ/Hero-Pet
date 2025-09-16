@@ -5,44 +5,48 @@ import {
   formatCep,
   formatTelefone,
   isDocumentCnpj,
-} from './utils';
+} from "./utils";
 
-export const DIGIT_LIMITS = Object.freeze({ documento: 14, cep: 8, telefone: 11 });
+export const DIGIT_LIMITS = Object.freeze({
+  documento: 14,
+  cep: 8,
+  telefone: 11,
+});
 export const DIGIT_FIELDS = Object.keys(DIGIT_LIMITS);
-export const UPPER_FIELDS = new Set(['nome']);
-export const ENTITY_LABEL = { client: 'Cliente', supplier: 'Fornecedor' };
+export const UPPER_FIELDS = new Set(["nome"]);
+export const ENTITY_LABEL = { client: "Cliente", supplier: "Fornecedor" };
 
 export function createInitialEntityForm() {
   return {
-    entityType: 'client',
-    nome: '',
-    documento: '',
+    entityType: "client",
+    nome: "",
+    documento: "",
     documento_pendente: false,
-    document_status: 'pending',
-    cep: '',
-    telefone: '',
-    email: '',
-    complemento: '',
-    numero: '',
+    document_status: "pending",
+    cep: "",
+    telefone: "",
+    email: "",
+    complemento: "",
+    numero: "",
     ativo: true,
   };
 }
 
 export function applyChange(prev, { name, value, type, checked }) {
-  if (type === 'radio' && name === 'entityType') {
+  if (type === "radio" && name === "entityType") {
     return { ...prev, entityType: value };
   }
 
-  if (type === 'checkbox' && name === 'documento_pendente') {
+  if (type === "checkbox" && name === "documento_pendente") {
     return {
       ...prev,
       documento_pendente: checked,
-      documento: checked ? '' : prev.documento,
-      document_status: checked ? 'pending' : prev.document_status,
+      documento: checked ? "" : prev.documento,
+      document_status: checked ? "pending" : prev.document_status,
     };
   }
 
-  if (type === 'checkbox') {
+  if (type === "checkbox") {
     return { ...prev, [name]: checked };
   }
 
@@ -67,7 +71,7 @@ export function applyDocumentBlur(prev) {
 
 export function computeDerived(form) {
   return {
-    isClient: form.entityType === 'client',
+    isClient: form.entityType === "client",
     documentIsCnpj: isDocumentCnpj(form.documento),
     formatted: {
       ...form,
@@ -79,5 +83,5 @@ export function computeDerived(form) {
 }
 
 export function getEntityLabel(entityType) {
-  return ENTITY_LABEL[entityType] || 'Entidade';
+  return ENTITY_LABEL[entityType] || "Entidade";
 }

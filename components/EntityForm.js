@@ -19,7 +19,10 @@ export function EntityForm({ form, setForm }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert(`${getEntityLabel(form.entityType)} cadastrado!\n` + JSON.stringify(form, null, 2));
+    alert(
+      `${getEntityLabel(form.entityType)} cadastrado!\n` +
+        JSON.stringify(form, null, 2),
+    );
   };
 
   const { isClient, documentIsCnpj, formatted } = computeDerived(form);
@@ -29,7 +32,7 @@ export function EntityForm({ form, setForm }) {
       title={`Formulário de ${isClient ? "Cliente" : "Fornecedor"}`}
       onSubmit={handleSubmit}
     >
-      <div >
+      <div>
         <div className="card p-1 space-y-2">
           <EntityTypeSelector value={form.entityType} onChange={handleChange} />
           <DocumentSection
@@ -51,7 +54,13 @@ export function EntityForm({ form, setForm }) {
           </div>
         </div>
         <div className="flex justify-end pt-1">
-          <Button type="submit" variant="primary" size="md" fullWidth={false} className="min-w-[120px]">
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            fullWidth={false}
+            className="min-w-[120px]"
+          >
             Salvar
           </Button>
         </div>

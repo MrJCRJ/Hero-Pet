@@ -31,8 +31,8 @@ export default async function summary(req, res) {
     console.error("GET /entities/summary error", e);
     if (isConnectionError(e)) {
       return res.status(503).json({
-        error: 'Database unreachable',
-        dependency: 'database',
+        error: "Database unreachable",
+        dependency: "database",
         code: e.code,
         host: process.env.POSTGRES_HOST,
         port: process.env.POSTGRES_PORT,

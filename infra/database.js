@@ -17,7 +17,7 @@ async function query(queryObject) {
         await client.end();
       } catch (endErr) {
         // log silencioso para não mascarar erro original
-        console.warn('Falha ao encerrar conexão PG:', endErr.message);
+        console.warn("Falha ao encerrar conexão PG:", endErr.message);
       }
     }
   }

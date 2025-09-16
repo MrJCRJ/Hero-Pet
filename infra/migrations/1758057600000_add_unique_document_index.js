@@ -6,13 +6,15 @@ exports.shorthands = undefined;
 
 exports.up = (pgm) => {
   // Índice único parcial (ignora strings vazias)
-  pgm.createIndex('entities', 'document_digits', {
-    name: 'uniq_entities_document_digits_not_empty',
+  pgm.createIndex("entities", "document_digits", {
+    name: "uniq_entities_document_digits_not_empty",
     unique: true,
-    where: "document_digits <> ''"
+    where: "document_digits <> ''",
   });
 };
 
 exports.down = (pgm) => {
-  pgm.dropIndex('entities', 'document_digits', { name: 'uniq_entities_document_digits_not_empty' });
+  pgm.dropIndex("entities", "document_digits", {
+    name: "uniq_entities_document_digits_not_empty",
+  });
 };
