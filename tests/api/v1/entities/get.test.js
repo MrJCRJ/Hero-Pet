@@ -32,8 +32,8 @@ describe("GET /api/v1/entities", () => {
   test("Após criar registros deve retornar lista com itens", async () => {
     // cria duas entidades
     const payloads = [
-      { name: 'ALFA', doc: '39053344705' },
-      { name: 'BETA', doc: '11144477735' }, // outro CPF válido
+      { name: "ALFA", doc: "39053344705" },
+      { name: "BETA", doc: "11144477735" }, // outro CPF válido
     ];
     for (const p of payloads) {
       const res = await fetch("http://localhost:3000/api/v1/entities", {
@@ -48,7 +48,9 @@ describe("GET /api/v1/entities", () => {
       });
       if (res.status !== 201) {
         const txt = await res.text();
-        throw new Error(`Falha ao criar ${p.name} status ${res.status} body ${txt}`);
+        throw new Error(
+          `Falha ao criar ${p.name} status ${res.status} body ${txt}`,
+        );
       }
     }
     const response = await fetch("http://localhost:3000/api/v1/entities");

@@ -38,7 +38,7 @@ async function waitForAllServices() {
     });
 
     async function fetchStatusPage() {
-      if (!active) throw new Error('Orchestrator aborted');
+      if (!active) throw new Error("Orchestrator aborted");
       attemptCounter++;
       const response = await axios.get("http://localhost:3000/api/v1/status", {
         timeout: 4000,
