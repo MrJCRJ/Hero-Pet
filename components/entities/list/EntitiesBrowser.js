@@ -108,19 +108,32 @@ function Filters({
         >
           Status
         </label>
-        <select
-          id="entities-status-filter"
-          disabled={loading}
-          className="border rounded px-2 py-1 text-[10px]"
-          value={statusFilter}
-          onChange={(e) => onStatusChange(e.target.value)}
-        >
-          {STATUS_OPTIONS.map((opt) => (
-            <option key={opt || "all"} value={opt}>
-              {opt || "(todos)"}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            id="entities-status-filter"
+            disabled={loading}
+            className="peer appearance-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/70 backdrop-blur-sm rounded px-2 py-1 text-[10px] pr-6 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 focus:ring-offset-[var(--color-bg-primary)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-bg-secondary)]"
+            value={statusFilter}
+            onChange={(e) => onStatusChange(e.target.value)}
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option
+                key={opt || "all"}
+                value={opt}
+                className="text-[var(--color-text-primary)]"
+              >
+                {opt || "(todos)"}
+              </option>
+            ))}
+          </select>
+          {/* Ícone seta custom */}
+          <span
+            className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)] peer-focus:text-[var(--color-accent)] transition-colors"
+            aria-hidden="true"
+          >
+            ▼
+          </span>
+        </div>
       </div>
       <label className="flex items-center gap-2 text-[10px] cursor-pointer">
         <input
@@ -132,7 +145,7 @@ function Filters({
         Apenas pending
       </label>
       {loading && (
-        <span className="text-[10px] text-gray-500 animate-pulse">
+        <span className="text-[10px] text-[var(--color-text-secondary)] animate-pulse">
           Carregando...
         </span>
       )}
@@ -153,7 +166,7 @@ function Table({
   return (
     <div className="border rounded overflow-x-auto">
       <table className={`min-w-full ${sizeCls}`}>
-        <thead className="bg-gray-100">
+        <thead className="bg-[var(--color-bg-secondary)]">
           <tr>
             {COLUMN_DEFS.map((col) => (
               <Th key={col.key}>{col.label}</Th>
@@ -165,14 +178,14 @@ function Table({
             <tr>
               <td
                 colSpan={COLUMN_DEFS.length}
-                className="text-center py-6 text-gray-500"
+                className="text-center py-6 "
               >
                 Nenhum registro encontrado
               </td>
             </tr>
           )}
           {rows.map((r) => (
-            <tr key={r.id} className="border-t hover:bg-gray-50">
+            <tr key={r.id} className="border-t hover:bg-[var(--color-bg-secondary)]">
               <Td>{r.name}</Td>
               <Td>{r.entity_type}</Td>
               <Td>{formatDocumentDigits(r)}</Td>
@@ -185,7 +198,7 @@ function Table({
           ))}
         </tbody>
         <tfoot>
-          <tr className="bg-gray-50 text-[10px] text-gray-600">
+          <tr className="bg-[var(--color-bg-secondary)] text-[10px] ">
             <td colSpan={COLUMN_DEFS.length} className="px-3 py-2">
               <div className="flex items-center justify-between gap-2">
                 <span>
