@@ -1,6 +1,12 @@
+/**
+ * @jest-environment node
+ */
 // tests/api/v1/status/get.test.js
 import axios from "axios";
 import orchestrator from "tests/orchestrator.js";
+
+// Aumenta timeout dos hooks deste arquivo para acomodar startup (30s máx do orchestrator)
+jest.setTimeout(35000);
 
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
@@ -22,8 +28,6 @@ const isValidISO8601 = (dateString) => {
 };
 
 describe("GET /api/v1/status", () => {
-  jest.setTimeout(10000);
-
   test("deve retornar status code 200", async () => {
     const response = await getStatus();
     expect(response.status).toBe(200);

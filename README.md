@@ -19,6 +19,74 @@ Hero-Pet é um sistema para gestão de estoque e financeiro, desenvolvido em Jav
 - **Docker Compose**: Orquestração de infraestrutura
 - **Node.js**: Backend e scripts
 
+### Utilitários de UI (Tailwind Plugin)
+
+O projeto inclui um plugin Tailwind customizado (`tailwind-plugins/ui.js`) que disponibiliza classes semânticas:
+
+- Botões: `btn`, `btn-primary`, `btn-secondary`, `btn-danger`, `btn-outline`, modificadores `btn-sm`, `btn-lg`, `btn-block`.
+- Estado de carregamento: adicionar prop `loading` no componente `<Button />` aplica spinner e classe `btn-loading` (desabilita clique e mostra indicador). Ex:
+  ```jsx
+  <Button variant="primary" loading>
+    Salvando...
+  </Button>
+  ```
+- Badges: `badge`, `badge-soft`, `badge-success`, `badge-warning`, `badge-info`, `badge-danger`.
+- Superfícies: `card`, `surface`, `divider`.
+
+Isso reduz CSS manual em `globals.css` e centraliza consistência visual.
+
+### Hook de Paginação (`usePaginatedEntities`)
+
+O hook `usePaginatedEntities` (arquivo `hooks/usePaginatedEntities.js`) abstrai filtros e paginação incremental de entidades.
+
+API retornada:
+
+- `rows`, `total`, `summary`
+- Estados: `loading`, `loadingMore`, `error`, `statusFilter`, `pendingOnly`, `canLoadMore`
+- Ações: `setStatusFilter(v)`, `setPendingOnly(bool)`, `loadMore()`, `refresh()`, `loadSummary()`
+
+Exemplo:
+
+```jsx
+import { usePaginatedEntities } from "hooks/usePaginatedEntities";
+
+function EntitiesWidget() {
+  const {
+    rows,
+    total,
+    loading,
+    canLoadMore,
+    loadMore,
+    statusFilter,
+    setStatusFilter,
+  } = usePaginatedEntities();
+  return (
+    <div>
+      <select
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+      >
+        <option value="">Todos</option>
+        <option value="pending">Pending</option>
+        <option value="provisional">Provisional</option>
+        <option value="valid">Valid</option>
+      </select>
+      <ul>
+        {rows.map((r) => (
+          <li key={r.id}>{r.name}</li>
+        ))}
+      </ul>
+      {canLoadMore && (
+        <button onClick={loadMore} disabled={loading}>
+          Carregar mais
+        </button>
+      )}
+      <p>Total filtrado: {total}</p>
+    </div>
+  );
+}
+```
+
 ## Estrutura Principal
 
 - `components/`: Componentes React reutilizáveis (formulários, navegação, UI)
@@ -47,6 +115,17 @@ Hero-Pet é um sistema para gestão de estoque e financeiro, desenvolvido em Jav
    ```bash
    npm test
    ```
+
+### Build e Produção
+
+Para gerar build otimizado e iniciar em modo produção:
+
+```bash
+npm run build
+npm start
+```
+
+Certifique-se de ter as variáveis de ambiente de produção definidas (ex: `DATABASE_URL`). O script `start` não sobe containers ou executa migrações automaticamente; recomenda-se aplicar migrações via pipeline (CI/CD) antes do deploy.
 
 ## Licença
 

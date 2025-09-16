@@ -22,24 +22,68 @@ async function status(request, response) {
   // 🔹 Começa a medir latência das queries
   const timings = {};
 
-  const start1 = performance.now();
-  const postgresVersion = await database.query("SHOW server_version;");
-  const end1 = performance.now();
-  timings.first_query = end1 - start1;
+  let postgresVersion, maxConnections, currentConnections;
+  const attempts = [];
+  const runWithTiming = async (label, fn) => {
+    const start = performance.now();
+    const result = await fn();
+    const end = performance.now();
+    timings[label] = end - start;
+    return result;
+  };
 
-  const start2 = performance.now();
-  const maxConnections = await database.query("SHOW max_connections;");
-  const end2 = performance.now();
-  timings.second_query = end2 - start2;
-
-  const databaseName = process.env.POSTGRES_DB;
-  const start3 = performance.now();
-  const currentConnections = await database.query({
-    text: "SELECT COUNT(*)::int FROM pg_stat_activity WHERE datname = $1;",
-    values: [databaseName],
-  });
-  const end3 = performance.now();
-  timings.third_query = end3 - start3;
+  const MAX_RETRIES = 3;
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      postgresVersion = await runWithTiming("first_query", () =>
+        database.query("SHOW server_version;"),
+      );
+      maxConnections = await runWithTiming("second_query", () =>
+        database.query("SHOW max_connections;"),
+      );
+      const databaseName = process.env.POSTGRES_DB;
+      currentConnections = await runWithTiming("third_query", () =>
+        database.query({
+          text: "SELECT COUNT(*)::int FROM pg_stat_activity WHERE datname = $1;",
+          values: [databaseName],
+        }),
+      );
+      break; // sucesso -> sai do loop
+    } catch (err) {
+      attempts.push({ attempt: i + 1, error: err.message });
+      if (i === MAX_RETRIES - 1) {
+        console.error(
+          "Status DB check failed after retries:",
+          attempts.map((a) => a.error).join(" | "),
+        );
+        response.setHeader("Cache-Control", "no-store");
+        return response.status(503).json({
+          method_received: request.method,
+          updated_at: new Date().toISOString(),
+          dependencies: {
+            database: {
+              status: "unreachable",
+              error: attempts[attempts.length - 1].error || "Unknown",
+              attempts,
+              host: process.env.POSTGRES_HOST,
+              port: process.env.POSTGRES_PORT,
+            },
+            webserver: {
+              status: "healthy",
+              provider: process.env.VERCEL ? "vercel" : "local",
+              environment: process.env.NODE_ENV || "development",
+              aws_region: process.env.AWS_REGION || null,
+              vercel_region: process.env.VERCEL_REGION || null,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              version: pkg.version,
+            },
+          },
+        });
+      }
+      // backoff simples
+      await new Promise((r) => setTimeout(r, 120 * (i + 1)));
+    }
+  }
 
   const updatedAt = new Date().toISOString();
 

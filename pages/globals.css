@@ -1,16 +1,3 @@
-/* ============================= */
-/* ✨ Autofill para inputs escuros */
-/* ============================= */
-input:-webkit-autofill,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px var(--color-bg-secondary) inset !important;
-  box-shadow: 0 0 0 1000px var(--color-bg-secondary) inset !important;
-  -webkit-text-fill-color: var(--color-text-primary) !important;
-  color: var(--color-text-primary) !important;
-  transition: background-color 5000s ease-in-out 0s;
-}
 /* pages/globals.css */
 
 /* ============================= */
@@ -19,45 +6,49 @@ input:-webkit-autofill:active {
 @import "tailwindcss";
 
 /* ============================= */
-/* 🎨 Variáveis de cores e dark mode */
+/* 🎨 Sistema de cores refinado */
 /* ============================= */
-/* Paleta aprimorada para melhor contraste e harmonia */
+/* Apenas cores realmente utilizadas na aplicação */
 :root {
-  --color-bg-primary: #f3f6fa;
+  /* 🎯 Backgrounds */
+  --color-bg-primary: #f8fafc;
   --color-bg-secondary: #ffffff;
-  --color-text-primary: #1a2233;
-  --color-text-secondary: #5a6a85;
-  --color-accent: #2563eb; /* azul principal */
-  --color-accent-hover: #1d4ed8;
-  --color-accent-cancel: #f87171; /* vermelho claro */
-  --color-accent-cancel-hover: #ef4444;
-  --color-success: #22c55e;
-  --color-success-hover: #16a34a;
-  --color-warning: #facc15;
-  --color-warning-hover: #eab308;
-  --color-border: #d1d5db;
 
-  --radius-default: 0.5rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  --shadow-form: 0 2px 12px 0 rgba(37, 99, 235, 0.08);
+  /* 📝 Textos */
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+
+  /* 🎨 Accent (azul principal) */
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+
+  /* ❌ Cores de ação (cancel/danger) */
+  --color-accent-cancel: #ef4444;
+  --color-accent-cancel-hover: #dc2626;
+
+  /* 🔲 Borders */
+  --color-border: #e2e8f0;
 }
 
 .dark {
+  /* 🎯 Backgrounds */
   --color-bg-primary: #0f172a;
   --color-bg-secondary: #1e293b;
+
+  /* 📝 Textos */
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
+
+  /* 🎨 Accent (azul principal) */
   --color-accent: #60a5fa;
   --color-accent-hover: #3b82f6;
-  --color-accent-cancel: #f87171;
-  --color-accent-cancel-hover: #ef4444;
-  --color-success: #4ade80;
-  --color-success-hover: #22d3ee;
-  --color-warning: #fde68a;
-  --color-warning-hover: #fbbf24;
+
+  /* ❌ Cores de ação (cancel/danger) */
+  --color-accent-cancel: #ef4444;
+  --color-accent-cancel-hover: #dc2626;
+
+  /* 🔲 Borders */
   --color-border: #334155;
-  --shadow-form: 0 2px 12px 0 rgba(96, 165, 250, 0.1);
 }
 
 /* ============================= */
@@ -73,7 +64,33 @@ body {
 }
 
 /* ============================= */
-/* 🖱 Scrollbar personalizado (Webkit) */
+/* ✨ Autofill (Chrome / Safari) */
+/* ============================= */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text-primary) !important;
+  transition: background-color 0s ease-in-out 0s;
+  box-shadow: 0 0 0px 1000px var(--color-bg-secondary) inset !important;
+  caret-color: var(--color-text-primary);
+}
+
+/* Modo dark mantém coerência */
+.dark input:-webkit-autofill,
+.dark textarea:-webkit-autofill,
+.dark select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-text-primary) !important;
+  box-shadow: 0 0 0px 1000px var(--color-bg-secondary) inset !important;
+}
+
+/* ============================= */
+/* 🖱 Scrollbar personalizado */
 /* ============================= */
 ::-webkit-scrollbar {
   width: 5px;

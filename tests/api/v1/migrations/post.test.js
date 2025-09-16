@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 // tests/api/v1/migrations/post.test.js
 import database from "infra/database.js";
 import orchestrator from "tests/orchestrator.js";
