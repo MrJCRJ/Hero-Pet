@@ -1,5 +1,3 @@
-// components/EntityForm.js
-
 import React from "react";
 import { Button } from "./ui/Button";
 import { FormContainer } from "./ui/Form";
@@ -17,49 +15,37 @@ import {
   classifyDocument,
 } from "./entity/utils";
 
+const DIGIT_LIMITS = Object.freeze({ documento: 14, cep: 8, telefone: 11 });
+const DIGIT_FIELDS = Object.keys(DIGIT_LIMITS);
+const UPPER_FIELDS = new Set(["nome"]);
+const ENTITY_LABEL = { client: "Cliente", supplier: "Fornecedor" };
+
 export function EntityForm({ form, setForm }) {
   const handleChange = (e) => {
-    const { name, value, type: inputType, checked } = e.target;
+    const { name, value, type, checked } = e.target;
 
-    // Radio buttons para tipo de entidade
-    if (inputType === 'radio' && name === 'entityType') {
-      setForm(prev => ({ ...prev, entityType: value }));
-      return;
+    if (type === "radio" && name === "entityType") {
+      return setForm((p) => ({ ...p, entityType: value }));
     }
-
-    // Checkbox para documento pendente
-    if (inputType === "checkbox" && name === "documento_pendente") {
-      setForm((prev) => ({
-        ...prev,
+    if (type === "checkbox" && name === "documento_pendente") {
+      return setForm((p) => ({
+        ...p,
         documento_pendente: checked,
-        documento: checked ? "" : prev.documento,
-        document_status: checked ? "pending" : prev.document_status,
+        documento: checked ? "" : p.documento,
+        document_status: checked ? "pending" : p.document_status,
       }));
-      return;
     }
-
-    // Outros checkboxes
-    if (inputType === "checkbox") {
-      setForm((prev) => ({ ...prev, [name]: checked }));
-      return;
+    if (type === "checkbox") {
+      return setForm((p) => ({ ...p, [name]: checked }));
     }
-
-    // Campos que precisam normalização de dígitos
-    if (['documento', 'cep', 'telefone'].includes(name)) {
-      const limits = { documento: 14, cep: 8, telefone: 11 };
-      const digits = stripDigits(value).slice(0, limits[name]);
-      setForm((prev) => ({ ...prev, [name]: digits }));
-      return;
+    if (DIGIT_FIELDS.includes(name)) {
+      const digits = stripDigits(value).slice(0, DIGIT_LIMITS[name]);
+      return setForm((p) => ({ ...p, [name]: digits }));
     }
-
-    // Nome sempre em maiúsculo
-    if (name === "nome") {
-      setForm((prev) => ({ ...prev, [name]: value.toUpperCase() }));
-      return;
+    if (UPPER_FIELDS.has(name)) {
+      return setForm((p) => ({ ...p, [name]: value.toUpperCase() }));
     }
-
-    // Outros campos textuais (complemento, numero, email)
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((p) => ({ ...p, [name]: value }));
   };
 
   const handleBlurDocumento = (e) => {
@@ -72,15 +58,17 @@ export function EntityForm({ form, setForm }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert(
-      `${form.entityType === "client" ? "Cliente" : "Fornecedor"} cadastrado!\n` +
-      JSON.stringify(form, null, 2),
-    );
+    alert(`${ENTITY_LABEL[form.entityType] || "Entidade"} cadastrado!\n` + JSON.stringify(form, null, 2));
   };
 
-  // Computed values
   const isClient = form.entityType === "client";
   const documentIsCnpj = isDocumentCnpj(form.documento);
+  const formatted = {
+    ...form,
+    documento: formatCpfCnpj(form.documento),
+    cep: formatCep(form.cep),
+    telefone: formatTelefone(form.telefone),
+  };
 
   return (
     <FormContainer
@@ -88,56 +76,28 @@ export function EntityForm({ form, setForm }) {
       onSubmit={handleSubmit}
     >
       <div >
-        {/* Seção Tipo e Documento */}
-        <div className="card p-6 space-y-2">
+        <div className="card p-1 space-y-2">
           <EntityTypeSelector value={form.entityType} onChange={handleChange} />
           <DocumentSection
-            form={{
-              ...form,
-              documento: formatCpfCnpj(form.documento),
-            }}
+            form={formatted}
             isDocumentCnpj={documentIsCnpj}
             onChange={handleChange}
             onBlurDocumento={handleBlurDocumento}
           />
         </div>
-
-        {/* Seções Endereço e Contato em Grid Responsivo */}
         <div className="grid gap-2 lg:grid-cols-2">
           <div className="card p-1 space-y-2">
-            <AddressSection
-              form={{
-                ...form,
-                cep: formatCep(form.cep),
-              }}
-              onChange={handleChange}
-            />
+            <AddressSection form={formatted} onChange={handleChange} />
           </div>
-
           <div className="card p-1 space-y-2">
-            <ContactSection
-              form={{
-                ...form,
-                telefone: formatTelefone(form.telefone),
-              }}
-              onChange={handleChange}
-            />
-
+            <ContactSection form={formatted} onChange={handleChange} />
           </div>
           <div className="card p-1 space-y-2">
             <StatusToggle checked={form.ativo} onChange={handleChange} />
           </div>
         </div>
-
-        {/* Botão de Ação */}
-        <div className="flex justify-end pt-4">
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            fullWidth={false}
-            className="min-w-[120px]"
-          >
+        <div className="flex justify-end pt-1">
+          <Button type="submit" variant="primary" size="md" fullWidth={false} className="min-w-[120px]">
             Salvar
           </Button>
         </div>
