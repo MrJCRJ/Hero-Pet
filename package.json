@@ -10,7 +10,7 @@
     "lint:prettier:check": "prettier --check .",
     "lint:prettier:fix": "prettier --write .",
     "lint:eslint:check": "eslint .",
-    "test": "npm run services:up && jest --runInBand --verbose",
+    "test": "npm run services:up && jest --runInBand --verbose --detectOpenHandles",
     "test:with-next": "npm run services:up && concurrently -n next,jest --hide next -k -s command-jest \"next dev\" \"jest --runInBand --verbose\"",
     "posttest": "npm run services:stop",
     "test:watch": "jest --watchAll --runInBand --verbose",

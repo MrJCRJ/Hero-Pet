@@ -1,6 +1,11 @@
 import retry from "async-retry";
 import axios from "axios";
 
+let active = true; // flag para cancelar operações se necessário no teardown
+export function shutdownOrchestrator() {
+  active = false;
+}
+
 /**
  * Aguarda o servidor web responder 200 em /api/v1/status.
  * - Usa retries com backoff controlado.
@@ -33,6 +38,7 @@ async function waitForAllServices() {
     });
 
     async function fetchStatusPage() {
+      if (!active) throw new Error('Orchestrator aborted');
       attemptCounter++;
       const response = await axios.get("http://localhost:3000/api/v1/status", {
         timeout: 4000,

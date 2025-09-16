@@ -25,5 +25,6 @@ module.exports = async () => {
   await new Promise((resolve) => server.listen(3000, resolve));
 
   global.__NEXT_TEST_SERVER__ = server;
+  global.__NEXT_TEST_APP__ = app; // para fechar watchers no teardown
   console.log("[globalSetup] Servidor Next iniciado em http://localhost:3000");
 };
