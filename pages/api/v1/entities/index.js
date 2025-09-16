@@ -1,6 +1,6 @@
 // pages/api/v1/entities/index.js
 import database from "infra/database";
-import { isConnectionError } from "lib/errors";
+import { isConnectionError, isRelationMissing } from "lib/errors";
 import {
   classifyDocument as sharedClassify,
   stripDigits as sharedStrip,
@@ -123,6 +123,14 @@ async function getEntities(req, res) {
     return res.status(200).json(result.rows);
   } catch (e) {
     console.error("GET /entities error", e);
+    if (isRelationMissing(e)) {
+      return res.status(503).json({
+        error: 'Schema not migrated (entities table missing)',
+        dependency: 'database',
+        code: e.code,
+        action: 'Run migrations endpoint or apply migrations before use',
+      });
+    }
     if (isConnectionError(e)) {
       return res.status(503).json({
         error: "Database unreachable",

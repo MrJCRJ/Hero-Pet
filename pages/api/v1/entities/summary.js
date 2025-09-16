@@ -1,6 +1,6 @@
 // pages/api/v1/entities/summary.js
 import database from "infra/database";
-import { isConnectionError } from "lib/errors";
+import { isConnectionError, isRelationMissing } from "lib/errors";
 
 export default async function summary(req, res) {
   if (req.method !== "GET") {
@@ -29,6 +29,14 @@ export default async function summary(req, res) {
     });
   } catch (e) {
     console.error("GET /entities/summary error", e);
+    if (isRelationMissing(e)) {
+      return res.status(503).json({
+        error: 'Schema not migrated (entities table missing)',
+        dependency: 'database',
+        code: e.code,
+        action: 'Run migrations endpoint or apply migrations before use',
+      });
+    }
     if (isConnectionError(e)) {
       return res.status(503).json({
         error: "Database unreachable",
