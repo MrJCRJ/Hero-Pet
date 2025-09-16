@@ -7,17 +7,19 @@ export function StatusDot({ status, className = "" }) {
     healthy: "bg-green-500 animate-pulse",
     online: "bg-green-500 animate-pulse",
     good: "bg-green-500 animate-pulse",
+    valid: "bg-green-500 animate-pulse",
 
-    degraded: "bg-yellow-500",
-    warning: "bg-yellow-500",
+    degraded: "bg-yellow-500 animate-pulse",
+    warning: "bg-yellow-500 animate-pulse",
+    pending: "bg-yellow-500 animate-pulse",
 
-    provisional: "bg-orange-500",
-    progressing: "bg-orange-500",
+    provisional: "bg-orange-500 animate-pulse",
+    progressing: "bg-orange-500 animate-pulse",
 
-    offline: "bg-red-500",
-    error: "bg-red-500",
-    down: "bg-red-500",
-    bad: "bg-red-500",
+    offline: "bg-red-500 animate-pulse",
+    error: "bg-red-500 animate-pulse",
+    down: "bg-red-500 animate-pulse",
+    bad: "bg-red-500 animate-pulse",
   };
 
   return (

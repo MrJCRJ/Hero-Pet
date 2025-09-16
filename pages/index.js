@@ -11,6 +11,7 @@ import { Button } from "../components/ui/Button";
 import React, { useState } from "react";
 import { EntitiesBrowser } from "components/entity/EntitiesBrowser";
 
+
 const formConfig = {
   entity: {
     label: "Cadastro",
@@ -98,7 +99,9 @@ function Home() {
           )}
         </>
       )}
+
     </div>
+
   );
 }
 

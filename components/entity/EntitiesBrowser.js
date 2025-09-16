@@ -1,3 +1,4 @@
+// components/entity/EntitiesBrowser.js
 import React from 'react';
 import { Button } from 'components/ui/Button';
 import { usePaginatedEntities } from 'hooks/usePaginatedEntities';
