@@ -20,6 +20,13 @@ export function DocumentSection({
   const rawStatus = form.document_status || "";
   const visualStatus = rawStatus;
 
+  const STATUS_LABEL_PT = {
+    pending: 'PENDENTE',
+    provisional: 'PROVISÓRIO',
+    valid: 'VALIDADO',
+  };
+  const statusText = STATUS_LABEL_PT[rawStatus];
+
   // IDs para acessibilidade das mensagens dinâmicas
   const provisionalMsgId = "documento-provisional-msg";
   const pendingMsgId = "documento-pending-msg";
@@ -51,6 +58,11 @@ export function DocumentSection({
               status={visualStatus}
               className="shadow ring-1 ring-[var(--color-border)]"
             />
+            {statusText && (
+              <span className="text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)]">
+                {statusText}
+              </span>
+            )}
           </div>
         )}
         <div className="h-4 w-px bg-[var(--color-border)]" aria-hidden="true" />

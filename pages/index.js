@@ -1,26 +1,17 @@
 import { useStatus } from "../hooks/useStatus";
 import { useAuth } from "../hooks/useAuth";
-import { useFormManager } from "../hooks/useFormManager";
 import { AccessForm } from "../components/admin/AccessForm";
 import { AdminHeader } from "../components/admin/AdminHeader";
 import { StatusNav } from "../components/layout/StatusNav";
 import { ThemeToggle } from "../components/ThemeToggle";
-import { EntityForm } from "../components/EntityForm";
+import React, { useState } from "react";
+import { EntitiesManager } from "components/entity";
 import { PedidoForm } from "../components/PedidoForm";
 import { Button } from "../components/ui/Button";
-import React, { useState } from "react";
-import { EntitiesBrowser } from "components/entity/EntitiesBrowser";
-
 
 const formConfig = {
-  entity: {
-    label: "Cadastro",
-    Component: EntityForm,
-  },
-  order: {
-    label: "Pedido",
-    Component: PedidoForm,
-  },
+  entities: { label: "Cliente / Fornecedor", Component: EntitiesManager },
+  orders: { label: "Pedido", Component: PedidoForm },
 };
 
 function Home() {
@@ -33,8 +24,7 @@ function Home() {
     handleAccessCodeSubmit,
     handleLogout,
   } = useAuth();
-  const { handleShowForm, getFormProps, isFormVisible } = useFormManager();
-  const [showEntitiesList, setShowEntitiesList] = useState(false);
+  const [activeForm, setActiveForm] = useState('entities');
 
   if (loading)
     return (
@@ -72,31 +62,23 @@ function Home() {
             {Object.entries(formConfig).map(([key, { label }]) => (
               <Button
                 key={key}
-                onClick={() => handleShowForm(key)}
-                variant={isFormVisible(key) ? "primary" : "secondary"}
+                onClick={() => setActiveForm(key)}
+                variant={activeForm === key ? "primary" : "secondary"}
                 fullWidth={false}
               >
                 {label}
               </Button>
             ))}
-            <Button
-              onClick={() => setShowEntitiesList((v) => !v)}
-              variant={showEntitiesList ? "primary" : "secondary"}
-              fullWidth={false}
-            >
-              {showEntitiesList ? "Fechar Lista" : "Listar Entidades"}
-            </Button>
           </div>
-          {Object.entries(formConfig).map(([key, { Component }]) =>
-            isFormVisible(key) ? (
-              <Component key={key} {...getFormProps(key)} />
-            ) : null,
-          )}
-          {showEntitiesList && (
-            <div className="mt-8 border-t pt-6">
-              <EntitiesBrowser limit={20} compact />
-            </div>
-          )}
+          <div className="mb-8">
+            {(() => {
+              const active = formConfig[activeForm];
+              if (!active) return null;
+              const { Component } = active;
+              if (Component === EntitiesManager) return <Component browserLimit={20} />;
+              return <Component />;
+            })()}
+          </div>
         </>
       )}
 

@@ -4,6 +4,41 @@ import { Button } from 'components/ui/Button';
 import { usePaginatedEntities } from 'hooks/usePaginatedEntities';
 import { formatCpfCnpj } from './utils';
 
+// Opções de status reutilizadas em filtro e potencialmente em badges futuras
+const STATUS_OPTIONS = ['', 'pending', 'provisional', 'valid'];
+
+// Cabeçalhos da tabela declarativos
+const COLUMN_DEFS = [
+  { key: 'name', label: 'Nome' },
+  { key: 'entity_type', label: 'Tipo' },
+  { key: 'document', label: 'Documento' },
+  { key: 'document_status', label: 'Status' },
+  { key: 'document_pending', label: 'Pending?' },
+  { key: 'created_at', label: 'Criado' },
+];
+
+// Mapeamento simples para classes de status
+const STATUS_CLASS = {
+  valid: 'badge badge-success',
+  pending: 'badge badge-warning',
+  provisional: 'badge badge-info',
+};
+
+// Função de formatação do documento (evita lógica inline na célula)
+function formatDocumentDigits(row) {
+  if (row.document_digits) return formatCpfCnpj(row.document_digits);
+  if (row.document_pending) return '(pendente)';
+  return '—';
+}
+
+// Renderiza grupo de badges de summary (status ou pending) de modo uniforme
+function SummaryBadges({ entries, prefix }) {
+  if (!entries) return null;
+  return Object.entries(entries).map(([k, v]) => (
+    <Badge key={prefix + k} label={`${prefix}${k}`} value={v} />
+  ));
+}
+
 /**
  * Componente de listagem e filtros de Entities reutilizável.
  * Props:
@@ -11,15 +46,15 @@ import { formatCpfCnpj } from './utils';
  * - compact: reduz tipografia/padding (para uso inline no dashboard)
  */
 export function EntitiesBrowser({ limit = 20, compact = false }) {
+  const state = usePaginatedEntities({ limit });
   const {
     rows, total, summary,
     loading, loadingMore, error,
     statusFilter, pendingOnly, canLoadMore,
-    setStatusFilter, setPendingOnly, loadMore
-  } = usePaginatedEntities({ limit });
+    setStatusFilter, setPendingOnly, loadMore,
+  } = state;
 
   const textSize = compact ? 'text-xs' : 'text-sm';
-  // tableText removido (não utilizado após ajustes de design)
 
   return (
     <div className={`space-y-4 ${textSize}`}>
@@ -30,12 +65,8 @@ export function EntitiesBrowser({ limit = 20, compact = false }) {
           {summary && (
             <div className="flex gap-2 flex-wrap text-[10px]">
               <Badge label="Total" value={summary.total} />
-              {Object.entries(summary.by_status || {}).map(([k, v]) => (
-                <Badge key={k} label={`Status:${k}`} value={v} />
-              ))}
-              {Object.entries(summary.by_pending || {}).map(([k, v]) => (
-                <Badge key={k} label={`Pending:${k}`} value={v} />
-              ))}
+              <SummaryBadges entries={summary.by_status} prefix="Status:" />
+              <SummaryBadges entries={summary.by_pending} prefix="Pending:" />
             </div>
           )}
         </div>
@@ -45,7 +76,6 @@ export function EntitiesBrowser({ limit = 20, compact = false }) {
           pendingOnly={pendingOnly}
           onPendingChange={setPendingOnly}
           loading={loading}
-          compact={compact}
         />
       </div>
       {error && (
@@ -76,10 +106,9 @@ function Filters({ statusFilter, onStatusChange, pendingOnly, onPendingChange, l
           value={statusFilter}
           onChange={(e) => onStatusChange(e.target.value)}
         >
-          <option value="">(todos)</option>
-          <option value="pending">pending</option>
-          <option value="provisional">provisional</option>
-          <option value="valid">valid</option>
+          {STATUS_OPTIONS.map(opt => (
+            <option key={opt || 'all'} value={opt}>{opt || '(todos)'}</option>
+          ))}
         </select>
       </div>
       <label className="flex items-center gap-2 text-[10px] cursor-pointer">
@@ -91,9 +120,7 @@ function Filters({ statusFilter, onStatusChange, pendingOnly, onPendingChange, l
         />
         Apenas pending
       </label>
-      {loading && (
-        <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>
-      )}
+      {loading && <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>}
     </div>
   );
 }
@@ -105,25 +132,20 @@ function Table({ rows, loading, total, onLoadMore, canLoadMore, loadingMore, com
       <table className={`min-w-full ${sizeCls}`}>
         <thead className="bg-gray-100">
           <tr>
-            <Th>Nome</Th>
-            <Th>Tipo</Th>
-            <Th>Documento</Th>
-            <Th>Status</Th>
-            <Th>Pending?</Th>
-            <Th>Criado</Th>
+            {COLUMN_DEFS.map(col => <Th key={col.key}>{col.label}</Th>)}
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 && !loading && (
             <tr>
-              <td colSpan={6} className="text-center py-6 text-gray-500">Nenhum registro encontrado</td>
+              <td colSpan={COLUMN_DEFS.length} className="text-center py-6 text-gray-500">Nenhum registro encontrado</td>
             </tr>
           )}
           {rows.map(r => (
             <tr key={r.id} className="border-t hover:bg-gray-50">
               <Td>{r.name}</Td>
               <Td>{r.entity_type}</Td>
-              <Td>{r.document_digits ? formatCpfCnpj(r.document_digits) : (r.document_pending ? '(pendente)' : '—')}</Td>
+              <Td>{formatDocumentDigits(r)}</Td>
               <Td><StatusBadge status={r.document_status} /></Td>
               <Td>{r.document_pending ? 'Sim' : 'Não'}</Td>
               <Td>{new Date(r.created_at).toLocaleDateString()}</Td>
@@ -132,11 +154,11 @@ function Table({ rows, loading, total, onLoadMore, canLoadMore, loadingMore, com
         </tbody>
         <tfoot>
           <tr className="bg-gray-50 text-[10px] text-gray-600">
-            <td colSpan={6} className="px-3 py-2">
+            <td colSpan={COLUMN_DEFS.length} className="px-3 py-2">
               <div className="flex items-center justify-between gap-2">
                 <span>Total exibido: {rows.length} / Total filtrado: {total}</span>
                 <div className="flex items-center gap-2">
-                  {loading && (<span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>)}
+                  {loading && <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>}
                   {canLoadMore && (
                     <Button
                       variant="secondary"
@@ -165,8 +187,6 @@ function Th({ children }) { return <th className="text-left px-3 py-2 font-mediu
 function Td({ children }) { return <td className="px-3 py-2 whitespace-nowrap align-top">{children}</td>; }
 
 function StatusBadge({ status }) {
-  const map = { valid: 'badge badge-success', pending: 'badge badge-warning', provisional: 'badge badge-info' };
-  const cls = map[status] || 'badge';
-  return <span className={cls}>{status}</span>;
+  return <span className={STATUS_CLASS[status] || 'badge'}>{status}</span>;
 }
 function Badge({ label, value }) { return <span className="badge badge-soft"><strong className="mr-1">{label}:</strong> {value}</span>; }
