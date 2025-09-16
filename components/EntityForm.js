@@ -1,19 +1,19 @@
 import React from "react";
 import { Button } from "./ui/Button";
 import { FormContainer } from "./ui/Form";
-import { EntityTypeSelector } from "./entity/EntityTypeSelector";
-import { DocumentSection } from "./entity/DocumentSection";
-import { AddressSection } from "./entity/AddressSection";
-import { ContactSection } from "./entity/ContactSection";
-import { StatusToggle } from "./entity/StatusToggle";
 import {
+  EntityTypeSelector,
+  DocumentSection,
+  AddressSection,
+  ContactSection,
+  StatusToggle,
   isDocumentCnpj,
   formatCpfCnpj,
   formatCep,
   formatTelefone,
   stripDigits,
   classifyDocument,
-} from "./entity/utils";
+} from "./entity";
 
 const DIGIT_LIMITS = Object.freeze({ documento: 14, cep: 8, telefone: 11 });
 const DIGIT_FIELDS = Object.keys(DIGIT_LIMITS);
