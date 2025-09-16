@@ -9,12 +9,14 @@ jest.setTimeout(35000);
 
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
-  await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
-    method: "POST",
-  });
-  if (![200, 201].includes(mig.status))
-    throw new Error("Falha migrações edge-cases");
+  // Garante que migrações globais já aplicadas permanecem; apenas limpa dados.
+  try {
+    await database.query('TRUNCATE TABLE entities RESTART IDENTITY CASCADE;');
+  } catch (_) {
+    // se tabela não existe (primeira execução), chama endpoint para aplicar
+    const mig = await fetch('http://localhost:3000/api/v1/migrations', { method: 'POST' });
+    if (![200, 201].includes(mig.status)) throw new Error('Falha migrações edge-cases');
+  }
 });
 
 describe("Entities edge cases", () => {
@@ -64,5 +66,22 @@ describe("Entities edge cases", () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.document_status).toBe("provisional");
+  });
+
+  test("POST duplicado (mesmo documento) deve retornar 409", async () => {
+    const body = {
+      name: "DUPLICADO",
+      entity_type: "PF",
+      document_digits: "52998224725", // válido
+      document_pending: false,
+    };
+    // primeiro create
+    const first = await fetch("http://localhost:3000/api/v1/entities", { method: 'POST', headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    expect(first.status).toBe(201);
+    // segundo igual
+    const second = await fetch("http://localhost:3000/api/v1/entities", { method: 'POST', headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    expect(second.status).toBe(409);
+    const secondBody = await second.json();
+    expect(secondBody.error).toMatch(/Documento já cadastrado|entidade com este documento/i);
   });
 });

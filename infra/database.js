@@ -11,7 +11,15 @@ async function query(queryObject) {
     console.error("Error connecting to the database:", error);
     throw error;
   } finally {
-    await client.end();
+    // Só encerra se a conexão foi estabelecida
+    if (client) {
+      try {
+        await client.end();
+      } catch (endErr) {
+        // log silencioso para não mascarar erro original
+        console.warn('Falha ao encerrar conexão PG:', endErr.message);
+      }
+    }
   }
 }
 

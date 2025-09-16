@@ -36,6 +36,18 @@ async function postEntity(req, res) {
 
     const status = deriveStatus(rawDigits, documentPending);
 
+    // Verifica duplicidade apenas se há dígitos (evita bloquear múltiplos pendentes sem doc)
+    if (rawDigits) {
+      const dupQuery = {
+        text: `SELECT id FROM entities WHERE document_digits = $1 LIMIT 1`,
+        values: [rawDigits],
+      };
+      const dupResult = await database.query(dupQuery);
+      if (dupResult.rows.length) {
+        return res.status(409).json({ error: 'Documento já cadastrado' });
+      }
+    }
+
     const insertQuery = {
       text: `INSERT INTO entities
         (name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, created_at, updated_at)
