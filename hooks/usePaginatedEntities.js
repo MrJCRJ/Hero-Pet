@@ -10,7 +10,8 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
  */
 export function usePaginatedEntities({ limit = 20 } = {}) {
   const [statusFilter, setStatusFilter] = useState("");
-  const [pendingOnly, setPendingOnly] = useState(false);
+  // profileFilter: '' | 'client' | 'supplier'
+  const [profileFilter, setProfileFilter] = useState("");
   const [page, setPage] = useState(0); // zero-based
   const [addressFillFilter, setAddressFillFilter] = useState("");
   const [contactFillFilter, setContactFillFilter] = useState("");
@@ -26,26 +27,26 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
   // Em ambiente de teste (NODE_ENV=test) o debounce é bypass para não flakiness.
   const lastFiltersRef = useRef({
     statusFilter,
-    pendingOnly,
+    profileFilter,
     addressFillFilter,
     contactFillFilter,
   });
   const [debouncedFilters, setDebouncedFilters] = useState(() => ({
     statusFilter,
-    pendingOnly,
+    profileFilter,
     addressFillFilter,
     contactFillFilter,
   }));
   useEffect(() => {
     const same =
       lastFiltersRef.current.statusFilter === statusFilter &&
-      lastFiltersRef.current.pendingOnly === pendingOnly &&
+      lastFiltersRef.current.profileFilter === profileFilter &&
       lastFiltersRef.current.addressFillFilter === addressFillFilter &&
       lastFiltersRef.current.contactFillFilter === contactFillFilter;
     if (same) return; // nada mudou
     lastFiltersRef.current = {
       statusFilter,
-      pendingOnly,
+      profileFilter,
       addressFillFilter,
       contactFillFilter,
     };
@@ -57,18 +58,18 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
       setDebouncedFilters(lastFiltersRef.current);
     }, 250);
     return () => clearTimeout(handle);
-  }, [statusFilter, pendingOnly, addressFillFilter, contactFillFilter]);
+  }, [statusFilter, profileFilter, addressFillFilter, contactFillFilter]);
 
   const queryString = useMemo(() => {
     const {
       statusFilter: sf,
-      pendingOnly: po,
+      profileFilter: pf,
       addressFillFilter: af,
       contactFillFilter: cf,
     } = debouncedFilters;
     const params = new URLSearchParams();
     if (sf) params.set("status", sf);
-    if (po) params.set("pending", "true");
+    if (pf) params.set("entity_type", pf === "client" ? "PF" : "PJ");
     if (af) params.set("address_fill", af);
     if (cf) params.set("contact_fill", cf);
     params.set("meta", "1");
@@ -82,7 +83,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     setPage(0);
   }, [
     debouncedFilters.statusFilter,
-    debouncedFilters.pendingOnly,
+    debouncedFilters.profileFilter,
     debouncedFilters.addressFillFilter,
     debouncedFilters.contactFillFilter,
   ]);
@@ -178,13 +179,13 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     loadingMore,
     error,
     statusFilter,
-    pendingOnly,
+    profileFilter,
     addressFillFilter,
     contactFillFilter,
     canLoadMore,
     // ações
     setStatusFilter,
-    setPendingOnly,
+    setProfileFilter,
     setAddressFillFilter,
     setContactFillFilter,
     loadMore,
