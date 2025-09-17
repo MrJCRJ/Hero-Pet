@@ -3,12 +3,7 @@ import { Button } from "components/ui/Button";
 import { usePaginatedEntities } from "hooks/usePaginatedEntities";
 import { formatCpfCnpj } from "../shared/masks";
 import { useToast } from "components/entities/shared/toast";
-import {
-  classifyAddress,
-  classifyContact,
-  FILL_CLASS,
-  getCompletenessLegend,
-} from "components/entities/shared/completeness";
+import { classifyAddress, classifyContact, FILL_CLASS } from "lib/validation/completeness";
 
 const STATUS_OPTIONS = ["", "pending", "provisional", "valid"];
 const COLUMN_DEFS = [
@@ -113,7 +108,6 @@ export function EntitiesBrowser({ limit = 20, compact = false, onEdit, onDeleted
                   <SummaryBadges entries={summary.by_contact_fill} prefix="Contato:" />
                 )}
               </div>
-              <CompletenessLegend />
             </div>
           )}
         </div>
@@ -123,6 +117,10 @@ export function EntitiesBrowser({ limit = 20, compact = false, onEdit, onDeleted
           pendingOnly={pendingOnly}
           onPendingChange={setPendingOnly}
           loading={loading}
+          addressFillFilter={state.addressFillFilter}
+          onAddressFillChange={state.setAddressFillFilter}
+          contactFillFilter={state.contactFillFilter}
+          onContactFillChange={state.setContactFillFilter}
         />
       </div>
       {error && (
@@ -159,12 +157,18 @@ export function EntitiesBrowser({ limit = 20, compact = false, onEdit, onDeleted
   );
 }
 
+const FILL_OPTIONS = ["", "completo", "parcial", "vazio"];
+
 function Filters({
   statusFilter,
   onStatusChange,
   pendingOnly,
   onPendingChange,
   loading,
+  addressFillFilter,
+  onAddressFillChange,
+  contactFillFilter,
+  onContactFillChange,
 }) {
   return (
     <div className="flex flex-wrap gap-4 items-end">
@@ -202,6 +206,40 @@ function Filters({
           </span>
         </div>
       </div>
+      <div className="flex flex-col">
+        <label htmlFor="entities-address-fill" className="text-[10px] font-medium mb-1">Endereço</label>
+        <div className="relative">
+          <select
+            id="entities-address-fill"
+            disabled={loading}
+            className="peer appearance-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/70 backdrop-blur-sm rounded px-2 py-1 text-[10px] pr-6 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
+            value={addressFillFilter}
+            onChange={(e) => onAddressFillChange(e.target.value)}
+          >
+            {FILL_OPTIONS.map((opt) => (
+              <option key={opt || "all"} value={opt}>{opt || "(todos)"}</option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)]" aria-hidden="true">▼</span>
+        </div>
+      </div>
+      <div className="flex flex-col">
+        <label htmlFor="entities-contact-fill" className="text-[10px] font-medium mb-1">Contato</label>
+        <div className="relative">
+          <select
+            id="entities-contact-fill"
+            disabled={loading}
+            className="peer appearance-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/70 backdrop-blur-sm rounded px-2 py-1 text-[10px] pr-6 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
+            value={contactFillFilter}
+            onChange={(e) => onContactFillChange(e.target.value)}
+          >
+            {FILL_OPTIONS.map((opt) => (
+              <option key={opt || "all"} value={opt}>{opt || "(todos)"}</option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)]" aria-hidden="true">▼</span>
+        </div>
+      </div>
       <label className="flex items-center gap-2 text-[10px] cursor-pointer">
         <input
           type="checkbox"
@@ -223,7 +261,7 @@ function Filters({
 function Table({ rows, loading, total, onLoadMore, canLoadMore, loadingMore, compact, deletingId, onRowClick, highlightId, onRequestDelete }) {
   const sizeCls = compact ? "text-xs" : "text-sm";
   return (
-    <div className="border rounded overflow-x-auto" aria-describedby="legend-completeness">
+    <div className="border rounded overflow-x-auto">
       <table className={`min-w-full ${sizeCls}`}>
         <thead className="bg-[var(--color-bg-secondary)]">
           <tr>
@@ -337,23 +375,6 @@ function Badge({ label, value }) {
   );
 }
 
-function CompletenessLegend() {
-  const legend = getCompletenessLegend();
-  return (
-    <div className="mt-1 text-[10px] text-gray-500 flex flex-wrap items-center gap-2" id="legend-completeness">
-      <span className="font-semibold uppercase tracking-wide text-[9px] opacity-70">Legenda</span>
-      {Object.entries(legend).map(([k, v]) => (
-        <span key={k} className="inline-flex items-center gap-1">
-          <span className={FILL_CLASS[k]}>{k}</span>
-          <span className="sr-only">{v.title}: {v.desc}</span>
-        </span>
-      ))}
-      <span className="sr-only">
-        Completo: endereço exige CEP e Número; contato exige Telefone válido (&gt;=10 dígitos) e Email válido. Parcial: algum campo informado mas faltando outro ou inválido. Vazio: nenhum campo informado.
-      </span>
-    </div>
-  );
-}
 
 // Modal central de confirmação de exclusão
 function DeleteModal({ open, onClose, onConfirm, loading, entity }) {

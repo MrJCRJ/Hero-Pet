@@ -12,6 +12,8 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
   const [statusFilter, setStatusFilter] = useState("");
   const [pendingOnly, setPendingOnly] = useState(false);
   const [page, setPage] = useState(0); // zero-based
+  const [addressFillFilter, setAddressFillFilter] = useState("");
+  const [contactFillFilter, setContactFillFilter] = useState("");
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState(null);
@@ -25,16 +27,18 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     const params = new URLSearchParams();
     if (statusFilter) params.set("status", statusFilter);
     if (pendingOnly) params.set("pending", "true");
+    if (addressFillFilter) params.set("address_fill", addressFillFilter);
+    if (contactFillFilter) params.set("contact_fill", contactFillFilter);
     params.set("meta", "1");
     params.set("limit", String(limit));
     params.set("offset", String(page * limit));
     return params.toString();
-  }, [statusFilter, pendingOnly, page, limit]);
+  }, [statusFilter, pendingOnly, addressFillFilter, contactFillFilter, page, limit]);
 
   // Reset página ao alterar filtros
   useEffect(() => {
     setPage(0);
-  }, [statusFilter, pendingOnly]);
+  }, [statusFilter, pendingOnly, addressFillFilter, contactFillFilter]);
 
   // Carregamento principal / incremental
   useEffect(() => {
@@ -128,10 +132,14 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     error,
     statusFilter,
     pendingOnly,
+    addressFillFilter,
+    contactFillFilter,
     canLoadMore,
     // ações
     setStatusFilter,
     setPendingOnly,
+    setAddressFillFilter,
+    setContactFillFilter,
     loadMore,
     refresh,
     reload,
