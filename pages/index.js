@@ -5,7 +5,7 @@ import { AdminHeader } from "../components/admin/AdminHeader";
 import { StatusNav } from "../components/layout/StatusNav";
 import { ThemeToggle } from "../components/ThemeToggle";
 import React, { useState } from "react";
-import { EntitiesManager } from "components/entity";
+import { EntitiesManager } from "components/entities";
 import { PedidoForm } from "../components/PedidoForm";
 import { Button } from "../components/ui/Button";
 

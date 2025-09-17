@@ -1,11 +1,11 @@
+// Estado e derivação de formulário de entidade (migrado de components/entity/formState.js)
+import { stripDigits, classifyDocument } from "lib/validation/document";
 import {
-  stripDigits,
-  classifyDocument,
   formatCpfCnpj,
   formatCep,
   formatTelefone,
   isDocumentCnpj,
-} from "./utils";
+} from "../../entities/shared/masks";
 
 export const DIGIT_LIMITS = Object.freeze({
   documento: 14,
@@ -36,7 +36,6 @@ export function applyChange(prev, { name, value, type, checked }) {
   if (type === "radio" && name === "entityType") {
     return { ...prev, entityType: value };
   }
-
   if (type === "checkbox" && name === "documento_pendente") {
     return {
       ...prev,
@@ -45,20 +44,12 @@ export function applyChange(prev, { name, value, type, checked }) {
       document_status: checked ? "pending" : prev.document_status,
     };
   }
-
-  if (type === "checkbox") {
-    return { ...prev, [name]: checked };
-  }
-
+  if (type === "checkbox") return { ...prev, [name]: checked };
   if (DIGIT_FIELDS.includes(name)) {
     const digits = stripDigits(value).slice(0, DIGIT_LIMITS[name]);
     return { ...prev, [name]: digits };
   }
-
-  if (UPPER_FIELDS.has(name)) {
-    return { ...prev, [name]: value.toUpperCase() };
-  }
-
+  if (UPPER_FIELDS.has(name)) return { ...prev, [name]: value.toUpperCase() };
   return { ...prev, [name]: value };
 }
 

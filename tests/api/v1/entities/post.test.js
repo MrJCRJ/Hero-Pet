@@ -33,6 +33,9 @@ describe("POST /api/v1/entities (TDD inicial)", () => {
       cep: "01001000",
       telefone: "11988887777",
       email: "joao@example.com",
+      numero: "123",
+      complemento: "FUNDOS",
+      ativo: true,
     };
 
     const response = await fetch("http://localhost:3000/api/v1/entities", {
@@ -53,6 +56,9 @@ describe("POST /api/v1/entities (TDD inicial)", () => {
     expect(body).toHaveProperty("document_pending", true);
     expect(body).toHaveProperty("created_at");
     expect(body).toHaveProperty("updated_at");
+    expect(body).toHaveProperty("numero", payload.numero);
+    expect(body).toHaveProperty("complemento", payload.complemento);
+    expect(body).toHaveProperty("ativo", true);
 
     // Regras de status esperadas para documento vazio + pendente
     expect(body.document_status).toBe("pending");
@@ -68,6 +74,9 @@ describe("POST /api/v1/entities (TDD inicial)", () => {
       entity_type: "PF",
       document_digits: "39053344705",
       document_pending: false,
+      numero: "45B",
+      complemento: "SALA 2",
+      ativo: true,
     };
 
     const response = await fetch("http://localhost:3000/api/v1/entities", {
@@ -82,6 +91,9 @@ describe("POST /api/v1/entities (TDD inicial)", () => {
     expect(body.document_digits).toBe(payload.document_digits);
     expect(body.document_status).toBe("valid");
     expect(body.document_pending).toBe(false);
+    expect(body).toHaveProperty("numero", payload.numero);
+    expect(body).toHaveProperty("complemento", payload.complemento);
+    expect(body).toHaveProperty("ativo", true);
   });
 
   test("Deve classificar como provisional quando CPF parcial enviado", async () => {

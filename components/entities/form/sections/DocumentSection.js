@@ -1,12 +1,13 @@
-// components/entity/DocumentSection.js
-
 import React from "react";
-import { FormField } from "../ui/Form";
-import { StatusDot } from "../entities/shared/StatusDot";
+import { FormField } from "components/ui/Form";
+import { StatusDot } from "components/entities/shared/StatusDot";
+import { DOCUMENT_STATUS } from "lib/constants/documentStatus";
 
 const MESSAGES = {
-  provisional: `Documento não passou na validação. Será salvo como provisório, atualize quando tiver o oficial.`,
-  pending: `Marcação de pendência: você pode salvar sem informar o documento agora.`,
+  [DOCUMENT_STATUS.PROVISIONAL]:
+    "Documento não passou na validação. Será salvo como provisório, atualize quando tiver o oficial.",
+  [DOCUMENT_STATUS.PENDING]:
+    "Marcação de pendência: você pode salvar sem informar o documento agora.",
 };
 
 export function DocumentSection({
@@ -19,21 +20,17 @@ export function DocumentSection({
   const labelNome = isDocumentCnpj ? "Razão Social" : "Nome";
   const rawStatus = form.document_status || "";
   const visualStatus = rawStatus;
-
   const STATUS_LABEL_PT = {
-    pending: "PENDENTE",
-    provisional: "PROVISÓRIO",
-    valid: "VALIDADO",
+    [DOCUMENT_STATUS.PENDING]: "PENDENTE",
+    [DOCUMENT_STATUS.PROVISIONAL]: "PROVISÓRIO",
+    [DOCUMENT_STATUS.VALID]: "VALIDADO",
   };
   const statusText = STATUS_LABEL_PT[rawStatus];
-
-  // IDs para acessibilidade das mensagens dinâmicas
   const provisionalMsgId = "documento-provisional-msg";
   const pendingMsgId = "documento-pending-msg";
-
-  // Define qual mensagem deve ser associada via aria-describedby ao campo de documento
   const describedBy = [
-    form.document_status === "provisional" && !form.documento_pendente
+    form.document_status === DOCUMENT_STATUS.PROVISIONAL &&
+    !form.documento_pendente
       ? provisionalMsgId
       : null,
     form.documento_pendente ? pendingMsgId : null,
@@ -43,7 +40,6 @@ export function DocumentSection({
 
   return (
     <div className="space-y-4">
-      {/* Cabeçalho da seção com título, dot de status e checkbox de pendência */}
       <div className="flex items-center flex-wrap gap-3">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
           {isDocumentCnpj ? "Dados da Empresa" : "Dados Pessoais"}
@@ -86,8 +82,6 @@ export function DocumentSection({
           </label>
         </div>
       </div>
-
-      {/* Campos principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ">
         <FormField
           label={labelNome}
@@ -115,22 +109,20 @@ export function DocumentSection({
           autoComplete={isDocumentCnpj ? "organization" : "off"}
         />
       </div>
-
-      {/* Mensagens dinâmicas informativas */}
       {form.documento &&
         !form.documento_pendente &&
-        form.document_status === "provisional" && (
+        form.document_status === DOCUMENT_STATUS.PROVISIONAL && (
           <p
             id={provisionalMsgId}
             className=" text-xs text-amber-600"
             role="note"
           >
-            {MESSAGES.provisional}
+            {MESSAGES[DOCUMENT_STATUS.PROVISIONAL]}
           </p>
         )}
       {form.documento_pendente && (
         <p id={pendingMsgId} className=" text-xs text-gray-500" role="note">
-          {MESSAGES.pending}
+          {MESSAGES[DOCUMENT_STATUS.PENDING]}
         </p>
       )}
     </div>

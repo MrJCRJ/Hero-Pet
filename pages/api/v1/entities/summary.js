@@ -1,10 +1,22 @@
 // pages/api/v1/entities/summary.js
 import database from "infra/database";
-import { isConnectionError } from "lib/errors";
+import {
+  SQL_PHONE_FIXED,
+  SQL_PHONE_MOBILE,
+  SQL_EMAIL,
+} from "lib/validation/patterns";
+import { isConnectionError, isRelationMissing } from "lib/errors";
 
 export default async function summary(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: `Method ${req.method} not allowed` });
+  }
+  function computePercentages(map, totalCount) {
+    const out = {};
+    for (const [k, v] of Object.entries(map || {})) {
+      out[k] = totalCount ? Number(((v / totalCount) * 100).toFixed(1)) : 0;
+    }
+    return out;
   }
   try {
     const byStatus = await database.query({
@@ -13,10 +25,40 @@ export default async function summary(req, res) {
     const byPending = await database.query({
       text: `SELECT document_pending AS pending, COUNT(*)::int AS count FROM entities GROUP BY document_pending`,
     });
+    // Agregados de completude endereço
+    const byAddressFill = await database.query({
+      text: `SELECT
+        CASE
+          WHEN cep IS NOT NULL AND cep <> '' AND numero IS NOT NULL AND numero <> '' THEN 'completo'
+          WHEN ( (cep IS NOT NULL AND cep <> '') OR (numero IS NOT NULL AND numero <> '') ) THEN 'parcial'
+          ELSE 'vazio'
+        END AS fill,
+        COUNT(*)::int AS count
+      FROM entities
+      GROUP BY 1`,
+    });
+    // Agregados de completude contato
+    const byContactFill = await database.query({
+      text: `SELECT
+        CASE
+          WHEN ( (telefone ~ '${SQL_PHONE_FIXED}') OR (telefone ~ '${SQL_PHONE_MOBILE}') ) AND (email ~* '${SQL_EMAIL}') THEN 'completo'
+          WHEN ( (telefone IS NOT NULL AND telefone <> '') OR (email IS NOT NULL AND email <> '') ) THEN 'parcial'
+          ELSE 'vazio'
+        END AS fill,
+        COUNT(*)::int AS count
+      FROM entities
+      GROUP BY 1`,
+    });
     const total = await database.query(
       "SELECT COUNT(*)::int AS total FROM entities",
     );
-    res.status(200).json({
+    const totalCount = total.rows[0].total;
+    const ensureCats = (map) => ({
+      completo: map.completo || 0,
+      parcial: map.parcial || 0,
+      vazio: map.vazio || 0,
+    });
+    const json = {
       total: total.rows[0].total,
       by_status: byStatus.rows.reduce((acc, r) => {
         acc[r.status] = r.count;
@@ -26,9 +68,39 @@ export default async function summary(req, res) {
         acc[r.pending] = r.count;
         return acc;
       }, {}),
-    });
+      by_address_fill: ensureCats(
+        byAddressFill.rows.reduce((acc, r) => {
+          acc[r.fill] = r.count;
+          return acc;
+        }, {}),
+      ),
+      by_contact_fill: ensureCats(
+        byContactFill.rows.reduce((acc, r) => {
+          acc[r.fill] = r.count;
+          return acc;
+        }, {}),
+      ),
+    };
+    // Percentuais (0-100) arredondados 1 casa
+    json.percent_address_fill = computePercentages(
+      json.by_address_fill,
+      totalCount,
+    );
+    json.percent_contact_fill = computePercentages(
+      json.by_contact_fill,
+      totalCount,
+    );
+    res.status(200).json(json);
   } catch (e) {
     console.error("GET /entities/summary error", e);
+    if (isRelationMissing(e)) {
+      return res.status(503).json({
+        error: "Schema not migrated (entities table missing)",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations endpoint or apply migrations before use",
+      });
+    }
     if (isConnectionError(e)) {
       return res.status(503).json({
         error: "Database unreachable",

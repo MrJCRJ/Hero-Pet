@@ -1,4 +1,4 @@
-import { StatusDot } from "../common/StatusDot.js";
+import { StatusDot } from "../entities/shared/StatusDot.js";
 
 // 🔹 Navbar simples de status (apenas bolinha + label)
 export function StatusNav({ status, compact = false }) {

@@ -1,6 +1,5 @@
-// components/entity/AddressSection.js
 import React from "react";
-import { FormField } from "../ui/Form";
+import { FormField } from "components/ui/Form";
 
 export function AddressSection({ form, onChange }) {
   return (
@@ -23,7 +22,6 @@ export function AddressSection({ form, onChange }) {
           onChange={onChange}
         />
       </div>
-
       <FormField
         label="Complemento"
         name="complemento"

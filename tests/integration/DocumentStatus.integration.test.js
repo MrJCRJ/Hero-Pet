@@ -1,7 +1,13 @@
 import React, { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { EntityForm } from "components/EntityForm";
+import {
+  EntityTypeSelector,
+  DocumentSection,
+  applyChange,
+  applyDocumentBlur,
+  computeDerived,
+} from "components/entities";
 
 function Wrapper({ initial }) {
   const [form, setForm] = useState({
@@ -18,7 +24,21 @@ function Wrapper({ initial }) {
     ativo: true,
     ...initial,
   });
-  return <EntityForm form={form} setForm={setForm} />;
+  const derived = computeDerived(form);
+  return (
+    <div>
+      <EntityTypeSelector
+        value={form.entityType}
+        onChange={(e) => setForm((p) => applyChange(p, e.target))}
+      />
+      <DocumentSection
+        form={derived.formatted}
+        isDocumentCnpj={derived.documentIsCnpj}
+        onChange={(e) => setForm((p) => applyChange(p, e.target))}
+        onBlurDocumento={() => setForm((p) => applyDocumentBlur(p))}
+      />
+    </div>
+  );
 }
 
 function setup(initial) {

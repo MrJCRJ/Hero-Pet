@@ -77,6 +77,7 @@ async function status(request, response) {
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
               version: pkg.version,
             },
+            overall: "offline",
           },
         });
       }
@@ -90,27 +91,37 @@ async function status(request, response) {
   response.setHeader("Cache-Control", "no-store");
 
   // 🔹 Monta resposta
+  const databaseDep = {
+    status: "healthy",
+    version: postgresVersion.rows[0].server_version,
+    max_connections: parseInt(maxConnections.rows[0].max_connections),
+    current_connections: currentConnections.rows[0].count,
+    opened_connections: currentConnections.rows[0].count,
+    latency: timings,
+  };
+  const webserverDep = {
+    status: "healthy",
+    provider: process.env.VERCEL ? "vercel" : "local",
+    environment: process.env.NODE_ENV || "development",
+    aws_region: process.env.AWS_REGION || null,
+    vercel_region: process.env.VERCEL_REGION || null,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    version: pkg.version,
+  };
+  const statuses = [databaseDep.status, webserverDep.status];
+  let overall = "healthy";
+  if (statuses.some((s) => ["unreachable", "offline", "error"].includes(s))) {
+    overall = "offline";
+  } else if (statuses.some((s) => s !== "healthy")) {
+    overall = "degraded";
+  }
   response.status(200).json({
     method_received: request.method,
     updated_at: updatedAt,
     dependencies: {
-      database: {
-        status: "healthy",
-        version: postgresVersion.rows[0].server_version,
-        max_connections: parseInt(maxConnections.rows[0].max_connections),
-        current_connections: currentConnections.rows[0].count,
-        opened_connections: currentConnections.rows[0].count,
-        latency: timings,
-      },
-      webserver: {
-        status: "healthy",
-        provider: process.env.VERCEL ? "vercel" : "local",
-        environment: process.env.NODE_ENV || "development",
-        aws_region: process.env.AWS_REGION || null,
-        vercel_region: process.env.VERCEL_REGION || null,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        version: pkg.version,
-      },
+      database: databaseDep,
+      webserver: webserverDep,
+      overall,
     },
   });
 }

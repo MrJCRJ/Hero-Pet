@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { useToast } from "../ui/ToastProvider";
-import { Button } from "../ui/Button";
+import React, { useState, useEffect, useCallback } from "react";
+import { useToast } from "components/entities/shared/toast";
+import { Button } from "components/ui/Button";
+import { EntitiesBrowser } from "../list/EntitiesBrowser";
 import {
-  EntitiesBrowser,
   EntityTypeSelector,
   DocumentSection,
   AddressSection,
@@ -13,17 +13,30 @@ import {
   computeDerived,
   createInitialEntityForm,
 } from "./index";
-import { FormContainer } from "../ui/Form";
+import { FormContainer } from "components/ui/Form";
 
 export function EntitiesManager({ browserLimit = 20 }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(() => createInitialEntityForm());
+  const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // força remontar browser pós criação
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [lastEditedId, setLastEditedId] = useState(null);
   const { push } = useToast();
 
-  const toggleMode = () => setShowForm((v) => !v);
+  const toggleMode = () => {
+    setShowForm((v) => {
+      const next = !v;
+      if (next) {
+        // Abrindo form para novo cadastro: garantir reset se não estiver editando
+        if (!editingId) {
+          setForm(createInitialEntityForm());
+        }
+      }
+      return next;
+    });
+  };
   const handleChange = (e) => setForm((prev) => applyChange(prev, e.target));
   const handleBlurDocumento = () => setForm((prev) => applyDocumentBlur(prev));
 
@@ -41,9 +54,23 @@ export function EntitiesManager({ browserLimit = 20 }) {
         cep: form.cep || undefined,
         telefone: form.telefone || undefined,
         email: form.email || undefined,
+        numero: form.numero || undefined,
+        complemento: form.complemento || undefined,
+        ativo: form.ativo,
       };
-      const res = await fetch("/api/v1/entities", {
-        method: "POST",
+      let url = editingId
+        ? `/api/v1/entities/${editingId}`
+        : "/api/v1/entities";
+      if (typeof window === "undefined") {
+        // ambiente de teste server-side (precaução) - usar localhost
+        if (url.startsWith("/")) url = `http://localhost:3000${url}`;
+      } else if (url.startsWith("/")) {
+        // jsdom fetch wrapper já ajusta, mas garantimos
+        url = `${url}`;
+      }
+      const method = editingId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -54,13 +81,22 @@ export function EntitiesManager({ browserLimit = 20 }) {
             data.error || "Já existe uma entidade com este documento.",
           );
         }
-        throw new Error(data.error || `Falha ao salvar (status ${res.status})`);
+        throw new Error(
+          data.error ||
+            `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
+        );
       }
-      // sucesso
+      // Sucesso: registrar highlight antes de limpar editingId
+      if (editingId) setLastEditedId(editingId);
+      setEditingId(null);
       setForm(createInitialEntityForm());
       setShowForm(false);
       setRefreshKey((k) => k + 1);
-      push("Registro salvo com sucesso!");
+      push(
+        editingId
+          ? "Registro atualizado com sucesso!"
+          : "Registro salvo com sucesso!",
+      );
     } catch (err) {
       setError(err.message);
       push(err.message, { type: "error", timeout: 5000 });
@@ -69,6 +105,41 @@ export function EntitiesManager({ browserLimit = 20 }) {
     }
   };
   const { isClient, documentIsCnpj, formatted } = computeDerived(form);
+
+  function handleEditRow(row) {
+    // Preenche estado do formulário a partir da linha da tabela
+    setForm({
+      entityType: row.entity_type === "PF" ? "client" : "supplier",
+      nome: row.name || "",
+      documento: row.document_digits || "",
+      documento_pendente: row.document_pending,
+      document_status: row.document_status || "pending",
+      cep: row.cep || "",
+      telefone: row.telefone || "",
+      email: row.email || "",
+      complemento: row.complemento || "",
+      numero: row.numero || "",
+      ativo: row.ativo !== false, // default true
+    });
+    setEditingId(row.id);
+    setShowForm(true);
+  }
+
+  // ESC para cancelar edição
+  const escHandler = useCallback(
+    (e) => {
+      if (e.key === "Escape" && showForm) {
+        e.preventDefault();
+        setShowForm(false);
+        setEditingId(null);
+      }
+    },
+    [showForm],
+  );
+  useEffect(() => {
+    window.addEventListener("keydown", escHandler);
+    return () => window.removeEventListener("keydown", escHandler);
+  }, [escHandler]);
 
   if (!showForm) {
     return (
@@ -84,7 +155,13 @@ export function EntitiesManager({ browserLimit = 20 }) {
             {error}
           </div>
         )}
-        <EntitiesBrowser key={refreshKey} limit={browserLimit} compact />
+        <EntitiesBrowser
+          key={refreshKey}
+          limit={browserLimit}
+          compact
+          onEdit={handleEditRow}
+          highlightId={lastEditedId}
+        />
       </div>
     );
   }
@@ -96,7 +173,9 @@ export function EntitiesManager({ browserLimit = 20 }) {
     >
       <div className="space-y-4">
         <h2 className="text-base font-semibold">
-          Novo {isClient ? "Cliente" : "Fornecedor"}
+          {editingId
+            ? `Editando ${isClient ? "Cliente" : "Fornecedor"}`
+            : `Novo ${isClient ? "Cliente" : "Fornecedor"}`}
         </h2>
         <div className="card p-2 space-y-2">
           <EntityTypeSelector value={form.entityType} onChange={handleChange} />
@@ -143,7 +222,13 @@ export function EntitiesManager({ browserLimit = 20 }) {
             disabled={submitting}
             loading={submitting}
           >
-            {submitting ? "Salvando..." : "Salvar"}
+            {submitting
+              ? editingId
+                ? "Atualizando..."
+                : "Salvando..."
+              : editingId
+                ? "Atualizar"
+                : "Salvar"}
           </Button>
         </div>
       </div>
