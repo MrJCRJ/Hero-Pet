@@ -203,6 +203,26 @@ Caso seja necessário rastrear alterações de status/documento:
 | Máscara sobrescreve entrada parcial | Função não idempotente                    | Garantir formatação incremental e baseada em comprimento  |
 | Validação bloqueando fluxo          | Uso de validação hard                     | Manter classifyDocument soft e não impedir submit         |
 
+## Migrations & Schema Drift
+
+- Migrações em `infra/migrations/` devem ser aplicadas antes de endpoints começarem a usar novas colunas.
+- Erros do Postgres tratados:
+  - `42P01`: tabela ausente (ex: `entities`).
+  - `42703`: coluna ausente (schema desatualizado — coluna recém adicionada em código ainda não aplicada no banco).
+- O backend intercepta ambos e retorna 503 com `action: "Run POST /api/v1/migrations to apply pending migrations"`.
+
+### Checklist antes de usar nova coluna
+
+1. Criar migração (add column / index) em arquivo separado e idempotente.
+2. Adicionar testes que exercitam a coluna (criação, filtro, summary se aplicável).
+3. Garantir que código não falhe se coluna ainda não existir (feature flag ou fallback) OU coordenar deploy + migração na mesma janela.
+4. Atualizar README se for coluna relevante ao usuário final.
+
+### CI/CD Sugestão
+
+- Criar job que detecta diff em `infra/migrations/` no PR para `main` e alerta revisores.
+- Etapa de deploy: aplicar migrações (POST migrations endpoint ou ferramenta direta) antes de subir novo build.
+
 ## Quick Reference: utils.js
 
 ```

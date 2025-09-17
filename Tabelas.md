@@ -2,6 +2,54 @@
 
 ## Tabelas Principais
 
+### **Entities (Postgres)**
+
+Tabela consolidada para cadastro genérico (substitui a separação conceitual inicial de clientes/fornecedores no fluxo atual da aplicação):
+
+```sql
+entities (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  entity_type VARCHAR(2) NOT NULL,          -- 'PF' ou 'PJ'
+  document_digits VARCHAR(14) NOT NULL DEFAULT '',
+  document_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  document_pending BOOLEAN NOT NULL DEFAULT FALSE,
+  cep TEXT,
+  numero TEXT,
+  complemento TEXT,
+  telefone TEXT,
+  email TEXT,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+```
+
+Índices relevantes:
+
+```sql
+CREATE INDEX entities_document_status_index ON entities(document_status);
+CREATE INDEX entities_document_pending_index ON entities(document_pending);
+CREATE INDEX entities_entity_type_index ON entities(entity_type);
+CREATE INDEX entities_created_at_index ON entities(created_at);
+CREATE INDEX entities_ativo_index ON entities(ativo);
+CREATE UNIQUE INDEX uniq_entities_document_digits_not_empty ON entities(document_digits) WHERE document_digits <> '';
+```
+
+#### Regras de Classificação
+
+- `document_status`: calculado server-side a partir de `document_digits` + flag `document_pending` (pending | provisional | valid).
+- Completude de endereço: completo se `cep` e `numero` presentes; parcial se um deles; vazio caso contrário.
+- Completude de contato: completo se telefone válido (fixo 10 ou celular 11 com 9) E email válido; parcial se qualquer um preenchido; vazio caso contrário.
+
+#### Migrações & Erros de Schema
+
+- Migrações residem em `infra/migrations/` e devem ser aplicadas em produção antes de endpoints dependerem das colunas novas.
+- Erro `42P01` (tabela ausente) ou `42703` (coluna ausente) fará os endpoints retornarem 503 com instrução para executar `POST /api/v1/migrations`.
+- Pipeline recomendado: detectar diff em `infra/migrations/` → aplicar → deploy → smoke tests.
+
+---
+
 ### **Clientes**
 
 ```sql

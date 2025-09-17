@@ -168,6 +168,60 @@ npm start
 
 Certifique-se de ter as variáveis de ambiente de produção definidas (ex: `DATABASE_URL`). O script `start` não sobe containers ou executa migrações automaticamente; recomenda-se aplicar migrações via pipeline (CI/CD) antes do deploy.
 
+## Migrações de Banco & Erros de Schema
+
+As migrações ficam em `infra/migrations/` e são aplicadas em ordem pelo endpoint `POST /api/v1/migrations` ou por execução direta em pipeline CI/CD. Cada arquivo representa uma mudança atômica no schema.
+
+### Quando preciso aplicar?
+
+- Sempre que novos arquivos forem adicionados em `infra/migrations/` no merge para `main` / produção.
+- Se não houver arquivos novos, não é necessário rodar nada; o schema já está alinhado.
+
+### Erros Comuns
+
+| Código | Significado                                     | Tratamento                                         | Ação Sugerida                   |
+| ------ | ----------------------------------------------- | -------------------------------------------------- | ------------------------------- |
+| 42P01  | Tabela ausente (`entities` ainda não criada)    | API retorna 503 com mensagem de schema não migrado | Rodar `POST /api/v1/migrations` |
+| 42703  | Coluna ausente (ex: `numero` após nova release) | API retorna 503 indicando schema desatualizado     | Aplicar migrações pendentes     |
+
+O backend detecta ambos e responde 503 com payload orientando aplicar migrações:
+
+```json
+{
+  "error": "Schema not migrated or outdated (table/column missing)",
+  "dependency": "database",
+  "code": "42703",
+  "action": "Run POST /api/v1/migrations to apply pending migrations"
+}
+```
+
+### Fluxo Recomendado em CI/CD
+
+1. Rodar testes (garante consistência lógica).
+2. Detectar mudanças em `infra/migrations/` comparando com commit anterior.
+3. Se houver diffs, aplicar migrações no banco de produção (job dedicado, com lock se necessário).
+4. Fazer deploy da aplicação.
+5. Executar smoke tests (`/api/v1/status`, `/api/v1/entities/summary`).
+
+### Endpoint de Migrações (Uso Manual)
+
+```bash
+curl -X POST https://<host>/api/v1/migrations
+```
+
+Idealmente proteger com token (ex: header `Authorization`) antes de expor publicamente em produção.
+
+### Boas Práticas de Migração
+
+- Prefira mudanças aditivas (adicionar coluna) em vez de DROP imediato.
+- Para renomear/remover colunas: criar nova coluna, backfill, atualizar código, depois remover a antiga em uma migração posterior.
+- Índices pesados: avaliar execução fora de horário de pico ou usar `CONCURRENTLY` (se adotado no futuro via ferramenta apropriada).
+- Evite lógica demorada dentro da migração (backfills grandes podem ser scripts separados em batches).
+
+### Observabilidade
+
+Planejado: expor no `/api/v1/status` a última migração aplicada para auditoria rápida.
+
 ## Licença
 
 MIT
