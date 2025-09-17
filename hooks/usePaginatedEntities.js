@@ -100,6 +100,21 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     setPage(0); // triggers reload
   }, []);
 
+  // Reload força recarregar página atual (mantendo offset) ou opcionalmente reset
+  const reload = useCallback((opts = { reset: false }) => {
+    if (opts.reset) setPage(0);
+    else {
+      // pequeno hack: alterar page para mesmo valor não dispara efeito, então fazemos bounce
+      setPage((p) => {
+        return p === 0 ? 0 : p - 1; // se p>0 reduz para re-disparar na sequência
+      });
+      // microtask para voltar se tivemos bounce
+      queueMicrotask(() => {
+        setPage((p) => (p < 0 ? 0 : p));
+      });
+    }
+  }, []);
+
   const canLoadMore = rows.length < total && !loading && !loadingMore;
 
   return {
@@ -119,6 +134,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     setPendingOnly,
     loadMore,
     refresh,
+    reload,
     loadSummary,
   };
 }

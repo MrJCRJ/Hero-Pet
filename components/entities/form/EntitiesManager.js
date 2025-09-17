@@ -18,6 +18,7 @@ import { FormContainer } from "components/ui/Form";
 export function EntitiesManager({ browserLimit = 20 }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(() => createInitialEntityForm());
+  const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -42,8 +43,12 @@ export function EntitiesManager({ browserLimit = 20 }) {
         telefone: form.telefone || undefined,
         email: form.email || undefined,
       };
-      const res = await fetch("/api/v1/entities", {
-        method: "POST",
+      const url = editingId
+        ? `/api/v1/entities/${editingId}`
+        : "/api/v1/entities";
+      const method = editingId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -54,12 +59,20 @@ export function EntitiesManager({ browserLimit = 20 }) {
             data.error || "Já existe uma entidade com este documento.",
           );
         }
-        throw new Error(data.error || `Falha ao salvar (status ${res.status})`);
+        throw new Error(
+          data.error ||
+          `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
+        );
       }
       setForm(createInitialEntityForm());
       setShowForm(false);
+      setEditingId(null);
       setRefreshKey((k) => k + 1);
-      push("Registro salvo com sucesso!");
+      push(
+        editingId
+          ? "Registro atualizado com sucesso!"
+          : "Registro salvo com sucesso!",
+      );
     } catch (err) {
       setError(err.message);
       push(err.message, { type: "error", timeout: 5000 });
@@ -68,6 +81,25 @@ export function EntitiesManager({ browserLimit = 20 }) {
     }
   };
   const { isClient, documentIsCnpj, formatted } = computeDerived(form);
+
+  function handleEditRow(row) {
+    // Preenche estado do formulário a partir da linha da tabela
+    setForm({
+      entityType: row.entity_type === "PF" ? "client" : "supplier",
+      nome: row.name || "",
+      documento: row.document_digits || "",
+      documento_pendente: row.document_pending,
+      document_status: row.document_status || "pending",
+      cep: row.cep || "",
+      telefone: row.telefone || "",
+      email: row.email || "",
+      complemento: row.complemento || "",
+      numero: row.numero || "",
+      ativo: row.ativo !== false, // default true
+    });
+    setEditingId(row.id);
+    setShowForm(true);
+  }
 
   if (!showForm) {
     return (
@@ -83,7 +115,12 @@ export function EntitiesManager({ browserLimit = 20 }) {
             {error}
           </div>
         )}
-        <EntitiesBrowser key={refreshKey} limit={browserLimit} compact />
+        <EntitiesBrowser
+          key={refreshKey}
+          limit={browserLimit}
+          compact
+          onEdit={handleEditRow}
+        />
       </div>
     );
   }
@@ -95,7 +132,9 @@ export function EntitiesManager({ browserLimit = 20 }) {
     >
       <div className="space-y-4">
         <h2 className="text-base font-semibold">
-          Novo {isClient ? "Cliente" : "Fornecedor"}
+          {editingId
+            ? `Editando ${isClient ? "Cliente" : "Fornecedor"}`
+            : `Novo ${isClient ? "Cliente" : "Fornecedor"}`}
         </h2>
         <div className="card p-2 space-y-2">
           <EntityTypeSelector value={form.entityType} onChange={handleChange} />
@@ -142,7 +181,13 @@ export function EntitiesManager({ browserLimit = 20 }) {
             disabled={submitting}
             loading={submitting}
           >
-            {submitting ? "Salvando..." : "Salvar"}
+            {submitting
+              ? editingId
+                ? "Atualizando..."
+                : "Salvando..."
+              : editingId
+                ? "Atualizar"
+                : "Salvar"}
           </Button>
         </div>
       </div>

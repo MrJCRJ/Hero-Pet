@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "components/ui/Button";
 import { usePaginatedEntities } from "hooks/usePaginatedEntities";
 import { formatCpfCnpj } from "../shared/masks";
+import { useToast } from "components/entities/shared/toast";
 
 const STATUS_OPTIONS = ["", "pending", "provisional", "valid"];
 const COLUMN_DEFS = [
@@ -31,7 +32,12 @@ function SummaryBadges({ entries, prefix }) {
   ));
 }
 
-export function EntitiesBrowser({ limit = 20, compact = false }) {
+export function EntitiesBrowser({
+  limit = 20,
+  compact = false,
+  onEdit, // callback(row)
+  onDeleted, // callback(id)
+} = {}) {
   const state = usePaginatedEntities({ limit });
   const {
     rows,
@@ -46,8 +52,36 @@ export function EntitiesBrowser({ limit = 20, compact = false }) {
     setStatusFilter,
     setPendingOnly,
     loadMore,
+    reload,
   } = state;
   const textSize = compact ? "text-xs" : "text-sm";
+  // Hook de toast sempre chamado; provider garantido na página principal
+  const { push } = useToast();
+  const [deletingId, setDeletingId] = useState(null);
+
+  async function handleDelete(row) {
+    if (deletingId) return;
+    if (!window.confirm(`Confirma exclusão de ${row.name}?`)) return;
+    setDeletingId(row.id);
+    try {
+      const res = await fetch(`/api/v1/entities/${row.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Falha ao excluir (status ${res.status})`);
+      }
+      push(`Registro ${row.name} removido.`);
+      if (onDeleted) onDeleted(row.id);
+      else reload();
+    } catch (e) {
+      push(e.message, { type: "error", timeout: 6000 });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+  function handleEdit(row) {
+    if (onEdit) onEdit(row);
+    else push("Callback de edição não implementado", { type: "warn", timeout: 3000 });
+  }
   return (
     <div className={`space-y-4 ${textSize}`}>
       <div className="flex justify-between items-start flex-wrap gap-4">
@@ -87,6 +121,9 @@ export function EntitiesBrowser({ limit = 20, compact = false }) {
         canLoadMore={canLoadMore}
         loadingMore={loadingMore}
         compact={compact}
+        onDeleteRow={handleDelete}
+        deletingId={deletingId}
+        onRowClick={handleEdit}
       />
     </div>
   );
@@ -161,6 +198,10 @@ function Table({
   canLoadMore,
   loadingMore,
   compact,
+  onDeleteRow,
+  deletingId,
+  // reutiliza handleEdit via closure externa? usaremos data-click
+  onRowClick,
 }) {
   const sizeCls = compact ? "text-xs" : "text-sm";
   return (
@@ -171,13 +212,14 @@ function Table({
             {COLUMN_DEFS.map((col) => (
               <Th key={col.key}>{col.label}</Th>
             ))}
+            <Th>Ações</Th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 && !loading && (
             <tr>
               <td
-                colSpan={COLUMN_DEFS.length}
+                colSpan={COLUMN_DEFS.length + 1}
                 className="text-center py-6 "
               >
                 Nenhum registro encontrado
@@ -185,7 +227,11 @@ function Table({
             </tr>
           )}
           {rows.map((r) => (
-            <tr key={r.id} className="border-t hover:bg-[var(--color-bg-secondary)]">
+            <tr
+              key={r.id}
+              className="border-t hover:bg-[var(--color-bg-secondary)] cursor-pointer"
+              onClick={() => onRowClick && onRowClick(r)}
+            >
               <Td>{r.name}</Td>
               <Td>{r.entity_type}</Td>
               <Td>{formatDocumentDigits(r)}</Td>
@@ -194,12 +240,40 @@ function Table({
               </Td>
               <Td>{r.document_pending ? "Sim" : "Não"}</Td>
               <Td>{new Date(r.created_at).toLocaleDateString()}</Td>
+              <Td>
+                <button
+                  type="button"
+                  aria-label="Excluir"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteRow(r);
+                  }}
+                  disabled={deletingId === r.id}
+                  className={`p-1 rounded hover:bg-[var(--color-bg-secondary)] transition-colors text-[var(--color-text-secondary)] disabled:opacity-50 disabled:cursor-not-allowed ${deletingId === r.id ? "animate-pulse" : ""
+                    }`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" />
+                    <path d="M10 6V4h4v2" />
+                  </svg>
+                </button>
+              </Td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr className="bg-[var(--color-bg-secondary)] text-[10px] ">
-            <td colSpan={COLUMN_DEFS.length} className="px-3 py-2">
+            <td colSpan={COLUMN_DEFS.length + 1} className="px-3 py-2">
               <div className="flex items-center justify-between gap-2">
                 <span>
                   Total exibido: {rows.length} / Total filtrado: {total}
