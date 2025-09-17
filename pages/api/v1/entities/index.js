@@ -124,8 +124,8 @@ async function getEntities(req, res) {
       // fixo 10 dígitos: DDD !=0, terceiro dígito 2-9 => ^[1-9][0-9][2-9][0-9]{7}$
       // celular 11 dígitos: DDD !=0, terceiro dígito 9 => ^[1-9][0-9]9[0-9]{8}$
       // Email válido replicando regex JS case-insensitive.
-  const phoneValid = `( (telefone ~ '${SQL_PHONE_FIXED}') OR (telefone ~ '${SQL_PHONE_MOBILE}') )`;
-  const emailValid = `email ~* '${SQL_EMAIL}'`;
+      const phoneValid = `( (telefone ~ '${SQL_PHONE_FIXED}') OR (telefone ~ '${SQL_PHONE_MOBILE}') )`;
+      const emailValid = `email ~* '${SQL_EMAIL}'`;
       if (contact_fill === "completo") {
         clauses.push(`(${phoneValid} AND ${emailValid})`);
       } else if (contact_fill === "parcial") {

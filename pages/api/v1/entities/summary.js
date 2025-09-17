@@ -49,24 +49,17 @@ export default async function summary(req, res) {
       "SELECT COUNT(*)::int AS total FROM entities",
     );
     const totalCount = total.rows[0].total;
+    const ensureCats = (map) => ({
+      completo: map.completo || 0,
+      parcial: map.parcial || 0,
+      vazio: map.vazio || 0,
+    });
     const json = {
       total: total.rows[0].total,
-      by_status: byStatus.rows.reduce((acc, r) => {
-        acc[r.status] = r.count;
-        return acc;
-      }, {}),
-      by_pending: byPending.rows.reduce((acc, r) => {
-        acc[r.pending] = r.count;
-        return acc;
-      }, {}),
-      by_address_fill: byAddressFill.rows.reduce((acc, r) => {
-        acc[r.fill] = r.count;
-        return acc;
-      }, {}),
-      by_contact_fill: byContactFill.rows.reduce((acc, r) => {
-        acc[r.fill] = r.count;
-        return acc;
-      }, {}),
+      by_status: byStatus.rows.reduce((acc, r) => { acc[r.status] = r.count; return acc; }, {}),
+      by_pending: byPending.rows.reduce((acc, r) => { acc[r.pending] = r.count; return acc; }, {}),
+      by_address_fill: ensureCats(byAddressFill.rows.reduce((acc, r) => { acc[r.fill] = r.count; return acc; }, {})),
+      by_contact_fill: ensureCats(byContactFill.rows.reduce((acc, r) => { acc[r.fill] = r.count; return acc; }, {})),
     };
     // Percentuais (0-100) arredondados 1 casa
     json.percent_address_fill = computePercentages(json.by_address_fill, totalCount);

@@ -67,15 +67,21 @@ describe("GET /api/v1/entities/summary", () => {
     // Percentuais consistentes: soma pode não ser 100 por arredondamento, mas cada chave deve estar entre 0 e 100
     Object.values(body.percent_address_fill).forEach(p => expect(p).toBeGreaterThanOrEqual(0));
     Object.values(body.percent_contact_fill).forEach(p => expect(p).toBeGreaterThanOrEqual(0));
-  // Consistência de categorias (mesmo conjunto e ordem irrelevante)
-  const expectedCats = ["completo","parcial","vazio"]; 
-  expect(Object.keys(body.percent_address_fill).sort()).toEqual(expectedCats.slice().sort());
-  expect(Object.keys(body.percent_contact_fill).sort()).toEqual(expectedCats.slice().sort());
-  expect(Object.keys(body.by_address_fill).sort()).toEqual(expectedCats.slice().sort());
-  expect(Object.keys(body.by_contact_fill).sort()).toEqual(expectedCats.slice().sort());
+    // Consistência de categorias (mesmo conjunto e ordem irrelevante)
+    const expectedCats = ["completo", "parcial", "vazio"];
+    // Normaliza mapas para garantir presença explícita das categorias esperadas
+    const norm = m => expectedCats.reduce((acc, k) => { acc[k] = m[k] ?? 0; return acc; }, {});
+    const byAddr = norm(body.by_address_fill);
+    const byContact = norm(body.by_contact_fill);
+    const pctAddr = norm(body.percent_address_fill);
+    const pctContact = norm(body.percent_contact_fill);
+    expect(Object.keys(pctAddr).sort()).toEqual(expectedCats.slice().sort());
+    expect(Object.keys(pctContact).sort()).toEqual(expectedCats.slice().sort());
+    expect(Object.keys(byAddr).sort()).toEqual(expectedCats.slice().sort());
+    expect(Object.keys(byContact).sort()).toEqual(expectedCats.slice().sort());
     // Soma aproximada (tolerância 0.2 * número de chaves para arredondamento) quando existem itens
-    const sumAddr = Object.values(body.percent_address_fill).reduce((a,b)=>a+b,0);
-    const sumContact = Object.values(body.percent_contact_fill).reduce((a,b)=>a+b,0);
+    const sumAddr = Object.values(body.percent_address_fill).reduce((a, b) => a + b, 0);
+    const sumContact = Object.values(body.percent_contact_fill).reduce((a, b) => a + b, 0);
     // Se não há registros, percentuais serão 0 e soma 0; nesse caso pulamos verificação de ~100 via guard booleano.
     const shouldApprox100 = body.total > 0;
     // Definir limites esperados dinamicamente

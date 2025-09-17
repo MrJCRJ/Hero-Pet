@@ -33,7 +33,7 @@ describe("contact_fill parcial para dados inválidos", () => {
     const json = await res.json();
     expect(res.status).toBe(200);
     const itens = Array.isArray(json) ? json : json.data;
-    const targets = itens.filter(r => ["TEL_INVALIDO","EMAIL_INVALIDO","AMBOS_INVALIDOS"].includes(r.name));
+    const targets = itens.filter(r => ["TEL_INVALIDO", "EMAIL_INVALIDO", "AMBOS_INVALIDOS"].includes(r.name));
     expect(targets.length).toBe(3);
     targets.forEach(r => expect(r.contact_fill).toBe("parcial"));
   });
