@@ -84,7 +84,7 @@ async function postEntity(req, res) {
 
 async function getEntities(req, res) {
   try {
-    const { status, pending, limit, meta, address_fill, contact_fill } =
+    const { status, pending, limit, meta, address_fill, contact_fill, entity_type } =
       req.query;
     const clauses = [];
     const values = [];
@@ -104,6 +104,15 @@ async function getEntities(req, res) {
       }
       values.push(pending === "true");
       clauses.push(`document_pending = $${values.length}`);
+    }
+
+    if (entity_type) {
+      const allowedTypes = ["PF", "PJ"];
+      if (!allowedTypes.includes(entity_type)) {
+        return res.status(400).json({ error: "Invalid entity_type filter" });
+      }
+      values.push(entity_type);
+      clauses.push(`entity_type = $${values.length}`);
     }
 
     if (address_fill) {

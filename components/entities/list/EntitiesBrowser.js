@@ -12,7 +12,7 @@ import {
 const STATUS_OPTIONS = ["", "pending", "provisional", "valid"];
 const COLUMN_DEFS = [
   { key: "name", label: "Nome" },
-  { key: "entity_type", label: "Tipo" },
+  { key: "profile", label: "Perfil" },
   { key: "document", label: "Documento" },
   { key: "document_status", label: "Status" },
   { key: "address_status", label: "Endereço" },
@@ -35,6 +35,13 @@ const STATUS_CLASS = {
 function formatDocumentDigits(row) {
   if (row.document_digits) return formatCpfCnpj(row.document_digits);
   if (row.document_pending) return "(pendente)";
+  return "—";
+}
+
+function getProfileLabel(entity_type) {
+  // Convenção atual: PF -> Cliente; PJ -> Fornecedor
+  if (entity_type === "PF") return "Cliente";
+  if (entity_type === "PJ") return "Fornecedor";
   return "—";
 }
 
@@ -86,10 +93,10 @@ export function EntitiesBrowser({
     loadingMore,
     error,
     statusFilter,
-    pendingOnly,
+    profileFilter,
     canLoadMore,
     setStatusFilter,
-    setPendingOnly,
+    setProfileFilter,
     loadMore,
     reload,
   } = state;
@@ -142,9 +149,9 @@ export function EntitiesBrowser({
     onEdit
       ? onEdit(row)
       : push("Callback de edição não implementado", {
-          type: "warn",
-          timeout: 3000,
-        });
+        type: "warn",
+        timeout: 3000,
+      });
   }
   return (
     <div className={`space-y-4 ${textSize}`}>
@@ -187,8 +194,8 @@ export function EntitiesBrowser({
         <Filters
           statusFilter={statusFilter}
           onStatusChange={setStatusFilter}
-          pendingOnly={pendingOnly}
-          onPendingChange={setPendingOnly}
+          profileFilter={profileFilter}
+          onProfileChange={setProfileFilter}
           loading={loading}
           addressFillFilter={state.addressFillFilter}
           onAddressFillChange={state.setAddressFillFilter}
@@ -235,8 +242,8 @@ const FILL_OPTIONS = ["", "completo", "parcial", "vazio"];
 function Filters({
   statusFilter,
   onStatusChange,
-  pendingOnly,
-  onPendingChange,
+  profileFilter,
+  onProfileChange,
   loading,
   addressFillFilter,
   onAddressFillChange,
@@ -273,6 +280,33 @@ function Filters({
           {/* Ícone seta custom */}
           <span
             className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)] peer-focus:text-[var(--color-accent)] transition-colors"
+            aria-hidden="true"
+          >
+            ▼
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-col">
+        <label
+          htmlFor="entities-profile-filter"
+          className="text-[10px] font-medium mb-1"
+        >
+          Perfil
+        </label>
+        <div className="relative">
+          <select
+            id="entities-profile-filter"
+            disabled={loading}
+            className="peer appearance-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/70 backdrop-blur-sm rounded px-2 py-1 text-[10px] pr-6 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
+            value={profileFilter}
+            onChange={(e) => onProfileChange(e.target.value)}
+          >
+            <option value="">(todos)</option>
+            <option value="client">Cliente</option>
+            <option value="supplier">Fornecedor</option>
+          </select>
+          <span
+            className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)]"
             aria-hidden="true"
           >
             ▼
@@ -337,15 +371,6 @@ function Filters({
           </span>
         </div>
       </div>
-      <label className="flex items-center gap-2 text-[10px] cursor-pointer">
-        <input
-          type="checkbox"
-          checked={pendingOnly}
-          disabled={loading}
-          onChange={(e) => onPendingChange(e.target.checked)}
-        />
-        Apenas pending
-      </label>
       {loading && (
         <span className="text-[10px] text-[var(--color-text-secondary)] animate-pulse">
           Carregando...
@@ -416,7 +441,9 @@ function Table({
                     )}
                   </span>
                 </Td>
-                <Td>{r.entity_type}</Td>
+                <Td>
+                  <span className="badge badge-soft">{getProfileLabel(r.entity_type)}</span>
+                </Td>
                 <Td>{formatDocumentDigits(r)}</Td>
                 <Td>
                   <StatusBadge status={r.document_status} />
