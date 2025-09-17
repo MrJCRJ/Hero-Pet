@@ -34,7 +34,7 @@ describe("EntitiesBrowser filtro de Perfil", () => {
         <ToastProvider>
           <EntitiesBrowser limit={50} />
         </ToastProvider>
-      </ThemeProvider>
+      </ThemeProvider>,
     );
 
     // Aguarda ambos aparecerem inicialmente (perfil = (todos))

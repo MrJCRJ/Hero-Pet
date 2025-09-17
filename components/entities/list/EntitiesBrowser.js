@@ -78,9 +78,9 @@ export function EntitiesBrowser({
     onEdit
       ? onEdit(row)
       : push("Callback de edição não implementado", {
-        type: "warn",
-        timeout: 3000,
-      });
+          type: "warn",
+          timeout: 3000,
+        });
   }
   return (
     <div className={`space-y-4 ${textSize}`}>

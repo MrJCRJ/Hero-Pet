@@ -25,7 +25,9 @@ function AggregatePercent({ summary }) {
       0,
     );
     const validCount = summary.by_status?.valid || 0;
-    return totalStatus ? Number(((validCount / totalStatus) * 100).toFixed(1)) : 0;
+    return totalStatus
+      ? Number(((validCount / totalStatus) * 100).toFixed(1))
+      : 0;
   })();
   return (
     <div className="flex gap-2 flex-wrap text-[10px]">

@@ -17,7 +17,10 @@ export function EntitiesFilters({
   return (
     <div className="flex flex-wrap gap-4 items-end">
       <div className="flex flex-col">
-        <label htmlFor="entities-status-filter" className="text-[10px] font-medium mb-1">
+        <label
+          htmlFor="entities-status-filter"
+          className="text-[10px] font-medium mb-1"
+        >
           Status
         </label>
         <div className="relative">
@@ -29,19 +32,29 @@ export function EntitiesFilters({
             onChange={(e) => onStatusChange(e.target.value)}
           >
             {STATUS_OPTIONS.map((opt) => (
-              <option key={opt || "all"} value={opt} className="text-[var(--color-text-primary)]">
+              <option
+                key={opt || "all"}
+                value={opt}
+                className="text-[var(--color-text-primary)]"
+              >
                 {opt || "(todos)"}
               </option>
             ))}
           </select>
-          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)] peer-focus:text-[var(--color-accent)] transition-colors" aria-hidden="true">
+          <span
+            className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)] peer-focus:text-[var(--color-accent)] transition-colors"
+            aria-hidden="true"
+          >
             ▼
           </span>
         </div>
       </div>
 
       <div className="flex flex-col">
-        <label htmlFor="entities-profile-filter" className="text-[10px] font-medium mb-1">
+        <label
+          htmlFor="entities-profile-filter"
+          className="text-[10px] font-medium mb-1"
+        >
           Perfil
         </label>
         <div className="relative">
@@ -56,14 +69,20 @@ export function EntitiesFilters({
             <option value="client">Cliente</option>
             <option value="supplier">Fornecedor</option>
           </select>
-          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)]" aria-hidden="true">
+          <span
+            className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)]"
+            aria-hidden="true"
+          >
             ▼
           </span>
         </div>
       </div>
 
       <div className="flex flex-col">
-        <label htmlFor="entities-address-fill" className="text-[10px] font-medium mb-1">
+        <label
+          htmlFor="entities-address-fill"
+          className="text-[10px] font-medium mb-1"
+        >
           Endereço
         </label>
         <div className="relative">
@@ -80,14 +99,20 @@ export function EntitiesFilters({
               </option>
             ))}
           </select>
-          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)]" aria-hidden="true">
+          <span
+            className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)]"
+            aria-hidden="true"
+          >
             ▼
           </span>
         </div>
       </div>
 
       <div className="flex flex-col">
-        <label htmlFor="entities-contact-fill" className="text-[10px] font-medium mb-1">
+        <label
+          htmlFor="entities-contact-fill"
+          className="text-[10px] font-medium mb-1"
+        >
           Contato
         </label>
         <div className="relative">
@@ -104,7 +129,10 @@ export function EntitiesFilters({
               </option>
             ))}
           </select>
-          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)]" aria-hidden="true">
+          <span
+            className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[8px] text-[var(--color-text-secondary)]"
+            aria-hidden="true"
+          >
             ▼
           </span>
         </div>

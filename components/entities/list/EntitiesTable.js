@@ -1,7 +1,11 @@
 import React from "react";
 import { Button } from "components/ui/Button";
 import { formatCpfCnpj } from "../shared/masks";
-import { classifyAddress, classifyContact, FILL_CLASS } from "lib/validation/completeness";
+import {
+  classifyAddress,
+  classifyContact,
+  FILL_CLASS,
+} from "lib/validation/completeness";
 
 const COLUMN_DEFS = [
   { key: "name", label: "Nome" },
@@ -79,7 +83,10 @@ export function EntitiesTable({
         <tbody>
           {rows.length === 0 && !loading && (
             <tr>
-              <td colSpan={COLUMN_DEFS.length + 1} className="text-center py-6 ">
+              <td
+                colSpan={COLUMN_DEFS.length + 1}
+                className="text-center py-6 "
+              >
                 Nenhum registro encontrado
               </td>
             </tr>
@@ -116,7 +123,9 @@ export function EntitiesTable({
                     title={getProfileLabel(r.entity_type)}
                   >
                     <ProfileIcon entity_type={r.entity_type} />
-                    <span className="sr-only">{getProfileLabel(r.entity_type)}</span>
+                    <span className="sr-only">
+                      {getProfileLabel(r.entity_type)}
+                    </span>
                   </span>
                 </Td>
                 <Td>{formatDocumentDigits(r)}</Td>
@@ -162,18 +171,31 @@ export function EntitiesTable({
           <tr className="bg-[var(--color-bg-secondary)] text-[10px] ">
             <td colSpan={COLUMN_DEFS.length + 1} className="px-3 py-2">
               <div className="flex items-center justify-between gap-2">
-                <span> Total exibido: {rows.length} / Total filtrado: {total} </span>
+                <span>
+                  {" "}
+                  Total exibido: {rows.length} / Total filtrado: {total}{" "}
+                </span>
                 <div className="flex items-center gap-2">
                   {loading && (
-                    <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>
+                    <span className="text-[10px] text-gray-500 animate-pulse">
+                      Carregando...
+                    </span>
                   )}
                   {canLoadMore && (
-                    <Button variant="secondary" size="sm" fullWidth={false} onClick={onLoadMore} loading={loadingMore}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      fullWidth={false}
+                      onClick={onLoadMore}
+                      loading={loadingMore}
+                    >
                       Carregar mais
                     </Button>
                   )}
                   {!canLoadMore && !loading && rows.length > 0 && (
-                    <span className="text-[10px] text-gray-500">Fim dos resultados</span>
+                    <span className="text-[10px] text-gray-500">
+                      Fim dos resultados
+                    </span>
                   )}
                 </div>
               </div>

@@ -84,8 +84,15 @@ async function postEntity(req, res) {
 
 async function getEntities(req, res) {
   try {
-    const { status, pending, limit, meta, address_fill, contact_fill, entity_type } =
-      req.query;
+    const {
+      status,
+      pending,
+      limit,
+      meta,
+      address_fill,
+      contact_fill,
+      entity_type,
+    } = req.query;
     const clauses = [];
     const values = [];
 
