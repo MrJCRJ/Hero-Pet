@@ -44,6 +44,13 @@ function getProfileLabel(entity_type) {
   return "—";
 }
 
+function ProfileIcon({ entity_type }) {
+  // Ícones simples por perfil: Cliente (👤), Fornecedor (🏪)
+  if (entity_type === "PF") return <span aria-hidden="true">👤</span>;
+  if (entity_type === "PJ") return <span aria-hidden="true">🏪</span>;
+  return null;
+}
+
 export function EntitiesTable({
   rows,
   loading,
@@ -103,7 +110,14 @@ export function EntitiesTable({
                   </span>
                 </Td>
                 <Td>
-                  <span className="badge badge-soft">{getProfileLabel(r.entity_type)}</span>
+                  <span
+                    className="inline-flex items-center justify-center badge badge-soft"
+                    aria-label={getProfileLabel(r.entity_type)}
+                    title={getProfileLabel(r.entity_type)}
+                  >
+                    <ProfileIcon entity_type={r.entity_type} />
+                    <span className="sr-only">{getProfileLabel(r.entity_type)}</span>
+                  </span>
                 </Td>
                 <Td>{formatDocumentDigits(r)}</Td>
                 <Td>

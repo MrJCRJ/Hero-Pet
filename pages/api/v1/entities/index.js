@@ -144,13 +144,17 @@ async function getEntities(req, res) {
       // fixo 10 dígitos: DDD !=0, terceiro dígito 2-9 => ^[1-9][0-9][2-9][0-9]{7}$
       // celular 11 dígitos: DDD !=0, terceiro dígito 9 => ^[1-9][0-9]9[0-9]{8}$
       // Email válido replicando regex JS case-insensitive.
+      // Usar IS TRUE para evitar tri-state com NULL em regex e garantir booleano puro
       const phoneValid = `( (telefone ~ '${SQL_PHONE_FIXED}') OR (telefone ~ '${SQL_PHONE_MOBILE}') )`;
-      const emailValid = `email ~* '${SQL_EMAIL}'`;
+      const emailValid = `(email ~* '${SQL_EMAIL}')`;
+      const phoneValidBool = `((${phoneValid}) IS TRUE)`;
+      const emailValidBool = `((${emailValid}) IS TRUE)`;
+      const hasAnyContact = `((COALESCE(telefone,'') <> '') OR (COALESCE(email,'') <> ''))`;
       if (contact_fill === "completo") {
-        clauses.push(`(${phoneValid} AND ${emailValid})`);
+        clauses.push(`(${phoneValidBool} AND ${emailValidBool})`);
       } else if (contact_fill === "parcial") {
         clauses.push(
-          `((telefone IS NOT NULL AND telefone <> '') OR (email IS NOT NULL AND email <> '')) AND NOT (${phoneValid} AND ${emailValid})`,
+          `${hasAnyContact} AND NOT (${phoneValidBool} AND ${emailValidBool})`,
         );
       } else if (contact_fill === "vazio") {
         clauses.push(

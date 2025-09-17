@@ -4,38 +4,7 @@ import { useToast } from "components/entities/shared/toast";
 import { EntitiesFilters } from "./EntitiesFilters";
 import { EntitiesTable } from "./EntitiesTable";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
-
-function SummaryBadges({ entries, prefix }) {
-  if (!entries) return null;
-  return Object.entries(entries).map(([k, v]) => (
-    <Badge key={prefix + k} label={`${prefix}${k}`} value={v} />
-  ));
-}
-
-// Percentual agregado de completude: mostra quanto já está completo
-function AggregatePercent({ summary }) {
-  if (!summary) return null;
-  const addr = summary.percent_address_fill?.completo ?? 0;
-  const contact = summary.percent_contact_fill?.completo ?? 0;
-  // Para status do documento consideramos percentual de 'valid'
-  const valid = (() => {
-    const totalStatus = Object.values(summary.by_status || {}).reduce(
-      (a, b) => a + b,
-      0,
-    );
-    const validCount = summary.by_status?.valid || 0;
-    return totalStatus
-      ? Number(((validCount / totalStatus) * 100).toFixed(1))
-      : 0;
-  })();
-  return (
-    <div className="flex gap-2 flex-wrap text-[10px]">
-      <Badge label="% Doc. válidos" value={`${valid}%`} />
-      <Badge label="% Endereço completo" value={`${addr}%`} />
-      <Badge label="% Contato completo" value={`${contact}%`} />
-    </div>
-  );
-}
+import { EntitiesSummary } from "./EntitiesSummary";
 
 export function EntitiesBrowser({
   limit = 20,
@@ -123,33 +92,7 @@ export function EntitiesBrowser({
           <p className={`${compact ? "text-[10px]" : "text-xs"} text-gray-500`}>
             Filtros não bloqueiam uso de outras ações.
           </p>
-          {summary && (
-            <div className="flex flex-col gap-1">
-              <div className="flex gap-2 flex-wrap text-[10px]">
-                <Badge label="Total" value={summary.total} />
-                <SummaryBadges entries={summary.by_status} prefix="Status:" />
-                {summary.by_pending && (
-                  <SummaryBadges
-                    entries={summary.by_pending}
-                    prefix="Pending:"
-                  />
-                )}
-                {summary.by_address_fill && (
-                  <SummaryBadges
-                    entries={summary.by_address_fill}
-                    prefix="Endereço:"
-                  />
-                )}
-                {summary.by_contact_fill && (
-                  <SummaryBadges
-                    entries={summary.by_contact_fill}
-                    prefix="Contato:"
-                  />
-                )}
-              </div>
-              <AggregatePercent summary={summary} />
-            </div>
-          )}
+          {summary && <EntitiesSummary summary={summary} />}
         </div>
         <EntitiesFilters
           statusFilter={statusFilter}
@@ -196,10 +139,4 @@ export function EntitiesBrowser({
     </div>
   );
 }
-function Badge({ label, value }) {
-  return (
-    <span className="badge badge-soft">
-      <strong className="mr-1">{label}:</strong> {value}
-    </span>
-  );
-}
+// Badge e percentuais migraram para EntitiesSummary
