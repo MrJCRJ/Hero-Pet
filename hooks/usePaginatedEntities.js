@@ -22,23 +22,70 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
   const [error, setError] = useState(null);
   const abortRef = useRef(null);
 
-  // Query string derivada
+  // Debounce de filtros para evitar múltiplas chamadas em sequência rápida.
+  // Em ambiente de teste (NODE_ENV=test) o debounce é bypass para não flakiness.
+  const lastFiltersRef = useRef({
+    statusFilter,
+    pendingOnly,
+    addressFillFilter,
+    contactFillFilter,
+  });
+  const [debouncedFilters, setDebouncedFilters] = useState(() => ({
+    statusFilter,
+    pendingOnly,
+    addressFillFilter,
+    contactFillFilter,
+  }));
+  useEffect(() => {
+    const same =
+      lastFiltersRef.current.statusFilter === statusFilter &&
+      lastFiltersRef.current.pendingOnly === pendingOnly &&
+      lastFiltersRef.current.addressFillFilter === addressFillFilter &&
+      lastFiltersRef.current.contactFillFilter === contactFillFilter;
+    if (same) return; // nada mudou
+    lastFiltersRef.current = {
+      statusFilter,
+      pendingOnly,
+      addressFillFilter,
+      contactFillFilter,
+    };
+    if (process.env.NODE_ENV === "test") {
+      setDebouncedFilters(lastFiltersRef.current);
+      return;
+    }
+    const handle = setTimeout(() => {
+      setDebouncedFilters(lastFiltersRef.current);
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [statusFilter, pendingOnly, addressFillFilter, contactFillFilter]);
+
   const queryString = useMemo(() => {
+    const {
+      statusFilter: sf,
+      pendingOnly: po,
+      addressFillFilter: af,
+      contactFillFilter: cf,
+    } = debouncedFilters;
     const params = new URLSearchParams();
-    if (statusFilter) params.set("status", statusFilter);
-    if (pendingOnly) params.set("pending", "true");
-    if (addressFillFilter) params.set("address_fill", addressFillFilter);
-    if (contactFillFilter) params.set("contact_fill", contactFillFilter);
+    if (sf) params.set("status", sf);
+    if (po) params.set("pending", "true");
+    if (af) params.set("address_fill", af);
+    if (cf) params.set("contact_fill", cf);
     params.set("meta", "1");
     params.set("limit", String(limit));
     params.set("offset", String(page * limit));
     return params.toString();
-  }, [statusFilter, pendingOnly, addressFillFilter, contactFillFilter, page, limit]);
+  }, [debouncedFilters, page, limit]);
 
   // Reset página ao alterar filtros
   useEffect(() => {
     setPage(0);
-  }, [statusFilter, pendingOnly, addressFillFilter, contactFillFilter]);
+  }, [
+    debouncedFilters.statusFilter,
+    debouncedFilters.pendingOnly,
+    debouncedFilters.addressFillFilter,
+    debouncedFilters.contactFillFilter,
+  ]);
 
   // Carregamento principal / incremental
   useEffect(() => {

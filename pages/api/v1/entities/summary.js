@@ -1,6 +1,10 @@
 // pages/api/v1/entities/summary.js
 import database from "infra/database";
-import { SQL_PHONE_FIXED, SQL_PHONE_MOBILE, SQL_EMAIL } from "lib/validation/patterns";
+import {
+  SQL_PHONE_FIXED,
+  SQL_PHONE_MOBILE,
+  SQL_EMAIL,
+} from "lib/validation/patterns";
 import { isConnectionError, isRelationMissing } from "lib/errors";
 
 export default async function summary(req, res) {
@@ -56,14 +60,36 @@ export default async function summary(req, res) {
     });
     const json = {
       total: total.rows[0].total,
-      by_status: byStatus.rows.reduce((acc, r) => { acc[r.status] = r.count; return acc; }, {}),
-      by_pending: byPending.rows.reduce((acc, r) => { acc[r.pending] = r.count; return acc; }, {}),
-      by_address_fill: ensureCats(byAddressFill.rows.reduce((acc, r) => { acc[r.fill] = r.count; return acc; }, {})),
-      by_contact_fill: ensureCats(byContactFill.rows.reduce((acc, r) => { acc[r.fill] = r.count; return acc; }, {})),
+      by_status: byStatus.rows.reduce((acc, r) => {
+        acc[r.status] = r.count;
+        return acc;
+      }, {}),
+      by_pending: byPending.rows.reduce((acc, r) => {
+        acc[r.pending] = r.count;
+        return acc;
+      }, {}),
+      by_address_fill: ensureCats(
+        byAddressFill.rows.reduce((acc, r) => {
+          acc[r.fill] = r.count;
+          return acc;
+        }, {}),
+      ),
+      by_contact_fill: ensureCats(
+        byContactFill.rows.reduce((acc, r) => {
+          acc[r.fill] = r.count;
+          return acc;
+        }, {}),
+      ),
     };
     // Percentuais (0-100) arredondados 1 casa
-    json.percent_address_fill = computePercentages(json.by_address_fill, totalCount);
-    json.percent_contact_fill = computePercentages(json.by_contact_fill, totalCount);
+    json.percent_address_fill = computePercentages(
+      json.by_address_fill,
+      totalCount,
+    );
+    json.percent_contact_fill = computePercentages(
+      json.by_contact_fill,
+      totalCount,
+    );
     res.status(200).json(json);
   } catch (e) {
     console.error("GET /entities/summary error", e);

@@ -1,13 +1,23 @@
 import React, { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { EntityForm } from "components/EntityForm";
+import {
+  EntityTypeSelector,
+  DocumentSection,
+  AddressSection,
+  ContactSection,
+  applyChange,
+  applyDocumentBlur,
+  computeDerived,
+} from "components/entities";
 
 function Wrapper({ initial }) {
   const [form, setForm] = useState({
     entityType: "client",
     nome: "",
     documento: "",
+    documento_pendente: false,
+    document_status: "pending",
     cep: "",
     numero: "",
     complemento: "",
@@ -16,7 +26,21 @@ function Wrapper({ initial }) {
     ativo: true,
     ...initial,
   });
-  return <EntityForm form={form} setForm={setForm} />;
+  const derived = computeDerived(form);
+  const handle = (e) => setForm((p) => applyChange(p, e.target));
+  return (
+    <div>
+      <EntityTypeSelector value={form.entityType} onChange={handle} />
+      <DocumentSection
+        form={derived.formatted}
+        isDocumentCnpj={derived.documentIsCnpj}
+        onChange={handle}
+        onBlurDocumento={() => setForm((p) => applyDocumentBlur(p))}
+      />
+      <AddressSection form={derived.formatted} onChange={handle} />
+      <ContactSection form={derived.formatted} onChange={handle} />
+    </div>
+  );
 }
 
 function setup(initial) {

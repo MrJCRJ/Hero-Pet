@@ -19,6 +19,46 @@ Hero-Pet é um sistema para gestão de estoque e financeiro, desenvolvido em Jav
 - **Docker Compose**: Orquestração de infraestrutura
 - **Node.js**: Backend e scripts
 
+### Gestão de Entidades (Novo Fluxo)
+
+O fluxo de Cliente / Fornecedor foi unificado no componente `EntitiesManager` que provê:
+
+- Formulário único para criação/edição (cliente ou fornecedor) com campos: documento (CPF/CNPJ) + pendência, endereço (CEP, número, complemento), contato (telefone, email), status ativo.
+- Máscaras dinâmicas (CPF/CNPJ, CEP, telefone) centralizadas em util compartilhado.
+- Classificação de documento: `pending | provisional | valid` (soft validation sem bloquear envio).
+- Classificação de completude de endereço e contato: `completo | parcial | vazio` com ícone ⚠ em linhas parciais.
+- Filtros combináveis: status do documento, pendente, completude de endereço e contato.
+- Paginação incremental com botão "Carregar mais".
+- Exclusão otimista com modal de confirmação e suporte a ESC.
+- Resumo agregado (counts + percentuais) vindo de `/api/v1/entities/summary` exibido como badges.
+
+O antigo `components/EntityForm.js` foi descontinuado e o arquivo removido. Utilize sempre `EntitiesManager`.
+
+#### Percentuais de Completude
+
+O endpoint `GET /api/v1/entities/summary` fornece:
+
+```json
+{
+  "by_address_fill": { "completo": 3, "parcial": 1, "vazio": 6 },
+  "percent_address_fill": { "completo": 30.0, "parcial": 10.0, "vazio": 60.0 },
+  "by_contact_fill": { "completo": 5, "parcial": 2, "vazio": 3 },
+  "percent_contact_fill": { "completo": 50.0, "parcial": 20.0, "vazio": 30.0 }
+}
+```
+
+As chaves são sempre retornadas (zero-filled) para contrato estável de UI.
+
+#### Regras de Completude
+
+- Endereço completo: CEP preenchido + número preenchido.
+- Endereço parcial: Pelo menos um dos dois (CEP ou número) preenchido.
+- Contato completo: Telefone válido (fixo 10 dígitos ou celular 11 iniciando com 9) E email válido.
+- Contato parcial: Pelo menos um dos campos contato preenchido (mesmo inválido ou incompleto).
+- Caso contrário: `vazio`.
+
+Regex e trechos SQL para telefone/email centralizados em `lib/validation/patterns.js` para evitar divergência.
+
 ### Utilitários de UI (Tailwind Plugin)
 
 O projeto inclui um plugin Tailwind customizado (`tailwind-plugins/ui.js`) que disponibiliza classes semânticas:
@@ -95,6 +135,7 @@ function EntitiesWidget() {
 - `infra/`: Infraestrutura, banco de dados, scripts e migrações
 - `pages/`: Páginas da aplicação e rotas de API
 - `tests/`: Testes automatizados
+- `components/entities/`: Novo agrupamento (form, listagem, shared utils) do fluxo de entidades (substitui o antigo `EntityForm`).
 
 ## Como rodar o projeto
 

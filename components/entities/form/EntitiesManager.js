@@ -61,10 +61,10 @@ export function EntitiesManager({ browserLimit = 20 }) {
       let url = editingId
         ? `/api/v1/entities/${editingId}`
         : "/api/v1/entities";
-      if (typeof window === 'undefined') {
+      if (typeof window === "undefined") {
         // ambiente de teste server-side (precaução) - usar localhost
-        if (url.startsWith('/')) url = `http://localhost:3000${url}`;
-      } else if (url.startsWith('/')) {
+        if (url.startsWith("/")) url = `http://localhost:3000${url}`;
+      } else if (url.startsWith("/")) {
         // jsdom fetch wrapper já ajusta, mas garantimos
         url = `${url}`;
       }
@@ -83,7 +83,7 @@ export function EntitiesManager({ browserLimit = 20 }) {
         }
         throw new Error(
           data.error ||
-          `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
+            `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
         );
       }
       // Sucesso: registrar highlight antes de limpar editingId
@@ -126,13 +126,16 @@ export function EntitiesManager({ browserLimit = 20 }) {
   }
 
   // ESC para cancelar edição
-  const escHandler = useCallback((e) => {
-    if (e.key === "Escape" && showForm) {
-      e.preventDefault();
-      setShowForm(false);
-      setEditingId(null);
-    }
-  }, [showForm]);
+  const escHandler = useCallback(
+    (e) => {
+      if (e.key === "Escape" && showForm) {
+        e.preventDefault();
+        setShowForm(false);
+        setEditingId(null);
+      }
+    },
+    [showForm],
+  );
   useEffect(() => {
     window.addEventListener("keydown", escHandler);
     return () => window.removeEventListener("keydown", escHandler);

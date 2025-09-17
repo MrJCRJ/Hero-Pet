@@ -17,7 +17,9 @@ beforeAll(async () => {
   await orchestrator.waitForAllServices();
   // recria schema para ambiente limpo
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", { method: "POST" });
+  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+    method: "POST",
+  });
   if (![200, 201].includes(mig.status)) {
     throw new Error(`Falha ao aplicar migrações. Status: ${mig.status}`);
   }

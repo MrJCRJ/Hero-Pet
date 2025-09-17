@@ -58,13 +58,11 @@ export function getCompletenessLegend() {
   return {
     completo: {
       title: "Completo",
-      desc:
-        "Endereço: CEP + Número preenchidos. Contato: Telefone (>=10 dígitos) e Email válido.",
+      desc: "Endereço: CEP + Número preenchidos. Contato: Telefone (>=10 dígitos) e Email válido.",
     },
     parcial: {
       title: "Parcial",
-      desc:
-        "Algum campo informado mas faltando outro ou inválido (ex.: só CEP, só Telefone, email mal formatado).",
+      desc: "Algum campo informado mas faltando outro ou inválido (ex.: só CEP, só Telefone, email mal formatado).",
     },
     vazio: { title: "Vazio", desc: "Nenhum dos campos informado." },
   };

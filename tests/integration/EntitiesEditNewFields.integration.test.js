@@ -16,13 +16,13 @@ describe("EntitiesManager novos campos (numero/complemento/ativo)", () => {
   test("Fluxo criar -> editar campos novos refletidos na lista", async () => {
     const user = userEvent.setup();
     // Bypass auth
-    window.localStorage.setItem('adminAuthenticated', 'true');
+    window.localStorage.setItem("adminAuthenticated", "true");
     render(
       <ThemeProvider>
         <ToastProvider>
           <EntitiesManager browserLimit={50} />
         </ToastProvider>
-      </ThemeProvider>
+      </ThemeProvider>,
     );
 
     // Abrir formulário
@@ -33,7 +33,9 @@ describe("EntitiesManager novos campos (numero/complemento/ativo)", () => {
     await user.type(nomeInput, "Empresa X");
 
     // Marca documento pendente
-    const pendente = screen.getByRole("checkbox", { name: /Documento ainda não disponível/i });
+    const pendente = screen.getByRole("checkbox", {
+      name: /Documento ainda não disponível/i,
+    });
     if (pendente) await user.click(pendente);
 
     // CEP opcional
@@ -48,7 +50,7 @@ describe("EntitiesManager novos campos (numero/complemento/ativo)", () => {
     // Salvar
     await user.click(screen.getByRole("button", { name: /salvar/i }));
     // Se ainda estamos no formulário (botão Cancelar presente) clicar para retornar à lista
-    const cancelBtn = screen.queryByRole('button', { name: /cancelar/i });
+    const cancelBtn = screen.queryByRole("button", { name: /cancelar/i });
     if (cancelBtn) await user.click(cancelBtn);
     await screen.findByText(/Entidades Cadastradas/i);
     await screen.findByText(/EMPRESA X/);

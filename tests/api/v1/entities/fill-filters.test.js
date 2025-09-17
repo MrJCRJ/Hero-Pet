@@ -26,10 +26,19 @@ describe("/api/v1/entities filtros de completude", () => {
   beforeAll(async () => {
     const fixtures = [
       { name: "ADDR_EMPTY_CONTACT_EMPTY", data: {} },
-      { name: "ADDR_FULL_CONTACT_EMPTY", data: { cep: "12345678", numero: "10" } },
+      {
+        name: "ADDR_FULL_CONTACT_EMPTY",
+        data: { cep: "12345678", numero: "10" },
+      },
       { name: "ADDR_EMPTY_CONTACT_TEL_INVALID", data: { telefone: "119999" } },
-      { name: "ADDR_FULL_CONTACT_TEL_VALID", data: { cep: "12345678", numero: "20", telefone: "11987654321" } },
-      { name: "ADDR_CEP_ONLY_CONTACT_EMAIL", data: { cep: "12345678", email: "a@b.com" } },
+      {
+        name: "ADDR_FULL_CONTACT_TEL_VALID",
+        data: { cep: "12345678", numero: "20", telefone: "11987654321" },
+      },
+      {
+        name: "ADDR_CEP_ONLY_CONTACT_EMAIL",
+        data: { cep: "12345678", email: "a@b.com" },
+      },
     ];
     for (const f of fixtures) {
       const body = await post({
@@ -48,7 +57,7 @@ describe("/api/v1/entities filtros de completude", () => {
     const json = await res.json();
     const rows = Array.isArray(json) ? json : json.data;
     expect(rows.length).toBeGreaterThan(0);
-    rows.forEach(r => expect(r.address_fill).toBe("vazio"));
+    rows.forEach((r) => expect(r.address_fill).toBe("vazio"));
   });
 
   test("Filtro address_fill=completo retorna somente completo", async () => {
@@ -56,7 +65,7 @@ describe("/api/v1/entities filtros de completude", () => {
     const json = await res.json();
     expect(res.status).toBe(200);
     const rows = Array.isArray(json) ? json : json.data;
-    rows.forEach(r => expect(r.address_fill).toBe("completo"));
+    rows.forEach((r) => expect(r.address_fill).toBe("completo"));
   });
 
   test("Filtro contact_fill=parcial retorna somente parcial", async () => {
@@ -64,7 +73,7 @@ describe("/api/v1/entities filtros de completude", () => {
     const json = await res.json();
     expect(res.status).toBe(200);
     const rows = Array.isArray(json) ? json : json.data;
-    rows.forEach(r => expect(r.contact_fill).toBe("parcial"));
+    rows.forEach((r) => expect(r.contact_fill).toBe("parcial"));
   });
 
   test("Filtro contact_fill=completo retorna somente completo", async () => {
@@ -72,15 +81,17 @@ describe("/api/v1/entities filtros de completude", () => {
     const json = await res.json();
     expect(res.status).toBe(200);
     const rows = Array.isArray(json) ? json : json.data;
-    rows.forEach(r => expect(r.contact_fill).toBe("completo"));
+    rows.forEach((r) => expect(r.contact_fill).toBe("completo"));
   });
 
   test("Combinação de filtros address_fill=vazio&contact_fill=completo retorna interseção", async () => {
-    const res = await fetch(`${BASE}?address_fill=vazio&contact_fill=completo&limit=50`);
+    const res = await fetch(
+      `${BASE}?address_fill=vazio&contact_fill=completo&limit=50`,
+    );
     const json = await res.json();
     expect(res.status).toBe(200);
     const rows = Array.isArray(json) ? json : json.data;
-    rows.forEach(r => {
+    rows.forEach((r) => {
       expect(r.address_fill).toBe("vazio");
       expect(r.contact_fill).toBe("completo");
     });

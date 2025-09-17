@@ -2,7 +2,11 @@
 import database from "infra/database";
 import { isConnectionError, isRelationMissing } from "lib/errors";
 import { classifyAddress, classifyContact } from "lib/validation/completeness";
-import { SQL_PHONE_FIXED, SQL_PHONE_MOBILE, SQL_EMAIL } from "lib/validation/patterns";
+import {
+  SQL_PHONE_FIXED,
+  SQL_PHONE_MOBILE,
+  SQL_EMAIL,
+} from "lib/validation/patterns";
 import {
   classifyDocument as sharedClassify,
   stripDigits as sharedStrip,
@@ -80,7 +84,8 @@ async function postEntity(req, res) {
 
 async function getEntities(req, res) {
   try {
-    const { status, pending, limit, meta, address_fill, contact_fill } = req.query;
+    const { status, pending, limit, meta, address_fill, contact_fill } =
+      req.query;
     const clauses = [];
     const values = [];
 
@@ -108,11 +113,17 @@ async function getEntities(req, res) {
       }
       // Filtro em nível de SQL usando mesma lógica do summary para performance
       if (address_fill === "completo") {
-        clauses.push(`(cep IS NOT NULL AND cep <> '' AND numero IS NOT NULL AND numero <> '')`);
+        clauses.push(
+          `(cep IS NOT NULL AND cep <> '' AND numero IS NOT NULL AND numero <> '')`,
+        );
       } else if (address_fill === "parcial") {
-        clauses.push(`((cep IS NOT NULL AND cep <> '') OR (numero IS NOT NULL AND numero <> '')) AND NOT (cep IS NOT NULL AND cep <> '' AND numero IS NOT NULL AND numero <> '')`);
+        clauses.push(
+          `((cep IS NOT NULL AND cep <> '') OR (numero IS NOT NULL AND numero <> '')) AND NOT (cep IS NOT NULL AND cep <> '' AND numero IS NOT NULL AND numero <> '')`,
+        );
       } else if (address_fill === "vazio") {
-        clauses.push(`( (cep IS NULL OR cep = '') AND (numero IS NULL OR numero = '') )`);
+        clauses.push(
+          `( (cep IS NULL OR cep = '') AND (numero IS NULL OR numero = '') )`,
+        );
       }
     }
     if (contact_fill) {
@@ -129,9 +140,13 @@ async function getEntities(req, res) {
       if (contact_fill === "completo") {
         clauses.push(`(${phoneValid} AND ${emailValid})`);
       } else if (contact_fill === "parcial") {
-        clauses.push(`((telefone IS NOT NULL AND telefone <> '') OR (email IS NOT NULL AND email <> '')) AND NOT (${phoneValid} AND ${emailValid})`);
+        clauses.push(
+          `((telefone IS NOT NULL AND telefone <> '') OR (email IS NOT NULL AND email <> '')) AND NOT (${phoneValid} AND ${emailValid})`,
+        );
       } else if (contact_fill === "vazio") {
-        clauses.push(`( (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '') )`);
+        clauses.push(
+          `( (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '') )`,
+        );
       }
     }
 
@@ -147,7 +162,7 @@ async function getEntities(req, res) {
     };
     const result = await database.query(query);
     // Anexar campos calculados de completude (consistentes com front)
-    const dataWithFill = result.rows.map(r => ({
+    const dataWithFill = result.rows.map((r) => ({
       ...r,
       address_fill: classifyAddress(r),
       contact_fill: classifyContact(r),

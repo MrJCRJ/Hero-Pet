@@ -100,8 +100,7 @@ async function deleteEntity(req, res, id) {
       text: `DELETE FROM entities WHERE id=$1 RETURNING id`,
       values: [id],
     });
-    if (!del.rows.length)
-      return res.status(404).json({ error: "Not found" });
+    if (!del.rows.length) return res.status(404).json({ error: "Not found" });
     return res.status(200).json({ deleted: true });
   } catch (e) {
     console.error("DELETE /entities/[id] error", e);

@@ -8,11 +8,13 @@ import { ToastProvider } from "components/entities/shared/toast";
 
 describe("EntitiesBrowser ícone parcial", () => {
   test("exibe ícone de atenção quando endereço parcial", async () => {
+    // Usa nome único para evitar colisão entre execuções/suites reutilizando o mesmo banco.
+    const uniqueName = `Parcial Icone ${Date.now()}`;
     const resp = await fetch("http://localhost:3000/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: "Parcial Icone",
+        name: uniqueName,
         entity_type: "PF",
         document_digits: "",
         document_pending: true,
@@ -26,10 +28,10 @@ describe("EntitiesBrowser ícone parcial", () => {
         <ToastProvider>
           <EntitiesBrowser />
         </ToastProvider>
-      </ThemeProvider>
+      </ThemeProvider>,
     );
     // Usa findByText que já faz retry e evita dupla chamada.
-    const rowLabel = await screen.findByText(/Parcial Icone/i);
+    const rowLabel = await screen.findByText(new RegExp(uniqueName, "i"));
     expect(rowLabel).toBeInTheDocument();
     // Ícone tem aria-label="Dados parciais"; se houver mais de um (ex re-render), deduplicamos por parentElement textContent
     const allWarnings = await screen.findAllByLabelText(/Dados parciais/i);
