@@ -28,6 +28,16 @@ This document provides guidance for AI coding agents to be immediately productiv
 - **API Endpoints**: `pages/api/v1/status/index.js` provides a clear example of concise request-response patterns.
 - **Test Organization**: Tests in `tests/` follow naming conventions that reflect the source file they test, ensuring maintainability.
 
+### Shared Validation Patterns (patterns.js)
+
+Para evitar divergência entre frontend e backend quanto a validação de contato (telefone/email), o arquivo `lib/validation/patterns.js` centraliza:
+
+- `EMAIL_REGEX`: Expressão usada em validação JS e replicada (case-insensitive) em filtros/aggregates SQL.
+- `PHONE_FIXED_REGEX` / `PHONE_MOBILE_REGEX`: Regras Brasil (fixo de 10 dígitos, celular 11 iniciando com 9) consumidas por `isValidPhone`.
+- `SQL_PHONE_FIXED`, `SQL_PHONE_MOBILE`, `SQL_EMAIL`: Fragmentos string para interpolação segura em queries (evita duplicação literal).
+
+Sempre que atualizar a regra de telefone/email, alterar primeiro em `patterns.js` e depois (se necessário) ajustar pontos dependentes (`completeness.js`, endpoints `entities` e `summary`). Isso previne inconsistências de classificação (ex.: `contact_fill`).
+
 ## Additional Notes
 
 - Maintain the file structure and naming conventions when updating or adding new features.

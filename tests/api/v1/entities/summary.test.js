@@ -67,5 +67,25 @@ describe("GET /api/v1/entities/summary", () => {
     // Percentuais consistentes: soma pode não ser 100 por arredondamento, mas cada chave deve estar entre 0 e 100
     Object.values(body.percent_address_fill).forEach(p => expect(p).toBeGreaterThanOrEqual(0));
     Object.values(body.percent_contact_fill).forEach(p => expect(p).toBeGreaterThanOrEqual(0));
+  // Consistência de categorias (mesmo conjunto e ordem irrelevante)
+  const expectedCats = ["completo","parcial","vazio"]; 
+  expect(Object.keys(body.percent_address_fill).sort()).toEqual(expectedCats.slice().sort());
+  expect(Object.keys(body.percent_contact_fill).sort()).toEqual(expectedCats.slice().sort());
+  expect(Object.keys(body.by_address_fill).sort()).toEqual(expectedCats.slice().sort());
+  expect(Object.keys(body.by_contact_fill).sort()).toEqual(expectedCats.slice().sort());
+    // Soma aproximada (tolerância 0.2 * número de chaves para arredondamento) quando existem itens
+    const sumAddr = Object.values(body.percent_address_fill).reduce((a,b)=>a+b,0);
+    const sumContact = Object.values(body.percent_contact_fill).reduce((a,b)=>a+b,0);
+    // Se não há registros, percentuais serão 0 e soma 0; nesse caso pulamos verificação de ~100 via guard booleano.
+    const shouldApprox100 = body.total > 0;
+    // Definir limites esperados dinamicamente
+    const addrLower = shouldApprox100 ? 98.0 : 0;
+    const addrUpper = shouldApprox100 ? 101.0 : 0;
+    const contactLower = shouldApprox100 ? 98.0 : 0;
+    const contactUpper = shouldApprox100 ? 101.0 : 0;
+    expect(sumAddr).toBeGreaterThanOrEqual(addrLower);
+    expect(sumAddr).toBeLessThanOrEqual(addrUpper);
+    expect(sumContact).toBeGreaterThanOrEqual(contactLower);
+    expect(sumContact).toBeLessThanOrEqual(contactUpper);
   });
 });

@@ -1,5 +1,6 @@
 // pages/api/v1/entities/summary.js
 import database from "infra/database";
+import { SQL_PHONE_FIXED, SQL_PHONE_MOBILE, SQL_EMAIL } from "lib/validation/patterns";
 import { isConnectionError, isRelationMissing } from "lib/errors";
 
 export default async function summary(req, res) {
@@ -36,7 +37,7 @@ export default async function summary(req, res) {
     const byContactFill = await database.query({
       text: `SELECT
         CASE
-          WHEN (telefone ~ '^[0-9]{10,}$') AND (email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$') THEN 'completo'
+          WHEN ( (telefone ~ '${SQL_PHONE_FIXED}') OR (telefone ~ '${SQL_PHONE_MOBILE}') ) AND (email ~* '${SQL_EMAIL}') THEN 'completo'
           WHEN ( (telefone IS NOT NULL AND telefone <> '') OR (email IS NOT NULL AND email <> '') ) THEN 'parcial'
           ELSE 'vazio'
         END AS fill,
