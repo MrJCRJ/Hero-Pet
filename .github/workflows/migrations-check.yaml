@@ -1,0 +1,46 @@
+name: Migrations Drift Check
+
+on:
+  pull_request:
+    paths:
+      - "infra/migrations/**"
+      - ".github/workflows/migrations-check.yaml"
+
+jobs:
+  detect:
+    name: Detect New Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: List migration files
+        run: |
+          echo '## Migrações presentes:' >> $GITHUB_STEP_SUMMARY
+          ls -1 infra/migrations | sort | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+      - name: Detect changed migrations
+        id: diff
+        run: |
+          echo 'Verificando diffs...' 
+          # Lista arquivos alterados no PR filtrando migrations
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '^infra/migrations/' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo 'Nenhuma migração nova ou alterada.' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo '### Migrações modificadas:' >> $GITHUB_STEP_SUMMARY
+            echo "$CHANGED" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Guidance
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          cat <<'EOT' >> $GITHUB_STEP_SUMMARY
+
+### Ação Recomendada
+
+#Foram detectadas novas/alteradas migrações. Garanta que:
+#1. Os testes contemplam as novas colunas/índices.
+#2. O pipeline de deploy aplicará as migrações antes de servir o novo código.
+#3. Não há operações destrutivas sem transição (renomear/dropar coluna). Use estratégia de coluna nova + backfill + cutover.
+
+#Se a mudança for apenas aditiva (ADD COLUMN), prossiga normalmente.
+#EOT
