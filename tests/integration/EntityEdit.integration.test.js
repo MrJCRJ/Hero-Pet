@@ -2,6 +2,8 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Home from 'pages/index';
+import { ThemeProvider } from 'contexts/ThemeContext';
+import { ToastProvider } from 'components/entities/shared/toast';
 
 /**
  * Teste de integração simplificado para fluxo de edição:
@@ -59,7 +61,15 @@ describe('Entity edit flow', () => {
 
   test('abre formulário em modo edição ao clicar e envia PUT', async () => {
     const user = userEvent.setup();
-    render(<Home />);
+    // Bypass auth: marca storage antes de render
+    window.localStorage.setItem('adminAuthenticated', 'true');
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <Home />
+        </ToastProvider>
+      </ThemeProvider>
+    );
 
     // Acessa painel admin (simulando login) -> a página atual depende de auth? Se precisar, poderíamos mockar, mas assumimos acesso direto.
     // Aguarda render da listagem

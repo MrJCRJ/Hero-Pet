@@ -51,9 +51,9 @@ async function postEntity(req, res) {
 
     const insertQuery = {
       text: `INSERT INTO entities
-        (name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, created_at, updated_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOW(), NOW())
-        RETURNING id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, created_at, updated_at`,
+        (name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, ativo, created_at, updated_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, NOW(), NOW())
+        RETURNING id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, ativo, created_at, updated_at`,
       values: [
         name,
         entityType,
@@ -63,6 +63,9 @@ async function postEntity(req, res) {
         body.cep || null,
         body.telefone || null,
         body.email || null,
+        body.numero || null,
+        body.complemento || null,
+        body.ativo === false ? false : true,
       ],
     };
     const result = await database.query(insertQuery);
@@ -99,7 +102,7 @@ async function getEntities(req, res) {
     const effectiveLimit = Math.min(parseInt(limit || "100", 10) || 100, 500);
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const query = {
-      text: `SELECT id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, created_at, updated_at
+      text: `SELECT id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, ativo, created_at, updated_at
              FROM entities
              ${where}
              ORDER BY created_at DESC

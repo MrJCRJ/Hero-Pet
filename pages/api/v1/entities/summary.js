@@ -13,6 +13,30 @@ export default async function summary(req, res) {
     const byPending = await database.query({
       text: `SELECT document_pending AS pending, COUNT(*)::int AS count FROM entities GROUP BY document_pending`,
     });
+    // Agregados de completude endereço
+    const byAddressFill = await database.query({
+      text: `SELECT
+        CASE
+          WHEN cep IS NOT NULL AND cep <> '' AND numero IS NOT NULL AND numero <> '' THEN 'completo'
+          WHEN ( (cep IS NOT NULL AND cep <> '') OR (numero IS NOT NULL AND numero <> '') ) THEN 'parcial'
+          ELSE 'vazio'
+        END AS fill,
+        COUNT(*)::int AS count
+      FROM entities
+      GROUP BY 1`,
+    });
+    // Agregados de completude contato
+    const byContactFill = await database.query({
+      text: `SELECT
+        CASE
+          WHEN (telefone ~ '^[0-9]{10,}$') AND (email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$') THEN 'completo'
+          WHEN ( (telefone IS NOT NULL AND telefone <> '') OR (email IS NOT NULL AND email <> '') ) THEN 'parcial'
+          ELSE 'vazio'
+        END AS fill,
+        COUNT(*)::int AS count
+      FROM entities
+      GROUP BY 1`,
+    });
     const total = await database.query(
       "SELECT COUNT(*)::int AS total FROM entities",
     );
@@ -24,6 +48,14 @@ export default async function summary(req, res) {
       }, {}),
       by_pending: byPending.rows.reduce((acc, r) => {
         acc[r.pending] = r.count;
+        return acc;
+      }, {}),
+      by_address_fill: byAddressFill.rows.reduce((acc, r) => {
+        acc[r.fill] = r.count;
+        return acc;
+      }, {}),
+      by_contact_fill: byContactFill.rows.reduce((acc, r) => {
+        acc[r.fill] = r.count;
         return acc;
       }, {}),
     });

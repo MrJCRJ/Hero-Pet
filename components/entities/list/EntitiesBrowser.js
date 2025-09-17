@@ -1,8 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "components/ui/Button";
 import { usePaginatedEntities } from "hooks/usePaginatedEntities";
 import { formatCpfCnpj } from "../shared/masks";
 import { useToast } from "components/entities/shared/toast";
+import {
+  classifyAddress,
+  classifyContact,
+  FILL_CLASS,
+  getCompletenessLegend,
+} from "components/entities/shared/completeness";
 
 const STATUS_OPTIONS = ["", "pending", "provisional", "valid"];
 const COLUMN_DEFS = [
@@ -10,14 +16,19 @@ const COLUMN_DEFS = [
   { key: "entity_type", label: "Tipo" },
   { key: "document", label: "Documento" },
   { key: "document_status", label: "Status" },
-  { key: "document_pending", label: "Pending?" },
-  { key: "created_at", label: "Criado" },
+  { key: "address_status", label: "Endereço" },
+  { key: "contact_status", label: "Contato" },
+  { key: "ativo", label: "Ativo" },
 ];
+
+// Classes simples para badges de status (poderia reutilizar componentes se existirem)
 const STATUS_CLASS = {
-  valid: "badge badge-success",
-  pending: "badge badge-warning",
-  provisional: "badge badge-info",
+  valid: "px-2 py-0.5 rounded text-[10px] font-medium bg-green-600/10 text-green-700 dark:text-green-300 border border-green-600/30",
+  pending: "px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-600/30",
+  provisional: "px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-600/30",
 };
+
+// (classifyAddress / classifyContact / FILL_CLASS movidos para util compartilhado)
 
 function formatDocumentDigits(row) {
   if (row.document_digits) return formatCpfCnpj(row.document_digits);
@@ -32,37 +43,28 @@ function SummaryBadges({ entries, prefix }) {
   ));
 }
 
-export function EntitiesBrowser({
-  limit = 20,
-  compact = false,
-  onEdit, // callback(row)
-  onDeleted, // callback(id)
-} = {}) {
+export function EntitiesBrowser({ limit = 20, compact = false, onEdit, onDeleted, highlightId } = {}) {
   const state = usePaginatedEntities({ limit });
-  const {
-    rows,
-    total,
-    summary,
-    loading,
-    loadingMore,
-    error,
-    statusFilter,
-    pendingOnly,
-    canLoadMore,
-    setStatusFilter,
-    setPendingOnly,
-    loadMore,
-    reload,
-  } = state;
+  const { rows, total, summary, loading, loadingMore, error, statusFilter, pendingOnly, canLoadMore, setStatusFilter, setPendingOnly, loadMore, reload } = state;
   const textSize = compact ? "text-xs" : "text-sm";
-  // Hook de toast sempre chamado; provider garantido na página principal
   const { push } = useToast();
   const [deletingId, setDeletingId] = useState(null);
+  const [localRemovedIds, setLocalRemovedIds] = useState([]);
+  const [confirmId, setConfirmId] = useState(null);
 
-  async function handleDelete(row) {
+  const closeConfirm = useCallback(() => setConfirmId(null), []);
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") closeConfirm();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [closeConfirm]);
+
+  async function confirmDelete(row) {
     if (deletingId) return;
-    if (!window.confirm(`Confirma exclusão de ${row.name}?`)) return;
     setDeletingId(row.id);
+    setLocalRemovedIds((prev) => [...prev, row.id]); // otimista
     try {
       const res = await fetch(`/api/v1/entities/${row.id}`, { method: "DELETE" });
       if (!res.ok) {
@@ -71,17 +73,21 @@ export function EntitiesBrowser({
       }
       push(`Registro ${row.name} removido.`);
       if (onDeleted) onDeleted(row.id);
-      else reload();
+      else if (rows.length === 1 && canLoadMore) reload();
     } catch (e) {
       push(e.message, { type: "error", timeout: 6000 });
+      setLocalRemovedIds((prev) => prev.filter((id) => id !== row.id));
     } finally {
       setDeletingId(null);
+      closeConfirm();
     }
   }
-  function handleEdit(row) {
-    if (onEdit) onEdit(row);
-    else push("Callback de edição não implementado", { type: "warn", timeout: 3000 });
+
+  function handleDeleteClick(e, row) {
+    e.stopPropagation();
+    setConfirmId(row.id);
   }
+  function handleEdit(row) { onEdit ? onEdit(row) : push("Callback de edição não implementado", { type: "warn", timeout: 3000 }); }
   return (
     <div className={`space-y-4 ${textSize}`}>
       <div className="flex justify-between items-start flex-wrap gap-4">
@@ -93,10 +99,21 @@ export function EntitiesBrowser({
             Filtros não bloqueiam uso de outras ações.
           </p>
           {summary && (
-            <div className="flex gap-2 flex-wrap text-[10px]">
-              <Badge label="Total" value={summary.total} />
-              <SummaryBadges entries={summary.by_status} prefix="Status:" />
-              <SummaryBadges entries={summary.by_pending} prefix="Pending:" />
+            <div className="flex flex-col gap-1">
+              <div className="flex gap-2 flex-wrap text-[10px]">
+                <Badge label="Total" value={summary.total} />
+                <SummaryBadges entries={summary.by_status} prefix="Status:" />
+                {summary.by_pending && (
+                  <SummaryBadges entries={summary.by_pending} prefix="Pending:" />
+                )}
+                {summary.by_address_fill && (
+                  <SummaryBadges entries={summary.by_address_fill} prefix="Endereço:" />
+                )}
+                {summary.by_contact_fill && (
+                  <SummaryBadges entries={summary.by_contact_fill} prefix="Contato:" />
+                )}
+              </div>
+              <CompletenessLegend />
             </div>
           )}
         </div>
@@ -114,17 +131,30 @@ export function EntitiesBrowser({
         </div>
       )}
       <Table
-        rows={rows}
+        rows={rows.filter(r => !localRemovedIds.includes(r.id))}
         loading={loading}
         total={total}
         onLoadMore={loadMore}
         canLoadMore={canLoadMore}
         loadingMore={loadingMore}
         compact={compact}
-        onDeleteRow={handleDelete}
         deletingId={deletingId}
         onRowClick={handleEdit}
+        highlightId={highlightId}
+        onRequestDelete={handleDeleteClick}
       />
+      {confirmId && (
+        <DeleteModal
+          open={!!confirmId}
+          onClose={closeConfirm}
+          onConfirm={() => {
+            const row = rows.find(r => r.id === confirmId);
+            if (row) confirmDelete(row);
+          }}
+          loading={deletingId === confirmId}
+          entity={rows.find(r => r.id === confirmId)}
+        />
+      )}
     </div>
   );
 }
@@ -190,22 +220,10 @@ function Filters({
   );
 }
 
-function Table({
-  rows,
-  loading,
-  total,
-  onLoadMore,
-  canLoadMore,
-  loadingMore,
-  compact,
-  onDeleteRow,
-  deletingId,
-  // reutiliza handleEdit via closure externa? usaremos data-click
-  onRowClick,
-}) {
+function Table({ rows, loading, total, onLoadMore, canLoadMore, loadingMore, compact, deletingId, onRowClick, highlightId, onRequestDelete }) {
   const sizeCls = compact ? "text-xs" : "text-sm";
   return (
-    <div className="border rounded overflow-x-auto">
+    <div className="border rounded overflow-x-auto" aria-describedby="legend-completeness">
       <table className={`min-w-full ${sizeCls}`}>
         <thead className="bg-[var(--color-bg-secondary)]">
           <tr>
@@ -218,87 +236,79 @@ function Table({
         <tbody>
           {rows.length === 0 && !loading && (
             <tr>
-              <td
-                colSpan={COLUMN_DEFS.length + 1}
-                className="text-center py-6 "
-              >
+              <td colSpan={COLUMN_DEFS.length + 1} className="text-center py-6 ">
                 Nenhum registro encontrado
               </td>
             </tr>
           )}
-          {rows.map((r) => (
-            <tr
-              key={r.id}
-              className="border-t hover:bg-[var(--color-bg-secondary)] cursor-pointer"
-              onClick={() => onRowClick && onRowClick(r)}
-            >
-              <Td>{r.name}</Td>
-              <Td>{r.entity_type}</Td>
-              <Td>{formatDocumentDigits(r)}</Td>
-              <Td>
-                <StatusBadge status={r.document_status} />
-              </Td>
-              <Td>{r.document_pending ? "Sim" : "Não"}</Td>
-              <Td>{new Date(r.created_at).toLocaleDateString()}</Td>
-              <Td>
-                <button
-                  type="button"
-                  aria-label="Excluir"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteRow(r);
-                  }}
-                  disabled={deletingId === r.id}
-                  className={`p-1 rounded hover:bg-[var(--color-bg-secondary)] transition-colors text-[var(--color-text-secondary)] disabled:opacity-50 disabled:cursor-not-allowed ${deletingId === r.id ? "animate-pulse" : ""
-                    }`}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-4 h-4"
+          {rows.map((r) => {
+            const highlighted = r.id === highlightId;
+            const addr = classifyAddress(r);
+            const contact = classifyContact(r);
+            const isPartial = addr === "parcial" || contact === "parcial";
+            return (
+              <tr
+                key={r.id}
+                className={`border-t cursor-pointer transition-colors ${highlighted ? "bg-yellow-100 dark:bg-yellow-900/30 ring-1 ring-yellow-400/60" : "hover:bg-[var(--color-bg-secondary)]"}`}
+                onClick={() => onRowClick && onRowClick(r)}
+              >
+                <Td>
+                  <span className="inline-flex items-center gap-1">
+                    {r.name}
+                    {isPartial && (
+                      <span
+                        className="text-amber-500/70 dark:text-amber-300/80"
+                        aria-label="Dados parciais"
+                        title="Alguns dados de endereço ou contato ainda faltando"
+                      >
+                        ⚠
+                      </span>
+                    )}
+                  </span>
+                </Td>
+                <Td>{r.entity_type}</Td>
+                <Td>{formatDocumentDigits(r)}</Td>
+                <Td><StatusBadge status={r.document_status} /></Td>
+                <Td>
+                  <span className={FILL_CLASS[addr]}>{addr}</span>
+                </Td>
+                <Td>
+                  <span className={FILL_CLASS[contact]}>{contact}</span>
+                </Td>
+                <Td>{r.ativo ? "Sim" : "Não"}</Td>
+                <Td>
+                  <button
+                    type="button"
+                    aria-label="Excluir"
+                    onClick={(e) => onRequestDelete(e, r)}
+                    disabled={deletingId === r.id}
+                    className={`p-1 rounded transition-colors text-[var(--color-text-secondary)] hover:text-red-600 hover:bg-red-600/10 disabled:opacity-50 disabled:cursor-not-allowed ${deletingId === r.id ? "animate-pulse" : ""}`}
                   >
-                    <path d="M3 6h18" />
-                    <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" />
-                    <path d="M10 6V4h4v2" />
-                  </svg>
-                </button>
-              </Td>
-            </tr>
-          ))}
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                      <path d="M3 6h18" />
+                      <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" />
+                      <path d="M10 6V4h4v2" />
+                    </svg>
+                  </button>
+                </Td>
+              </tr>
+            );
+          })}
         </tbody>
         <tfoot>
           <tr className="bg-[var(--color-bg-secondary)] text-[10px] ">
             <td colSpan={COLUMN_DEFS.length + 1} className="px-3 py-2">
               <div className="flex items-center justify-between gap-2">
-                <span>
-                  Total exibido: {rows.length} / Total filtrado: {total}
-                </span>
+                <span> Total exibido: {rows.length} / Total filtrado: {total} </span>
                 <div className="flex items-center gap-2">
-                  {loading && (
-                    <span className="text-[10px] text-gray-500 animate-pulse">
-                      Carregando...
-                    </span>
-                  )}
+                  {loading && <span className="text-[10px] text-gray-500 animate-pulse">Carregando...</span>}
                   {canLoadMore && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      fullWidth={false}
-                      onClick={onLoadMore}
-                      loading={loadingMore}
-                    >
+                    <Button variant="secondary" size="sm" fullWidth={false} onClick={onLoadMore} loading={loadingMore}>
                       Carregar mais
                     </Button>
                   )}
                   {!canLoadMore && !loading && rows.length > 0 && (
-                    <span className="text-[10px] text-gray-500">
-                      Fim dos resultados
-                    </span>
+                    <span className="text-[10px] text-gray-500">Fim dos resultados</span>
                   )}
                 </div>
               </div>
@@ -324,5 +334,69 @@ function Badge({ label, value }) {
     <span className="badge badge-soft">
       <strong className="mr-1">{label}:</strong> {value}
     </span>
+  );
+}
+
+function CompletenessLegend() {
+  const legend = getCompletenessLegend();
+  return (
+    <div className="mt-1 text-[10px] text-gray-500 flex flex-wrap items-center gap-2" id="legend-completeness">
+      <span className="font-semibold uppercase tracking-wide text-[9px] opacity-70">Legenda</span>
+      {Object.entries(legend).map(([k, v]) => (
+        <span key={k} className="inline-flex items-center gap-1">
+          <span className={FILL_CLASS[k]}>{k}</span>
+          <span className="sr-only">{v.title}: {v.desc}</span>
+        </span>
+      ))}
+      <span className="sr-only">
+        Completo: endereço exige CEP e Número; contato exige Telefone válido (&gt;=10 dígitos) e Email válido. Parcial: algum campo informado mas faltando outro ou inválido. Vazio: nenhum campo informado.
+      </span>
+    </div>
+  );
+}
+
+// Modal central de confirmação de exclusão
+function DeleteModal({ open, onClose, onConfirm, loading, entity }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
+        aria-hidden="true"
+        onClick={loading ? undefined : onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Confirmar exclusão"
+        className="relative z-50 w-full max-w-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-xl p-5 space-y-4 animate-scale-in"
+      >
+        <h3 className="text-sm font-semibold">Confirmar exclusão</h3>
+        <p className="text-xs text-[var(--color-text-secondary)]">
+          Tem certeza que deseja excluir <strong>{entity?.name}</strong>? Esta ação não pode ser desfeita.
+        </p>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button
+            size="sm"
+            variant="outline"
+            type="button"
+            disabled={loading}
+            onClick={onClose}
+          >
+            Cancelar
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            type="button"
+            loading={loading}
+            disabled={loading}
+            onClick={onConfirm}
+          >
+            {loading ? "Excluindo..." : "Excluir"}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -52,9 +52,9 @@ async function updateEntity(req, res, id) {
     const updateQuery = {
       text: `UPDATE entities
              SET name=$1, entity_type=$2, document_digits=$3, document_status=$4, document_pending=$5,
-                 cep=$6, telefone=$7, email=$8, updated_at=NOW()
-             WHERE id=$9
-             RETURNING id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, created_at, updated_at`,
+                 cep=$6, telefone=$7, email=$8, numero=$9, complemento=$10, ativo=$11, updated_at=NOW()
+             WHERE id=$12
+             RETURNING id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, ativo, created_at, updated_at`,
       values: [
         name,
         entityType,
@@ -64,6 +64,9 @@ async function updateEntity(req, res, id) {
         body.cep || null,
         body.telefone || null,
         body.email || null,
+        body.numero || null,
+        body.complemento || null,
+        body.ativo === false ? false : true,
         id,
       ],
     };

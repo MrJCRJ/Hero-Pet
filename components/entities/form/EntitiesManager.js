@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useToast } from "components/entities/shared/toast";
 import { Button } from "components/ui/Button";
 import { EntitiesBrowser } from "../list/EntitiesBrowser";
@@ -22,9 +22,21 @@ export function EntitiesManager({ browserLimit = 20 }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [lastEditedId, setLastEditedId] = useState(null);
   const { push } = useToast();
 
-  const toggleMode = () => setShowForm((v) => !v);
+  const toggleMode = () => {
+    setShowForm((v) => {
+      const next = !v;
+      if (next) {
+        // Abrindo form para novo cadastro: garantir reset se não estiver editando
+        if (!editingId) {
+          setForm(createInitialEntityForm());
+        }
+      }
+      return next;
+    });
+  };
   const handleChange = (e) => setForm((prev) => applyChange(prev, e.target));
   const handleBlurDocumento = () => setForm((prev) => applyDocumentBlur(prev));
 
@@ -42,10 +54,20 @@ export function EntitiesManager({ browserLimit = 20 }) {
         cep: form.cep || undefined,
         telefone: form.telefone || undefined,
         email: form.email || undefined,
+        numero: form.numero || undefined,
+        complemento: form.complemento || undefined,
+        ativo: form.ativo,
       };
-      const url = editingId
+      let url = editingId
         ? `/api/v1/entities/${editingId}`
         : "/api/v1/entities";
+      if (typeof window === 'undefined') {
+        // ambiente de teste server-side (precaução) - usar localhost
+        if (url.startsWith('/')) url = `http://localhost:3000${url}`;
+      } else if (url.startsWith('/')) {
+        // jsdom fetch wrapper já ajusta, mas garantimos
+        url = `${url}`;
+      }
       const method = editingId ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
@@ -64,9 +86,11 @@ export function EntitiesManager({ browserLimit = 20 }) {
           `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
         );
       }
+      // Sucesso: registrar highlight antes de limpar editingId
+      if (editingId) setLastEditedId(editingId);
+      setEditingId(null);
       setForm(createInitialEntityForm());
       setShowForm(false);
-      setEditingId(null);
       setRefreshKey((k) => k + 1);
       push(
         editingId
@@ -101,6 +125,19 @@ export function EntitiesManager({ browserLimit = 20 }) {
     setShowForm(true);
   }
 
+  // ESC para cancelar edição
+  const escHandler = useCallback((e) => {
+    if (e.key === "Escape" && showForm) {
+      e.preventDefault();
+      setShowForm(false);
+      setEditingId(null);
+    }
+  }, [showForm]);
+  useEffect(() => {
+    window.addEventListener("keydown", escHandler);
+    return () => window.removeEventListener("keydown", escHandler);
+  }, [escHandler]);
+
   if (!showForm) {
     return (
       <div className="space-y-4">
@@ -120,6 +157,7 @@ export function EntitiesManager({ browserLimit = 20 }) {
           limit={browserLimit}
           compact
           onEdit={handleEditRow}
+          highlightId={lastEditedId}
         />
       </div>
     );

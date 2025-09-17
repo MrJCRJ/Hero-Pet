@@ -46,13 +46,21 @@ beforeAll(async () => {
 });
 
 describe("GET /api/v1/entities/summary", () => {
-  test("Deve retornar agregados de total, by_status e by_pending", async () => {
+  test("Deve retornar agregados incluindo completeness (address/contact)", async () => {
     const res = await fetch("http://localhost:3000/api/v1/entities/summary");
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty("total", 3);
     expect(body).toHaveProperty("by_status");
     expect(body).toHaveProperty("by_pending");
+    expect(body).toHaveProperty("by_address_fill");
+    expect(body).toHaveProperty("by_contact_fill");
     expect(Object.values(body.by_status).reduce((a, b) => a + b, 0)).toBe(3);
+    // Como não criamos dados de endereço/contato, tudo deve cair em 'vazio'
+    // (somatório deve bater com total)
+    const addrSum = Object.values(body.by_address_fill).reduce((a, b) => a + b, 0);
+    const contactSum = Object.values(body.by_contact_fill).reduce((a, b) => a + b, 0);
+    expect(addrSum).toBe(3);
+    expect(contactSum).toBe(3);
   });
 });
