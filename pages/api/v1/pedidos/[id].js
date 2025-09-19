@@ -34,7 +34,7 @@ async function putPedido(req, res) {
     if (!Number.isFinite(id)) return res.status(400).json({ error: "invalid id" });
     const head = await client.query({ text: `SELECT * FROM pedidos WHERE id = $1`, values: [id] });
     if (!head.rows.length) return res.status(404).json({ error: "Not found" });
-    if (head.rows[0].status !== "rascunho") return res.status(400).json({ error: "Somente rascunho pode ser editado" });
+    const isDraft = head.rows[0].status === "rascunho";
 
     const b = req.body || {};
     await client.query("BEGIN");
@@ -44,6 +44,7 @@ async function putPedido(req, res) {
     const values = [];
     const set = (field, value) => { values.push(value); sets.push(`${field} = $${values.length}`); };
     if (b.partner_entity_id !== undefined) {
+      if (!isDraft) return res.status(400).json({ error: "partner_entity_id só pode ser alterado em rascunho" });
       if (b.partner_entity_id == null) return res.status(400).json({ error: "partner_entity_id obrigatório" });
       const pid = Number(b.partner_entity_id);
       if (!Number.isFinite(pid)) return res.status(400).json({ error: "partner_entity_id inválido" });
@@ -54,7 +55,10 @@ async function putPedido(req, res) {
     }
     if (b.partner_document !== undefined) set("partner_document", b.partner_document || null);
     if (b.partner_name !== undefined) set("partner_name", b.partner_name || null);
-    if (b.data_emissao !== undefined) set("data_emissao", b.data_emissao || null);
+    if (b.data_emissao !== undefined) {
+      if (!isDraft) return res.status(400).json({ error: "data_emissao só pode ser alterada em rascunho" });
+      set("data_emissao", b.data_emissao || null);
+    }
     if (b.data_entrega !== undefined) set("data_entrega", b.data_entrega || null);
     if (b.observacao !== undefined) set("observacao", b.observacao || null);
     if (b.tem_nota_fiscal !== undefined) set("tem_nota_fiscal", b.tem_nota_fiscal);
@@ -71,6 +75,7 @@ async function putPedido(req, res) {
     let recalcTotals = false;
     let totalBruto = 0, descontoTotal = 0, totalLiquido = 0;
     if (Array.isArray(b.itens)) {
+      if (!isDraft) return res.status(400).json({ error: "Itens só podem ser alterados em rascunho" });
       await client.query({ text: `DELETE FROM pedido_itens WHERE pedido_id = $1`, values: [id] });
       for (const it of b.itens) {
         const rProd = await client.query({ text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`, values: [it.produto_id] });

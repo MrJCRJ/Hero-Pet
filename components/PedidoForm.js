@@ -109,18 +109,23 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
       };
 
       if (editingOrder?.id) {
-        // Atualiza pedido rascunho
+        // Atualiza pedido existente
+        const isEditingDraft = editingOrder.status === "rascunho";
+        const body = isEditingDraft
+          ? payloadBase // rascunho: pode alterar itens e parceiro
+          : { observacao: observacao || null }; // não-rascunho: restringe a campos simples permitidos
         const res = await fetch(`/api/v1/pedidos/${editingOrder.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payloadBase),
+          body: JSON.stringify(body),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.error || "Falha ao atualizar pedido");
         if (typeof onSaved === "function") {
           try { onSaved({ id: editingOrder.id }); } catch (_) { /* noop */ }
         }
-        setCreated({ id: editingOrder.id, status: "rascunho" });
+        // preserva status atual ao editar
+        setCreated({ id: editingOrder.id, status: editingOrder.status });
         push(`Pedido #${editingOrder.id} atualizado.`, { type: "success" });
       } else {
         // Cria novo pedido
@@ -161,6 +166,9 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     }
   }
 
+  const isEditing = !!editingOrder?.id;
+  const isDraft = isEditing ? editingOrder.status === 'rascunho' : true;
+
   return (
     <FormContainer title="Pedido (MVP)" onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -170,7 +178,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             className="w-full border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)]"
             value={tipo}
             onChange={(e) => setTipo(e.target.value)}
-            disabled={!!editingOrder?.id}
+            disabled={isEditing && !isDraft}
           >
             <option value="VENDA">VENDA</option>
             <option value="COMPRA">COMPRA</option>
@@ -183,6 +191,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             placeholder="Busque por nome ou documento"
             fetcher={fetchEntities}
             initialValue={partnerLabel}
+            disabled={isEditing && !isDraft}
             onSelect={(it) => {
               if (!it) {
                 setPartnerId("");
@@ -211,10 +220,13 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
       <div className="mt-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold">Itens</h3>
-          <Button onClick={addItem} variant="outline" size="sm" fullWidth={false}>
+          <Button onClick={addItem} variant="outline" size="sm" fullWidth={false} disabled={isEditing && !isDraft}>
             + Adicionar item
           </Button>
         </div>
+        {isEditing && !isDraft && (
+          <p className="text-xs opacity-70 mb-2">Itens, parceiro e tipo ficam bloqueados após confirmação. Você ainda pode editar Observação.</p>
+        )}
         <div className="space-y-3">
           {itens.map((it, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-3 items-end">
@@ -224,6 +236,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   placeholder="Busque por nome, código ou barras"
                   fetcher={fetchProdutos}
                   initialValue={it.produto_label}
+                  disabled={isEditing && !isDraft}
                   onSelect={(sel) => {
                     if (!sel) return updateItem(idx, { produto_id: "", produto_label: "" });
                     updateItem(idx, { produto_id: String(sel.id), produto_label: sel.label });
@@ -242,6 +255,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   type="number"
                   min="0"
                   step="0.001"
+                  disabled={isEditing && !isDraft}
                   required
                 />
               </div>
@@ -253,6 +267,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   onChange={(e) => updateItem(idx, { preco_unitario: e.target.value })}
                   type="number"
                   step="0.01"
+                  disabled={isEditing && !isDraft}
                 />
               </div>
               <div className="col-span-3">
@@ -263,6 +278,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   onChange={(e) => updateItem(idx, { desconto_unitario: e.target.value })}
                   type="number"
                   step="0.01"
+                  disabled={isEditing && !isDraft}
                 />
               </div>
               <div className="col-span-1 flex items-center justify-end pb-2">
@@ -271,7 +287,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   size="sm"
                   fullWidth={false}
                   onClick={() => removeItem(idx)}
-                  disabled={itens.length === 1}
+                  disabled={itens.length === 1 || (isEditing && !isDraft)}
                 >
                   Remover
                 </Button>
@@ -287,15 +303,17 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             <span className="text-xs opacity-80 mr-auto">
               Criado: #{created.id} • Status: {created.status}
             </span>
-            <Button
-              onClick={handleConfirm}
-              variant="primary"
-              size="sm"
-              fullWidth={false}
-              disabled={submitting}
-            >
-              Confirmar Pedido
-            </Button>
+            {created?.status === 'rascunho' && (
+              <Button
+                onClick={handleConfirm}
+                variant="primary"
+                size="sm"
+                fullWidth={false}
+                disabled={submitting}
+              >
+                Confirmar Pedido
+              </Button>
+            )}
           </>
         )}
         <Button onClick={clearForm} variant="outline" size="sm" fullWidth={false} disabled={submitting}>

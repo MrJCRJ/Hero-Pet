@@ -7,6 +7,7 @@ export function Autocomplete({
   fetcher, // async (q) => Promise<Array<{ id, label, value }>>
   onSelect,
   initialValue,
+  disabled = false,
 }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -48,14 +49,16 @@ export function Autocomplete({
         <input
           value={q}
           onChange={(e) => {
+            if (disabled) return;
             setQ(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => !disabled && setOpen(true)}
           placeholder={placeholder}
+          disabled={disabled}
           className="w-full border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)]"
         />
-        {initialValue && (
+        {initialValue && !disabled && (
           <Button
             variant="outline"
             size="sm"
@@ -67,7 +70,7 @@ export function Autocomplete({
           </Button>
         )}
       </div>
-      {open && items.length > 0 && (
+      {open && !disabled && items.length > 0 && (
         <div className="absolute z-40 mt-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow">
           <ul className="max-h-60 overflow-auto text-sm">
             {items.map((it) => (

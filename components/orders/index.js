@@ -136,12 +136,12 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm, onEdit }
                   })()
                 }</td>
                 <td className="px-3 py-2 text-right">
-                  {p.status === 'rascunho' ? (
-                    <div className="flex gap-2 justify-end">
-                      <Button size="sm" fullWidth={false} variant="outline" onClick={() => onEdit && onEdit(p)}>Editar</Button>
+                  <div className="flex gap-2 justify-end">
+                    <Button size="sm" fullWidth={false} variant="outline" onClick={() => onEdit && onEdit(p)}>Editar</Button>
+                    {p.status === 'rascunho' && (
                       <Button size="sm" fullWidth={false} onClick={() => confirm(p.id)}>Confirmar</Button>
-                    </div>
-                  ) : (<span className="opacity-60">—</span>)}
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
