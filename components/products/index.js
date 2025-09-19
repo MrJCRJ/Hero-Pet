@@ -1,0 +1,1 @@
+export { ProductsManager } from "./manager";

@@ -1,306 +1,125 @@
 # Hero-Pet
 
-Hero-Pet é um sistema para gestão de estoque e financeiro, desenvolvido em JavaScript/Node.js com Next.js e TailwindCSS. O projeto visa facilitar o controle de clientes, pedidos, fornecedores e administração, com uma interface moderna e responsiva.
+Sistema de gestão (Entidades, Produtos e Estoque) em Next.js + Node.js com TailwindCSS e Jest. O backend expõe rotas versionadas em `pages/api/v1/*` e usa Postgres via Docker e migrações em `infra/migrations/`.
 
-## Funcionalidades
+## Sumário rápido
 
-- Cadastro e gerenciamento de clientes, pedidos e fornecedores
-- Controle de acesso administrativo
-- Visualização de status e navegação temática
-- API RESTful para operações de migração e status
-- Testes automatizados com Jest
-- Integração com banco de dados via scripts e migrações
+- Frontend: Next.js + Tailwind
+- Backend: API Routes (`pages/api/v1`) com Postgres
+- Infra: Docker Compose (Postgres 16) porta host 5433
+- Testes: Jest com servidor Next iniciado em `globalSetup`
 
-## Tecnologias Utilizadas
+## Como rodar
 
-- **Next.js**: Framework React para aplicações web
-- **TailwindCSS**: Estilização moderna e utilitária
-- **Jest**: Testes automatizados
-- **Docker Compose**: Orquestração de infraestrutura
-- **Node.js**: Backend e scripts
-
-### Gestão de Entidades (Novo Fluxo)
-
-O fluxo de Cliente / Fornecedor foi unificado no componente `EntitiesManager` que provê:
-
-- Formulário único para criação/edição (cliente ou fornecedor) com campos: documento (CPF/CNPJ) + pendência, endereço (CEP, número, complemento), contato (telefone, email), status ativo.
-- Máscaras dinâmicas (CPF/CNPJ, CEP, telefone) centralizadas em util compartilhado.
-- Classificação de documento: `pending | provisional | valid` (soft validation sem bloquear envio).
-- Classificação de completude de endereço e contato: `completo | parcial | vazio` com ícone ⚠ em linhas parciais.
-- Filtros combináveis: status do documento, pendente, completude de endereço e contato.
-- Paginação incremental com botão "Carregar mais".
-- Exclusão otimista com modal de confirmação e suporte a ESC.
-- Resumo agregado (counts + percentuais) vindo de `/api/v1/entities/summary` exibido como badges.
-
-O antigo `components/EntityForm.js` foi descontinuado e o arquivo removido. Utilize sempre `EntitiesManager`.
-
-#### Percentuais de Completude
-
-O endpoint `GET /api/v1/entities/summary` fornece:
-
-```json
-{
-  "by_address_fill": { "completo": 3, "parcial": 1, "vazio": 6 },
-  "percent_address_fill": { "completo": 30.0, "parcial": 10.0, "vazio": 60.0 },
-  "by_contact_fill": { "completo": 5, "parcial": 2, "vazio": 3 },
-  "percent_contact_fill": { "completo": 50.0, "parcial": 20.0, "vazio": 30.0 }
-}
-```
-
-As chaves são sempre retornadas (zero-filled) para contrato estável de UI.
-
-#### Regras de Completude
-
-- Endereço completo: CEP preenchido + número preenchido.
-- Endereço parcial: Pelo menos um dos dois (CEP ou número) preenchido.
-- Contato completo: Telefone válido (fixo 10 dígitos ou celular 11 iniciando com 9) E email válido.
-- Contato parcial: Pelo menos um dos campos contato preenchido (mesmo inválido ou incompleto).
-- Caso contrário: `vazio`.
-
-Regex e trechos SQL para telefone/email centralizados em `lib/validation/patterns.js` para evitar divergência.
-
-### Utilitários de UI (Tailwind Plugin)
-
-O projeto inclui um plugin Tailwind customizado (`tailwind-plugins/ui.js`) que disponibiliza classes semânticas:
-
-- Botões: `btn`, `btn-primary`, `btn-secondary`, `btn-danger`, `btn-outline`, modificadores `btn-sm`, `btn-lg`, `btn-block`.
-- Estado de carregamento: adicionar prop `loading` no componente `<Button />` aplica spinner e classe `btn-loading` (desabilita clique e mostra indicador). Ex:
-  ```jsx
-  <Button variant="primary" loading>
-    Salvando...
-  </Button>
-  ```
-- Badges: `badge`, `badge-soft`, `badge-success`, `badge-warning`, `badge-info`, `badge-danger`.
-- Superfícies: `card`, `surface`, `divider`.
-
-Isso reduz CSS manual em `globals.css` e centraliza consistência visual.
-
-### Hook de Paginação (`usePaginatedEntities`)
-
-O hook `usePaginatedEntities` (arquivo `hooks/usePaginatedEntities.js`) abstrai filtros e paginação incremental de entidades.
-
-API retornada:
-
-- `rows`, `total`, `summary`
-- Estados: `loading`, `loadingMore`, `error`, `statusFilter`, `pendingOnly`, `canLoadMore`
-- Ações: `setStatusFilter(v)`, `setPendingOnly(bool)`, `loadMore()`, `refresh()`, `loadSummary()`
-
-Exemplo:
-
-```jsx
-import { usePaginatedEntities } from "hooks/usePaginatedEntities";
-
-function EntitiesWidget() {
-  const {
-    rows,
-    total,
-    loading,
-    canLoadMore,
-    loadMore,
-    statusFilter,
-    setStatusFilter,
-  } = usePaginatedEntities();
-  return (
-    <div>
-      <select
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-      >
-        <option value="">Todos</option>
-        <option value="pending">Pending</option>
-        <option value="provisional">Provisional</option>
-        <option value="valid">Valid</option>
-      </select>
-      <ul>
-        {rows.map((r) => (
-          <li key={r.id}>{r.name}</li>
-        ))}
-      </ul>
-      {canLoadMore && (
-        <button onClick={loadMore} disabled={loading}>
-          Carregar mais
-        </button>
-      )}
-      <p>Total filtrado: {total}</p>
-    </div>
-  );
-}
-```
-
-## Estrutura Principal
-
-- `components/`: Componentes React reutilizáveis (formulários, navegação, UI)
-- `contexts/`: Contextos globais (ex: tema)
-- `hooks/`: Hooks customizados
-- `infra/`: Infraestrutura, banco de dados, scripts e migrações
-- `pages/`: Páginas da aplicação e rotas de API
-- `tests/`: Testes automatizados
-- `components/entities/`: Novo agrupamento (form, listagem, shared utils) do fluxo de entidades (substitui o antigo `EntityForm`).
-
-## Como rodar o projeto
-
-1. Instale as dependências:
-   ```bash
-   npm install
-   ```
-2. Configure o ambiente (`.env.development`)
-3. Suba a infraestrutura (opcional):
-   ```bash
-   docker compose -f infra/compose.yaml up
-   ```
-4. Rode a aplicação:
-   ```bash
-   npm run dev
-   ```
-5. Execute os testes:
-   ```bash
-   npm test
-   ```
-
-### Build e Produção
-
-Para gerar build otimizado e iniciar em modo produção:
+1. Instalar deps
 
 ```bash
-npm run build
-npm start
+npm install
 ```
 
-Certifique-se de ter as variáveis de ambiente de produção definidas (ex: `DATABASE_URL`). O script `start` não sobe containers ou executa migrações automaticamente; recomenda-se aplicar migrações via pipeline (CI/CD) antes do deploy.
+2. Configurar `.env.development` (exemplo mínimo)
 
-## Migrações de Banco & Erros de Schema
-
-As migrações ficam em `infra/migrations/` e são aplicadas em ordem pelo endpoint `POST /api/v1/migrations` ou por execução direta em pipeline CI/CD. Cada arquivo representa uma mudança atômica no schema.
-
-### Quando preciso aplicar?
-
-- Sempre que novos arquivos forem adicionados em `infra/migrations/` no merge para `main` / produção.
-- Se não houver arquivos novos, não é necessário rodar nada; o schema já está alinhado.
-
-### Erros Comuns
-
-| Código | Significado                                     | Tratamento                                         | Ação Sugerida                   |
-| ------ | ----------------------------------------------- | -------------------------------------------------- | ------------------------------- |
-| 42P01  | Tabela ausente (`entities` ainda não criada)    | API retorna 503 com mensagem de schema não migrado | Rodar `POST /api/v1/migrations` |
-| 42703  | Coluna ausente (ex: `numero` após nova release) | API retorna 503 indicando schema desatualizado     | Aplicar migrações pendentes     |
-
-O backend detecta ambos e responde 503 com payload orientando aplicar migrações:
-
-```json
-{
-  "error": "Schema not migrated or outdated (table/column missing)",
-  "dependency": "database",
-  "code": "42703",
-  "action": "Run POST /api/v1/migrations to apply pending migrations"
-}
+```env
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5433
+POSTGRES_DB=hero_pet
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/hero_pet
 ```
 
-### Fluxo Recomendado em CI/CD
-
-1. Rodar testes (garante consistência lógica).
-2. Detectar mudanças em `infra/migrations/` comparando com commit anterior.
-3. Se houver diffs, aplicar migrações no banco de produção (job dedicado, com lock se necessário).
-4. Fazer deploy da aplicação.
-5. Executar smoke tests (`/api/v1/status`, `/api/v1/entities/summary`).
-
-### Endpoint de Migrações (Uso Manual)
+3. Subir Postgres (opcional em dev, os testes sobem/param automaticamente)
 
 ```bash
-curl -X POST https://<host>/api/v1/migrations
+docker compose -f infra/compose.yaml up -d
 ```
 
-Idealmente proteger com token (ex: header `Authorization`) antes de expor publicamente em produção.
+4. Rodar app em dev
 
-### Boas Práticas de Migração
+```bash
+npm run dev
+```
 
-- Prefira mudanças aditivas (adicionar coluna) em vez de DROP imediato.
-- Para renomear/remover colunas: criar nova coluna, backfill, atualizar código, depois remover a antiga em uma migração posterior.
-- Índices pesados: avaliar execução fora de horário de pico ou usar `CONCURRENTLY` (se adotado no futuro via ferramenta apropriada).
-- Evite lógica demorada dentro da migração (backfills grandes podem ser scripts separados em batches).
+5. Aplicar migrações (manual)
 
-### Observabilidade
+```bash
+curl -X POST http://localhost:3000/api/v1/migrations
+```
 
-Planejado: expor no `/api/v1/status` a última migração aplicada para auditoria rápida.
+6. Rodar testes
+
+```bash
+npm test
+```
+
+## Endpoints principais
+
+### Status e Migrações
+
+- GET `/api/v1/status` — healthcheck.
+- POST `/api/v1/migrations` — aplica migrações pendentes; idempotente.
+
+### Entidades (clientes/fornecedores)
+
+- GET `/api/v1/entities` — lista com filtros (status, pending etc.).
+- POST `/api/v1/entities` — cria; normaliza e classifica documento no servidor.
+- PUT `/api/v1/entities/:id`, DELETE `/api/v1/entities/:id` — atualizar/inativar.
+- GET `/api/v1/entities/summary` — agregados e percentuais de completude.
+
+Regras de documento, máscaras e validação agrupadas em `components/entity/utils.js` e compartilhadas na API.
+
+### Produtos
+
+- POST `/api/v1/produtos` — cria produto; valida fornecedor (somente PJ) e `codigo_barras` único (parcial: apenas quando não nulo).
+- GET `/api/v1/produtos` — filtros `q`, `categoria`, `codigo_barras`, `ativo`; paginação `limit` (<=500) e `offset`. Quando `meta=1`, retorna `{ data, meta: { total } }`.
+- PUT `/api/v1/produtos/:id` — atualização parcial; validações de `fornecedor_id` (PJ) e `codigo_barras` único.
+- DELETE `/api/v1/produtos/:id` — soft delete (`ativo=false`).
+
+Campos: `nome` (obrigatório), `descricao`, `codigo_barras`, `categoria`, `fornecedor_id`, `preco_tabela`, `markup_percent_default`, `estoque_minimo`, `ativo`.
+
+### Estoque
+
+- POST `/api/v1/estoque/movimentos` — cria movimento: `tipo` em `ENTRADA|SAIDA|AJUSTE`.
+  - ENTRADA: requer `valor_unitario`; calcula `valor_total = quantidade*valor_unitario + frete + outras_despesas`.
+  - SAIDA/AJUSTE: ignoram custo (armazenado como `null`), `frete/outras_despesas=0`.
+- GET `/api/v1/estoque/movimentos` — lista por `produto_id` obrigatório; filtros `tipo`, `from`, `to`; paginação `limit` (<=200) e `offset`. Quando `meta=1`, retorna `{ data, meta: { total } }`.
+- GET `/api/v1/estoque/saldos` — retorna `{ produto_id, saldo, custo_medio, ultimo_custo }` calculados sob demanda.
+
+Schema relevante em `infra/migrations`:
+
+- `1758200000000_create_produtos_table.js`
+- `1758201000000_create_movimento_estoque_table.js`
+
+## Estrutura do projeto
+
+- `components/` — UI (inclui `components/entities/*` com fluxo refatorado PF/PJ)
+- `hooks/` — Hooks (ex.: `usePaginatedEntities`, `useStatus`, `useAuth`)
+- `infra/` — Docker, DB e migrações (porta 5433 mapeada no host)
+- `lib/` — Utilidades (erros, validações compartilhadas em `lib/validation/*`)
+- `pages/` — Next pages e API routes (`pages/api/v1/*`)
+- `tests/` — Jest (UI e API), com servidor Next inicializado uma vez (`globalSetup`)
+
+## Padrões de testes
+
+- Os testes de API sobem o Postgres (via compose) e iniciam um servidor Next único.
+- Migrações são aplicadas automaticamente chamando `POST /api/v1/migrations` no setup.
+- Exemplos recentes:
+  - Produtos: `tests/api/v1/produtos/post.test.js`, `get.test.js`, `put-delete.test.js`, `pagination-meta.test.js`.
+  - Estoque: `tests/api/v1/estoque/movimentos-and-saldos.test.js`, `get-movimentos.test.js`, `get-movimentos-filters.test.js`.
+
+Para rodar somente um conjunto:
+
+```bash
+npm test -- tests/api/v1/produtos/pagination-meta.test.js
+```
+
+## Troubleshooting
+
+- Porta do Postgres em uso (5432): o compose usa host 5433. Confirme `.env.development` e `infra/compose.yaml`.
+- Erros 503 (schema): rode `POST /api/v1/migrations` antes de usar novos endpoints/colunas.
+- Conflito de `codigo_barras`: a API retorna 409 quando duplicado (parcial único quando não nulo).
+- Flakiness nos testes: confie no `globalSetup` que inicia apenas um servidor Next para toda a suíte.
 
 ## Licença
 
 MIT
-
----
-
-## Exemplos de Entidades
-
-### Cliente
-
-```json
-{
-  "nome": "João da Silva",
-  "documento": "123.456.789-00",
-  "cep": "12345-678",
-  "telefone": "(11) 99999-8888",
-  "email": "joao@email.com",
-  "ativo": true
-}
-```
-
-### Produto
-
-```json
-{
-  "nome": "Ração Premium para Cães Adultos",
-  "descricao": "Ração super premium para cães adultos de porte médio",
-  "codigoBarras": "7891234567890",
-  "precoCusto": 85.0,
-  "precoVenda": 120.0,
-  "categoria": "Cães",
-  "fornecedor_id": "abc123",
-  "unidadeMedida": "Kg",
-  "peso": 15,
-  "estoqueMinimo": 10,
-  "estoqueAtual": 50,
-  "ativo": true
-}
-```
-
-### Pedido
-
-```json
-{
-  "tipo": "VENDA",
-  "status": "PENDENTE",
-  "cliente_id": "cli123",
-  "dataPedido": "2025-09-14",
-  "totalProdutos": 240.0,
-  "desconto": 10.0,
-  "valorFrete": 15.0,
-  "totalPedido": 245.0
-}
-```
-
----
-
-## Fluxo de Trabalho Típico
-
-1. **Cadastro de Produto**: Usuário preenche formulário, sistema valida e calcula margem de lucro automaticamente.
-2. **Entrada de Estoque**: Compra registrada, estoque atualizado, movimento salvo.
-3. **Venda**: Pedido criado, estoque baixado, sistema verifica estoque mínimo e emite alerta se necessário.
-4. **Reajuste de Preço**: Alteração no custo recalcula preço de venda e margem.
-
-### Exemplo de Alerta
-
-> "Alerta: Ração Premium está com apenas 8 unidades!"
-
----
-
-## Lógica de Margem de Lucro
-
-```js
-margemLucro = ((precoVenda - precoCusto) / precoCusto) * 100;
-// Exemplo: ((120 - 85) / 85) * 100 = 41.18%
-```
-
----
-
-## Mais detalhes
-
-Consulte o arquivo [`sistema-estoque-financeiro.md`](./sistema-estoque-financeiro.md) para estrutura de tabelas, exemplos completos e lógica detalhada do sistema.

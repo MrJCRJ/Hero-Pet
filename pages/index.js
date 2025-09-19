@@ -7,10 +7,12 @@ import { ThemeToggle } from "../components/ThemeToggle";
 import React, { useState } from "react";
 import { EntitiesManager } from "components/entities";
 import { PedidoForm } from "../components/PedidoForm";
+import { ProductsManager } from "../components/products";
 import { Button } from "../components/ui/Button";
 
 const formConfig = {
   entities: { label: "Cliente / Fornecedor", Component: EntitiesManager },
+  products: { label: "Produtos", Component: ProductsManager },
   orders: { label: "Pedido", Component: PedidoForm },
 };
 
