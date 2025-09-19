@@ -13,13 +13,10 @@ export default async function handler(req, res) {
     const head = await client.query({ text: `SELECT * FROM pedidos WHERE id = $1 FOR UPDATE`, values: [id] });
     if (!head.rows.length) return res.status(404).json({ error: "Not found" });
     const pedido = head.rows[0];
+    // Com CRUD sem rascunhos, pedidos já nascem confirmados. Mantenha idempotência.
     if (pedido.status === "confirmado") {
       await client.query("ROLLBACK");
       return res.status(200).json({ ok: true, alreadyConfirmed: true });
-    }
-    if (pedido.status !== "rascunho") {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ error: "Somente rascunho pode ser confirmado" });
     }
 
     const itens = await client.query({ text: `SELECT * FROM pedido_itens WHERE pedido_id = $1 ORDER BY id`, values: [id] });

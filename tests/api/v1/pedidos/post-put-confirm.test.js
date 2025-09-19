@@ -52,10 +52,22 @@ async function criaParceiroPF(nome = "Cliente PF Teste") {
 // helper para PJ não é necessário neste conjunto de testes
 
 describe("Pedidos: POST, PUT e Confirm", () => {
-  test("Cria VENDA rascunho e calcula totais (201)", async () => {
+  test("Cria VENDA confirmado e calcula totais (201)", async () => {
     const cliente = await criaParceiroPF();
     const p1 = await criaProduto("Racao 2kg", 20);
     const p2 = await criaProduto("Areia 4kg", 15);
+
+    // entrada para garantir saldo suficiente
+    await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ produto_id: p1.id, tipo: "ENTRADA", quantidade: 2, valor_unitario: 18 }),
+    });
+    await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ produto_id: p2.id, tipo: "ENTRADA", quantidade: 3, valor_unitario: 12 }),
+    });
 
     const payload = {
       tipo: "VENDA",
@@ -76,17 +88,17 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     expect([200, 201]).toContain(resp.status);
     const body = await resp.json();
     expect(body).toHaveProperty("id");
-    expect(body).toHaveProperty("status", "rascunho");
+    expect(body).toHaveProperty("status", "confirmado");
     expect(body).toHaveProperty("total_bruto", "89.00"); // (22*2) + (15*3) = 44 + 45 = 89
     expect(body).toHaveProperty("desconto_total", "4.00");
     expect(body).toHaveProperty("total_liquido", "85.00"); // 40 + 45
   });
 
-  test("PUT em rascunho pode mudar itens e parceiro (200)", async () => {
+  test("PUT após criação bloqueia itens e permite cabeçalho (400/200)", async () => {
     const cliente = await criaParceiroPF("Cliente PF 2");
     const p1 = await criaProduto("Brinquedo", 50);
 
-    // cria pedido inicial com 1 item
+    // cria pedido inicial (confirmado) com 1 item via COMPRA para não exigir saldo
     const resp1 = await fetch("http://localhost:3000/api/v1/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -100,34 +112,32 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     expect([200, 201]).toContain(resp1.status);
     const pedido = await resp1.json();
 
-    // altera itens e parceiro
-    const novoParceiro = await criaParceiroPF("Cliente PF 3");
+    // tentar alterar itens deve falhar (400)
     const p2 = await criaProduto("Shampoo", 25);
-    const put = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
+    const putItens = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        partner_entity_id: novoParceiro.id,
-        partner_name: novoParceiro.name,
-        itens: [
-          { produto_id: p2.id, quantidade: 2, preco_unitario: 20 }, // total bruto 40, desconto 0, líquido 40
-        ],
-      }),
+      body: JSON.stringify({ itens: [{ produto_id: p2.id, quantidade: 2, preco_unitario: 20 }] }),
     });
-    expect(put.status).toBe(200);
+    expect(putItens.status).toBe(400);
+
+    // alterar apenas cabeçalho deve funcionar (200)
+    const putHeader = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ observacao: "Obs alterada", partner_name: "NOME EXIBICAO" }),
+    });
+    expect(putHeader.status).toBe(200);
 
     // lê para verificar totais atualizados
     const get = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`);
     const body = await get.json();
-    expect(body).toHaveProperty("partner_entity_id", novoParceiro.id);
-    expect(body).toHaveProperty("total_bruto", "40.00");
-    expect(body).toHaveProperty("desconto_total", "0.00");
-    expect(body).toHaveProperty("total_liquido", "40.00");
+    expect(body).toHaveProperty("observacao", "Obs alterada");
     expect(Array.isArray(body.itens)).toBe(true);
-    expect(body.itens.length).toBe(1);
+    expect(body.itens.length).toBe(1); // itens mantidos
   });
 
-  test("Confirmar VENDA gera saída e bloqueia editar itens depois (200/400)", async () => {
+  test("Venda gera movimentos no POST e bloqueia editar itens depois (400)", async () => {
     const cliente = await criaParceiroPF("Cliente PF 4");
     const prod = await criaProduto("Petisco", 10);
 
@@ -151,9 +161,6 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     expect([200, 201]).toContain(resp.status);
     const pedido = await resp.json();
 
-    const conf = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}/confirm`, { method: "POST" });
-    expect(conf.status).toBe(200);
-
     // tentativa de editar itens após confirmação deve falhar (400)
     const put = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
       method: "PUT",
@@ -161,5 +168,11 @@ describe("Pedidos: POST, PUT e Confirm", () => {
       body: JSON.stringify({ itens: [{ produto_id: prod.id, quantidade: 1 }] }),
     });
     expect(put.status).toBe(400);
+
+    // verifica que o saldo reduziu para o produto após o POST (movimento de SAIDA aplicado)
+    const listaMov = await fetch(`http://localhost:3000/api/v1/estoque/movimentos?produto_id=${prod.id}`);
+    const movimentos = await listaMov.json();
+    expect(Array.isArray(movimentos)).toBe(true);
+    expect(movimentos.find(m => m.documento === `PEDIDO:${pedido.id}` && m.tipo === 'SAIDA')).toBeTruthy();
   });
 });

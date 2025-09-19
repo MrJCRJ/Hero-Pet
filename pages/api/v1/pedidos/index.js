@@ -27,7 +27,7 @@ async function postPedido(req, res) {
     await client.query("BEGIN");
     const head = await client.query({
       text: `INSERT INTO pedidos (tipo, status, partner_entity_id, partner_document, partner_name, data_emissao, data_entrega, observacao, tem_nota_fiscal, parcelado)
-             VALUES ($1,'rascunho',$2,$3,$4, COALESCE($5::timestamptz, NOW()), $6,$7,$8,$9)
+             VALUES ($1,'confirmado',$2,$3,$4, COALESCE($5::timestamptz, NOW()), $6,$7,$8,$9)
              RETURNING *`,
       values: [
         tipo,
@@ -69,6 +69,45 @@ async function postPedido(req, res) {
       text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, updated_at = NOW() WHERE id = $4`,
       values: [totalBruto, descontoTotal, totalLiquido, pedido.id],
     });
+    // Gerar movimentos de estoque imediatamente (CRUD sem rascunho)
+    const docTag = `PEDIDO:${pedido.id}`;
+    const itensCriados = await client.query({ text: `SELECT * FROM pedido_itens WHERE pedido_id = $1 ORDER BY id`, values: [pedido.id] });
+    for (const it of itensCriados.rows) {
+      if (tipo === 'VENDA') {
+        // checa saldo disponível
+        const saldoQ = await client.query({
+          text: `SELECT COALESCE((
+                   SELECT COALESCE(SUM(CASE WHEN tipo='ENTRADA' THEN quantidade WHEN tipo='SAIDA' THEN -quantidade ELSE quantidade END),0)
+                   FROM movimento_estoque WHERE produto_id = $1
+                 ),0) AS saldo`,
+          values: [it.produto_id],
+        });
+        const saldo = Number(saldoQ.rows[0].saldo || 0);
+        if (saldo < Number(it.quantidade)) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({ error: `Saldo insuficiente para produto ${it.produto_id}` });
+        }
+        await client.query({
+          text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao)
+                 VALUES ($1,'SAIDA',$2,$3,$4)`,
+          values: [it.produto_id, it.quantidade, docTag, `SAÍDA por criação de pedido ${pedido.id}`],
+        });
+      } else if (tipo === 'COMPRA') {
+        await client.query({
+          text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
+                 VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
+          values: [
+            it.produto_id,
+            it.quantidade,
+            it.preco_unitario,
+            Number(it.preco_unitario) * Number(it.quantidade),
+            docTag,
+            `ENTRADA por criação de pedido ${pedido.id}`,
+          ],
+        });
+      }
+    }
+
     const finalHead = await client.query({ text: `SELECT * FROM pedidos WHERE id = $1`, values: [pedido.id] });
 
     await client.query("COMMIT");

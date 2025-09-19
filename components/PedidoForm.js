@@ -117,10 +117,8 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
 
       if (editingOrder?.id) {
         // Atualiza pedido existente
-        const isEditingDraft = editingOrder.status === "rascunho";
-        const body = isEditingDraft
-          ? payloadBase // rascunho: pode alterar itens e parceiro
-          : { observacao: observacao || null, partner_name: partnerName || null }; // não-rascunho: restringe a campos simples permitidos
+        // CRUD sem rascunho: após criado, não permitir alterar itens, tipo e parceiro (mantém consistência de estoque)
+        const body = { observacao: observacao || null, partner_name: partnerName || null };
         const res = await fetch(`/api/v1/pedidos/${editingOrder.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -144,11 +142,11 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Falha ao criar pedido");
-        setCreated(data);
+        setCreated({ ...data, status: data.status || "confirmado" });
         if (typeof onCreated === "function") {
           try { onCreated(data); } catch (_) { /* noop */ }
         }
-        push(`Pedido #${data.id} criado como rascunho.`, { type: "success" });
+        push(`Pedido #${data.id} criado.`, { type: "success" });
       }
     } catch (err) {
       push(err.message, { type: "error" });
@@ -157,56 +155,12 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     }
   }
 
-  async function handleDuplicateAsDraft() {
-    try {
-      const payload = {
-        tipo,
-        partner_entity_id: Number(partnerId),
-        partner_name: partnerName || null,
-        observacao: observacao || null,
-        itens: itens
-          .filter((it) => Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0)
-          .map((it) => ({
-            produto_id: Number(it.produto_id),
-            quantidade: Number(it.quantidade),
-            ...(numOrNull(it.preco_unitario) != null ? { preco_unitario: numOrNull(it.preco_unitario) } : {}),
-            ...(numOrNull(it.desconto_unitario) != null ? { desconto_unitario: numOrNull(it.desconto_unitario) } : {}),
-          })),
-      };
-      const res = await fetch("/api/v1/pedidos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Falha ao duplicar pedido");
-      if (typeof onCreated === "function") {
-        try { onCreated(data); } catch (_) { /* noop */ }
-      }
-      push(`Pedido #${data.id} criado como rascunho.`, { type: "success" });
-    } catch (e) {
-      push(e.message, { type: "error" });
-    }
-  }
+  // Duplica rascunho removido no CRUD sem rascunhos
 
-  async function handleConfirm() {
-    if (!created?.id) return;
-    setSubmitting(true);
-    try {
-      const res = await fetch(`/api/v1/pedidos/${created.id}/confirm`, { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao confirmar pedido");
-      push(`Pedido #${created.id} confirmado.`, { type: "success" });
-      setCreated({ ...created, status: "confirmado" });
-    } catch (err) {
-      push(err.message, { type: "error" });
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  // Confirmar não é mais necessário (pedido já nasce confirmado)
 
   const isEditing = !!editingOrder?.id;
-  const isDraft = isEditing ? editingOrder.status === 'rascunho' : true;
+  const isDraft = false;
 
   return (
     <FormContainer title="Pedido (MVP)" onSubmit={handleSubmit}>
@@ -217,7 +171,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             className="w-full border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)]"
             value={tipo}
             onChange={(e) => setTipo(e.target.value)}
-            disabled={isEditing && !isDraft}
+            disabled={isEditing}
           >
             <option value="VENDA">VENDA</option>
             <option value="COMPRA">COMPRA</option>
@@ -230,7 +184,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             <div className="flex-1 text-sm px-3 py-2 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] min-h-[38px] flex items-center">
               {partnerLabel || <span className="opacity-60">Nenhum selecionado</span>}
             </div>
-            <Button variant="outline" size="sm" fullWidth={false} onClick={() => setShowPartnerModal(true)} disabled={isEditing && !isDraft}>
+            <Button variant="outline" size="sm" fullWidth={false} onClick={() => setShowPartnerModal(true)} disabled={isEditing}>
               Buscar...
             </Button>
           </div>
@@ -253,8 +207,8 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             + Adicionar item
           </Button>
         </div>
-        {isEditing && !isDraft && (
-          <p className="text-xs opacity-70 mb-2">Itens, parceiro e tipo ficam bloqueados após confirmação. Você ainda pode editar Observação.</p>
+        {isEditing && (
+          <p className="text-xs opacity-70 mb-2">Após criar o pedido, itens, parceiro e tipo ficam bloqueados. Você pode editar a Observação.</p>
         )}
         <div className="space-y-3">
           {itens.map((it, idx) => (
@@ -265,7 +219,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   <div className="flex-1 text-sm px-3 py-2 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] min-h-[38px] flex items-center">
                     {it.produto_label || <span className="opacity-60">Nenhum selecionado</span>}
                   </div>
-                  <Button variant="outline" size="sm" fullWidth={false} onClick={() => setProductModalIndex(idx)} disabled={isEditing && !isDraft}>
+                  <Button variant="outline" size="sm" fullWidth={false} onClick={() => setProductModalIndex(idx)} disabled={isEditing}>
                     Buscar...
                   </Button>
                 </div>
@@ -279,7 +233,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   type="number"
                   min="0"
                   step="0.001"
-                  disabled={isEditing && !isDraft}
+                  disabled={isEditing}
                   required
                 />
               </div>
@@ -291,7 +245,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   onChange={(e) => updateItem(idx, { preco_unitario: e.target.value })}
                   type="number"
                   step="0.01"
-                  disabled={isEditing && !isDraft}
+                  disabled={isEditing}
                 />
               </div>
               <div className="col-span-3">
@@ -302,7 +256,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   onChange={(e) => updateItem(idx, { desconto_unitario: e.target.value })}
                   type="number"
                   step="0.01"
-                  disabled={isEditing && !isDraft}
+                  disabled={isEditing}
                 />
               </div>
               <div className="col-span-1 flex items-center justify-end pb-2">
@@ -311,7 +265,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                   size="sm"
                   fullWidth={false}
                   onClick={() => removeItem(idx)}
-                  disabled={itens.length === 1 || (isEditing && !isDraft)}
+                  disabled={itens.length === 1 || isEditing}
                 >
                   Remover
                 </Button>
@@ -323,27 +277,9 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
 
       <div className="flex flex-wrap items-center justify-end gap-2 mt-8">
         {created?.id && (
-          <>
-            <span className="text-xs opacity-80 mr-auto">
-              Criado: #{created.id} • Status: {created.status}
-            </span>
-            {created?.status === 'rascunho' && (
-              <Button
-                onClick={handleConfirm}
-                variant="primary"
-                size="sm"
-                fullWidth={false}
-                disabled={submitting}
-              >
-                Confirmar Pedido
-              </Button>
-            )}
-          </>
-        )}
-        {isEditing && !isDraft && (
-          <Button onClick={handleDuplicateAsDraft} variant="outline" size="sm" fullWidth={false} disabled={submitting}>
-            Duplicar como rascunho
-          </Button>
+          <span className="text-xs opacity-80 mr-auto">
+            Criado: #{created.id} • Status: {created.status || 'confirmado'}
+          </span>
         )}
         <Button onClick={clearForm} variant="outline" size="sm" fullWidth={false} disabled={submitting}>
           Limpar

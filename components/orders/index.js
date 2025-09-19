@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "../ui/Button";
-import { useToast } from "../entities/shared/toast";
 import { FormContainer } from "../ui/Form";
 import { PedidoForm } from "../PedidoForm";
 
@@ -80,8 +79,7 @@ function usePedidos(filters, limit = 20) {
   return { loading, data, reload };
 }
 
-export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm, onEdit }) {
-  const { push } = useToast();
+export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
   const [filters, setFilters] = useState({ tipo: "", status: "", q: "" });
   const { loading, data, reload } = usePedidos(filters, limit);
   useEffect(() => {
@@ -90,18 +88,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm, onEdit }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
 
-  const confirm = async (id) => {
-    try {
-      const res = await fetch(`/api/v1/pedidos/${id}/confirm`, { method: "POST" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || "Falha ao confirmar pedido");
-      push(`Pedido #${id} confirmado.`, { type: "success" });
-      if (typeof onConfirm === 'function') onConfirm(id);
-      reload();
-    } catch (e) {
-      push(e.message, { type: "error" });
-    }
-  };
+  // confirmação não é mais usada (CRUD sem rascunhos)
 
   return (
     <div className="text-sm">
@@ -138,9 +125,6 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm, onEdit }
                 <td className="px-3 py-2 text-right">
                   <div className="flex gap-2 justify-end">
                     <Button size="sm" fullWidth={false} variant="outline" onClick={() => onEdit && onEdit(p)}>Editar</Button>
-                    {p.status === 'rascunho' && (
-                      <Button size="sm" fullWidth={false} onClick={() => confirm(p.id)}>Confirmar</Button>
-                    )}
                   </div>
                 </td>
               </tr>
