@@ -16,6 +16,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const [tipo, setTipo] = useState("VENDA");
   const [partnerId, setPartnerId] = useState("");
   const [partnerLabel, setPartnerLabel] = useState("");
+  const [partnerName, setPartnerName] = useState("");
   const [observacao, setObservacao] = useState("");
   const [itens, setItens] = useState([
     { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "" },
@@ -28,6 +29,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     setTipo(editingOrder.tipo || "VENDA");
     setPartnerId(String(editingOrder.partner_entity_id || ""));
     setPartnerLabel(editingOrder.partner_name || "");
+    setPartnerName(editingOrder.partner_name || "");
     setObservacao(editingOrder.observacao || "");
     const mapped = Array.isArray(editingOrder.itens)
       ? editingOrder.itens.map((it) => ({
@@ -79,7 +81,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     const res = await fetch(url);
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || "Falha na busca de entidades");
-    return data.map((e) => ({ id: e.id, label: `${e.name} • ${e.entity_type}` }));
+    return data.map((e) => ({ id: e.id, label: `${e.name} • ${e.entity_type}`, name: e.name }));
   };
 
   const fetchProdutos = async (q) => {
@@ -97,6 +99,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     try {
       const payloadBase = {
         partner_entity_id: Number(partnerId),
+        partner_name: partnerName || null,
         observacao: observacao || null,
         itens: itens
           .filter((it) => Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0)
@@ -113,7 +116,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         const isEditingDraft = editingOrder.status === "rascunho";
         const body = isEditingDraft
           ? payloadBase // rascunho: pode alterar itens e parceiro
-          : { observacao: observacao || null }; // não-rascunho: restringe a campos simples permitidos
+          : { observacao: observacao || null, partner_name: partnerName || null }; // não-rascunho: restringe a campos simples permitidos
         const res = await fetch(`/api/v1/pedidos/${editingOrder.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -147,6 +150,38 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
       push(err.message, { type: "error" });
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDuplicateAsDraft() {
+    try {
+      const payload = {
+        tipo,
+        partner_entity_id: Number(partnerId),
+        partner_name: partnerName || null,
+        observacao: observacao || null,
+        itens: itens
+          .filter((it) => Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0)
+          .map((it) => ({
+            produto_id: Number(it.produto_id),
+            quantidade: Number(it.quantidade),
+            ...(numOrNull(it.preco_unitario) != null ? { preco_unitario: numOrNull(it.preco_unitario) } : {}),
+            ...(numOrNull(it.desconto_unitario) != null ? { desconto_unitario: numOrNull(it.desconto_unitario) } : {}),
+          })),
+      };
+      const res = await fetch("/api/v1/pedidos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Falha ao duplicar pedido");
+      if (typeof onCreated === "function") {
+        try { onCreated(data); } catch (_) { /* noop */ }
+      }
+      push(`Pedido #${data.id} criado como rascunho.`, { type: "success" });
+    } catch (e) {
+      push(e.message, { type: "error" });
     }
   }
 
@@ -196,14 +231,16 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
               if (!it) {
                 setPartnerId("");
                 setPartnerLabel("");
+                setPartnerName("");
                 return;
               }
               setPartnerId(String(it.id));
               setPartnerLabel(it.label);
+              setPartnerName(it.name || it.label);
             }}
           />
-          {partnerId && (
-            <p className="text-xs mt-1 opacity-70">Selecionado: #{partnerId} — {partnerLabel}</p>
+          {partnerLabel && (
+            <p className="text-xs mt-1 opacity-70">Selecionado: {partnerLabel}</p>
           )}
         </div>
 
@@ -315,6 +352,11 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
               </Button>
             )}
           </>
+        )}
+        {isEditing && !isDraft && (
+          <Button onClick={handleDuplicateAsDraft} variant="outline" size="sm" fullWidth={false} disabled={submitting}>
+            Duplicar como rascunho
+          </Button>
         )}
         <Button onClick={clearForm} variant="outline" size="sm" fullWidth={false} disabled={submitting}>
           Limpar

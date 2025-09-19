@@ -115,10 +115,13 @@ async function getPedidos(req, res) {
     const effectiveOffset = Math.max(parseInt(offset || "0", 10) || 0, 0);
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const listQuery = {
-      text: `SELECT id, tipo, status, partner_entity_id, partner_document, partner_name, data_emissao, data_entrega, total_liquido, created_at
-             FROM pedidos
-             ${where}
-             ORDER BY data_emissao DESC, id DESC
+      text: `SELECT p.id, p.tipo, p.status, p.partner_entity_id, p.partner_document,
+                    COALESCE(p.partner_name, e.name) AS partner_name,
+                    p.data_emissao, p.data_entrega, p.total_liquido, p.created_at
+             FROM pedidos p
+             LEFT JOIN entities e ON e.id = p.partner_entity_id
+             ${where.replace(/\bFROM pedidos\b/, 'FROM pedidos p')}
+             ORDER BY p.data_emissao DESC, p.id DESC
              LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`,
       values,
     };

@@ -125,7 +125,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm, onEdit }
                 <td className="px-3 py-2">{p.id}</td>
                 <td className="px-3 py-2">{p.tipo}</td>
                 <td className="px-3 py-2">{p.status}</td>
-                <td className="px-3 py-2">{p.partner_name || `#${p.partner_entity_id}`}</td>
+                <td className="px-3 py-2">{p.partner_name || '-'}</td>
                 <td className="px-3 py-2">{p.data_emissao ? new Date(p.data_emissao).toLocaleDateString() : '-'}</td>
                 <td className="px-3 py-2 text-right">{
                   (() => {
