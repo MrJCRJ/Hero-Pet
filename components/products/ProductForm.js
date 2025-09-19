@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "components/ui/Button";
+import { SelectionModal } from "components/common/SelectionModal";
 
 export function ProductForm({ initial = {}, onSubmit, submitting }) {
   const [nome, setNome] = useState(initial.nome || "");
@@ -18,10 +19,14 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
   const [estoqueMinimo, setEstoqueMinimo] = useState(
     initial.estoque_minimo !== undefined && initial.estoque_minimo !== null ? String(initial.estoque_minimo) : ""
   );
+  const [suppliers, setSuppliers] = useState(Array.isArray(initial.suppliers) ? initial.suppliers : []);
+  const [supplierLabels, setSupplierLabels] = useState([]);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
 
   function handleSubmit(e) {
     e.preventDefault();
     if (!nome.trim()) return alert("Nome é obrigatório");
+    if (!suppliers.length) return alert("Selecione ao menos um fornecedor (PJ)");
     onSubmit({
       nome: nome.trim(),
       categoria: categoria || null,
@@ -31,6 +36,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
       preco_tabela: precoTabela === "" ? null : Number(precoTabela),
       markup_percent_default: markupPercent === "" ? null : Number(markupPercent),
       estoque_minimo: estoqueMinimo === "" ? null : Number(estoqueMinimo),
+      suppliers,
     });
   }
 
@@ -101,6 +107,41 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
           <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} />
           Ativo
         </label>
+        <div className="text-sm">
+          <div className="flex items-center justify-between mb-1">
+            <span className="block">Fornecedores (opcional)</span>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" fullWidth={false} onClick={() => setShowSupplierModal(true)}>
+                Adicionar fornecedor
+              </Button>
+              {suppliers.length > 0 && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  fullWidth={false}
+                  onClick={() => { setSuppliers([]); setSupplierLabels([]); }}
+                >
+                  Limpar
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="min-h-[38px] px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+            {supplierLabels.length ? (
+              <div className="flex flex-wrap gap-2">
+                {supplierLabels.map((s) => (
+                  <span key={s.id} className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)]">
+                    {s.label}
+                    <button className="ml-2 opacity-70 hover:opacity-100" onClick={(e) => { e.preventDefault(); setSuppliers((prev) => prev.filter((id) => id !== s.id)); setSupplierLabels((prev) => prev.filter((x) => x.id !== s.id)); }}>×</button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="opacity-60 text-xs">Nenhum fornecedor selecionado</span>
+            )}
+          </div>
+        </div>
         <label className="text-sm">
           <span className="block mb-1">Descrição</span>
           <textarea
@@ -116,6 +157,27 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
           Salvar
         </Button>
       </div>
+      {showSupplierModal && (
+        <SelectionModal
+          title="Selecionar Fornecedor (PJ)"
+          fetcher={async (q) => {
+            const url = `/api/v1/entities?q=${encodeURIComponent(q)}&ativo=true&entity_type=PJ`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error || "Falha na busca de fornecedores");
+            return data.map((e) => ({ id: e.id, label: `${e.name} • ${e.entity_type}`, name: e.name }));
+          }}
+          extractLabel={(it) => it.label}
+          onSelect={(it) => {
+            setShowSupplierModal(false);
+            if (it) {
+              setSuppliers((prev) => (prev.includes(it.id) ? prev : [...prev, it.id]));
+              setSupplierLabels((prev) => (prev.find((x) => x.id === it.id) ? prev : [...prev, { id: it.id, label: it.label }]));
+            }
+          }}
+          onClose={() => setShowSupplierModal(false)}
+        />
+      )}
     </form>
   );
 }

@@ -38,6 +38,18 @@ async function updateProduto(req, res) {
       }
     }
 
+    // suppliers múltiplos (opcional)
+    let suppliers = undefined;
+    if (Array.isArray(b.suppliers)) {
+      suppliers = b.suppliers.filter((v) => Number.isFinite(Number(v))).map((v) => Number(v));
+      suppliers = Array.from(new Set(suppliers));
+      if (suppliers.length) {
+        const r = await database.query({ text: `SELECT id, entity_type FROM entities WHERE id = ANY($1::int[])`, values: [suppliers] });
+        const ids = new Set(r.rows.filter((x) => x.entity_type === 'PJ').map((x) => x.id));
+        if (ids.size !== suppliers.length) return res.status(400).json({ error: "suppliers inválidos: todos devem existir e ser PJ" });
+      }
+    }
+
     // Montar update dinâmico somente para campos fornecidos
     const sets = [];
     const values = [];
@@ -76,7 +88,31 @@ async function updateProduto(req, res) {
     };
     const r = await database.query(query);
     if (!r.rows.length) return res.status(404).json({ error: "Not found" });
-    return res.status(200).json(r.rows[0]);
+    const product = r.rows[0];
+
+    // atualizar tabela de junção se fornecida
+    if (suppliers) {
+      await database.query({ text: `DELETE FROM produto_fornecedores WHERE produto_id = $1`, values: [id] });
+      if (suppliers.length) {
+        const rows = suppliers.map((eid, i) => `($1, $${i + 2})`).join(',');
+        await database.query({
+          text: `INSERT INTO produto_fornecedores (produto_id, entity_id) VALUES ${rows} ON CONFLICT DO NOTHING`,
+          values: [id, ...suppliers],
+        });
+      }
+    }
+
+    // verificar regra de pelo menos um fornecedor
+    const check = await database.query({ text: `SELECT fornecedor_id FROM produtos WHERE id = $1`, values: [id] });
+    const fornecedorAtual = check.rows[0]?.fornecedor_id || null;
+    if (fornecedorAtual == null) {
+      const rpf = await database.query({ text: `SELECT 1 FROM produto_fornecedores WHERE produto_id = $1 LIMIT 1`, values: [id] });
+      if (!rpf.rows.length) {
+        return res.status(400).json({ error: "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])" });
+      }
+    }
+
+    return res.status(200).json(product);
   } catch (e) {
     console.error("PUT /produtos/:id error", e);
     if (isRelationMissing(e)) {

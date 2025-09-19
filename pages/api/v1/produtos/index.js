@@ -14,18 +14,28 @@ async function postProduto(req, res) {
     const nome = (b.nome || "").trim();
     if (!nome) return res.status(400).json({ error: "nome is required" });
 
-    // fornecedor opcional; quando informado deve ser PJ
+    // fornecedor legacy (único) ainda suportado; novo: suppliers: number[]
     let fornecedorId = b.fornecedor_id || null;
+    let suppliers = Array.isArray(b.suppliers) ? b.suppliers : [];
+    suppliers = suppliers.filter((v) => Number.isFinite(Number(v))).map((v) => Number(v));
+    suppliers = Array.from(new Set(suppliers));
+
+    // validar fornecedor único se fornecido
     if (fornecedorId != null) {
-      const q = {
-        text: `SELECT id, entity_type FROM entities WHERE id = $1 LIMIT 1`,
-        values: [fornecedorId],
-      };
-      const r = await database.query(q);
-      if (!r.rows.length)
-        return res.status(400).json({ error: "fornecedor_id inválido" });
-      if (r.rows[0].entity_type !== "PJ")
-        return res.status(400).json({ error: "fornecedor deve ser PJ" });
+      const r = await database.query({ text: `SELECT id, entity_type FROM entities WHERE id = $1 LIMIT 1`, values: [fornecedorId] });
+      if (!r.rows.length) return res.status(400).json({ error: "fornecedor_id inválido" });
+      if (r.rows[0].entity_type !== "PJ") return res.status(400).json({ error: "fornecedor deve ser PJ" });
+    }
+    // validar suppliers múltiplos (todos PJ)
+    if (suppliers.length) {
+      const r = await database.query({ text: `SELECT id, entity_type FROM entities WHERE id = ANY($1::int[])`, values: [suppliers] });
+      const ids = new Set(r.rows.filter((x) => x.entity_type === 'PJ').map((x) => x.id));
+      if (ids.size !== suppliers.length) return res.status(400).json({ error: "suppliers inválidos: todos devem existir e ser PJ" });
+    }
+
+    // regra solicitada: pelo menos um fornecedor válido
+    if (fornecedorId == null && suppliers.length === 0) {
+      return res.status(400).json({ error: "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])" });
     }
 
     // unique parcial codigo_barras: validar antes para 409 amigável
@@ -58,7 +68,16 @@ async function postProduto(req, res) {
       ],
     };
     const r = await database.query(insert);
-    return res.status(201).json(r.rows[0]);
+    const product = r.rows[0];
+    // inserir fornecedores múltiplos
+    if (suppliers.length) {
+      const rows = suppliers.map((eid, i) => `($1, $${i + 2})`).join(',');
+      await database.query({
+        text: `INSERT INTO produto_fornecedores (produto_id, entity_id) VALUES ${rows} ON CONFLICT DO NOTHING`,
+        values: [product.id, ...suppliers],
+      });
+    }
+    return res.status(201).json(product);
   } catch (e) {
     console.error("POST /produtos error", e);
     if (isRelationMissing(e)) {
@@ -131,7 +150,21 @@ async function getProdutos(req, res) {
       return res.status(200).json({ data: result.rows, meta: { total: count.rows[0].total } });
     }
 
-    return res.status(200).json(result.rows);
+    // opcionalmente expand suppliers (muitos-para-muitos)
+    let rows = result.rows;
+    if (String(fields) !== 'id-nome' && rows.length) {
+      const ids = rows.map((r) => r.id);
+      const map = new Map();
+      if (ids.length) {
+        const r2 = await database.query({ text: `SELECT produto_id, entity_id FROM produto_fornecedores WHERE produto_id = ANY($1::int[])`, values: [ids] });
+        for (const row of r2.rows) {
+          if (!map.has(row.produto_id)) map.set(row.produto_id, []);
+          map.get(row.produto_id).push(row.entity_id);
+        }
+      }
+      rows = rows.map((p) => ({ ...p, suppliers: map.get(p.id) || [] }));
+    }
+    return res.status(200).json(rows);
   } catch (e) {
     console.error("GET /produtos error", e);
     if (isRelationMissing(e)) {

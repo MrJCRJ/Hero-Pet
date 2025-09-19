@@ -171,6 +171,7 @@ export function ProductsManager() {
               <th className="p-2">Nome</th>
               <th className="p-2">Categoria</th>
               <th className="p-2">Cód. Barras</th>
+              <th className="p-2">Fornecedores</th>
               <th className="p-2">Preço</th>
               <th className="p-2">Ativo</th>
               <th className="p-2 w-1">Ações</th>
@@ -182,6 +183,7 @@ export function ProductsManager() {
                 <td className="p-2">{p.nome}</td>
                 <td className="p-2">{p.categoria || "-"}</td>
                 <td className="p-2">{p.codigo_barras || "-"}</td>
+                <td className="p-2 text-xs">{Array.isArray(p.suppliers) && p.suppliers.length ? `${p.suppliers.length}` : '-'}</td>
                 <td className="p-2">{p.preco_tabela != null ? `R$ ${Number(p.preco_tabela).toFixed(2)}` : "-"}</td>
                 <td className="p-2">{p.ativo ? "Sim" : "Não"}</td>
                 <td className="p-2">
@@ -213,7 +215,7 @@ export function ProductsManager() {
         </Button>
       </div>
       <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? "Editar Produto" : "Novo Produto"}>
-        <ProductForm initial={editing || { ativo: true }} onSubmit={handleSubmit} submitting={submitting} />
+        <ProductForm initial={editing || { ativo: true, suppliers: [] }} onSubmit={handleSubmit} submitting={submitting} />
       </Modal>
       <ProductDetail open={showDetail} onClose={() => setShowDetail(false)} product={editing} />
     </div>
