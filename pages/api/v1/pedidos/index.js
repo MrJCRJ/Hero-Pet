@@ -136,7 +136,7 @@ async function getPedidos(req, res) {
       clauses.push(`tipo = $${values.length}`);
     }
     if (status) {
-      if (!["rascunho", "confirmado", "cancelado"].includes(status)) return res.status(400).json({ error: "status inválido" });
+      if (!["confirmado", "cancelado"].includes(status)) return res.status(400).json({ error: "status inválido" });
       values.push(status);
       clauses.push(`status = $${values.length}`);
     }

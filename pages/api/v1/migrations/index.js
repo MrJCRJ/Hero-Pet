@@ -49,6 +49,8 @@ export default async function migrations(request, response) {
     console.error("Migration error:", error);
     return response.status(500).json({
       error: "Internal server error during migration process",
+      message: error?.message,
+      code: error?.code,
     });
   } finally {
     if (dbClient) {

@@ -34,7 +34,6 @@ async function putPedido(req, res) {
     if (!Number.isFinite(id)) return res.status(400).json({ error: "invalid id" });
     const head = await client.query({ text: `SELECT * FROM pedidos WHERE id = $1`, values: [id] });
     if (!head.rows.length) return res.status(404).json({ error: "Not found" });
-    const isDraft = head.rows[0].status === "rascunho";
 
     const b = req.body || {};
     await client.query("BEGIN");
@@ -44,20 +43,12 @@ async function putPedido(req, res) {
     const values = [];
     const set = (field, value) => { values.push(value); sets.push(`${field} = $${values.length}`); };
     if (b.partner_entity_id !== undefined) {
-      if (!isDraft) return res.status(400).json({ error: "partner_entity_id só pode ser alterado em rascunho" });
-      if (b.partner_entity_id == null) return res.status(400).json({ error: "partner_entity_id obrigatório" });
-      const pid = Number(b.partner_entity_id);
-      if (!Number.isFinite(pid)) return res.status(400).json({ error: "partner_entity_id inválido" });
-      const r = await client.query({ text: `SELECT id, ativo FROM entities WHERE id = $1`, values: [pid] });
-      if (!r.rows.length) return res.status(400).json({ error: "Entidade não encontrada" });
-      if (r.rows[0].ativo === false) return res.status(400).json({ error: "Entidade inativa" });
-      set("partner_entity_id", pid);
+      return res.status(400).json({ error: "partner_entity_id não pode ser alterado após criação" });
     }
     if (b.partner_document !== undefined) set("partner_document", b.partner_document || null);
     if (b.partner_name !== undefined) set("partner_name", b.partner_name || null);
     if (b.data_emissao !== undefined) {
-      if (!isDraft) return res.status(400).json({ error: "data_emissao só pode ser alterada em rascunho" });
-      set("data_emissao", b.data_emissao || null);
+      return res.status(400).json({ error: "data_emissao não pode ser alterada após criação" });
     }
     if (b.data_entrega !== undefined) set("data_entrega", b.data_entrega || null);
     if (b.observacao !== undefined) set("observacao", b.observacao || null);
@@ -75,26 +66,7 @@ async function putPedido(req, res) {
     let recalcTotals = false;
     let totalBruto = 0, descontoTotal = 0, totalLiquido = 0;
     if (Array.isArray(b.itens)) {
-      if (!isDraft) return res.status(400).json({ error: "Itens só podem ser alterados em rascunho" });
-      await client.query({ text: `DELETE FROM pedido_itens WHERE pedido_id = $1`, values: [id] });
-      for (const it of b.itens) {
-        const rProd = await client.query({ text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`, values: [it.produto_id] });
-        if (!rProd.rows.length) throw new Error(`produto_id inválido: ${it.produto_id}`);
-        const qtd = Number(it.quantidade);
-        if (!Number.isFinite(qtd) || qtd <= 0) throw new Error(`quantidade inválida`);
-        const preco = it.preco_unitario != null ? Number(it.preco_unitario) : Number(rProd.rows[0].preco_tabela ?? 0);
-        const desconto = it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
-        const totalItem = (preco - desconto) * qtd;
-        totalBruto += preco * qtd;
-        descontoTotal += desconto * qtd;
-        totalLiquido += totalItem;
-        await client.query({
-          text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, total_item)
-                 VALUES ($1,$2,$3,$4,$5,$6)`,
-          values: [id, it.produto_id, qtd, preco, desconto, totalItem],
-        });
-      }
-      recalcTotals = true;
+      return res.status(400).json({ error: "Itens não podem ser alterados após criação" });
     }
 
     if (recalcTotals) {
