@@ -27,7 +27,7 @@ async function postPedido(req, res) {
     await client.query("BEGIN");
     const head = await client.query({
       text: `INSERT INTO pedidos (tipo, status, partner_entity_id, partner_document, partner_name, data_emissao, data_entrega, observacao, tem_nota_fiscal, parcelado)
-             VALUES ($1,'rascunho',$2,$3,$4,$5,$6,$7,$8,$9)
+             VALUES ($1,'rascunho',$2,$3,$4, COALESCE($5::timestamptz, NOW()), $6,$7,$8,$9)
              RETURNING *`,
       values: [
         tipo,

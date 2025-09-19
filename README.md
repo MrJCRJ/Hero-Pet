@@ -123,3 +123,22 @@ npm test -- tests/api/v1/produtos/pagination-meta.test.js
 ## Licença
 
 MIT
+
+## Seed de Demonstração
+
+Para popular dados rapidamente e facilitar a análise da aplicação, há um seed de demo:
+
+1. Inicie o servidor: `npm run dev`
+2. Em outro terminal, rode: `npm run seed:demo`
+
+O seed cria:
+
+- 1 fornecedor (PJ) e 2 clientes (PF)
+- 3 produtos
+- 1 pedido de COMPRA confirmado (abastece estoque)
+- 1 pedido de VENDA confirmado
+- 1 pedido de VENDA em rascunho
+
+Configuração opcional:
+
+- `SEED_BASE_URL`: URL base da API (padrão `http://localhost:3000`). Ex.: `SEED_BASE_URL=http://127.0.0.1:3000 npm run seed:demo`
