@@ -80,7 +80,7 @@ function usePedidos(filters, limit = 20) {
   return { loading, data, reload };
 }
 
-export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm }) {
+export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm, onEdit }) {
   const { push } = useToast();
   const [filters, setFilters] = useState({ tipo: "", status: "", q: "" });
   const { loading, data, reload } = usePedidos(filters, limit);
@@ -127,13 +127,21 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm }) {
                 <td className="px-3 py-2">{p.status}</td>
                 <td className="px-3 py-2">{p.partner_name || `#${p.partner_entity_id}`}</td>
                 <td className="px-3 py-2">{p.data_emissao ? new Date(p.data_emissao).toLocaleDateString() : '-'}</td>
-                <td className="px-3 py-2 text-right">{typeof p.total_liquido === 'number' ? p.total_liquido.toLocaleString(undefined, { style: 'currency', currency: 'BRL' }) : '-'}</td>
+                <td className="px-3 py-2 text-right">{
+                  (() => {
+                    const n = p.total_liquido != null ? Number(p.total_liquido) : NaN;
+                    return Number.isFinite(n)
+                      ? n.toLocaleString(undefined, { style: 'currency', currency: 'BRL' })
+                      : '-';
+                  })()
+                }</td>
                 <td className="px-3 py-2 text-right">
                   {p.status === 'rascunho' ? (
-                    <Button size="sm" fullWidth={false} onClick={() => confirm(p.id)}>Confirmar</Button>
-                  ) : (
-                    <span className="opacity-60">—</span>
-                  )}
+                    <div className="flex gap-2 justify-end">
+                      <Button size="sm" fullWidth={false} variant="outline" onClick={() => onEdit && onEdit(p)}>Editar</Button>
+                      <Button size="sm" fullWidth={false} onClick={() => confirm(p.id)}>Confirmar</Button>
+                    </div>
+                  ) : (<span className="opacity-60">—</span>)}
                 </td>
               </tr>
             ))}
@@ -157,7 +165,20 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm }) {
 export function OrdersManager({ limit = 20 }) {
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [editing, setEditing] = useState(null); // pedido completo quando editando
   const bump = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  const handleEdit = async (row) => {
+    try {
+      const res = await fetch(`/api/v1/pedidos/${row.id}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Falha ao carregar pedido');
+      setEditing(json);
+      setShowForm(true);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   if (!showForm) {
     return (
@@ -168,16 +189,16 @@ export function OrdersManager({ limit = 20 }) {
             Adicionar
           </Button>
         </div>
-        <OrdersBrowser limit={limit} refreshTick={refreshKey} onConfirm={bump} />
+        <OrdersBrowser limit={limit} refreshTick={refreshKey} onConfirm={bump} onEdit={handleEdit} />
       </div>
     );
   }
 
   return (
-    <FormContainer title="Novo Pedido">
-      <PedidoForm onCreated={() => { setShowForm(false); bump(); }} />
+    <FormContainer title={editing ? `Editando Pedido #${editing.id}` : "Novo Pedido"}>
+      <PedidoForm editingOrder={editing} onCreated={() => { setShowForm(false); setEditing(null); bump(); }} onSaved={() => { setShowForm(false); setEditing(null); bump(); }} />
       <div className="flex justify-end mt-2">
-        <Button variant="secondary" fullWidth={false} onClick={() => setShowForm(false)}>
+        <Button variant="secondary" fullWidth={false} onClick={() => { setShowForm(false); setEditing(null); }}>
           Cancelar
         </Button>
       </div>

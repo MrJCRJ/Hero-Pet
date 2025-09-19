@@ -10,7 +10,7 @@ function numOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-export function PedidoForm({ onCreated }) {
+export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const { push } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [tipo, setTipo] = useState("VENDA");
@@ -21,6 +21,26 @@ export function PedidoForm({ onCreated }) {
     { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "" },
   ]);
   const [created, setCreated] = useState(null); // armazena pedido criado
+
+  // Preenche estado quando está editando um pedido existente
+  React.useEffect(() => {
+    if (!editingOrder) return;
+    setTipo(editingOrder.tipo || "VENDA");
+    setPartnerId(String(editingOrder.partner_entity_id || ""));
+    setPartnerLabel(editingOrder.partner_name || "");
+    setObservacao(editingOrder.observacao || "");
+    const mapped = Array.isArray(editingOrder.itens)
+      ? editingOrder.itens.map((it) => ({
+        produto_id: String(it.produto_id),
+        produto_label: it.produto_nome || "",
+        quantidade: String(it.quantidade),
+        preco_unitario: it.preco_unitario != null ? String(it.preco_unitario) : "",
+        desconto_unitario: it.desconto_unitario != null ? String(it.desconto_unitario) : "",
+      }))
+      : [];
+    setItens(mapped.length ? mapped : [{ produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "" }]);
+    setCreated({ id: editingOrder.id, status: editingOrder.status });
+  }, [editingOrder]);
 
   const canSubmit = useMemo(() => {
     if (!tipo) return false;
@@ -75,8 +95,7 @@ export function PedidoForm({ onCreated }) {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      const payload = {
-        tipo,
+      const payloadBase = {
         partner_entity_id: Number(partnerId),
         observacao: observacao || null,
         itens: itens
@@ -84,27 +103,41 @@ export function PedidoForm({ onCreated }) {
           .map((it) => ({
             produto_id: Number(it.produto_id),
             quantidade: Number(it.quantidade),
-            // Enviar somente se numéricos — servidor usa preco_tabela quando ausente
-            ...(numOrNull(it.preco_unitario) != null
-              ? { preco_unitario: numOrNull(it.preco_unitario) }
-              : {}),
-            ...(numOrNull(it.desconto_unitario) != null
-              ? { desconto_unitario: numOrNull(it.desconto_unitario) }
-              : {}),
+            ...(numOrNull(it.preco_unitario) != null ? { preco_unitario: numOrNull(it.preco_unitario) } : {}),
+            ...(numOrNull(it.desconto_unitario) != null ? { desconto_unitario: numOrNull(it.desconto_unitario) } : {}),
           })),
       };
-      const res = await fetch("/api/v1/pedidos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Falha ao criar pedido");
-      setCreated(data);
-      if (typeof onCreated === "function") {
-        try { onCreated(data); } catch (_) { /* noop */ }
+
+      if (editingOrder?.id) {
+        // Atualiza pedido rascunho
+        const res = await fetch(`/api/v1/pedidos/${editingOrder.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payloadBase),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || "Falha ao atualizar pedido");
+        if (typeof onSaved === "function") {
+          try { onSaved({ id: editingOrder.id }); } catch (_) { /* noop */ }
+        }
+        setCreated({ id: editingOrder.id, status: "rascunho" });
+        push(`Pedido #${editingOrder.id} atualizado.`, { type: "success" });
+      } else {
+        // Cria novo pedido
+        const payload = { tipo, ...payloadBase };
+        const res = await fetch("/api/v1/pedidos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || "Falha ao criar pedido");
+        setCreated(data);
+        if (typeof onCreated === "function") {
+          try { onCreated(data); } catch (_) { /* noop */ }
+        }
+        push(`Pedido #${data.id} criado como rascunho.`, { type: "success" });
       }
-      push(`Pedido #${data.id} criado como rascunho.`, { type: "success" });
     } catch (err) {
       push(err.message, { type: "error" });
     } finally {
@@ -137,6 +170,7 @@ export function PedidoForm({ onCreated }) {
             className="w-full border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)]"
             value={tipo}
             onChange={(e) => setTipo(e.target.value)}
+            disabled={!!editingOrder?.id}
           >
             <option value="VENDA">VENDA</option>
             <option value="COMPRA">COMPRA</option>
@@ -268,7 +302,7 @@ export function PedidoForm({ onCreated }) {
           Limpar
         </Button>
         <Button type="submit" variant="primary" size="sm" fullWidth={false} disabled={!canSubmit || submitting}>
-          {submitting ? "Enviando..." : "Criar Pedido"}
+          {submitting ? (editingOrder?.id ? "Atualizando..." : "Enviando...") : (editingOrder?.id ? "Atualizar Pedido" : "Criar Pedido")}
         </Button>
       </div>
     </FormContainer>
