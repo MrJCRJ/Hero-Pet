@@ -12,6 +12,24 @@ beforeAll(async () => {
   const mig = await fetch("http://localhost:3000/api/v1/migrations", { method: "POST" });
   if (![200, 201].includes(mig.status)) throw new Error(`migrations fail: ${mig.status}`);
 
+  // Cria um fornecedor PJ para associar aos produtos
+  const fornResp = await fetch("http://localhost:3000/api/v1/entities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "FORNECEDOR TESTE LTDA",
+      entity_type: "PJ",
+      document_digits: "11222333000181",
+      document_pending: false,
+      ativo: true,
+    }),
+  });
+  if (fornResp.status !== 201) {
+    const t = await fornResp.text();
+    throw new Error(`seed fornecedor fail: ${fornResp.status} ${t}`);
+  }
+  const fornecedor = await fornResp.json();
+
   // Seed de 12 produtos intercalando categorias
   const items = Array.from({ length: 12 }).map((_, i) => ({
     nome: `Produto ${i + 1}`,
@@ -21,7 +39,7 @@ beforeAll(async () => {
     const r = await fetch("http://localhost:3000/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(p),
+      body: JSON.stringify({ ...p, fornecedor_id: fornecedor.id }),
     });
     if (![200, 201].includes(r.status)) {
       const t = await r.text();

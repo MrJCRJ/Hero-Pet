@@ -150,19 +150,30 @@ async function getProdutos(req, res) {
       return res.status(200).json({ data: result.rows, meta: { total: count.rows[0].total } });
     }
 
-    // opcionalmente expand suppliers (muitos-para-muitos)
+    // opcionalmente expand suppliers (muitos-para-muitos) e supplier_labels para UI
     let rows = result.rows;
     if (String(fields) !== 'id-nome' && rows.length) {
-      const ids = rows.map((r) => r.id);
-      const map = new Map();
-      if (ids.length) {
-        const r2 = await database.query({ text: `SELECT produto_id, entity_id FROM produto_fornecedores WHERE produto_id = ANY($1::int[])`, values: [ids] });
+      const produtoIds = rows.map((r) => r.id);
+      const prodToSupplierIds = new Map();
+      if (produtoIds.length) {
+        const r2 = await database.query({ text: `SELECT produto_id, entity_id FROM produto_fornecedores WHERE produto_id = ANY($1::int[])`, values: [produtoIds] });
         for (const row of r2.rows) {
-          if (!map.has(row.produto_id)) map.set(row.produto_id, []);
-          map.get(row.produto_id).push(row.entity_id);
+          if (!prodToSupplierIds.has(row.produto_id)) prodToSupplierIds.set(row.produto_id, []);
+          prodToSupplierIds.get(row.produto_id).push(row.entity_id);
         }
       }
-      rows = rows.map((p) => ({ ...p, suppliers: map.get(p.id) || [] }));
+      // Buscar nomes dos fornecedores uma única vez
+      const allSupplierIds = Array.from(new Set(Array.from(prodToSupplierIds.values()).flat()));
+      const idToName = new Map();
+      if (allSupplierIds.length) {
+        const r3 = await database.query({ text: `SELECT id, name FROM entities WHERE id = ANY($1::int[])`, values: [allSupplierIds] });
+        for (const row of r3.rows) idToName.set(row.id, row.name);
+      }
+      rows = rows.map((p) => {
+        const sids = prodToSupplierIds.get(p.id) || [];
+        const labels = sids.map((id) => ({ id, name: idToName.get(id) || `#${id}` }));
+        return { ...p, suppliers: sids, supplier_labels: labels };
+      });
     }
     return res.status(200).json(rows);
   } catch (e) {

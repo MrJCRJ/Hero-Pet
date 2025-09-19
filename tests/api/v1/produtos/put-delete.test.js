@@ -25,11 +25,25 @@ beforeAll(async () => {
   if (![200, 201].includes(mig.status)) {
     throw new Error(`Falha ao migrar schema. status=${mig.status}`);
   }
+  // fornecedor PJ para associar
+  const forn = await fetch("http://localhost:3000/api/v1/entities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "FORNECEDOR PUT LTDA",
+      entity_type: "PJ",
+      document_digits: "11222333000182",
+      document_pending: false,
+      ativo: true,
+    }),
+  });
+  if (forn.status !== 201) throw new Error(`seed fornecedor PUT fail: ${forn.status}`);
+  global.__FORN_ID__ = (await forn.json()).id;
 });
 
 describe("PUT/DELETE /api/v1/produtos/:id", () => {
   test("PUT atualiza campos básicos", async () => {
-    const created = await postProduto({ nome: "Produto X", categoria: "X" });
+    const created = await postProduto({ nome: "Produto X", categoria: "X", fornecedor_id: global.__FORN_ID__ });
     expect([200, 201]).toContain(created.status);
     const id = created.json.id;
     const resp = await fetch(`http://localhost:3000/api/v1/produtos/${id}`, {
@@ -45,8 +59,8 @@ describe("PUT/DELETE /api/v1/produtos/:id", () => {
   });
 
   test("PUT valida unique de codigo_barras", async () => {
-    const a = await postProduto({ nome: "A", codigo_barras: "789A" });
-    const b = await postProduto({ nome: "B" });
+    const a = await postProduto({ nome: "A", codigo_barras: "789A", fornecedor_id: global.__FORN_ID__ });
+    const b = await postProduto({ nome: "B", fornecedor_id: global.__FORN_ID__ });
     const resp = await fetch(`http://localhost:3000/api/v1/produtos/${b.json.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -58,7 +72,7 @@ describe("PUT/DELETE /api/v1/produtos/:id", () => {
   });
 
   test("DELETE inativa (soft delete)", async () => {
-    const created = await postProduto({ nome: "Para Deletar" });
+    const created = await postProduto({ nome: "Para Deletar", fornecedor_id: global.__FORN_ID__ });
     const id = created.json.id;
     const del = await fetch(`http://localhost:3000/api/v1/produtos/${id}`, {
       method: "DELETE",

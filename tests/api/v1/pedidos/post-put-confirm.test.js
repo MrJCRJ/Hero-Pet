@@ -24,10 +24,12 @@ beforeAll(async () => {
 });
 
 async function criaProduto(nome = "Produto Teste", preco = 10.5) {
+  // garante fornecedor PJ obrigatório
+  const forn = await criaParceiroPJ("FORN PEDIDOS");
   const resp = await fetch("http://localhost:3000/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nome, preco_tabela: preco, ativo: true }),
+    body: JSON.stringify({ nome, preco_tabela: preco, ativo: true, fornecedor_id: forn.id }),
   });
   expect([200, 201]).toContain(resp.status);
   return await resp.json();
@@ -50,6 +52,15 @@ async function criaParceiroPF(nome = "Cliente PF Teste") {
 }
 
 // helper para PJ não é necessário neste conjunto de testes
+async function criaParceiroPJ(nome = "Fornecedor Teste") {
+  const resp = await fetch("http://localhost:3000/api/v1/entities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: nome, entity_type: "PJ" }),
+  });
+  expect([200, 201]).toContain(resp.status);
+  return await resp.json();
+}
 
 describe("Pedidos: POST, PUT e Confirm", () => {
   test("Cria VENDA confirmado e calcula totais (201)", async () => {

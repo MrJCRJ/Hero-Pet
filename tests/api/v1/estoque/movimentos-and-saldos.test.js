@@ -8,6 +8,7 @@ import database from "infra/database.js";
 jest.setTimeout(60000);
 
 let produto;
+let fornecedor;
 
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
@@ -19,11 +20,23 @@ beforeAll(async () => {
     throw new Error(`Falha ao migrar schema estoque. status=${mig.status}`);
   }
 
+  // cria fornecedor PJ para satisfazer regra obrigatória
+  const f = await fetch("http://localhost:3000/api/v1/entities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "FORNECEDOR TESTE", entity_type: "PJ" }),
+  });
+  if (![200, 201].includes(f.status)) {
+    const t = await f.text();
+    throw new Error(`Falha ao criar fornecedor. status=${f.status} body=${t}`);
+  }
+  fornecedor = await f.json();
+
   // cria produto base
   const p = await fetch("http://localhost:3000/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nome: "Teste Estoque", categoria: "TESTE" }),
+    body: JSON.stringify({ nome: "Teste Estoque", categoria: "TESTE", fornecedor_id: fornecedor.id }),
   });
   if (![200, 201].includes(p.status)) {
     throw new Error(`Falha seed produto base. status=${p.status}`);

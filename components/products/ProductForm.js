@@ -20,7 +20,11 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
     initial.estoque_minimo !== undefined && initial.estoque_minimo !== null ? String(initial.estoque_minimo) : ""
   );
   const [suppliers, setSuppliers] = useState(Array.isArray(initial.suppliers) ? initial.suppliers : []);
-  const [supplierLabels, setSupplierLabels] = useState([]);
+  const [supplierLabels, setSupplierLabels] = useState(
+    Array.isArray(initial.supplier_labels)
+      ? initial.supplier_labels.map((s) => ({ id: s.id, label: s.name || s.label || String(s.id) }))
+      : []
+  );
   const [showSupplierModal, setShowSupplierModal] = useState(false);
 
   function handleSubmit(e) {
@@ -109,7 +113,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
         </label>
         <div className="text-sm">
           <div className="flex items-center justify-between mb-1">
-            <span className="block">Fornecedores (opcional)</span>
+            <span className="block">Fornecedores *</span>
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" fullWidth={false} onClick={() => setShowSupplierModal(true)}>
                 Adicionar fornecedor

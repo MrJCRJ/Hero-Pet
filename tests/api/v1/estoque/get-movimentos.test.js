@@ -7,16 +7,26 @@ import database from "infra/database.js";
 jest.setTimeout(60000);
 
 let produto;
+let fornecedor;
 
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
   const mig = await fetch("http://localhost:3000/api/v1/migrations", { method: "POST" });
   if (![200, 201].includes(mig.status)) throw new Error("migrations fail");
+
+  const f = await fetch("http://localhost:3000/api/v1/entities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "FORN MOV", entity_type: "PJ" }),
+  });
+  if (![200, 201].includes(f.status)) throw new Error(`seed fornecedor fail: ${f.status}`);
+  fornecedor = await f.json();
+
   const p = await fetch("http://localhost:3000/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nome: "Prod Lista Mov" }),
+    body: JSON.stringify({ nome: "Prod Lista Mov", fornecedor_id: fornecedor.id }),
   });
   if (![200, 201].includes(p.status)) throw new Error("seed produto fail");
   produto = await p.json();

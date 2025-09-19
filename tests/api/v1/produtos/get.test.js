@@ -19,6 +19,24 @@ beforeAll(async () => {
     );
   }
 
+  // Cria fornecedor PJ para associar aos produtos
+  const fornResp = await fetch("http://localhost:3000/api/v1/entities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "FORNECEDOR GET LTDA",
+      entity_type: "PJ",
+      document_digits: "55443322000100",
+      document_pending: false,
+      ativo: true,
+    }),
+  });
+  if (fornResp.status !== 201) {
+    const t = await fornResp.text();
+    throw new Error(`seed fornecedor fail: ${fornResp.status} ${t}`);
+  }
+  const fornecedor = await fornResp.json();
+
   // Seeds mínimos
   const base = [
     { nome: "Ração Filhote 2kg", categoria: "RACOES", codigo_barras: "789100000001" },
@@ -30,7 +48,7 @@ beforeAll(async () => {
     const resp = await fetch("http://localhost:3000/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(p),
+      body: JSON.stringify({ ...p, fornecedor_id: fornecedor.id }),
     });
     if (![200, 201].includes(resp.status)) {
       const err = await resp.text();
