@@ -84,8 +84,11 @@ async function postPedido(req, res) {
         });
         const saldo = Number(saldoQ.rows[0].saldo || 0);
         if (saldo < Number(it.quantidade)) {
+          // buscar nome do produto para mensagem mais amigável
+          const pinfo = await client.query({ text: `SELECT nome FROM produtos WHERE id = $1`, values: [it.produto_id] });
+          const pnome = pinfo.rows?.[0]?.nome || String(it.produto_id);
           await client.query("ROLLBACK");
-          return res.status(400).json({ error: `Saldo insuficiente para produto ${it.produto_id}` });
+          return res.status(400).json({ error: `Saldo insuficiente para o produto "${pnome}" (ID ${it.produto_id})` });
         }
         await client.query({
           text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao)

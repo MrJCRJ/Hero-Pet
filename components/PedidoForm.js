@@ -21,7 +21,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const [partnerName, setPartnerName] = useState("");
   const [observacao, setObservacao] = useState("");
   const [itens, setItens] = useState([
-    { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "" },
+    { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null },
   ]);
   const [created, setCreated] = useState(null); // armazena pedido criado
   const [showPartnerModal, setShowPartnerModal] = useState(false);
@@ -42,9 +42,10 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         quantidade: String(it.quantidade),
         preco_unitario: it.preco_unitario != null ? String(it.preco_unitario) : "",
         desconto_unitario: it.desconto_unitario != null ? String(it.desconto_unitario) : "",
+        produto_saldo: null,
       }))
       : [];
-    setItens(mapped.length ? mapped : [{ produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "" }]);
+    setItens(mapped.length ? mapped : [{ produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null }]);
     setCreated({ id: editingOrder.id, status: editingOrder.status });
   }, [editingOrder]);
 
@@ -64,7 +65,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const addItem = () => {
     setItens((prev) => [
       ...prev,
-      { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "" },
+      { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null },
     ]);
   };
   const removeItem = (idx) => {
@@ -74,9 +75,50 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     setTipo("VENDA");
     setPartnerId("");
     setObservacao("");
-    setItens([{ produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "" }]);
+    setItens([{ produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null }]);
     setCreated(null);
   };
+
+  // Busca saldo de estoque para VENDA
+  async function fetchSaldo(produtoId) {
+    try {
+      const res = await fetch(`/api/v1/estoque/saldos?produto_id=${produtoId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Falha ao buscar saldo");
+      return Number(data.saldo);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Quando selecionar produto em VENDA, buscar saldo
+  React.useEffect(() => {
+    if (tipo !== "VENDA") return;
+    let cancelled = false;
+    (async () => {
+      let changed = false;
+      const next = await Promise.all(itens.map(async (it) => {
+        if (!it.produto_id || isNaN(Number(it.produto_id))) return it;
+        if (it.produto_saldo != null) return it; // já tem saldo
+        const saldo = await fetchSaldo(Number(it.produto_id));
+        if (cancelled) return it;
+        changed = true;
+        return { ...it, produto_saldo: saldo };
+      }));
+      if (!cancelled && changed) setItens(next);
+    })();
+    return () => { cancelled = true; };
+  }, [tipo, itens]);
+
+  // Helpers de UI
+  function computeItemTotal(it) {
+    const qtd = Number(it.quantidade);
+    const preco = numOrNull(it.preco_unitario);
+    const desc = numOrNull(it.desconto_unitario) || 0;
+    if (!Number.isFinite(qtd) || !Number.isFinite(preco)) return null;
+    const total = (preco - desc) * qtd;
+    return Number.isFinite(total) ? total : null;
+  }
 
   // Fetch helpers for autocomplete
   const fetchEntities = async (q) => {
@@ -212,63 +254,72 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         )}
         <div className="space-y-3">
           {itens.map((it, idx) => (
-            <div key={idx} className="grid grid-cols-12 gap-3 items-end">
-              <div className="col-span-3">
-                <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Produto</label>
+            <div key={idx} className="border border-[var(--color-border)] rounded-md p-3 bg-[var(--color-bg-primary)]">
+              <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 text-sm px-3 py-2 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] min-h-[38px] flex items-center">
-                    {it.produto_label || <span className="opacity-60">Nenhum selecionado</span>}
+                  <span className="text-sm font-medium">{it.produto_label || 'Produto não selecionado'}</span>
+                  {tipo === 'VENDA' && Number(it.produto_id) > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+                      Estoque: {it.produto_saldo != null ? Number(it.produto_saldo).toFixed(3) : '...'}
+                    </span>
+                  )}
+                </div>
+                <Button variant="outline" size="sm" fullWidth={false} onClick={() => setProductModalIndex(idx)} disabled={isEditing}>
+                  {it.produto_id ? 'Trocar' : 'Buscar...'}
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-12 gap-3 items-end">
+                <div className="col-span-3 md:col-span-2">
+                  <FormField
+                    label="Quantidade"
+                    name={`quantidade_${idx}`}
+                    value={it.quantidade}
+                    onChange={(e) => updateItem(idx, { quantidade: e.target.value })}
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    disabled={isEditing}
+                    required
+                  />
+                </div>
+                <div className="col-span-4 md:col-span-3">
+                  <FormField
+                    label="Preço Unitário (opcional)"
+                    name={`preco_${idx}`}
+                    value={it.preco_unitario}
+                    onChange={(e) => updateItem(idx, { preco_unitario: e.target.value })}
+                    type="number"
+                    step="0.01"
+                    disabled={isEditing}
+                  />
+                </div>
+                <div className="col-span-4 md:col-span-3">
+                  <FormField
+                    label="Desconto Unitário (opcional)"
+                    name={`desconto_${idx}`}
+                    value={it.desconto_unitario}
+                    onChange={(e) => updateItem(idx, { desconto_unitario: e.target.value })}
+                    type="number"
+                    step="0.01"
+                    disabled={isEditing}
+                  />
+                </div>
+                <div className="col-span-12 md:col-span-3 flex items-center justify-between md:justify-end gap-3 mt-2 md:mt-0">
+                  <div className="text-sm opacity-80">
+                    <span className="block text-xs mb-1">Total do item</span>
+                    <span className="font-semibold">{(() => { const t = computeItemTotal(it); return t != null ? t.toFixed(2) : '—'; })()}</span>
                   </div>
-                  <Button variant="outline" size="sm" fullWidth={false} onClick={() => setProductModalIndex(idx)} disabled={isEditing}>
-                    Buscar...
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    fullWidth={false}
+                    onClick={() => removeItem(idx)}
+                    disabled={itens.length === 1 || isEditing}
+                  >
+                    Remover
                   </Button>
                 </div>
-              </div>
-              <div className="col-span-2">
-                <FormField
-                  label="Quantidade"
-                  name={`quantidade_${idx}`}
-                  value={it.quantidade}
-                  onChange={(e) => updateItem(idx, { quantidade: e.target.value })}
-                  type="number"
-                  min="0"
-                  step="0.001"
-                  disabled={isEditing}
-                  required
-                />
-              </div>
-              <div className="col-span-3">
-                <FormField
-                  label="Preço Unitário (opcional)"
-                  name={`preco_${idx}`}
-                  value={it.preco_unitario}
-                  onChange={(e) => updateItem(idx, { preco_unitario: e.target.value })}
-                  type="number"
-                  step="0.01"
-                  disabled={isEditing}
-                />
-              </div>
-              <div className="col-span-3">
-                <FormField
-                  label="Desconto Unitário (opcional)"
-                  name={`desconto_${idx}`}
-                  value={it.desconto_unitario}
-                  onChange={(e) => updateItem(idx, { desconto_unitario: e.target.value })}
-                  type="number"
-                  step="0.01"
-                  disabled={isEditing}
-                />
-              </div>
-              <div className="col-span-1 flex items-center justify-end pb-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  fullWidth={false}
-                  onClick={() => removeItem(idx)}
-                  disabled={itens.length === 1 || isEditing}
-                >
-                  Remover
-                </Button>
               </div>
             </div>
           ))}
@@ -312,8 +363,19 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
           fetcher={fetchProdutos}
           extractLabel={(it) => it.label}
           onSelect={(it) => {
+            const targetIndex = productModalIndex;
             setProductModalIndex(null);
-            if (it) updateItem(productModalIndex, { produto_id: String(it.id), produto_label: it.label });
+            if (it && Number.isInteger(targetIndex)) {
+              updateItem(targetIndex, { produto_id: String(it.id), produto_label: it.label, produto_saldo: null });
+              if (tipo === 'VENDA') {
+                // buscar saldo após seleção
+                fetchSaldo(it.id).then((saldo) => {
+                  setItens((prev) => prev.map((row, i) => i === targetIndex ? { ...row, produto_saldo: saldo } : row));
+                }).catch(() => {
+                  setItens((prev) => prev.map((row, i) => i === targetIndex ? { ...row, produto_saldo: null } : row));
+                });
+              }
+            }
           }}
           onClose={() => setProductModalIndex(null)}
         />
