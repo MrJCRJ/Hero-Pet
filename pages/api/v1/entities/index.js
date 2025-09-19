@@ -92,6 +92,8 @@ async function getEntities(req, res) {
       address_fill,
       contact_fill,
       entity_type,
+      q,
+      ativo,
     } = req.query;
     const clauses = [];
     const values = [];
@@ -122,6 +124,15 @@ async function getEntities(req, res) {
       clauses.push(`entity_type = $${values.length}`);
     }
 
+    // Filtro por ativo true/false
+    if (ativo !== undefined) {
+      if (!["true", "false"].includes(String(ativo))) {
+        return res.status(400).json({ error: "Invalid ativo filter" });
+      }
+      values.push(String(ativo) === "true");
+      clauses.push(`ativo = $${values.length}`);
+    }
+
     if (address_fill) {
       const allowed = ["completo", "parcial", "vazio"];
       if (!allowed.includes(address_fill)) {
@@ -140,6 +151,20 @@ async function getEntities(req, res) {
         clauses.push(
           `( (cep IS NULL OR cep = '') AND (numero IS NULL OR numero = '') )`,
         );
+      }
+    }
+
+    // Busca textual por nome e/ou por dígitos do documento
+    if (q) {
+      const text = `%${q}%`;
+      const onlyDigits = (q || "").replace(/\D+/g, "");
+      // name ILIKE $x OR document_digits LIKE $y (quando houver dígitos)
+      if (onlyDigits) {
+        values.push(text, `%${onlyDigits}%`);
+        clauses.push(`(name ILIKE $${values.length - 1} OR document_digits LIKE $${values.length})`);
+      } else {
+        values.push(text);
+        clauses.push(`name ILIKE $${values.length}`);
       }
     }
     if (contact_fill) {

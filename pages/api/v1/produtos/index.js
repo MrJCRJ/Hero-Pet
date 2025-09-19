@@ -88,7 +88,7 @@ async function postProduto(req, res) {
 
 async function getProdutos(req, res) {
   try {
-  const { q, categoria, codigo_barras, ativo, limit, offset, meta } = req.query;
+    const { q, categoria, codigo_barras, ativo, limit, offset, meta, fields } = req.query;
     const clauses = [];
     const values = [];
 
@@ -116,14 +116,10 @@ async function getProdutos(req, res) {
     const effectiveLimit = Math.min(parseInt(limit || "100", 10) || 100, 500);
     const effectiveOffset = Math.max(parseInt(offset || "0", 10) || 0, 0);
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-    const listQuery = {
-      text: `SELECT id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at
-             FROM produtos
-             ${where}
-             ORDER BY created_at DESC
-             LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`,
-      values,
-    };
+    const baseSelect = String(fields) === 'id-nome'
+      ? `SELECT id, nome FROM produtos`
+      : `SELECT id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at FROM produtos`;
+    const listQuery = { text: `${baseSelect} ${where} ORDER BY created_at DESC LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`, values };
     const result = await database.query(listQuery);
 
     if (String(meta) === "1") {

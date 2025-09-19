@@ -53,7 +53,7 @@ export function ProductDetail({ open, onClose, product }) {
         setMovs((prev) => (offset === 0 ? data : [...prev, ...data]));
         setMovTotal(meta?.total ?? null);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setMovLoading(false));
   }, [open, product?.id, tipo, from, to, limit, offset]);
 
