@@ -10,7 +10,7 @@ function numOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-export function PedidoForm() {
+export function PedidoForm({ onCreated }) {
   const { push } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [tipo, setTipo] = useState("VENDA");
@@ -101,6 +101,9 @@ export function PedidoForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Falha ao criar pedido");
       setCreated(data);
+      if (typeof onCreated === "function") {
+        try { onCreated(data); } catch (_) { /* noop */ }
+      }
       push(`Pedido #${data.id} criado como rascunho.`, { type: "success" });
     } catch (err) {
       push(err.message, { type: "error" });

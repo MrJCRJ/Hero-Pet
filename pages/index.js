@@ -6,7 +6,9 @@ import { StatusNav } from "../components/layout/StatusNav";
 import { ThemeToggle } from "../components/ThemeToggle";
 import React, { useState } from "react";
 import { EntitiesManager } from "components/entities";
-import { PedidoForm } from "../components/PedidoForm";
+// import { PedidoForm } from "../components/PedidoForm";
+// import { OrdersManager } from "../components/orders";
+// OrdersPage removido; usar OrdersManager que contém botão Adicionar
 import { OrdersManager } from "../components/orders";
 import { ProductsManager } from "../components/products";
 import { Button } from "../components/ui/Button";
@@ -15,7 +17,6 @@ const formConfig = {
   entities: { label: "Cliente / Fornecedor", Component: EntitiesManager },
   products: { label: "Produtos", Component: ProductsManager },
   orders: { label: "Pedidos", Component: OrdersManager },
-  orderForm: { label: "Novo Pedido", Component: PedidoForm },
 };
 
 function Home() {

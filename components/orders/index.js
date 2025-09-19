@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "../ui/Button";
 import { useToast } from "../entities/shared/toast";
+import { FormContainer } from "../ui/Form";
+import { PedidoForm } from "../PedidoForm";
 
 function FilterBar({ filters, onChange, onReload }) {
   return (
@@ -78,10 +80,15 @@ function usePedidos(filters, limit = 20) {
   return { loading, data, reload };
 }
 
-export function OrdersManager({ limit = 20 }) {
+export function OrdersBrowser({ limit = 20, refreshTick = 0, onConfirm }) {
   const { push } = useToast();
   const [filters, setFilters] = useState({ tipo: "", status: "", q: "" });
   const { loading, data, reload } = usePedidos(filters, limit);
+  useEffect(() => {
+    // quando refreshTick muda, recarrega
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTick]);
 
   const confirm = async (id) => {
     try {
@@ -89,6 +96,7 @@ export function OrdersManager({ limit = 20 }) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || "Falha ao confirmar pedido");
       push(`Pedido #${id} confirmado.`, { type: "success" });
+      if (typeof onConfirm === 'function') onConfirm(id);
       reload();
     } catch (e) {
       push(e.message, { type: "error" });
@@ -143,5 +151,36 @@ export function OrdersManager({ limit = 20 }) {
         </table>
       </div>
     </div>
+  );
+}
+
+export function OrdersManager({ limit = 20 }) {
+  const [showForm, setShowForm] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const bump = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  if (!showForm) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Pedidos</h2>
+          <Button onClick={() => setShowForm(true)} variant="primary" fullWidth={false}>
+            Adicionar
+          </Button>
+        </div>
+        <OrdersBrowser limit={limit} refreshTick={refreshKey} onConfirm={bump} />
+      </div>
+    );
+  }
+
+  return (
+    <FormContainer title="Novo Pedido">
+      <PedidoForm onCreated={() => { setShowForm(false); bump(); }} />
+      <div className="flex justify-end mt-2">
+        <Button variant="secondary" fullWidth={false} onClick={() => setShowForm(false)}>
+          Cancelar
+        </Button>
+      </div>
+    </FormContainer>
   );
 }
