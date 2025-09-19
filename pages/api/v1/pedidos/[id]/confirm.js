@@ -79,6 +79,8 @@ export default async function handler(req, res) {
     if (isConnectionError(e)) return res.status(503).json({ error: "Database unreachable", dependency: "database", code: e.code });
     return res.status(500).json({ error: "Internal error" });
   } finally {
-    client.release();
+    if (client) {
+      try { await client.end(); } catch (_) { /* noop */ }
+    }
   }
 }

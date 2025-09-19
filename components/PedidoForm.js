@@ -2,7 +2,9 @@ import React, { useMemo, useState } from "react";
 import { Button } from "./ui/Button";
 import { FormContainer, FormField } from "./ui/Form";
 import { useToast } from "./entities/shared/toast";
-import { Autocomplete } from "./common/Autocomplete";
+// Autocomplete removido neste fluxo; usando apenas SelectionModal
+// import { Autocomplete } from "./common/Autocomplete";
+import { SelectionModal } from "./common/SelectionModal";
 
 function numOrNull(v) {
   if (v === "" || v === null || v === undefined) return null;
@@ -22,6 +24,8 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "" },
   ]);
   const [created, setCreated] = useState(null); // armazena pedido criado
+  const [showPartnerModal, setShowPartnerModal] = useState(false);
+  const [productModalIndex, setProductModalIndex] = useState(null); // índice do item para selecionar produto
 
   // Preenche estado quando está editando um pedido existente
   React.useEffect(() => {
@@ -221,27 +225,15 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         </div>
 
         <div>
-          <Autocomplete
-            label="Cliente/Fornecedor (ativo)"
-            placeholder="Busque por nome ou documento"
-            fetcher={fetchEntities}
-            initialValue={partnerLabel}
-            disabled={isEditing && !isDraft}
-            onSelect={(it) => {
-              if (!it) {
-                setPartnerId("");
-                setPartnerLabel("");
-                setPartnerName("");
-                return;
-              }
-              setPartnerId(String(it.id));
-              setPartnerLabel(it.label);
-              setPartnerName(it.name || it.label);
-            }}
-          />
-          {partnerLabel && (
-            <p className="text-xs mt-1 opacity-70">Selecionado: {partnerLabel}</p>
-          )}
+          <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Cliente/Fornecedor (ativo)</label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 text-sm px-3 py-2 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] min-h-[38px] flex items-center">
+              {partnerLabel || <span className="opacity-60">Nenhum selecionado</span>}
+            </div>
+            <Button variant="outline" size="sm" fullWidth={false} onClick={() => setShowPartnerModal(true)} disabled={isEditing && !isDraft}>
+              Buscar...
+            </Button>
+          </div>
         </div>
 
         <div className="md:col-span-1">
@@ -268,20 +260,15 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
           {itens.map((it, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-3 items-end">
               <div className="col-span-3">
-                <Autocomplete
-                  label="Produto"
-                  placeholder="Busque por nome, código ou barras"
-                  fetcher={fetchProdutos}
-                  initialValue={it.produto_label}
-                  disabled={isEditing && !isDraft}
-                  onSelect={(sel) => {
-                    if (!sel) return updateItem(idx, { produto_id: "", produto_label: "" });
-                    updateItem(idx, { produto_id: String(sel.id), produto_label: sel.label });
-                  }}
-                />
-                {it.produto_id && (
-                  <p className="text-xs mt-1 opacity-70">Selecionado: #{it.produto_id} — {it.produto_label}</p>
-                )}
+                <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Produto</label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 text-sm px-3 py-2 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] min-h-[38px] flex items-center">
+                    {it.produto_label || <span className="opacity-60">Nenhum selecionado</span>}
+                  </div>
+                  <Button variant="outline" size="sm" fullWidth={false} onClick={() => setProductModalIndex(idx)} disabled={isEditing && !isDraft}>
+                    Buscar...
+                  </Button>
+                </div>
               </div>
               <div className="col-span-2">
                 <FormField
@@ -365,6 +352,36 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
           {submitting ? (editingOrder?.id ? "Atualizando..." : "Enviando...") : (editingOrder?.id ? "Atualizar Pedido" : "Criar Pedido")}
         </Button>
       </div>
+
+      {showPartnerModal && (
+        <SelectionModal
+          title="Selecionar Cliente/Fornecedor"
+          fetcher={fetchEntities}
+          extractLabel={(it) => it.label}
+          onSelect={(it) => {
+            setShowPartnerModal(false);
+            if (it) {
+              setPartnerId(String(it.id));
+              setPartnerLabel(it.label);
+              setPartnerName(it.name || it.label);
+            }
+          }}
+          onClose={() => setShowPartnerModal(false)}
+        />
+      )}
+
+      {Number.isInteger(productModalIndex) && productModalIndex >= 0 && (
+        <SelectionModal
+          title="Selecionar Produto"
+          fetcher={fetchProdutos}
+          extractLabel={(it) => it.label}
+          onSelect={(it) => {
+            setProductModalIndex(null);
+            if (it) updateItem(productModalIndex, { produto_id: String(it.id), produto_label: it.label });
+          }}
+          onClose={() => setProductModalIndex(null)}
+        />
+      )}
     </FormContainer>
   );
 }

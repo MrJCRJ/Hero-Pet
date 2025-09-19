@@ -80,7 +80,9 @@ async function postPedido(req, res) {
     if (isConnectionError(e)) return res.status(503).json({ error: "Database unreachable", dependency: "database", code: e.code });
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
-    client.release();
+    if (client) {
+      try { await client.end(); } catch (_) { /* noop */ }
+    }
   }
 }
 
