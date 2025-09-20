@@ -38,6 +38,80 @@ const formatCep = (raw = '') => {
   return d ? d.replace(/(\d{5})(\d)/, '$1-$2') : '—';
 };
 
+// Abreviações e composição de endereço (reuso entre emitente/destinatário)
+const abbreviateLogradouro = (s = '') => {
+  const map = [
+    [/^rua\b/i, 'R.'],
+    [/^avenida\b/i, 'Av.'],
+    [/^travessa\b/i, 'Tv.'],
+    [/^alameda\b/i, 'Al.'],
+    [/^praça\b/i, 'Pç.'],
+    [/^rodovia\b/i, 'Rod.'],
+    [/^estrada\b/i, 'Est.'],
+    [/^loteamento\b/i, 'Lot.'],
+    [/^condomínio\b/i, 'Cond.'],
+    [/^quadra\b/i, 'Qd.'],
+    [/^setor\b/i, 'St.'],
+  ];
+  const trimmed = String(s || '').trim();
+  const [first, ...rest] = trimmed.split(/\s+/);
+  if (!first) return trimmed;
+  const found = map.find(([re]) => re.test(first));
+  if (found) return `${found[1]} ${rest.join(' ')}`.trim();
+  return trimmed;
+};
+
+const abbreviateCity = (s = '') => {
+  let out = String(s || '');
+  out = out.replace(/\bNossa Senhora\b/gi, 'Nossa Sra.');
+  out = out.replace(/\bSanta\b/gi, 'Sta.');
+  out = out.replace(/\bSanto\b/gi, 'Sto.');
+  out = out.replace(/\bSenhora\b/gi, 'Sra.');
+  out = out.replace(/\bSenhor\b/gi, 'Sr.');
+  return out;
+};
+
+const composeEnderecoFromViaCep = (viaCepAddr, numeroRaw = '', complementoRaw = '', cepDigits = '') => {
+  const logradouro = viaCepAddr?.logradouro ? abbreviateLogradouro(viaCepAddr.logradouro) : '';
+  const bairro = viaCepAddr?.bairro ? String(viaCepAddr.bairro) : '';
+  const cidade = viaCepAddr?.localidade ? abbreviateCity(viaCepAddr.localidade) : '';
+  const uf = viaCepAddr?.uf ? String(viaCepAddr.uf) : '';
+  const num = STR(numeroRaw, '').trim();
+  const compl = STR(complementoRaw, '').trim();
+  const cepFmt = formatCep(cepDigits);
+
+  let linha = '';
+  if (logradouro) linha += logradouro;
+  if (num) linha += (linha ? ', ' : '') + num;
+  if (compl) linha += (linha ? ', ' : '') + compl;
+  if (bairro) linha += (linha ? ' - ' : '') + bairro;
+  if (cidade || uf) {
+    const cityUf = [cidade, uf].filter(Boolean).join(' - ');
+    linha += (linha ? ', ' : '') + cityUf;
+  }
+  if (cepFmt && cepFmt !== '—') linha += (linha ? ', ' : '') + cepFmt;
+
+  return linha || '—';
+};
+
+const tryFetchViaCep = async (cepDigits, timeoutMs = 1500) => {
+  const cleanCep = stripDigits(cepDigits || '').slice(0, 8);
+  if (!cleanCep || typeof fetch !== 'function') return null;
+  try {
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+    const resp = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, ctrl ? { signal: ctrl.signal } : undefined);
+    if (timer) clearTimeout(timer);
+    if (resp && resp.ok) {
+      const json = await resp.json();
+      if (json && !json.erro) return json; // { logradouro, bairro, localidade, uf }
+    }
+  } catch (_) {
+    // ignore network/timeout
+  }
+  return null;
+};
+
 export default async function handler(req, res) {
   if (req.method === "GET") return getNF(req, res);
   return res.status(405).json({ error: `Method "${req.method}" not allowed` });
@@ -56,7 +130,9 @@ async function getNF(req, res) {
                     e.entity_type AS entidade_tipo,
                     e.telefone AS entidade_telefone,
                     e.email AS entidade_email,
-                    e.cep AS entidade_cep
+                    e.cep AS entidade_cep,
+                    e.numero AS entidade_numero,
+                    e.complemento AS entidade_complemento
              FROM pedidos p
              LEFT JOIN entities e ON e.id = p.partner_entity_id
              WHERE p.id = $1`,
@@ -85,11 +161,20 @@ async function getNF(req, res) {
     // Cabeçalhos de resposta (forçar download)
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="NF-${pedido.id}.pdf"`);
-
     const doc = new PDFDocument({ margin: 36 }); // margem menor para mais área útil
     doc.pipe(res);
 
     // Dados fixos da empresa (Emitente) agora em lib/constants/company
+
+    // Lookup opcional de endereço por CEP (não persiste; apenas exibição)
+    const cepDigits = stripDigits(pedido.entidade_cep || '');
+    const viaCepAddr = await tryFetchViaCep(cepDigits);
+    const DEST_ENDERECO = composeEnderecoFromViaCep(
+      viaCepAddr,
+      pedido.entidade_numero,
+      pedido.entidade_complemento,
+      cepDigits
+    );
 
     // Carregar logo (PNG preferencial). Se não existir, ignora.
     const tryLoadLogoPng = () => {
@@ -124,7 +209,7 @@ async function getNF(req, res) {
           // ignora erro de imagem
         }
       }
-      doc.fontSize(16).fillColor('#111827').text('Hero-Pet', titleX, titleY, { continued: false });
+      doc.fontSize(16).fillColor('#111827').text(EMITENTE.razao, titleX, titleY, { continued: false });
       doc.fontSize(10).fillColor('#374151').text('Documento Auxiliar de Nota Fiscal (MVP)', titleX, top + 12);
 
       // Info do pedido (lado direito)
@@ -151,8 +236,6 @@ async function getNF(req, res) {
       }
       doc.restore();
     };
-
-    // drawKV (uma coluna) não é mais usado; usamos drawKVInline em duas colunas
 
     const measureKVHeight = (label, value, width, align = 'left') => {
       const text = `${label}: ${STR(value)}`;
@@ -190,8 +273,6 @@ async function getNF(req, res) {
       return y + h;
     };
 
-    // drawInfoBox (versão uma coluna) foi substituído por drawInfoBoxTwoCols
-
     const drawParties = () => {
       const left = doc.page.margins.left;
       const right = doc.page.width - doc.page.margins.right;
@@ -205,7 +286,7 @@ async function getNF(req, res) {
         [['Gestão', EMITENTE.gestao], ['Vendedor', EMITENTE.vendedor]],
         [['CNPJ', EMITENTE.cnpj], ['IE', EMITENTE.ie]],
         [['Loja', EMITENTE.loja], ['Telefone', EMITENTE.telefone]],
-        [['Endereço', EMITENTE.endereco], ['Cidade/UF', EMITENTE.cidadeUf]],
+        [['Endereço', EMITENTE.endereco], null],
         [['Frete', EMITENTE.frete], null],
       ], left, y, half, 132);
 
@@ -218,7 +299,8 @@ async function getNF(req, res) {
       drawInfoBoxTwoCols('Destinatário', [
         [['Nome', nome], ['Documento', formatCpfCnpj(docRaw)]],
         [['Tipo', tipoEnt], ['Telefone', formatTelefone(pedido.entidade_telefone)]],
-        [['Email', STR(pedido.entidade_email)], ['CEP', formatCep(pedido.entidade_cep)]],
+        [['Endereço', DEST_ENDERECO], ['CEP', formatCep(pedido.entidade_cep)]],
+        [['Email', STR(pedido.entidade_email)], null],
       ], destX, y, half, 132);
 
       doc.moveDown(2);
@@ -384,7 +466,8 @@ async function getNF(req, res) {
       const right = doc.page.width - doc.page.margins.right;
       const bottom = doc.page.height - doc.page.margins.bottom;
       doc.strokeColor('#E5E7EB').moveTo(left, bottom - 20).lineTo(right, bottom - 20).stroke();
-      doc.fontSize(8).fillColor('#6B7280').text('Emitido por Hero-Pet • Dados do emitente serão configurados posteriormente.', left, bottom - 16, { width: right - left, align: 'center' });
+      doc.fontSize(8).fillColor('#6B7280').text(`Emitido por ${EMITENTE.razao} • CNPJ ${EMITENTE.cnpj}`,
+        left, bottom - 16, { width: right - left, align: 'center' });
     };
 
     // Desenho
