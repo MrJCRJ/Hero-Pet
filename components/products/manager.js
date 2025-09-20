@@ -183,7 +183,11 @@ export function ProductsManager() {
                 <td className="p-2">{p.nome}</td>
                 <td className="p-2">{p.categoria || "-"}</td>
                 <td className="p-2">{p.codigo_barras || "-"}</td>
-                <td className="p-2 text-xs">{Array.isArray(p.suppliers) && p.suppliers.length ? `${p.suppliers.length}` : '-'}</td>
+                <td className="p-2 text-xs">
+                  {Array.isArray(p.supplier_labels) && p.supplier_labels.length
+                    ? p.supplier_labels.map((s) => s.name || s.label || `#${s.id}`).join(", ")
+                    : '-'}
+                </td>
                 <td className="p-2">{p.preco_tabela != null ? `R$ ${Number(p.preco_tabela).toFixed(2)}` : "-"}</td>
                 <td className="p-2">{p.ativo ? "Sim" : "Não"}</td>
                 <td className="p-2">

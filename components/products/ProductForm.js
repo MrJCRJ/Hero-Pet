@@ -166,7 +166,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
           title="Selecionar Fornecedor (PJ)"
           fetcher={async (q) => {
             const url = `/api/v1/entities?q=${encodeURIComponent(q)}&ativo=true&entity_type=PJ`;
-            const res = await fetch(url);
+            const res = await fetch(url, { cache: "no-store" });
             const data = await res.json();
             if (!res.ok) throw new Error(data?.error || "Falha na busca de fornecedores");
             return data.map((e) => ({ id: e.id, label: `${e.name} • ${e.entity_type}`, name: e.name }));

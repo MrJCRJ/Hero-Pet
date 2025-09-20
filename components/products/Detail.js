@@ -65,6 +65,27 @@ export function ProductDetail({ open, onClose, product }) {
         <div className="p-4">Produto inválido.</div>
       ) : (
         <div className="space-y-4">
+          {/* Fornecedores do produto */}
+          <section className="p-3 rounded-md border border-[var(--color-border)]">
+            <div className="text-xs text-[var(--color-text-secondary)] mb-2">Fornecedores</div>
+            {Array.isArray(product.supplier_labels) && product.supplier_labels.length ? (
+              <div className="flex flex-wrap gap-2">
+                {product.supplier_labels.map((s) => (
+                  <a
+                    key={s.id}
+                    href={`#tab=entities&highlightId=${s.id}`}
+                    className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
+                    title="Abrir cadastro do fornecedor"
+                  >
+                    {s.name || s.label || `#${s.id}`}
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs opacity-70">Nenhum fornecedor vinculado.</div>
+            )}
+          </section>
+
           <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3 rounded-md border border-[var(--color-border)]">
               <div className="text-xs text-[var(--color-text-secondary)]">Saldo</div>

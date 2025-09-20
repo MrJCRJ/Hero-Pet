@@ -12,9 +12,41 @@ export default async function handler(req, res) {
   if (!id || isNaN(Number(id))) {
     return res.status(400).json({ error: "Invalid id" });
   }
+  if (req.method === "GET") return getEntity(req, res, Number(id));
   if (req.method === "PUT") return updateEntity(req, res, Number(id));
   if (req.method === "DELETE") return deleteEntity(req, res, Number(id));
   return res.status(405).json({ error: `Method "${req.method}" not allowed` });
+}
+
+async function getEntity(req, res, id) {
+  try {
+    const q = {
+      text: `SELECT id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, ativo, created_at, updated_at FROM entities WHERE id = $1 LIMIT 1`,
+      values: [id],
+    };
+    const r = await database.query(q);
+    if (!r.rows.length) return res.status(404).json({ error: "Not found" });
+    return res.status(200).json(r.rows[0]);
+  } catch (e) {
+    console.error("GET /entities/[id] error", e);
+    if (isRelationMissing(e)) {
+      return res.status(503).json({
+        error: "Schema not migrated (entities table missing)",
+        dependency: "database",
+        code: e.code,
+      });
+    }
+    if (isConnectionError(e)) {
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+        host: process.env.POSTGRES_HOST,
+        port: process.env.POSTGRES_PORT,
+      });
+    }
+    return res.status(500).json({ error: "Internal error" });
+  }
 }
 
 async function updateEntity(req, res, id) {

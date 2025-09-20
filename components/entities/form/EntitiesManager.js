@@ -15,7 +15,7 @@ import {
 } from "./index";
 import { FormContainer } from "components/ui/Form";
 
-export function EntitiesManager({ browserLimit = 20 }) {
+export function EntitiesManager({ browserLimit = 20, highlightId: externalHighlightId }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(() => createInitialEntityForm());
   const [editingId, setEditingId] = useState(null);
@@ -24,6 +24,22 @@ export function EntitiesManager({ browserLimit = 20 }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [lastEditedId, setLastEditedId] = useState(null);
   const { push } = useToast();
+  // Quando highlightId externo for informado, abrir o formulário no modo edição
+  useEffect(() => {
+    async function openIfRequested() {
+      if (!externalHighlightId) return;
+      try {
+        const res = await fetch(`/api/v1/entities/${externalHighlightId}`);
+        if (!res.ok) return; // se não encontrar, ignora silenciosamente
+        const row = await res.json();
+        handleEditRow(row);
+      } catch (_) {
+        /* noop */
+      }
+    }
+    openIfRequested();
+    // executar quando highlight id mudar
+  }, [externalHighlightId]);
 
   const toggleMode = () => {
     setShowForm((v) => {
@@ -83,7 +99,7 @@ export function EntitiesManager({ browserLimit = 20 }) {
         }
         throw new Error(
           data.error ||
-            `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
+          `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
         );
       }
       // Sucesso: registrar highlight antes de limpar editingId
@@ -160,7 +176,7 @@ export function EntitiesManager({ browserLimit = 20 }) {
           limit={browserLimit}
           compact
           onEdit={handleEditRow}
-          highlightId={lastEditedId}
+          highlightId={externalHighlightId ?? lastEditedId}
         />
       </div>
     );

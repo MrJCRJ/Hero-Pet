@@ -4,7 +4,7 @@ import { AccessForm } from "../components/admin/AccessForm";
 import { AdminHeader } from "../components/admin/AdminHeader";
 import { StatusNav } from "../components/layout/StatusNav";
 import { ThemeToggle } from "../components/ThemeToggle";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { EntitiesManager } from "components/entities";
 // import { PedidoForm } from "../components/PedidoForm";
 // import { OrdersManager } from "../components/orders";
@@ -30,6 +30,22 @@ function Home() {
     handleLogout,
   } = useAuth();
   const [activeForm, setActiveForm] = useState("entities");
+  const [entitiesHighlightId, setEntitiesHighlightId] = useState(null);
+
+  // Permite navegar por hash ex: #tab=entities&highlightId=123
+  useEffect(() => {
+    function applyFromHash() {
+      const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+      const params = new URLSearchParams(hash);
+      const tab = params.get("tab");
+      if (tab && formConfig[tab]) setActiveForm(tab);
+      const hid = params.get("highlightId");
+      setEntitiesHighlightId(hid ? Number(hid) : null);
+    }
+    applyFromHash();
+    window.addEventListener("hashchange", applyFromHash);
+    return () => window.removeEventListener("hashchange", applyFromHash);
+  }, []);
 
   if (loading)
     return (
@@ -81,7 +97,7 @@ function Home() {
               if (!active) return null;
               const { Component } = active;
               if (Component === EntitiesManager)
-                return <Component browserLimit={20} />;
+                return <Component browserLimit={20} highlightId={entitiesHighlightId || undefined} />;
               return <Component />;
             })()}
           </div>

@@ -140,21 +140,17 @@ async function getProdutos(req, res) {
       : `SELECT id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at FROM produtos`;
     const listQuery = { text: `${baseSelect} ${where} ORDER BY created_at DESC LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`, values };
     const result = await database.query(listQuery);
-
-    if (String(meta) === "1") {
-      const countQuery = {
-        text: `SELECT COUNT(*)::int AS total FROM produtos ${where}`,
-        values,
-      };
-      const count = await database.query(countQuery);
-      return res.status(200).json({ data: result.rows, meta: { total: count.rows[0].total } });
-    }
-
-    // opcionalmente expand suppliers (muitos-para-muitos) e supplier_labels para UI
+    // opcionalmente expand suppliers (muitos-para-muitos) e supplier_labels para UI (sempre que não for fields=id-nome)
     let rows = result.rows;
     if (String(fields) !== 'id-nome' && rows.length) {
       const produtoIds = rows.map((r) => r.id);
       const prodToSupplierIds = new Map();
+      // inicializa com fornecedor_id legado quando existir
+      for (const p of rows) {
+        const base = [];
+        if (p.fornecedor_id != null) base.push(p.fornecedor_id);
+        if (base.length) prodToSupplierIds.set(p.id, base);
+      }
       if (produtoIds.length) {
         const r2 = await database.query({ text: `SELECT produto_id, entity_id FROM produto_fornecedores WHERE produto_id = ANY($1::int[])`, values: [produtoIds] });
         for (const row of r2.rows) {
@@ -162,8 +158,10 @@ async function getProdutos(req, res) {
           prodToSupplierIds.get(row.produto_id).push(row.entity_id);
         }
       }
-      // Buscar nomes dos fornecedores uma única vez
-      const allSupplierIds = Array.from(new Set(Array.from(prodToSupplierIds.values()).flat()));
+      // Buscar nomes dos fornecedores uma única vez (inclui fornecedor_id quando aplicável)
+      const allSupplierIds = Array.from(new Set([
+        ...Array.from(prodToSupplierIds.values()).flat(),
+      ]));
       const idToName = new Map();
       if (allSupplierIds.length) {
         const r3 = await database.query({ text: `SELECT id, name FROM entities WHERE id = ANY($1::int[])`, values: [allSupplierIds] });
@@ -174,6 +172,14 @@ async function getProdutos(req, res) {
         const labels = sids.map((id) => ({ id, name: idToName.get(id) || `#${id}` }));
         return { ...p, suppliers: sids, supplier_labels: labels };
       });
+    }
+    if (String(meta) === "1") {
+      const countQuery = {
+        text: `SELECT COUNT(*)::int AS total FROM produtos ${where}`,
+        values,
+      };
+      const count = await database.query(countQuery);
+      return res.status(200).json({ data: rows, meta: { total: count.rows[0].total } });
     }
     return res.status(200).json(rows);
   } catch (e) {
