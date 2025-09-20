@@ -29,6 +29,29 @@ export function PedidoFormItems({
         </Button>
       </div>
 
+      {/* Quick add row */}
+      <QuickAddItemRow
+        tipo={tipo}
+        partnerId={partnerId}
+        itens={itens}
+        onUpdateItem={onUpdateItem}
+        onAddItem={onAddItem}
+        onAppend={(row) => {
+          const newRow = { produto_id: String(row.produto_id || ''), produto_label: row.produto_label || '', quantidade: String(row.quantidade || ''), preco_unitario: String(row.preco_unitario ?? ''), desconto_unitario: String(row.desconto_unitario ?? ''), produto_saldo: null };
+          // try to fill first empty placeholder
+          const emptyIdx = itens.findIndex((r) => !r.produto_id);
+          if (emptyIdx >= 0) {
+            onUpdateItem(emptyIdx, newRow);
+          } else {
+            const currentLen = itens.length;
+            onAddItem();
+            // schedule update on next tick to ensure row exists
+            setTimeout(() => onUpdateItem(currentLen, newRow), 0);
+          }
+        }}
+        fetchProdutos={fetchProdutos}
+      />
+
       {/* Mostrar itens removidos se houver */}
       {editingOrder && originalItens.length > 0 && (() => {
         const changes = getItemChanges();
@@ -175,4 +198,81 @@ async function fetchSaldo(produtoId) {
   } catch (_) {
     return null;
   }
+}
+
+function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
+  const [label, setLabel] = React.useState("");
+  const [produtoId, setProdutoId] = React.useState("");
+  const [quantidade, setQuantidade] = React.useState("");
+  const [preco, setPreco] = React.useState("");
+  const [desconto, setDesconto] = React.useState("");
+  const [showModal, setShowModal] = React.useState(false);
+
+  const handleAdd = () => {
+    if (!Number.isFinite(Number(quantidade)) || Number(quantidade) <= 0) return;
+    onAppend({ produto_id: produtoId, produto_label: label, quantidade, preco_unitario: preco, desconto_unitario: desconto });
+    setLabel("");
+    setProdutoId("");
+    setQuantidade("");
+    setPreco("");
+    setDesconto("");
+  };
+
+  return (
+    <div className="mb-4 p-3 border rounded-md bg-[var(--color-bg-secondary)]">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
+        <div className="md:col-span-2">
+          <label className="block text-xs mb-1">Produto</label>
+          <div className="flex gap-2">
+            <input className="flex-1 border rounded px-2 py-1" placeholder="Selecione o produto" value={label} onChange={(e) => setLabel(e.target.value)} readOnly />
+            <Button variant="outline" size="sm" fullWidth={false} onClick={() => setShowModal(true)}>Selecionar</Button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Quantidade</label>
+          <input type="number" step="0.001" className="w-full border rounded px-2 py-1" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Preço Unitário</label>
+          <input type="number" step="0.01" className="w-full border rounded px-2 py-1" value={preco} onChange={(e) => setPreco(e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Desconto Unitário</label>
+          <input type="number" step="0.01" className="w-full border rounded px-2 py-1" value={desconto} onChange={(e) => setDesconto(e.target.value)} />
+        </div>
+        <div className="text-right">
+          <Button variant="primary" size="sm" fullWidth={false} onClick={handleAdd}>Adicionar</Button>
+        </div>
+      </div>
+      {showModal && (
+        <SelectionModal
+          title="Selecionar Produto"
+          fetcher={fetchProdutos}
+          extractLabel={(it) => it.label}
+          onSelect={(it) => {
+            setShowModal(false);
+            if (it) {
+              setProdutoId(String(it.id));
+              setLabel(it.label);
+            }
+          }}
+          onClose={() => setShowModal(false)}
+          emptyMessage={tipo === 'COMPRA' ? 'Este fornecedor não possui produtos relacionados' : 'Nenhum produto encontrado'}
+          footer={tipo === 'COMPRA' && Number.isFinite(Number(partnerId)) ? (
+            <button
+              type="button"
+              className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-primary)]"
+              onClick={() => {
+                const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
+                try { window.location.hash = target; } catch (_) { /* noop */ }
+                setShowModal(false);
+              }}
+            >
+              + Vincular produto ao fornecedor
+            </button>
+          ) : null}
+        />
+      )}
+    </div>
+  );
 }

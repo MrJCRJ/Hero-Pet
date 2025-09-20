@@ -144,17 +144,41 @@ async function putPedido(req, res) {
     // 3) Recalcular valor_por_promissoria sempre ao final com base nos valores atuais
     try {
       const headNow = await client.query({
-        text: `SELECT total_liquido, numero_promissorias FROM pedidos WHERE id = $1`,
+        text: `SELECT total_liquido, numero_promissorias, data_primeira_promissoria FROM pedidos WHERE id = $1`,
         values: [id],
       });
       if (headNow.rows.length) {
         const tl = Number(headNow.rows[0].total_liquido || 0);
         const np = Number(headNow.rows[0].numero_promissorias || 1);
+        const firstDate = headNow.rows[0].data_primeira_promissoria;
         if (np > 1 && tl > 0) {
           const vpp = tl / np;
           await client.query({ text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`, values: [vpp, id] });
+
+          // Regenerar cronograma de promissórias se não houver nenhuma paga ainda
+          const anyPaid = await client.query({ text: `SELECT 1 FROM pedido_promissorias WHERE pedido_id = $1 AND paid_at IS NOT NULL LIMIT 1`, values: [id] });
+          if (!anyPaid.rows.length) {
+            // apaga cronograma atual
+            await client.query({ text: `DELETE FROM pedido_promissorias WHERE pedido_id = $1`, values: [id] });
+            const baseDate = firstDate ? parseDateYMD(firstDate) : new Date();
+            const norm = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+            const amt = Number(vpp.toFixed(2));
+            for (let i = 0; i < np; i++) {
+              const due = new Date(norm);
+              due.setMonth(due.getMonth() + i);
+              await client.query({
+                text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
+                values: [id, i + 1, formatDateYMD(due), amt],
+              });
+            }
+          }
         } else {
           await client.query({ text: `UPDATE pedidos SET valor_por_promissoria = NULL WHERE id = $1`, values: [id] });
+          // sem parcelamento: remover cronograma existente (se não houver pago)
+          const anyPaid = await client.query({ text: `SELECT 1 FROM pedido_promissorias WHERE pedido_id = $1 AND paid_at IS NOT NULL LIMIT 1`, values: [id] });
+          if (!anyPaid.rows.length) {
+            await client.query({ text: `DELETE FROM pedido_promissorias WHERE pedido_id = $1`, values: [id] });
+          }
         }
       }
     } catch (_) {
@@ -204,4 +228,25 @@ async function deletePedido(req, res) {
       try { await client.end(); } catch (_) { /* noop */ }
     }
   }
+}
+
+function formatDateYMD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseDateYMD(input) {
+  if (typeof input === 'string') {
+    const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      const y = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10) - 1;
+      const dd = parseInt(m[3], 10);
+      return new Date(y, mm, dd);
+    }
+  }
+  const d = new Date(input);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }

@@ -18,9 +18,12 @@ export default async function handler(req, res) {
 
     const pedido = head.rows[0];
 
-    // Verificar se tem nota fiscal
+    // Verificar se tem nota fiscal e que é somente para VENDA
     if (!pedido.tem_nota_fiscal) {
       return res.status(400).json({ error: "Pedido não possui nota fiscal habilitada" });
+    }
+    if (pedido.tipo !== 'VENDA') {
+      return res.status(400).json({ error: "Geração de NF permitida apenas para pedidos de VENDA" });
     }
 
     // Buscar itens do pedido

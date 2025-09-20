@@ -81,6 +81,25 @@ async function postPedido(req, res) {
         values: [valorPorPromissoria, pedido.id],
       });
     }
+
+    // (Re)gerar tabela de promissórias para o pedido recém criado
+    if (numeroPromissorias > 1 && totalLiquido > 0) {
+      // Parse seguro para 'YYYY-MM-DD' como data local sem timezone
+      const firstDate = b.data_primeira_promissoria
+        ? parseDateYMD(b.data_primeira_promissoria)
+        : new Date();
+      // normaliza para meia-noite local
+      const baseDate = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate());
+      const amount = Number((totalLiquido / numeroPromissorias).toFixed(2));
+      for (let i = 0; i < numeroPromissorias; i++) {
+        const due = new Date(baseDate);
+        due.setMonth(due.getMonth() + i);
+        await client.query({
+          text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
+          values: [pedido.id, i + 1, formatDateYMD(due), amount],
+        });
+      }
+    }
     // Gerar movimentos de estoque imediatamente (CRUD sem rascunho)
     const docTag = `PEDIDO:${pedido.id}`;
     const itensCriados = await client.query({ text: `SELECT * FROM pedido_itens WHERE pedido_id = $1 ORDER BY id`, values: [pedido.id] });
@@ -140,6 +159,28 @@ async function postPedido(req, res) {
   }
 }
 
+function formatDateYMD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseDateYMD(input) {
+  if (typeof input === 'string') {
+    const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      const y = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10) - 1;
+      const dd = parseInt(m[3], 10);
+      return new Date(y, mm, dd);
+    }
+  }
+  // fallback
+  const d = new Date(input);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
 async function getPedidos(req, res) {
   try {
     const { status, tipo, q, from, to, limit, offset, meta } = req.query;
@@ -174,10 +215,13 @@ async function getPedidos(req, res) {
       text: `SELECT p.id, p.tipo, p.status, p.partner_entity_id, p.partner_document,
                     COALESCE(p.partner_name, e.name) AS partner_name,
                     p.data_emissao, p.data_entrega, p.total_liquido, p.tem_nota_fiscal, p.parcelado,
-                    p.numero_promissorias, p.data_primeira_promissoria, p.valor_por_promissoria, p.created_at
+                    p.numero_promissorias, p.data_primeira_promissoria, p.valor_por_promissoria, p.created_at,
+                    COALESCE(SUM(CASE WHEN pp.paid_at IS NOT NULL THEN pp.amount ELSE 0 END), 0)::numeric(14,2) AS total_pago
              FROM pedidos p
              LEFT JOIN entities e ON e.id = p.partner_entity_id
+             LEFT JOIN pedido_promissorias pp ON pp.pedido_id = p.id
              ${where.replace(/\bFROM pedidos\b/, 'FROM pedidos p')}
+             GROUP BY p.id, e.name
              ORDER BY p.data_emissao DESC, p.id DESC
              LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`,
       values,

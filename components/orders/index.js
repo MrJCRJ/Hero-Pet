@@ -102,7 +102,8 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
               <th className="text-left px-3 py-2">Emissão</th>
               <th className="text-center px-3 py-2">NF</th>
               <th className="text-center px-3 py-2">Promissórias</th>
-              <th className="text-right px-3 py-2">Total</th>
+              <th className="text-right px-3 py-2">Total / Pago</th>
+              <th className="text-center px-3 py-2">Parcelas</th>
               <th className="text-right px-3 py-2">Ações</th>
             </tr>
           </thead>
@@ -135,11 +136,24 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 <td className="px-3 py-2 text-right">{
                   (() => {
                     const n = p.total_liquido != null ? Number(p.total_liquido) : NaN;
-                    return Number.isFinite(n)
+                    const totalFmt = Number.isFinite(n)
                       ? n.toLocaleString(undefined, { style: 'currency', currency: 'BRL' })
                       : '-';
+                    const pago = p.total_pago != null ? Number(p.total_pago) : 0;
+                    const pagoFmt = Number.isFinite(pago)
+                      ? pago.toLocaleString(undefined, { style: 'currency', currency: 'BRL' })
+                      : 'R$ 0,00';
+                    return (
+                      <div className="text-right">
+                        <div>{totalFmt}</div>
+                        <div className="text-xs text-blue-600 dark:text-blue-300">Pago: {pagoFmt}</div>
+                      </div>
+                    );
                   })()
                 }</td>
+                <td className="px-3 py-2 text-center">
+                  <PromissoriasDots pedidoId={p.id} count={p.numero_promissorias} />
+                </td>
                 <td className="px-3 py-2 text-right">
                   <div className="flex gap-2 justify-end">
                     <Button size="sm" fullWidth={false} variant="outline" onClick={() => onEdit && onEdit(p)}>Editar</Button>
@@ -215,6 +229,156 @@ export function OrdersManager({ limit = 20 }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PromissoriasDots({ pedidoId }) {
+  const [rows, setRows] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(null); // seq da promissória com menu aberto
+  const [actionLoading, setActionLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/v1/pedidos/${pedidoId}/promissorias`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Falha ao carregar parcelas');
+        if (!cancelled) setRows(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!cancelled) setRows([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pedidoId]);
+
+  const reloadPromissorias = async () => {
+    try {
+      const res = await fetch(`/api/v1/pedidos/${pedidoId}/promissorias`, { cache: 'no-store' });
+      const data = await res.json();
+      if (res.ok) setRows(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Erro ao recarregar promissórias:', e);
+    }
+  };
+
+  const handleGeneratePix = async (seq) => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/v1/pedidos/${pedidoId}/promissorias/${seq}?action=pix`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Falha ao gerar PIX');
+
+      // Copiar BRCode para clipboard
+      if (data.brcode && navigator.clipboard) {
+        await navigator.clipboard.writeText(data.brcode);
+        alert(`PIX gerado! BRCode copiado para área de transferência.\nTXID: ${data.txid}`);
+      } else {
+        alert(`PIX gerado!\nTXID: ${data.txid}\nBRCode: ${data.brcode || 'N/A'}`);
+      }
+
+      await reloadPromissorias();
+    } catch (e) {
+      alert(`Erro: ${e.message}`);
+    } finally {
+      setActionLoading(false);
+      setMenuOpen(null);
+    }
+  };
+
+  const handleMarkPaid = async (seq) => {
+    if (!confirm('Confirma o pagamento desta promissória?')) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/v1/pedidos/${pedidoId}/promissorias/${seq}?action=pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Falha ao marcar como pago');
+
+      alert('Promissória marcada como paga!');
+      await reloadPromissorias();
+    } catch (e) {
+      alert(`Erro: ${e.message}`);
+    } finally {
+      setActionLoading(false);
+      setMenuOpen(null);
+    }
+  };
+
+  const colorFor = (status) => {
+    if (status === 'PAGO') return 'bg-green-500';
+    if (status === 'ATRASADO') return 'bg-red-500';
+    return 'bg-yellow-500';
+  };
+
+  const borderFor = (row) => {
+    // Adiciona borda se PIX já foi gerado
+    if (row.pix_txid) return 'ring-2 ring-blue-400';
+    return '';
+  };
+
+  if (loading) return <span className="text-xs text-gray-400">...</span>;
+  if (!rows || rows.length === 0) return <span className="text-gray-400">-</span>;
+
+  return (
+    <div className="relative inline-flex gap-1">
+      {rows.map((r) => (
+        <div key={r.seq} className="relative">
+          <button
+            onClick={() => setMenuOpen(menuOpen === r.seq ? null : r.seq)}
+            title={`${r.status} • vence ${new Date(r.due_date).toLocaleDateString()} • ${Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'BRL' })}${r.pix_txid ? ' • PIX gerado' : ''}`}
+            className={`inline-block w-2.5 h-2.5 rounded-full ${colorFor(r.status)} ${borderFor(r)} cursor-pointer hover:scale-110 transition-transform`}
+            disabled={actionLoading}
+          />
+
+          {menuOpen === r.seq && (
+            <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 min-w-[120px]">
+              {r.status !== 'PAGO' && (
+                <>
+                  <button
+                    onClick={() => handleGeneratePix(r.seq)}
+                    disabled={actionLoading}
+                    className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    {r.pix_txid ? '🔄 Regerar PIX' : '💳 Gerar PIX'}
+                  </button>
+                  <button
+                    onClick={() => handleMarkPaid(r.seq)}
+                    disabled={actionLoading}
+                    className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    ✅ Marcar Pago
+                  </button>
+                </>
+              )}
+              {r.status === 'PAGO' && (
+                <div className="px-3 py-2 text-xs text-green-600 dark:text-green-400">
+                  ✅ Pago em {new Date(r.paid_at).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Clique fora para fechar menu */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setMenuOpen(null)}
+        />
+      )}
     </div>
   );
 }
