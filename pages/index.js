@@ -31,6 +31,7 @@ function Home() {
   } = useAuth();
   const [activeForm, setActiveForm] = useState("entities");
   const [entitiesHighlightId, setEntitiesHighlightId] = useState(null);
+  const [linkSupplierId, setLinkSupplierId] = useState(null);
 
   // Permite navegar por hash ex: #tab=entities&highlightId=123
   useEffect(() => {
@@ -41,6 +42,8 @@ function Home() {
       if (tab && formConfig[tab]) setActiveForm(tab);
       const hid = params.get("highlightId");
       setEntitiesHighlightId(hid ? Number(hid) : null);
+      const lsid = params.get("linkSupplierId");
+      setLinkSupplierId(lsid ? Number(lsid) : null);
     }
     applyFromHash();
     window.addEventListener("hashchange", applyFromHash);
@@ -98,6 +101,8 @@ function Home() {
               const { Component } = active;
               if (Component === EntitiesManager)
                 return <Component browserLimit={20} highlightId={entitiesHighlightId || undefined} />;
+              if (Component === ProductsManager)
+                return <Component linkSupplierId={linkSupplierId || undefined} />;
               return <Component />;
             })()}
           </div>

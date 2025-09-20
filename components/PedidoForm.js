@@ -82,7 +82,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   // Busca saldo de estoque para VENDA
   async function fetchSaldo(produtoId) {
     try {
-      const res = await fetch(`/api/v1/estoque/saldos?produto_id=${produtoId}`);
+      const res = await fetch(`/api/v1/estoque/saldos?produto_id=${produtoId}`, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Falha ao buscar saldo");
       return Number(data.saldo);
@@ -122,17 +122,23 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
 
   // Fetch helpers for autocomplete
   const fetchEntities = async (q) => {
-    const entityTypeParam = tipo === "COMPRA" ? `&entity_type=PJ` : "";
-    const url = `/api/v1/entities?q=${encodeURIComponent(q)}&ativo=true${entityTypeParam}`;
-    const res = await fetch(url);
+    // Em VENDA: listar apenas PF (clientes). Em COMPRA: apenas PJ (fornecedores)
+    const entityTypeParam = tipo === "COMPRA" ? `&entity_type=PJ` : `&entity_type=PF`;
+    // Buscar pelo perfil (nome) e não pelo documento: usar q_name
+    const url = `/api/v1/entities?q_name=${encodeURIComponent(q)}&ativo=true${entityTypeParam}`;
+    const res = await fetch(url, { cache: "no-store" });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || "Falha na busca de entidades");
     return data.map((e) => ({ id: e.id, label: `${e.name} • ${e.entity_type}`, name: e.name }));
   };
 
   const fetchProdutos = async (q) => {
-    const url = `/api/v1/produtos?q=${encodeURIComponent(q)}&ativo=true&fields=id-nome`;
-    const res = await fetch(url);
+    // Em COMPRA: filtrar por fornecedor selecionado, mostrando apenas produtos relacionados
+    const supplierFilter = tipo === 'COMPRA' && Number.isFinite(Number(partnerId))
+      ? `&supplier_id=${Number(partnerId)}`
+      : '';
+    const url = `/api/v1/produtos?q=${encodeURIComponent(q)}&ativo=true&fields=id-nome${supplierFilter}`;
+    const res = await fetch(url, { cache: "no-store" });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || "Falha na busca de produtos");
     return data.map((p) => ({ id: p.id, label: p.nome }));
@@ -264,7 +270,19 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                     </span>
                   )}
                 </div>
-                <Button variant="outline" size="sm" fullWidth={false} onClick={() => setProductModalIndex(idx)} disabled={isEditing}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  fullWidth={false}
+                  onClick={() => {
+                    if (tipo === 'COMPRA' && !Number.isFinite(Number(partnerId))) {
+                      push('Selecione um fornecedor primeiro', { type: 'error' });
+                      return;
+                    }
+                    setProductModalIndex(idx);
+                  }}
+                  disabled={isEditing}
+                >
                   {it.produto_id ? 'Trocar' : 'Buscar...'}
                 </Button>
               </div>
@@ -354,6 +372,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             }
           }}
           onClose={() => setShowPartnerModal(false)}
+          emptyMessage={tipo === 'VENDA' ? 'Nenhum cliente ativo encontrado' : 'Nenhum fornecedor ativo encontrado'}
         />
       )}
 
@@ -378,6 +397,21 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             }
           }}
           onClose={() => setProductModalIndex(null)}
+          emptyMessage={tipo === 'COMPRA' ? 'Este fornecedor não possui produtos relacionados' : 'Nenhum produto encontrado'}
+          footer={tipo === 'COMPRA' && Number.isFinite(Number(partnerId)) ? (
+            <button
+              type="button"
+              className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-secondary)]"
+              onClick={() => {
+                // Navega para Produtos com contexto de vincular fornecedor via hash
+                const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
+                try { window.location.hash = target; } catch (_) { /* noop */ }
+                setProductModalIndex(null);
+              }}
+            >
+              + Vincular produto ao fornecedor
+            </button>
+          ) : null}
         />
       )}
     </FormContainer>

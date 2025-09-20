@@ -107,7 +107,7 @@ async function postProduto(req, res) {
 
 async function getProdutos(req, res) {
   try {
-    const { q, categoria, codigo_barras, ativo, limit, offset, meta, fields } = req.query;
+    const { q, categoria, codigo_barras, ativo, limit, offset, meta, fields, supplier_id } = req.query;
     const clauses = [];
     const values = [];
 
@@ -130,6 +130,13 @@ async function getProdutos(req, res) {
       }
       values.push(String(ativo) === "true");
       clauses.push(`ativo = $${values.length}`);
+    }
+    // filtrar por fornecedor (legacy fornecedor_id OU relação produto_fornecedores)
+    const supplierId = supplier_id != null ? parseInt(String(supplier_id), 10) : null;
+    if (Number.isFinite(supplierId)) {
+      values.push(supplierId);
+      const idx = values.length;
+      clauses.push(`(fornecedor_id = $${idx} OR id IN (SELECT produto_id FROM produto_fornecedores WHERE entity_id = $${idx}))`);
     }
 
     const effectiveLimit = Math.min(parseInt(limit || "100", 10) || 100, 500);

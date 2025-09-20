@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "../ui/Button";
-import { FormContainer } from "../ui/Form";
 import { PedidoForm } from "../PedidoForm";
 
 function FilterBar({ filters, onChange, onReload }) {
@@ -26,7 +25,6 @@ function FilterBar({ filters, onChange, onReload }) {
           onChange={(e) => onChange({ ...filters, status: e.target.value })}
         >
           <option value="">Todos</option>
-          <option value="rascunho">rascunho</option>
           <option value="confirmado">confirmado</option>
           <option value="cancelado">cancelado</option>
         </select>
@@ -60,7 +58,7 @@ function usePedidos(filters, limit = 20) {
   const reload = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/pedidos?${params}`);
+      const res = await fetch(`/api/v1/pedidos?${params}`, { cache: 'no-store' });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Falha ao carregar pedidos");
       setData(Array.isArray(json?.data) ? json.data : json);
@@ -154,7 +152,7 @@ export function OrdersManager({ limit = 20 }) {
 
   const handleEdit = async (row) => {
     try {
-      const res = await fetch(`/api/v1/pedidos/${row.id}`);
+      const res = await fetch(`/api/v1/pedidos/${row.id}`, { cache: 'no-store' });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Falha ao carregar pedido');
       setEditing(json);
@@ -179,13 +177,24 @@ export function OrdersManager({ limit = 20 }) {
   }
 
   return (
-    <FormContainer title={editing ? `Editando Pedido #${editing.id}` : "Novo Pedido"}>
-      <PedidoForm editingOrder={editing} onCreated={() => { setShowForm(false); setEditing(null); bump(); }} onSaved={() => { setShowForm(false); setEditing(null); bump(); }} />
-      <div className="flex justify-end mt-2">
-        <Button variant="secondary" fullWidth={false} onClick={() => { setShowForm(false); setEditing(null); }}>
-          Cancelar
-        </Button>
+    <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-lg p-7 max-w-[1024px] w-full mx-auto mt-4">
+      <div className="max-w-full">
+        <h2 className="text-xl font-bold mb-1 border-b border-[var(--color-border)] pb-2">
+          {editing ? `Editando Pedido #${editing.id}` : "Novo Pedido"}
+        </h2>
+        <div className="max-w-full overflow-x-auto space-y-6 p-1.5">
+          <PedidoForm
+            editingOrder={editing}
+            onCreated={() => { setShowForm(false); setEditing(null); bump(); }}
+            onSaved={() => { setShowForm(false); setEditing(null); bump(); }}
+          />
+          <div className="flex justify-end mt-2">
+            <Button variant="secondary" fullWidth={false} onClick={() => { setShowForm(false); setEditing(null); }}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
       </div>
-    </FormContainer>
+    </div>
   );
 }

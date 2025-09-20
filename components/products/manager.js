@@ -9,7 +9,7 @@ function useProducts() {
   const [total, setTotal] = useState(null);
   const [q, setQ] = useState("");
   const [categoria, setCategoria] = useState("");
-  const [ativo, setAtivo] = useState(""); // "" | "true" | "false"
+  const [ativo, setAtivo] = useState("true"); // default: somente ativos
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -28,7 +28,7 @@ function useProducts() {
       const baseOffset = reset ? 0 : offsetRef.current;
       params.set("offset", String(baseOffset));
       params.set("meta", "1");
-      const resp = await fetch(`/api/v1/produtos?${params.toString()}`);
+      const resp = await fetch(`/api/v1/produtos?${params.toString()}`, { cache: 'no-store' });
       if (!resp.ok) throw new Error(`GET produtos ${resp.status}`);
       const json = await resp.json();
       const data = Array.isArray(json) ? json : json.data;
@@ -58,7 +58,7 @@ function useProducts() {
   return { rows, total, loading, query, setQ, setCategoria, setAtivo, setLimit, refresh, loadMore };
 }
 
-export function ProductsManager() {
+export function ProductsManager({ linkSupplierId }) {
   const { rows, total, loading, query, setQ, setCategoria, setAtivo, setLimit, refresh, loadMore } = useProducts();
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -73,8 +73,8 @@ export function ProductsManager() {
 
   const canLoadMore = total == null ? false : rows.length < total;
 
-  function openNew() {
-    setEditing(null);
+  function openNew(prefill) {
+    setEditing(prefill || null);
     setShowModal(true);
   }
 
@@ -160,8 +160,16 @@ export function ProductsManager() {
         </select>
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={openNew}>Novo Produto</Button>
+      <div className="flex justify-between items-center gap-2">
+        <div>
+          <Button variant="outline" onClick={refresh} fullWidth={false}>Atualizar</Button>
+        </div>
+        {Number.isFinite(Number(linkSupplierId)) && (
+          <Button onClick={() => openNew({ ativo: true, suppliers: [Number(linkSupplierId)] })}>
+            Novo Produto para Fornecedor #{Number(linkSupplierId)}
+          </Button>
+        )}
+        <Button onClick={() => openNew()}>Novo Produto</Button>
       </div>
 
       <div className="border border-[var(--color-border)] rounded-md overflow-hidden">
@@ -201,7 +209,7 @@ export function ProductsManager() {
             ))}
             {!rows.length && (
               <tr>
-                <td colSpan={5} className="p-4 text-center text-[var(--color-text-secondary)]">
+                <td colSpan={7} className="p-4 text-center text-[var(--color-text-secondary)]">
                   {loading ? "Carregando..." : "Nenhum produto encontrado."}
                 </td>
               </tr>

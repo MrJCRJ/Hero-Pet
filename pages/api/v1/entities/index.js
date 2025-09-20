@@ -93,6 +93,7 @@ async function getEntities(req, res) {
       contact_fill,
       entity_type,
       q,
+      q_name,
       ativo,
     } = req.query;
     const clauses = [];
@@ -154,11 +155,15 @@ async function getEntities(req, res) {
       }
     }
 
-    // Busca textual por nome e/ou por dígitos do documento
-    if (q) {
+    // Busca textual: se q_name for informado, busca SOMENTE por nome.
+    // Caso contrário, q busca por nome e/ou dígitos do documento (comportamento legado).
+    if (q_name) {
+      const text = `%${q_name}%`;
+      values.push(text);
+      clauses.push(`name ILIKE $${values.length}`);
+    } else if (q) {
       const text = `%${q}%`;
       const onlyDigits = (q || "").replace(/\D+/g, "");
-      // name ILIKE $x OR document_digits LIKE $y (quando houver dígitos)
       if (onlyDigits) {
         values.push(text, `%${onlyDigits}%`);
         clauses.push(`(name ILIKE $${values.length - 1} OR document_digits LIKE $${values.length})`);
