@@ -16,6 +16,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const { push } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [tipo, setTipo] = useState("VENDA");
+  const [originalTipo, setOriginalTipo] = useState("VENDA"); // para detectar mudança
   const [partnerId, setPartnerId] = useState("");
   const [partnerLabel, setPartnerLabel] = useState("");
   const [partnerName, setPartnerName] = useState("");
@@ -26,14 +27,19 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const [itens, setItens] = useState([
     { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null },
   ]);
+  const [originalItens, setOriginalItens] = useState([]); // para diff visual
   const [created, setCreated] = useState(null); // armazena pedido criado
   const [showPartnerModal, setShowPartnerModal] = useState(false);
   const [productModalIndex, setProductModalIndex] = useState(null); // índice do item para selecionar produto
+  const [showTypeChangeModal, setShowTypeChangeModal] = useState(false);
+  const [pendingTipo, setPendingTipo] = useState("");
 
   // Preenche estado quando está editando um pedido existente
   React.useEffect(() => {
     if (!editingOrder) return;
-    setTipo(editingOrder.tipo || "VENDA");
+    const tipoOriginal = editingOrder.tipo || "VENDA";
+    setTipo(tipoOriginal);
+    setOriginalTipo(tipoOriginal);
     setPartnerId(String(editingOrder.partner_entity_id || ""));
     setPartnerLabel(editingOrder.partner_name || "");
     setPartnerName(editingOrder.partner_name || "");
@@ -51,7 +57,9 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         produto_saldo: null,
       }))
       : [];
-    setItens(mapped.length ? mapped : [{ produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null }]);
+    const itensFinais = mapped.length ? mapped : [{ produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null }];
+    setItens(itensFinais);
+    setOriginalItens(mapped); // salva para diff
     setCreated({ id: editingOrder.id, status: editingOrder.status });
   }, [editingOrder]);
 
@@ -181,11 +189,14 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         // Atualiza pedido existente
         // CRUD sem rascunho: após criado, não permitir alterar itens, tipo e parceiro (mantém consistência de estoque)
         const body = {
+          tipo,
+          partner_entity_id: Number(partnerId),
           observacao: observacao || null,
           partner_name: partnerName || null,
           data_entrega: dataEntrega || null,
           tem_nota_fiscal: temNotaFiscal,
           parcelado: parcelado,
+          itens: payloadBase.itens,
         };
         const res = await fetch(`/api/v1/pedidos/${editingOrder.id}`, {
           method: "PUT",
@@ -232,23 +243,125 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     }
   }
 
+  async function handleDelete() {
+    if (!editingOrder?.id) return;
+    const ok = window.confirm(`Excluir pedido #${editingOrder.id}? Esta ação remove movimentos e itens relacionados.`);
+    if (!ok) return;
+    try {
+      setSubmitting(true);
+      const res = await fetch(`/api/v1/pedidos/${editingOrder.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Falha ao excluir pedido');
+      if (typeof onSaved === 'function') {
+        try { onSaved({ id: editingOrder.id, deleted: true }); } catch (_) { /* noop */ }
+      }
+      push(`Pedido #${editingOrder.id} excluído.`, { type: 'success' });
+    } catch (err) {
+      push(err.message, { type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   // Duplica rascunho removido no CRUD sem rascunhos
 
   // Confirmar não é mais necessário (pedido já nasce confirmado)
 
-  const isEditing = !!editingOrder?.id;
-  const isDraft = false;
+  // Função para lidar com mudança de tipo
+  function handleTipoChange(novoTipo) {
+    // Se é um pedido novo ou não houve mudança, aplicar diretamente
+    if (!editingOrder || novoTipo === originalTipo) {
+      setTipo(novoTipo);
+      return;
+    }
+    
+    // Se está mudando tipo de pedido existente, pedir confirmação
+    setPendingTipo(novoTipo);
+    setShowTypeChangeModal(true);
+  }
+
+  function confirmTipoChange() {
+    setTipo(pendingTipo);
+    setShowTypeChangeModal(false);
+    setPendingTipo("");
+    // Limpar partner pois tipo novo pode ter regras diferentes
+    setPartnerId("");
+    setPartnerLabel("");
+    setPartnerName("");
+  }
+
+  function cancelTipoChange() {
+    setShowTypeChangeModal(false);
+    setPendingTipo("");
+  }
+
+  // Função para detectar mudanças nos itens
+  function getItemChanges() {
+    if (!editingOrder || !originalItens.length) return { added: [], removed: [], modified: [] };
+    
+    const currentIds = new Set(itens.filter(it => it.produto_id).map(it => it.produto_id));
+    const originalIds = new Set(originalItens.map(it => it.produto_id));
+    
+    const added = itens.filter(it => it.produto_id && !originalIds.has(it.produto_id));
+    const removed = originalItens.filter(it => !currentIds.has(it.produto_id));
+    const modified = itens.filter(it => {
+      if (!it.produto_id || !originalIds.has(it.produto_id)) return false;
+      const original = originalItens.find(orig => orig.produto_id === it.produto_id);
+      return original && (
+        Number(original.quantidade) !== Number(it.quantidade) ||
+        Number(original.preco_unitario) !== Number(it.preco_unitario) ||
+        Number(original.desconto_unitario || 0) !== Number(it.desconto_unitario || 0)
+      );
+    });
+    
+    return { added, removed, modified };
+  }
+
+  // Função para obter classe CSS baseada no status do item
+  function getItemDiffClass(item, index) {
+    if (!editingOrder || !originalItens.length) return "";
+    
+    const changes = getItemChanges();
+    
+    if (changes.added.some(added => added.produto_id === item.produto_id)) {
+      return "border-green-500 bg-green-50 dark:bg-green-900/20";
+    }
+    
+    if (changes.modified.some(modified => modified.produto_id === item.produto_id)) {
+      return "border-amber-500 bg-amber-50 dark:bg-amber-900/20";
+    }
+    
+    return "";
+  }
+
+  // Função para obter ícone do diff
+  function getItemDiffIcon(item) {
+    if (!editingOrder || !originalItens.length) return null;
+    
+    const changes = getItemChanges();
+    
+    if (changes.added.some(added => added.produto_id === item.produto_id)) {
+      return <span className="text-green-600 text-xs">✓ Novo</span>;
+    }
+    
+    if (changes.modified.some(modified => modified.produto_id === item.produto_id)) {
+      return <span className="text-amber-600 text-xs">⚠ Alterado</span>;
+    }
+    
+    return null;
+  }
+
+
 
   return (
     <FormContainer title="Pedido (MVP)" onSubmit={handleSubmit}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Tipo</label>
           <select
-            className="w-full border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)]"
+            className=" border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)]"
             value={tipo}
-            onChange={(e) => setTipo(e.target.value)}
-            disabled={isEditing}
+            onChange={(e) => handleTipoChange(e.target.value)}
           >
             <option value="VENDA">VENDA</option>
             <option value="COMPRA">COMPRA</option>
@@ -258,23 +371,15 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         <div>
           <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Cliente/Fornecedor (ativo)</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 text-sm px-3 py-2 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] min-h-[38px] flex items-center">
+            <div className=" text-sm px-2 py-1 rounded   min-h-[50px]">
               {partnerLabel || <span className="opacity-60">Nenhum selecionado</span>}
             </div>
-            <Button variant="outline" size="sm" fullWidth={false} onClick={() => setShowPartnerModal(true)} disabled={isEditing}>
+            <Button variant="outline" size="sm" fullWidth={false} onClick={() => setShowPartnerModal(true)}>
               Buscar...
             </Button>
           </div>
         </div>
 
-        <div className="md:col-span-1">
-          <FormField
-            label="Nome exibido (opcional)"
-            name="partner_name"
-            value={partnerName}
-            onChange={(e) => setPartnerName(e.target.value)}
-          />
-        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2">
@@ -308,19 +413,38 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
       <div className="mt-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold">Itens</h3>
-          <Button onClick={addItem} variant="outline" size="sm" fullWidth={false} disabled={isEditing && !isDraft}>
+          <Button onClick={addItem} variant="outline" size="sm" fullWidth={false}>
             + Adicionar item
           </Button>
         </div>
-        {isEditing && (
-          <p className="text-xs opacity-70 mb-2">Após criar o pedido, itens, parceiro e tipo ficam bloqueados. Você pode editar cabeçalho (observação, data de entrega, NF, parcelado, nome exibido).</p>
-        )}
+        
+        {/* Mostrar itens removidos se houver */}
+        {editingOrder && originalItens.length > 0 && (() => {
+          const changes = getItemChanges();
+          return changes.removed.length > 0 && (
+            <div className="mb-4 p-3 border border-red-500 bg-red-50 dark:bg-red-900/20 rounded-md">
+              <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                Itens removidos ({changes.removed.length}):
+              </h4>
+              {changes.removed.map((removedItem, idx) => (
+                <div key={idx} className="text-sm text-red-700 dark:text-red-300">
+                  • {removedItem.produto_label || `Produto ID: ${removedItem.produto_id}`} 
+                  - Qtd: {removedItem.quantidade} 
+                  - Preço: R$ {Number(removedItem.preco_unitario || 0).toFixed(2)}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        
+        {/* Itens agora podem ser editados mesmo no modo edição */}
         <div className="space-y-3">
           {itens.map((it, idx) => (
-            <div key={idx} className="border border-[var(--color-border)] rounded-md p-3 bg-[var(--color-bg-primary)]">
+            <div key={idx} className={`border rounded-md p-3 bg-[var(--color-bg-primary)] ${getItemDiffClass(it, idx) || "border-[var(--color-border)]"}`}>
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{it.produto_label || 'Produto não selecionado'}</span>
+                  {getItemDiffIcon(it)}
                   {tipo === 'VENDA' && Number(it.produto_id) > 0 && (
                     <span className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                       Estoque: {it.produto_saldo != null ? Number(it.produto_saldo).toFixed(3) : '...'}
@@ -338,7 +462,6 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                     }
                     setProductModalIndex(idx);
                   }}
-                  disabled={isEditing}
                 >
                   {it.produto_id ? 'Trocar' : 'Buscar...'}
                 </Button>
@@ -354,7 +477,6 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                     type="number"
                     min="0"
                     step="0.001"
-                    disabled={isEditing}
                     required
                   />
                 </div>
@@ -366,7 +488,6 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                     onChange={(e) => updateItem(idx, { preco_unitario: e.target.value })}
                     type="number"
                     step="0.01"
-                    disabled={isEditing}
                   />
                 </div>
                 <div className="col-span-4 md:col-span-3">
@@ -377,7 +498,6 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                     onChange={(e) => updateItem(idx, { desconto_unitario: e.target.value })}
                     type="number"
                     step="0.01"
-                    disabled={isEditing}
                   />
                 </div>
                 <div className="col-span-12 md:col-span-3 flex items-center justify-between md:justify-end gap-3 mt-2 md:mt-0">
@@ -390,7 +510,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
                     size="sm"
                     fullWidth={false}
                     onClick={() => removeItem(idx)}
-                    disabled={itens.length === 1 || isEditing}
+                    disabled={itens.length === 1}
                   >
                     Remover
                   </Button>
@@ -406,6 +526,11 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
           <span className="text-xs opacity-80 mr-auto">
             Criado: #{created.id} • Status: {created.status || 'confirmado'}
           </span>
+        )}
+        {editingOrder?.id && (
+          <Button onClick={handleDelete} variant="secondary" size="sm" fullWidth={false} disabled={submitting}>
+            Excluir
+          </Button>
         )}
         <Button onClick={clearForm} variant="outline" size="sm" fullWidth={false} disabled={submitting}>
           Limpar
@@ -470,6 +595,34 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             </button>
           ) : null}
         />
+      )}
+
+      {/* Modal de confirmação de mudança de tipo */}
+      {showTypeChangeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirmar mudança de tipo</h3>
+            <div className="mb-4 text-sm">
+              <p className="mb-2">
+                Você está alterando o tipo de <strong>{originalTipo}</strong> para <strong>{pendingTipo}</strong>.
+              </p>
+              <p className="text-amber-600 dark:text-amber-400">
+                ⚠️ Esta mudança irá:
+                <br />• Limpar a seleção de cliente/fornecedor
+                <br />• Reprocessar movimentos de estoque
+                <br />• Alterar as regras de negócio aplicáveis
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button onClick={cancelTipoChange} variant="outline" size="sm" fullWidth={false}>
+                Cancelar
+              </Button>
+              <Button onClick={confirmTipoChange} variant="primary" size="sm" fullWidth={false}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </FormContainer>
   );

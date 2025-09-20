@@ -5,6 +5,7 @@ import { isConnectionError, isRelationMissing } from "lib/errors";
 export default async function handler(req, res) {
   if (req.method === "GET") return getPedido(req, res);
   if (req.method === "PUT") return putPedido(req, res);
+  if (req.method === "DELETE") return deletePedido(req, res);
   return res.status(405).json({ error: `Method "${req.method}" not allowed` });
 }
 
@@ -38,44 +39,93 @@ async function putPedido(req, res) {
     const b = req.body || {};
     await client.query("BEGIN");
 
-    // atualizar cabeçalho simples
+    // 1) Atualizar cabeçalho flexível (agora permite alterar tipo e parceiro)
     const sets = [];
     const values = [];
     const set = (field, value) => { values.push(value); sets.push(`${field} = $${values.length}`); };
-    if (b.partner_entity_id !== undefined) {
-      return res.status(400).json({ error: "partner_entity_id não pode ser alterado após criação" });
-    }
     if (b.partner_document !== undefined) set("partner_document", b.partner_document || null);
     if (b.partner_name !== undefined) set("partner_name", b.partner_name || null);
-    if (b.data_emissao !== undefined) {
-      return res.status(400).json({ error: "data_emissao não pode ser alterada após criação" });
-    }
     if (b.data_entrega !== undefined) set("data_entrega", b.data_entrega || null);
     if (b.observacao !== undefined) set("observacao", b.observacao || null);
     if (b.tem_nota_fiscal !== undefined) set("tem_nota_fiscal", b.tem_nota_fiscal);
     if (b.parcelado !== undefined) set("parcelado", b.parcelado);
-    if (b.total_bruto !== undefined) set("total_bruto", b.total_bruto);
-    if (b.desconto_total !== undefined) set("desconto_total", b.desconto_total);
-    if (b.total_liquido !== undefined) set("total_liquido", b.total_liquido);
+    // permitir alterar tipo e parceiro (validações básicas)
+    let tipoAtual = head.rows[0].tipo;
+    if (b.tipo !== undefined) {
+      if (!['VENDA', 'COMPRA'].includes(b.tipo)) throw new Error('tipo inválido');
+      tipoAtual = b.tipo;
+      set('tipo', b.tipo);
+    }
+    if (b.partner_entity_id !== undefined) {
+      const pid = Number(b.partner_entity_id);
+      if (!Number.isFinite(pid)) throw new Error('partner_entity_id inválido');
+      // verificar ativo
+      const ent = await client.query({ text: `SELECT ativo FROM entities WHERE id = $1`, values: [pid] });
+      if (!ent.rows.length) throw new Error('Entidade não encontrada');
+      if (ent.rows[0].ativo === false) throw new Error('Entidade inativa');
+      set('partner_entity_id', pid);
+    }
     if (sets.length) {
       sets.push(`updated_at = NOW()`);
-      await client.query({ text: `UPDATE pedidos SET ${sets.join(", ")} WHERE id = $${values.length + 1}`, values: [...values, id] });
+      await client.query({ text: `UPDATE pedidos SET ${sets.join(', ')} WHERE id = $${values.length + 1}`, values: [...values, id] });
     }
 
-    // atualizar itens se informado
-    let recalcTotals = false;
-    let totalBruto = 0, descontoTotal = 0, totalLiquido = 0;
+    // 2) Reprocessar itens e movimentos se itens forem enviados
     if (Array.isArray(b.itens)) {
-      return res.status(400).json({ error: "Itens não podem ser alterados após criação" });
-    }
+      const docTag = `PEDIDO:${id}`;
+      // apagar movimentos anteriores deste pedido (idempotência)
+      await client.query({ text: `DELETE FROM movimento_estoque WHERE documento = $1`, values: [docTag] });
+      // apagar itens anteriores
+      await client.query({ text: `DELETE FROM pedido_itens WHERE pedido_id = $1`, values: [id] });
 
-    if (recalcTotals) {
+      let totalBruto = 0, descontoTotal = 0, totalLiquido = 0;
+      for (const it of b.itens) {
+        const rProd = await client.query({ text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`, values: [it.produto_id] });
+        if (!rProd.rows.length) throw new Error(`produto_id inválido: ${it.produto_id}`);
+        const qtd = Number(it.quantidade);
+        if (!Number.isFinite(qtd) || qtd <= 0) throw new Error(`quantidade inválida`);
+        const preco = it.preco_unitario != null ? Number(it.preco_unitario) : Number(rProd.rows[0].preco_tabela ?? 0);
+        const desconto = it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
+        const totalItem = (preco - desconto) * qtd;
+        totalBruto += preco * qtd;
+        descontoTotal += desconto * qtd;
+        totalLiquido += totalItem;
+        await client.query({
+          text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, total_item)
+                 VALUES ($1,$2,$3,$4,$5,$6)`,
+          values: [id, it.produto_id, qtd, preco, desconto, totalItem],
+        });
+
+        // reinsert movimentos conforme tipo atual
+        if (tipoAtual === 'VENDA') {
+          // checar saldo disponível
+          const saldoQ = await client.query({
+            text: `SELECT COALESCE((
+                     SELECT COALESCE(SUM(CASE WHEN tipo='ENTRADA' THEN quantidade WHEN tipo='SAIDA' THEN -quantidade ELSE quantidade END),0)
+                     FROM movimento_estoque WHERE produto_id = $1
+                   ),0) AS saldo`,
+            values: [it.produto_id],
+          });
+          const saldo = Number(saldoQ.rows[0].saldo || 0);
+          if (saldo < qtd) throw new Error(`Saldo insuficiente para o produto ${it.produto_id}`);
+          await client.query({
+            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao)
+                   VALUES ($1,'SAIDA',$2,$3,$4)`,
+            values: [it.produto_id, qtd, docTag, `SAÍDA por edição de pedido ${id}`],
+          });
+        } else if (tipoAtual === 'COMPRA') {
+          await client.query({
+            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
+                   VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
+            values: [it.produto_id, qtd, preco, preco * qtd, docTag, `ENTRADA por edição de pedido ${id}`],
+          });
+        }
+      }
+
       await client.query({
         text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, updated_at = NOW() WHERE id = $4`,
         values: [totalBruto, descontoTotal, totalLiquido, id],
       });
-    } else if (sets.length) {
-      // já atualizou updated_at acima
     }
 
     await client.query("COMMIT");
@@ -86,6 +136,36 @@ async function putPedido(req, res) {
     if (isRelationMissing(e)) return res.status(503).json({ error: "Schema not migrated (pedidos/pedido_itens missing)", dependency: "database", code: e.code, action: "Run migrations" });
     if (isConnectionError(e)) return res.status(503).json({ error: "Database unreachable", dependency: "database", code: e.code });
     return res.status(400).json({ error: e.message || "Invalid payload" });
+  } finally {
+    if (client) {
+      try { await client.end(); } catch (_) { /* noop */ }
+    }
+  }
+}
+
+async function deletePedido(req, res) {
+  const client = await database.getClient();
+  try {
+    const id = Number(req.query.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+    await client.query('BEGIN');
+    const head = await client.query({ text: `SELECT id FROM pedidos WHERE id = $1`, values: [id] });
+    if (!head.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const docTag = `PEDIDO:${id}`;
+    await client.query({ text: `DELETE FROM movimento_estoque WHERE documento = $1`, values: [docTag] });
+    await client.query({ text: `DELETE FROM pedido_itens WHERE pedido_id = $1`, values: [id] });
+    await client.query({ text: `DELETE FROM pedidos WHERE id = $1`, values: [id] });
+    await client.query('COMMIT');
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    await database.safeRollback(client);
+    console.error('DELETE /pedidos/:id error', e);
+    if (isRelationMissing(e)) return res.status(503).json({ error: 'Schema not migrated', dependency: 'database', code: e.code, action: 'Run migrations' });
+    if (isConnectionError(e)) return res.status(503).json({ error: 'Database unreachable', dependency: 'database', code: e.code });
+    return res.status(400).json({ error: e.message || 'Invalid payload' });
   } finally {
     if (client) {
       try { await client.end(); } catch (_) { /* noop */ }

@@ -71,6 +71,21 @@ export function ProductsManager({ linkSupplierId }) {
     return () => clearTimeout(id);
   }, [query.q, query.categoria, query.ativo, query.limit, refresh]);
 
+  // Refresh inteligente ao receber evento de inventário dos pedidos
+  useEffect(() => {
+    function onInventoryChanged(ev) {
+      try {
+        const ids = ev?.detail?.productIds || [];
+        if (!Array.isArray(ids) || !ids.length) return;
+        const visibleIds = new Set(rows.map((r) => r.id));
+        const anyVisible = ids.some((id) => visibleIds.has(Number(id)));
+        if (anyVisible) refresh();
+      } catch (_) { /* noop */ }
+    }
+    window.addEventListener('inventory-changed', onInventoryChanged);
+    return () => window.removeEventListener('inventory-changed', onInventoryChanged);
+  }, [rows, refresh]);
+
   const canLoadMore = total == null ? false : rows.length < total;
 
   function openNew(prefill) {

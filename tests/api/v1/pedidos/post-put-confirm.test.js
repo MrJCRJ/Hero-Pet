@@ -105,7 +105,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     expect(body).toHaveProperty("total_liquido", "85.00"); // 40 + 45
   });
 
-  test("PUT após criação bloqueia itens e permite cabeçalho (400/200)", async () => {
+  test("PUT após criação permite editar itens e cabeçalho; reprocessa movimentos (200)", async () => {
     const cliente = await criaParceiroPF("Cliente PF 2");
     const p1 = await criaProduto("Brinquedo", 50);
 
@@ -123,32 +123,31 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     expect([200, 201]).toContain(resp1.status);
     const pedido = await resp1.json();
 
-    // tentar alterar itens deve falhar (400)
+    // editar itens deve funcionar (200) e recriar movimentos
     const p2 = await criaProduto("Shampoo", 25);
     const putItens = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itens: [{ produto_id: p2.id, quantidade: 2, preco_unitario: 20 }] }),
+      body: JSON.stringify({ tipo: "COMPRA", itens: [{ produto_id: p2.id, quantidade: 2, preco_unitario: 20 }], observacao: "editado" }),
     });
-    expect(putItens.status).toBe(400);
+    expect(putItens.status).toBe(200);
 
-    // alterar apenas cabeçalho deve funcionar (200)
-    const putHeader = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ observacao: "Obs alterada", partner_name: "NOME EXIBICAO" }),
-    });
-    expect(putHeader.status).toBe(200);
-
-    // lê para verificar totais atualizados
+    // lê para verificar itens e cabeçalho atualizados
     const get = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`);
     const body = await get.json();
-    expect(body).toHaveProperty("observacao", "Obs alterada");
+    expect(body).toHaveProperty("observacao", "editado");
     expect(Array.isArray(body.itens)).toBe(true);
-    expect(body.itens.length).toBe(1); // itens mantidos
+    expect(body.itens.length).toBe(1);
+    expect(body.itens[0].produto_id).toBe(p2.id);
+    expect(Number(body.itens[0].quantidade)).toBe(2);
+
+    // verifica que movimentos foram reprocessados (documento do pedido nos movimentos do produto2)
+    const movs = await fetch(`http://localhost:3000/api/v1/estoque/movimentos?produto_id=${p2.id}`);
+    const movList = await movs.json();
+    expect(movList.some(m => m.documento === `PEDIDO:${pedido.id}`)).toBeTruthy();
   });
 
-  test("Venda gera movimentos no POST e bloqueia editar itens depois (400)", async () => {
+  test("Venda gera movimentos no POST e permite editar itens com validação de saldo", async () => {
     const cliente = await criaParceiroPF("Cliente PF 4");
     const prod = await criaProduto("Petisco", 10);
 
@@ -172,13 +171,21 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     expect([200, 201]).toContain(resp.status);
     const pedido = await resp.json();
 
-    // tentativa de editar itens após confirmação deve falhar (400)
-    const put = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
+    // editar itens com quantidade válida deve funcionar (200)
+    const putOk = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itens: [{ produto_id: prod.id, quantidade: 1 }] }),
+      body: JSON.stringify({ tipo: "VENDA", itens: [{ produto_id: prod.id, quantidade: 1, preco_unitario: 12 }] }),
     });
-    expect(put.status).toBe(400);
+    expect(putOk.status).toBe(200);
+
+    // tentativa de vender acima do saldo deve falhar (400)
+    const putBad = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipo: "VENDA", itens: [{ produto_id: prod.id, quantidade: 999 }] }),
+    });
+    expect(putBad.status).toBe(400);
 
     // verifica que o saldo reduziu para o produto após o POST (movimento de SAIDA aplicado)
     const listaMov = await fetch(`http://localhost:3000/api/v1/estoque/movimentos?produto_id=${prod.id}`);

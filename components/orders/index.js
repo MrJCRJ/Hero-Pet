@@ -100,6 +100,8 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
               <th className="text-left px-3 py-2">Status</th>
               <th className="text-left px-3 py-2">Parceiro</th>
               <th className="text-left px-3 py-2">Emissão</th>
+              <th className="text-center px-3 py-2">NF</th>
+              <th className="text-center px-3 py-2">Promissórias</th>
               <th className="text-right px-3 py-2">Total</th>
               <th className="text-right px-3 py-2">Ações</th>
             </tr>
@@ -112,6 +114,24 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 <td className="px-3 py-2">{p.status}</td>
                 <td className="px-3 py-2">{p.partner_name || '-'}</td>
                 <td className="px-3 py-2">{p.data_emissao ? new Date(p.data_emissao).toLocaleDateString() : '-'}</td>
+                <td className="px-3 py-2 text-center">
+                  {p.tem_nota_fiscal ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                      📄 NF
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </td>
+                <td className="px-3 py-2 text-center">
+                  {p.parcelado ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      📝 Promissórias
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-right">{
                   (() => {
                     const n = p.total_liquido != null ? Number(p.total_liquido) : NaN;
@@ -129,12 +149,12 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
             ))}
             {!loading && data.length === 0 && (
               <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={7}>Nenhum pedido encontrado</td>
+                <td className="px-3 py-6 text-center opacity-70" colSpan={9}>Nenhum pedido encontrado</td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={7}>Carregando...</td>
+                <td className="px-3 py-6 text-center opacity-70" colSpan={9}>Carregando...</td>
               </tr>
             )}
           </tbody>
