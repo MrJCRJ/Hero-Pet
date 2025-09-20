@@ -116,10 +116,16 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 <td className="px-3 py-2">{p.partner_name || '-'}</td>
                 <td className="px-3 py-2">{p.data_emissao ? new Date(p.data_emissao).toLocaleDateString() : '-'}</td>
                 <td className="px-3 py-2 text-center">
-                  {p.tem_nota_fiscal ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                  {p.tem_nota_fiscal && p.tipo === 'VENDA' ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      fullWidth={false}
+                      onClick={() => window.open(`/api/v1/pedidos/${p.id}/nf`, '_blank', 'noopener')}
+                      title="Baixar NF (PDF)"
+                    >
                       📄 NF
-                    </span>
+                    </Button>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
@@ -238,6 +244,8 @@ function PromissoriasDots({ pedidoId }) {
   const [loading, setLoading] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(null); // seq da promissória com menu aberto
   const [actionLoading, setActionLoading] = React.useState(false);
+  const [editingSeq, setEditingSeq] = React.useState(null);
+  const [newDueDate, setNewDueDate] = React.useState("");
 
   React.useEffect(() => {
     let cancelled = false;
@@ -316,6 +324,35 @@ function PromissoriasDots({ pedidoId }) {
     }
   };
 
+  const openEditDueDate = (row) => {
+    setEditingSeq(row.seq);
+    try {
+      const d = String(row.due_date).slice(0, 10);
+      setNewDueDate(d);
+    } catch (_) {
+      setNewDueDate("");
+    }
+  };
+  const handleSaveDueDate = async () => {
+    if (!editingSeq || !newDueDate) { setEditingSeq(null); return; }
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/v1/pedidos/${pedidoId}/promissorias/${editingSeq}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ due_date: newDueDate })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Falha ao salvar data');
+      await reloadPromissorias();
+      setEditingSeq(null);
+    } catch (e) {
+      alert(`Erro: ${e.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const colorFor = (status) => {
     if (status === 'PAGO') return 'bg-green-500';
     if (status === 'ATRASADO') return 'bg-red-500';
@@ -360,6 +397,13 @@ function PromissoriasDots({ pedidoId }) {
                   >
                     ✅ Marcar Pago
                   </button>
+                  <button
+                    onClick={() => openEditDueDate(r)}
+                    disabled={actionLoading}
+                    className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    ✏️ Alterar Vencimento
+                  </button>
                 </>
               )}
               {r.status === 'PAGO' && (
@@ -378,6 +422,21 @@ function PromissoriasDots({ pedidoId }) {
           className="fixed inset-0 z-40"
           onClick={() => setMenuOpen(null)}
         />
+      )}
+
+      {/* Modal de edição de vencimento */}
+      {Number.isInteger(editingSeq) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setEditingSeq(null)} />
+          <div className="relative bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded p-4 w-full max-w-sm">
+            <div className="text-sm font-semibold mb-2">Alterar vencimento (parcela #{editingSeq})</div>
+            <input type="date" className="w-full border rounded px-2 py-1 mb-3" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)} />
+            <div className="flex gap-2 justify-end">
+              <button className="px-3 py-1 border rounded" onClick={() => setEditingSeq(null)}>Cancelar</button>
+              <button className="px-3 py-1 border rounded bg-blue-600 text-white disabled:opacity-50" disabled={!newDueDate || actionLoading} onClick={handleSaveDueDate}>Salvar</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

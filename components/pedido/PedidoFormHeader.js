@@ -6,6 +6,8 @@ import { SelectionModal } from "../common/SelectionModal";
 export function PedidoFormHeader({
   tipo,
   onTipoChange,
+  dataEmissao,
+  onDataEmissaoChange,
   partnerLabel,
   onPartnerSelect,
   observacao,
@@ -27,7 +29,7 @@ export function PedidoFormHeader({
 }) {
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Tipo</label>
           <select
@@ -38,6 +40,15 @@ export function PedidoFormHeader({
             <option value="VENDA">VENDA</option>
             <option value="COMPRA">COMPRA</option>
           </select>
+        </div>
+        <div>
+          <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Data do Pedido</label>
+          <input
+            type="date"
+            className=" border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)]"
+            value={dataEmissao}
+            onChange={(e) => onDataEmissaoChange(e.target.value)}
+          />
         </div>
 
         <div>

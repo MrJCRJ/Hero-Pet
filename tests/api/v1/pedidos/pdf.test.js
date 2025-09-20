@@ -23,11 +23,14 @@ async function api(method, path, body) {
 
 describe('API Pedidos - PDF NF', () => {
   test('deve gerar PDF após criar pedido', async () => {
+    function randomDigits(n) { return Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join(''); }
+    const DOC_PF = randomDigits(11);
+    const DOC_PJ = randomDigits(14);
     // Criar cliente PF ativo
     const { data: cliente } = await api('POST', '/api/v1/entities', {
       name: 'Cliente NF',
       entity_type: 'PF',
-      document_digits: '32145678901',
+      document_digits: DOC_PF,
       ativo: true,
     });
 
@@ -35,7 +38,7 @@ describe('API Pedidos - PDF NF', () => {
     const { data: fornecedor } = await api('POST', '/api/v1/entities', {
       name: 'Fornecedor NF',
       entity_type: 'PJ',
-      document_digits: '52345678000199',
+      document_digits: DOC_PJ,
       ativo: true,
     });
 

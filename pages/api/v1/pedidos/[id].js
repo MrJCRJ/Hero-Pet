@@ -44,6 +44,7 @@ async function putPedido(req, res) {
     const values = [];
     const set = (field, value) => { values.push(value); sets.push(`${field} = $${values.length}`); };
     if (b.partner_document !== undefined) set("partner_document", b.partner_document || null);
+    if (b.data_emissao !== undefined) set("data_emissao", b.data_emissao || null);
     if (b.partner_name !== undefined) set("partner_name", b.partner_name || null);
     if (b.data_entrega !== undefined) set("data_entrega", b.data_entrega || null);
     if (b.observacao !== undefined) set("observacao", b.observacao || null);

@@ -7,22 +7,8 @@ export function PedidoFormActions({
   onDelete,
   onClear,
   canSubmit,
-  submitting,
-  temNotaFiscal
+  submitting
 }) {
-  const handleGerarNF = () => {
-    const pedidoId = editingOrder?.id || created?.id;
-    if (!pedidoId) return;
-
-    if (!temNotaFiscal) {
-      alert('Este pedido não possui nota fiscal habilitada');
-      return;
-    }
-
-    // Abrir PDF em nova aba
-    const url = `/api/v1/pedidos/${pedidoId}/nf`;
-    window.open(url, '_blank');
-  };
   return (
     <div className="flex flex-wrap items-center justify-end gap-2 mt-8">
       {created?.id && (
@@ -33,11 +19,6 @@ export function PedidoFormActions({
       {editingOrder?.id && (
         <Button onClick={onDelete} variant="secondary" size="sm" fullWidth={false} disabled={submitting}>
           Excluir
-        </Button>
-      )}
-      {(editingOrder?.id || created?.id) && temNotaFiscal && (
-        <Button onClick={handleGerarNF} variant="outline" size="sm" fullWidth={false} disabled={submitting}>
-          📄 Gerar NF (PDF)
         </Button>
       )}
       <Button onClick={onClear} variant="outline" size="sm" fullWidth={false} disabled={submitting}>

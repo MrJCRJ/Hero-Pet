@@ -23,6 +23,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const [partnerLabel, setPartnerLabel] = useState("");
   const [partnerName, setPartnerName] = useState("");
   const [observacao, setObservacao] = useState("");
+  const [dataEmissao, setDataEmissao] = useState("");
   const [dataEntrega, setDataEntrega] = useState("");
   const [temNotaFiscal, setTemNotaFiscal] = useState(false);
   const [parcelado, setParcelado] = useState(false);
@@ -53,6 +54,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     setPartnerId(String(editingOrder.partner_entity_id || ""));
     setPartnerLabel(editingOrder.partner_name || "");
     setPartnerName(editingOrder.partner_name || "");
+    setDataEmissao(editingOrder.data_emissao ? String(editingOrder.data_emissao).slice(0, 10) : "");
     setObservacao(editingOrder.observacao || "");
     setDataEntrega(editingOrder.data_entrega ? new Date(editingOrder.data_entrega).toISOString().slice(0, 10) : "");
     setTemNotaFiscal(Boolean(editingOrder.tem_nota_fiscal));
@@ -187,11 +189,11 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     const supplierFilter = tipo === 'COMPRA' && Number.isFinite(Number(partnerId))
       ? `&supplier_id=${Number(partnerId)}`
       : '';
-    const url = `/api/v1/produtos?q=${encodeURIComponent(q)}&ativo=true&fields=id-nome${supplierFilter}`;
+    const url = `/api/v1/produtos?q=${encodeURIComponent(q)}&ativo=true${supplierFilter}`;
     const res = await fetch(url, { cache: "no-store" });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || "Falha na busca de produtos");
-    return data.map((p) => ({ id: p.id, label: p.nome }));
+    return data.map((p) => ({ id: p.id, label: p.nome, preco_tabela: p.preco_tabela }));
   };
 
   async function handleSubmit(e) {
@@ -203,6 +205,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         partner_entity_id: Number(partnerId),
         partner_name: partnerName || null,
         observacao: observacao || null,
+        data_emissao: dataEmissao || null,
         data_entrega: dataEntrega || null,
         tem_nota_fiscal: temNotaFiscal,
         parcelado: parcelado,
@@ -226,6 +229,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
           partner_entity_id: Number(partnerId),
           observacao: observacao || null,
           partner_name: partnerName || null,
+          data_emissao: dataEmissao || null,
           data_entrega: dataEntrega || null,
           tem_nota_fiscal: temNotaFiscal,
           parcelado: parcelado,
@@ -335,6 +339,8 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
       <PedidoFormHeader
         tipo={tipo}
         onTipoChange={handleTipoChange}
+        dataEmissao={dataEmissao}
+        onDataEmissaoChange={setDataEmissao}
         partnerLabel={partnerLabel}
         onPartnerSelect={(it) => {
           setShowPartnerModal(false);
@@ -404,7 +410,6 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         onClear={clearForm}
         canSubmit={canSubmit}
         submitting={submitting}
-        temNotaFiscal={temNotaFiscal}
       />
 
       {Number.isInteger(productModalIndex) && productModalIndex >= 0 && (
