@@ -21,6 +21,7 @@ export function ProductDetail({ open, onClose, product }) {
   const [to, setTo] = useState("");
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const canLoadMore = useMemo(() => (movTotal == null ? false : movs.length < movTotal), [movs.length, movTotal]);
 
@@ -32,7 +33,7 @@ export function ProductDetail({ open, onClose, product }) {
       .then((j) => setSaldos(j))
       .catch(() => setSaldos(null))
       .finally(() => setLoadingSaldos(false));
-  }, [open, product?.id]);
+  }, [open, product?.id, reloadKey]);
 
   useEffect(() => {
     if (!open || !product?.id) return;
@@ -55,7 +56,23 @@ export function ProductDetail({ open, onClose, product }) {
       })
       .catch(() => { })
       .finally(() => setMovLoading(false));
-  }, [open, product?.id, tipo, from, to, limit, offset]);
+  }, [open, product?.id, tipo, from, to, limit, offset, reloadKey]);
+
+  // Recarrega automaticamente quando houver mudanças de inventário originadas por pedidos
+  useEffect(() => {
+    function onInventoryChanged(ev) {
+      try {
+        const ids = ev?.detail?.productIds || [];
+        if (!open || !product?.id) return;
+        if (!Array.isArray(ids) || !ids.includes(Number(product.id))) return;
+        // Força recarregar saldos e movimentos
+        setOffset(0);
+        setReloadKey((k) => k + 1);
+      } catch (_) { /* noop */ }
+    }
+    window.addEventListener('inventory-changed', onInventoryChanged);
+    return () => window.removeEventListener('inventory-changed', onInventoryChanged);
+  }, [open, product?.id]);
 
   // filtros e paginação controlam o offset diretamente
 

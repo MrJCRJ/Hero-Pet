@@ -20,6 +20,9 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const [partnerLabel, setPartnerLabel] = useState("");
   const [partnerName, setPartnerName] = useState("");
   const [observacao, setObservacao] = useState("");
+  const [dataEntrega, setDataEntrega] = useState("");
+  const [temNotaFiscal, setTemNotaFiscal] = useState(false);
+  const [parcelado, setParcelado] = useState(false);
   const [itens, setItens] = useState([
     { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null },
   ]);
@@ -35,6 +38,9 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     setPartnerLabel(editingOrder.partner_name || "");
     setPartnerName(editingOrder.partner_name || "");
     setObservacao(editingOrder.observacao || "");
+    setDataEntrega(editingOrder.data_entrega ? new Date(editingOrder.data_entrega).toISOString().slice(0, 10) : "");
+    setTemNotaFiscal(Boolean(editingOrder.tem_nota_fiscal));
+    setParcelado(Boolean(editingOrder.parcelado));
     const mapped = Array.isArray(editingOrder.itens)
       ? editingOrder.itens.map((it) => ({
         produto_id: String(it.produto_id),
@@ -74,7 +80,12 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const clearForm = () => {
     setTipo("VENDA");
     setPartnerId("");
+    setPartnerLabel("");
+    setPartnerName("");
     setObservacao("");
+    setDataEntrega("");
+    setTemNotaFiscal(false);
+    setParcelado(false);
     setItens([{ produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null }]);
     setCreated(null);
   };
@@ -153,6 +164,9 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         partner_entity_id: Number(partnerId),
         partner_name: partnerName || null,
         observacao: observacao || null,
+        data_entrega: dataEntrega || null,
+        tem_nota_fiscal: temNotaFiscal,
+        parcelado: parcelado,
         itens: itens
           .filter((it) => Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0)
           .map((it) => ({
@@ -166,7 +180,13 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
       if (editingOrder?.id) {
         // Atualiza pedido existente
         // CRUD sem rascunho: após criado, não permitir alterar itens, tipo e parceiro (mantém consistência de estoque)
-        const body = { observacao: observacao || null, partner_name: partnerName || null };
+        const body = {
+          observacao: observacao || null,
+          partner_name: partnerName || null,
+          data_entrega: dataEntrega || null,
+          tem_nota_fiscal: temNotaFiscal,
+          parcelado: parcelado,
+        };
         const res = await fetch(`/api/v1/pedidos/${editingOrder.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -179,6 +199,11 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         }
         // preserva status atual ao editar
         setCreated({ id: editingOrder.id, status: editingOrder.status });
+        try {
+          // Emetir evento de inventário (não afeta saldo, mas permite UI reagir)
+          const productIds = itens.map((it) => Number(it.produto_id)).filter((v) => Number.isFinite(v));
+          window.dispatchEvent(new CustomEvent('inventory-changed', { detail: { productIds, source: 'order-put', orderId: editingOrder.id } }));
+        } catch (_) { /* noop */ }
         push(`Pedido #${editingOrder.id} atualizado.`, { type: "success" });
       } else {
         // Cria novo pedido
@@ -194,6 +219,10 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         if (typeof onCreated === "function") {
           try { onCreated(data); } catch (_) { /* noop */ }
         }
+        try {
+          const productIds = itens.map((it) => Number(it.produto_id)).filter((v) => Number.isFinite(v));
+          window.dispatchEvent(new CustomEvent('inventory-changed', { detail: { productIds, source: 'order-post', orderId: data.id } }));
+        } catch (_) { /* noop */ }
         push(`Pedido #${data.id} criado.`, { type: "success" });
       }
     } catch (err) {
@@ -240,6 +269,34 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
 
         <div className="md:col-span-1">
           <FormField
+            label="Nome exibido (opcional)"
+            name="partner_name"
+            value={partnerName}
+            onChange={(e) => setPartnerName(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2">
+        <div>
+          <FormField
+            label="Data de Entrega"
+            name="data_entrega"
+            type="date"
+            value={dataEntrega}
+            onChange={(e) => setDataEntrega(e.target.value)}
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={temNotaFiscal} onChange={(e) => setTemNotaFiscal(e.target.checked)} />
+          Tem Nota Fiscal
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={parcelado} onChange={(e) => setParcelado(e.target.checked)} />
+          Parcelado
+        </label>
+        <div className="md:col-span-3">
+          <FormField
             label="Observação"
             name="observacao"
             value={observacao}
@@ -256,7 +313,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
           </Button>
         </div>
         {isEditing && (
-          <p className="text-xs opacity-70 mb-2">Após criar o pedido, itens, parceiro e tipo ficam bloqueados. Você pode editar a Observação.</p>
+          <p className="text-xs opacity-70 mb-2">Após criar o pedido, itens, parceiro e tipo ficam bloqueados. Você pode editar cabeçalho (observação, data de entrega, NF, parcelado, nome exibido).</p>
         )}
         <div className="space-y-3">
           {itens.map((it, idx) => (
