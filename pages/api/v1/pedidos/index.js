@@ -26,8 +26,8 @@ async function postPedido(req, res) {
 
     await client.query("BEGIN");
     const head = await client.query({
-      text: `INSERT INTO pedidos (tipo, status, partner_entity_id, partner_document, partner_name, data_emissao, data_entrega, observacao, tem_nota_fiscal, parcelado)
-             VALUES ($1,'confirmado',$2,$3,$4, COALESCE($5::timestamptz, NOW()), $6,$7,$8,$9)
+      text: `INSERT INTO pedidos (tipo, status, partner_entity_id, partner_document, partner_name, data_emissao, data_entrega, observacao, tem_nota_fiscal, parcelado, numero_promissorias, data_primeira_promissoria)
+             VALUES ($1,'confirmado',$2,$3,$4, COALESCE($5::timestamptz, NOW()), $6,$7,$8,$9,$10,$11)
              RETURNING *`,
       values: [
         tipo,
@@ -39,6 +39,8 @@ async function postPedido(req, res) {
         b.observacao || null,
         b.tem_nota_fiscal ?? null,
         b.parcelado ?? null,
+        Number(b.numero_promissorias) || 1,
+        b.data_primeira_promissoria || null,
       ],
     });
     const pedido = head.rows[0];
@@ -69,6 +71,16 @@ async function postPedido(req, res) {
       text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, updated_at = NOW() WHERE id = $4`,
       values: [totalBruto, descontoTotal, totalLiquido, pedido.id],
     });
+
+    // Calcular valor por promissória se aplicável
+    const numeroPromissorias = Number(b.numero_promissorias) || 1;
+    if (numeroPromissorias > 1 && totalLiquido > 0) {
+      const valorPorPromissoria = totalLiquido / numeroPromissorias;
+      await client.query({
+        text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
+        values: [valorPorPromissoria, pedido.id],
+      });
+    }
     // Gerar movimentos de estoque imediatamente (CRUD sem rascunho)
     const docTag = `PEDIDO:${pedido.id}`;
     const itensCriados = await client.query({ text: `SELECT * FROM pedido_itens WHERE pedido_id = $1 ORDER BY id`, values: [pedido.id] });
@@ -161,7 +173,8 @@ async function getPedidos(req, res) {
     const listQuery = {
       text: `SELECT p.id, p.tipo, p.status, p.partner_entity_id, p.partner_document,
                     COALESCE(p.partner_name, e.name) AS partner_name,
-                    p.data_emissao, p.data_entrega, p.total_liquido, p.created_at
+                    p.data_emissao, p.data_entrega, p.total_liquido, p.tem_nota_fiscal, p.parcelado,
+                    p.numero_promissorias, p.data_primeira_promissoria, p.valor_por_promissoria, p.created_at
              FROM pedidos p
              LEFT JOIN entities e ON e.id = p.partner_entity_id
              ${where.replace(/\bFROM pedidos\b/, 'FROM pedidos p')}

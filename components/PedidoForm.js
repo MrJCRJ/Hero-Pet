@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from "react";
-import { Button } from "./ui/Button";
-import { FormContainer, FormField } from "./ui/Form";
+import React, { useMemo, useState, useCallback } from "react";
+import { FormContainer } from "./ui/Form";
 import { useToast } from "./entities/shared/toast";
-// Autocomplete removido neste fluxo; usando apenas SelectionModal
-// import { Autocomplete } from "./common/Autocomplete";
 import { SelectionModal } from "./common/SelectionModal";
+import { PedidoFormHeader } from "./pedido/PedidoFormHeader";
+import { PedidoFormItems } from "./pedido/PedidoFormItems";
+import { PedidoFormActions } from "./pedido/PedidoFormActions";
+import { PedidoFormPromissorias } from "./pedido/PedidoFormPromissorias";
+import { useItemDiff } from "./pedido/useItemDiff";
 
 function numOrNull(v) {
   if (v === "" || v === null || v === undefined) return null;
@@ -34,6 +36,14 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
   const [showTypeChangeModal, setShowTypeChangeModal] = useState(false);
   const [pendingTipo, setPendingTipo] = useState("");
 
+  // Promissórias
+  const [numeroPromissorias, setNumeroPromissorias] = useState(1);
+  const [dataPrimeiraPromissoria, setDataPrimeiraPromissoria] = useState("");
+  const [valorPorPromissoria, setValorPorPromissoria] = useState(0);
+
+  // Hook para lógica de diff dos itens
+  const { getItemChanges, getItemDiffClass, getItemDiffIcon } = useItemDiff(itens, originalItens, editingOrder);
+
   // Preenche estado quando está editando um pedido existente
   React.useEffect(() => {
     if (!editingOrder) return;
@@ -47,6 +57,11 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     setDataEntrega(editingOrder.data_entrega ? new Date(editingOrder.data_entrega).toISOString().slice(0, 10) : "");
     setTemNotaFiscal(Boolean(editingOrder.tem_nota_fiscal));
     setParcelado(Boolean(editingOrder.parcelado));
+    // Promissórias (se presentes)
+    const nProm = Number(editingOrder.numero_promissorias || 0);
+    setNumeroPromissorias(Number.isFinite(nProm) && nProm > 0 ? nProm : 1);
+    setDataPrimeiraPromissoria(editingOrder.data_primeira_promissoria ? String(editingOrder.data_primeira_promissoria).slice(0, 10) : "");
+    setValorPorPromissoria(Number(editingOrder.valor_por_promissoria || 0));
     const mapped = Array.isArray(editingOrder.itens)
       ? editingOrder.itens.map((it) => ({
         produto_id: String(it.produto_id),
@@ -139,6 +154,22 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     return Number.isFinite(total) ? total : null;
   }
 
+  const computeOrderTotalEstimate = useCallback(() => {
+    const sum = itens.reduce((acc, it) => {
+      const t = computeItemTotal(it);
+      return acc + (Number.isFinite(Number(t)) ? Number(t) : 0);
+    }, 0);
+    return Number(sum.toFixed(2));
+  }, [itens]);
+
+  // Atualiza valor por promissória quando total estimado muda
+  React.useEffect(() => {
+    const total = computeOrderTotalEstimate();
+    if (numeroPromissorias > 0) {
+      setValorPorPromissoria(Number((total / numeroPromissorias).toFixed(2)));
+    }
+  }, [itens, numeroPromissorias, computeOrderTotalEstimate]);
+
   // Fetch helpers for autocomplete
   const fetchEntities = async (q) => {
     // Em VENDA: listar apenas PF (clientes). Em COMPRA: apenas PJ (fornecedores)
@@ -175,6 +206,8 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
         data_entrega: dataEntrega || null,
         tem_nota_fiscal: temNotaFiscal,
         parcelado: parcelado,
+        numero_promissorias: Number(numeroPromissorias) || 1,
+        data_primeira_promissoria: dataPrimeiraPromissoria || null,
         itens: itens
           .filter((it) => Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0)
           .map((it) => ({
@@ -196,6 +229,8 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
           data_entrega: dataEntrega || null,
           tem_nota_fiscal: temNotaFiscal,
           parcelado: parcelado,
+          numero_promissorias: Number(numeroPromissorias) || 1,
+          data_primeira_promissoria: dataPrimeiraPromissoria || null,
           itens: payloadBase.itens,
         };
         const res = await fetch(`/api/v1/pedidos/${editingOrder.id}`, {
@@ -274,7 +309,7 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
       setTipo(novoTipo);
       return;
     }
-    
+
     // Se está mudando tipo de pedido existente, pedir confirmação
     setPendingTipo(novoTipo);
     setShowTypeChangeModal(true);
@@ -295,268 +330,82 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
     setPendingTipo("");
   }
 
-  // Função para detectar mudanças nos itens
-  function getItemChanges() {
-    if (!editingOrder || !originalItens.length) return { added: [], removed: [], modified: [] };
-    
-    const currentIds = new Set(itens.filter(it => it.produto_id).map(it => it.produto_id));
-    const originalIds = new Set(originalItens.map(it => it.produto_id));
-    
-    const added = itens.filter(it => it.produto_id && !originalIds.has(it.produto_id));
-    const removed = originalItens.filter(it => !currentIds.has(it.produto_id));
-    const modified = itens.filter(it => {
-      if (!it.produto_id || !originalIds.has(it.produto_id)) return false;
-      const original = originalItens.find(orig => orig.produto_id === it.produto_id);
-      return original && (
-        Number(original.quantidade) !== Number(it.quantidade) ||
-        Number(original.preco_unitario) !== Number(it.preco_unitario) ||
-        Number(original.desconto_unitario || 0) !== Number(it.desconto_unitario || 0)
-      );
-    });
-    
-    return { added, removed, modified };
-  }
-
-  // Função para obter classe CSS baseada no status do item
-  function getItemDiffClass(item, index) {
-    if (!editingOrder || !originalItens.length) return "";
-    
-    const changes = getItemChanges();
-    
-    if (changes.added.some(added => added.produto_id === item.produto_id)) {
-      return "border-green-500 bg-green-50 dark:bg-green-900/20";
-    }
-    
-    if (changes.modified.some(modified => modified.produto_id === item.produto_id)) {
-      return "border-amber-500 bg-amber-50 dark:bg-amber-900/20";
-    }
-    
-    return "";
-  }
-
-  // Função para obter ícone do diff
-  function getItemDiffIcon(item) {
-    if (!editingOrder || !originalItens.length) return null;
-    
-    const changes = getItemChanges();
-    
-    if (changes.added.some(added => added.produto_id === item.produto_id)) {
-      return <span className="text-green-600 text-xs">✓ Novo</span>;
-    }
-    
-    if (changes.modified.some(modified => modified.produto_id === item.produto_id)) {
-      return <span className="text-amber-600 text-xs">⚠ Alterado</span>;
-    }
-    
-    return null;
-  }
-
-
-
   return (
     <FormContainer title="Pedido (MVP)" onSubmit={handleSubmit}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Tipo</label>
-          <select
-            className=" border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)]"
-            value={tipo}
-            onChange={(e) => handleTipoChange(e.target.value)}
-          >
-            <option value="VENDA">VENDA</option>
-            <option value="COMPRA">COMPRA</option>
-          </select>
-        </div>
+      <PedidoFormHeader
+        tipo={tipo}
+        onTipoChange={handleTipoChange}
+        partnerLabel={partnerLabel}
+        onPartnerSelect={(it) => {
+          setShowPartnerModal(false);
+          if (it) {
+            setPartnerId(String(it.id));
+            setPartnerLabel(it.label);
+            setPartnerName(it.name || it.label);
+          }
+        }}
+        observacao={observacao}
+        onObservacaoChange={setObservacao}
+        dataEntrega={dataEntrega}
+        onDataEntregaChange={setDataEntrega}
+        temNotaFiscal={temNotaFiscal}
+        onTemNotaFiscalChange={setTemNotaFiscal}
+        parcelado={parcelado}
+        onParceladoChange={setParcelado}
+        showPartnerModal={showPartnerModal}
+        onShowPartnerModal={setShowPartnerModal}
+        fetchEntities={fetchEntities}
+        showTypeChangeModal={showTypeChangeModal}
+        originalTipo={originalTipo}
+        pendingTipo={pendingTipo}
+        onConfirmTipoChange={confirmTipoChange}
+        onCancelTipoChange={cancelTipoChange}
+      />
 
-        <div>
-          <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Cliente/Fornecedor (ativo)</label>
-          <div className="flex items-center gap-2">
-            <div className=" text-sm px-2 py-1 rounded   min-h-[50px]">
-              {partnerLabel || <span className="opacity-60">Nenhum selecionado</span>}
-            </div>
-            <Button variant="outline" size="sm" fullWidth={false} onClick={() => setShowPartnerModal(true)}>
-              Buscar...
-            </Button>
-          </div>
-        </div>
+      {/* Itens do pedido */}
+      <PedidoFormItems
+        itens={itens}
+        onUpdateItem={updateItem}
+        onAddItem={addItem}
+        onRemoveItem={removeItem}
+        tipo={tipo}
+        partnerId={partnerId}
+        computeItemTotal={computeItemTotal}
+        getItemDiffClass={getItemDiffClass}
+        getItemDiffIcon={getItemDiffIcon}
+        getItemChanges={getItemChanges}
+        originalItens={originalItens}
+        editingOrder={editingOrder}
+        productModalIndex={productModalIndex}
+        onSetProductModalIndex={setProductModalIndex}
+        fetchProdutos={fetchProdutos}
+      />
 
-      </div>
+      {/* Promissórias */}
+      <PedidoFormPromissorias
+        parcelado={parcelado}
+        onParceladoChange={setParcelado}
+        numeroPromissorias={numeroPromissorias}
+        onNumeroPromissoriasChange={(n, valorCalc) => {
+          setNumeroPromissorias(n);
+          if (Number.isFinite(Number(valorCalc))) setValorPorPromissoria(Number(valorCalc));
+        }}
+        dataPrimeiraPromissoria={dataPrimeiraPromissoria}
+        onDataPrimeiraPromissoriasChange={setDataPrimeiraPromissoria}
+        valorPorPromissoria={valorPorPromissoria}
+        totalLiquido={computeOrderTotalEstimate()}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2">
-        <div>
-          <FormField
-            label="Data de Entrega"
-            name="data_entrega"
-            type="date"
-            value={dataEntrega}
-            onChange={(e) => setDataEntrega(e.target.value)}
-          />
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={temNotaFiscal} onChange={(e) => setTemNotaFiscal(e.target.checked)} />
-          Tem Nota Fiscal
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={parcelado} onChange={(e) => setParcelado(e.target.checked)} />
-          Parcelado
-        </label>
-        <div className="md:col-span-3">
-          <FormField
-            label="Observação"
-            name="observacao"
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold">Itens</h3>
-          <Button onClick={addItem} variant="outline" size="sm" fullWidth={false}>
-            + Adicionar item
-          </Button>
-        </div>
-        
-        {/* Mostrar itens removidos se houver */}
-        {editingOrder && originalItens.length > 0 && (() => {
-          const changes = getItemChanges();
-          return changes.removed.length > 0 && (
-            <div className="mb-4 p-3 border border-red-500 bg-red-50 dark:bg-red-900/20 rounded-md">
-              <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
-                Itens removidos ({changes.removed.length}):
-              </h4>
-              {changes.removed.map((removedItem, idx) => (
-                <div key={idx} className="text-sm text-red-700 dark:text-red-300">
-                  • {removedItem.produto_label || `Produto ID: ${removedItem.produto_id}`} 
-                  - Qtd: {removedItem.quantidade} 
-                  - Preço: R$ {Number(removedItem.preco_unitario || 0).toFixed(2)}
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-        
-        {/* Itens agora podem ser editados mesmo no modo edição */}
-        <div className="space-y-3">
-          {itens.map((it, idx) => (
-            <div key={idx} className={`border rounded-md p-3 bg-[var(--color-bg-primary)] ${getItemDiffClass(it, idx) || "border-[var(--color-border)]"}`}>
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{it.produto_label || 'Produto não selecionado'}</span>
-                  {getItemDiffIcon(it)}
-                  {tipo === 'VENDA' && Number(it.produto_id) > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-                      Estoque: {it.produto_saldo != null ? Number(it.produto_saldo).toFixed(3) : '...'}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  fullWidth={false}
-                  onClick={() => {
-                    if (tipo === 'COMPRA' && !Number.isFinite(Number(partnerId))) {
-                      push('Selecione um fornecedor primeiro', { type: 'error' });
-                      return;
-                    }
-                    setProductModalIndex(idx);
-                  }}
-                >
-                  {it.produto_id ? 'Trocar' : 'Buscar...'}
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-12 gap-3 items-end">
-                <div className="col-span-3 md:col-span-2">
-                  <FormField
-                    label="Quantidade"
-                    name={`quantidade_${idx}`}
-                    value={it.quantidade}
-                    onChange={(e) => updateItem(idx, { quantidade: e.target.value })}
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    required
-                  />
-                </div>
-                <div className="col-span-4 md:col-span-3">
-                  <FormField
-                    label="Preço Unitário (opcional)"
-                    name={`preco_${idx}`}
-                    value={it.preco_unitario}
-                    onChange={(e) => updateItem(idx, { preco_unitario: e.target.value })}
-                    type="number"
-                    step="0.01"
-                  />
-                </div>
-                <div className="col-span-4 md:col-span-3">
-                  <FormField
-                    label="Desconto Unitário (opcional)"
-                    name={`desconto_${idx}`}
-                    value={it.desconto_unitario}
-                    onChange={(e) => updateItem(idx, { desconto_unitario: e.target.value })}
-                    type="number"
-                    step="0.01"
-                  />
-                </div>
-                <div className="col-span-12 md:col-span-3 flex items-center justify-between md:justify-end gap-3 mt-2 md:mt-0">
-                  <div className="text-sm opacity-80">
-                    <span className="block text-xs mb-1">Total do item</span>
-                    <span className="font-semibold">{(() => { const t = computeItemTotal(it); return t != null ? t.toFixed(2) : '—'; })()}</span>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    fullWidth={false}
-                    onClick={() => removeItem(idx)}
-                    disabled={itens.length === 1}
-                  >
-                    Remover
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-end gap-2 mt-8">
-        {created?.id && (
-          <span className="text-xs opacity-80 mr-auto">
-            Criado: #{created.id} • Status: {created.status || 'confirmado'}
-          </span>
-        )}
-        {editingOrder?.id && (
-          <Button onClick={handleDelete} variant="secondary" size="sm" fullWidth={false} disabled={submitting}>
-            Excluir
-          </Button>
-        )}
-        <Button onClick={clearForm} variant="outline" size="sm" fullWidth={false} disabled={submitting}>
-          Limpar
-        </Button>
-        <Button type="submit" variant="primary" size="sm" fullWidth={false} disabled={!canSubmit || submitting}>
-          {submitting ? (editingOrder?.id ? "Atualizando..." : "Enviando...") : (editingOrder?.id ? "Atualizar Pedido" : "Criar Pedido")}
-        </Button>
-      </div>
-
-      {showPartnerModal && (
-        <SelectionModal
-          title="Selecionar Cliente/Fornecedor"
-          fetcher={fetchEntities}
-          extractLabel={(it) => it.label}
-          onSelect={(it) => {
-            setShowPartnerModal(false);
-            if (it) {
-              setPartnerId(String(it.id));
-              setPartnerLabel(it.label);
-              setPartnerName(it.name || it.label);
-            }
-          }}
-          onClose={() => setShowPartnerModal(false)}
-          emptyMessage={tipo === 'VENDA' ? 'Nenhum cliente ativo encontrado' : 'Nenhum fornecedor ativo encontrado'}
-        />
-      )}
+      {/* Ações */}
+      <PedidoFormActions
+        created={created}
+        editingOrder={editingOrder}
+        onDelete={handleDelete}
+        onClear={clearForm}
+        canSubmit={canSubmit}
+        submitting={submitting}
+        temNotaFiscal={temNotaFiscal}
+      />
 
       {Number.isInteger(productModalIndex) && productModalIndex >= 0 && (
         <SelectionModal
@@ -595,34 +444,6 @@ export function PedidoForm({ onCreated, onSaved, editingOrder }) {
             </button>
           ) : null}
         />
-      )}
-
-      {/* Modal de confirmação de mudança de tipo */}
-      {showTypeChangeModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Confirmar mudança de tipo</h3>
-            <div className="mb-4 text-sm">
-              <p className="mb-2">
-                Você está alterando o tipo de <strong>{originalTipo}</strong> para <strong>{pendingTipo}</strong>.
-              </p>
-              <p className="text-amber-600 dark:text-amber-400">
-                ⚠️ Esta mudança irá:
-                <br />• Limpar a seleção de cliente/fornecedor
-                <br />• Reprocessar movimentos de estoque
-                <br />• Alterar as regras de negócio aplicáveis
-              </p>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button onClick={cancelTipoChange} variant="outline" size="sm" fullWidth={false}>
-                Cancelar
-              </Button>
-              <Button onClick={confirmTipoChange} variant="primary" size="sm" fullWidth={false}>
-                Confirmar
-              </Button>
-            </div>
-          </div>
-        </div>
       )}
     </FormContainer>
   );

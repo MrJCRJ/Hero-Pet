@@ -49,6 +49,8 @@ async function putPedido(req, res) {
     if (b.observacao !== undefined) set("observacao", b.observacao || null);
     if (b.tem_nota_fiscal !== undefined) set("tem_nota_fiscal", b.tem_nota_fiscal);
     if (b.parcelado !== undefined) set("parcelado", b.parcelado);
+    if (b.numero_promissorias !== undefined) set("numero_promissorias", Number(b.numero_promissorias) || 1);
+    if (b.data_primeira_promissoria !== undefined) set("data_primeira_promissoria", b.data_primeira_promissoria || null);
     // permitir alterar tipo e parceiro (validações básicas)
     let tipoAtual = head.rows[0].tipo;
     if (b.tipo !== undefined) {
@@ -126,6 +128,37 @@ async function putPedido(req, res) {
         text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, updated_at = NOW() WHERE id = $4`,
         values: [totalBruto, descontoTotal, totalLiquido, id],
       });
+
+      // Calcular valor por promissória se aplicável
+      const pedidoAtualizado = await client.query({ text: `SELECT numero_promissorias FROM pedidos WHERE id = $1`, values: [id] });
+      const numeroPromissorias = Number(pedidoAtualizado.rows[0]?.numero_promissorias) || 1;
+      if (numeroPromissorias > 1 && totalLiquido > 0) {
+        const valorPorPromissoria = totalLiquido / numeroPromissorias;
+        await client.query({
+          text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
+          values: [valorPorPromissoria, id],
+        });
+      }
+    }
+
+    // 3) Recalcular valor_por_promissoria sempre ao final com base nos valores atuais
+    try {
+      const headNow = await client.query({
+        text: `SELECT total_liquido, numero_promissorias FROM pedidos WHERE id = $1`,
+        values: [id],
+      });
+      if (headNow.rows.length) {
+        const tl = Number(headNow.rows[0].total_liquido || 0);
+        const np = Number(headNow.rows[0].numero_promissorias || 1);
+        if (np > 1 && tl > 0) {
+          const vpp = tl / np;
+          await client.query({ text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`, values: [vpp, id] });
+        } else {
+          await client.query({ text: `UPDATE pedidos SET valor_por_promissoria = NULL WHERE id = $1`, values: [id] });
+        }
+      }
+    } catch (_) {
+      // não falhar PUT por erro na recomputação; continuará com valor anterior
     }
 
     await client.query("COMMIT");
