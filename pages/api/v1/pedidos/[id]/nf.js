@@ -4,6 +4,39 @@ import { isConnectionError, isRelationMissing } from "lib/errors";
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
+import EMITENTE from "lib/constants/company";
+
+// Helpers globais de formatação (compartilhados)
+const BRL = (n) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const DATE = (d) => (d ? new Date(d).toLocaleDateString('pt-BR') : '-');
+const STR = (v, fb = '—') => (v == null || v === '' ? fb : String(v));
+const stripDigits = (value = '') => String(value || '').replace(/\D+/g, '');
+const formatCpfCnpj = (raw = '') => {
+  const d = stripDigits(raw).slice(0, 14);
+  if (d.length <= 11) {
+    return d
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  return d
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+};
+const formatTelefone = (raw = '') => {
+  const d = stripDigits(raw).slice(0, 11);
+  if (!d) return '—';
+  if (d.length <= 10) {
+    return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+};
+const formatCep = (raw = '') => {
+  const d = stripDigits(raw).slice(0, 8);
+  return d ? d.replace(/(\d{5})(\d)/, '$1-$2') : '—';
+};
 
 export default async function handler(req, res) {
   if (req.method === "GET") return getNF(req, res);
@@ -17,7 +50,13 @@ async function getNF(req, res) {
 
     // Buscar dados do pedido e destinatário
     const head = await database.query({
-      text: `SELECT p.*, e.name AS entidade_nome, e.document_digits AS entidade_document, e.entity_type AS entidade_tipo
+      text: `SELECT p.*,
+                    e.name AS entidade_nome,
+                    e.document_digits AS entidade_document,
+                    e.entity_type AS entidade_tipo,
+                    e.telefone AS entidade_telefone,
+                    e.email AS entidade_email,
+                    e.cep AS entidade_cep
              FROM pedidos p
              LEFT JOIN entities e ON e.id = p.partner_entity_id
              WHERE p.id = $1`,
@@ -47,46 +86,22 @@ async function getNF(req, res) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="NF-${pedido.id}.pdf"`);
 
-    // Helpers de formatação
-    const BRL = (n) => `R$ ${Number(n || 0).toFixed(2)}`;
-    const DATE = (d) => (d ? new Date(d).toLocaleDateString('pt-BR') : '-');
-
     const doc = new PDFDocument({ margin: 36 }); // margem menor para mais área útil
     doc.pipe(res);
 
-    // Dados fixos da empresa (Emitente)
-    const EMITENTE = {
-      razao: 'Hero Pet',
-      email: 'HeroPetltda@gmail.com',
-      gestao: 'Icaro Jhonatan | Jose Cicero',
-      vendedor: '—',
-      cnpj: '60.296.757/0001-04',
-      loja: 'Distribuidora',
-      endereco: 'Rua 92, n° 109, Albano',
-      cidadeUf: 'Nossa Senhora do Socorro, SE',
-      ie: '272309281',
-      frete: 'CIF',
-      telefone: '79 9 9975-9371'
-    };
+    // Dados fixos da empresa (Emitente) agora em lib/constants/company
 
     // Carregar logo (PNG preferencial). Se não existir, ignora.
-    const tryLoadLogo = () => {
+    const tryLoadLogoPng = () => {
       try {
         const pngPath = path.join(process.cwd(), 'Logo.png');
-        if (fs.existsSync(pngPath)) return { type: 'png', path: pngPath };
-      } catch (e) {
-        // ignore
+        return fs.existsSync(pngPath) ? pngPath : null;
+      } catch (_) {
+        return null;
       }
-      try {
-        const svgPath = path.join(process.cwd(), 'Logo.svg');
-        if (fs.existsSync(svgPath)) return { type: 'svg', path: svgPath };
-      } catch (e) {
-        // ignore
-      }
-      return null;
     };
-    const LOGO = tryLoadLogo();
-
+    const LOGO_PNG = tryLoadLogoPng();
+    // Constantes de layout
     const drawHeader = () => {
       const { width } = doc.page;
       const left = doc.page.margins.left;
@@ -101,15 +116,13 @@ async function getNF(req, res) {
       // Logo + marca / título
       let titleX = left + 8;
       const titleY = top - 6;
-      if (LOGO && LOGO.type === 'png') {
+      if (LOGO_PNG) {
         try {
-          doc.image(LOGO.path, left + 8, top - 6, { width: 36, height: 36, fit: [36, 36] });
+          doc.image(LOGO_PNG, left + 8, top - 6, { width: 36, height: 36, fit: [36, 36] });
           titleX += 44;
-        } catch (e) {
-          // ignore image errors
+        } catch (_) {
+          // ignora erro de imagem
         }
-      } else if (LOGO && LOGO.type === 'svg') {
-        // pdfkit não suporta SVG nativamente sem plugin; neste caso, ignoramos ou convertemos externamente.
       }
       doc.fontSize(16).fillColor('#111827').text('Hero-Pet', titleX, titleY, { continued: false });
       doc.fontSize(10).fillColor('#374151').text('Documento Auxiliar de Nota Fiscal (MVP)', titleX, top + 12);
@@ -134,10 +147,50 @@ async function getNF(req, res) {
       doc.roundedRect(x, y, w, h, 4).strokeColor('#D1D5DB').lineWidth(1).stroke();
       if (title) {
         doc.rect(x + 1, y + 1, w - 2, 18).fill('#F9FAFB');
-        doc.fillColor('#111827').fontSize(10).text(title, x + 8, y + 4);
+        doc.fillColor('#111827').fontSize(11).text(title, x + 8, y + 4, { width: w - 16, align: 'center' });
       }
       doc.restore();
     };
+
+    // drawKV (uma coluna) não é mais usado; usamos drawKVInline em duas colunas
+
+    const measureKVHeight = (label, value, width, align = 'left') => {
+      const text = `${label}: ${STR(value)}`;
+      return doc.heightOfString(text, { width, align });
+    };
+
+    const drawKVInline = (label, value, x, y, width, align = 'left') => {
+      if (!label) return; // permite pares vazios à direita
+      doc.fillColor('#111827').font('Helvetica-Bold').fontSize(9).text(`${label}: `, x, y, { width, align, continued: true });
+      doc.font('Helvetica').fillColor('#374151').text(STR(value), { width, align });
+    };
+
+    const drawInfoBoxTwoCols = (title, rows, x, y, w, h) => {
+      box(x, y, w, h, title);
+      const pad = 10;
+      const gutter = 16;
+      const contentX = x + pad;
+      const contentW = w - pad * 2;
+      const colW = Math.floor((contentW - gutter) / 2);
+      let yy = y + 24;
+      rows.forEach((pair) => {
+        const [leftPair, rightPair] = pair;
+        const [lLabel, lValue] = leftPair || [];
+        const [rLabel, rValue] = rightPair || [];
+
+        const hLeft = lLabel ? measureKVHeight(lLabel, lValue, colW) : 0;
+        const hRight = rLabel ? measureKVHeight(rLabel, rValue, colW) : 0;
+        const rowH = Math.max(hLeft, hRight, 12);
+
+        drawKVInline(lLabel, lValue, contentX, yy, colW);
+        if (rLabel) drawKVInline(rLabel, rValue, contentX + colW + gutter, yy, colW);
+
+        yy += rowH + 2;
+      });
+      return y + h;
+    };
+
+    // drawInfoBox (versão uma coluna) foi substituído por drawInfoBoxTwoCols
 
     const drawParties = () => {
       const left = doc.page.margins.left;
@@ -146,45 +199,36 @@ async function getNF(req, res) {
       const w = right - left;
       const half = Math.floor(w / 2) - 6;
 
-      // Emitente
-      box(left, y, half, 120, 'Emitente');
-      doc.fontSize(9).fillColor('#111827');
-      const ex = left + 10;
-      let ey = y + 24;
-      doc.text(`Razão Social: ${EMITENTE.razao}`, ex, ey, { width: half - 20 }); ey = doc.y + 2;
-      doc.text(`Email: ${EMITENTE.email}`, ex, ey, { width: half - 20 }); ey = doc.y + 2;
-      doc.text(`Gestão: ${EMITENTE.gestao}    Vendedor: ${EMITENTE.vendedor}`, ex, ey, { width: half - 20 }); ey = doc.y + 2;
-      doc.text(`CNPJ: ${EMITENTE.cnpj}    Loja: ${EMITENTE.loja}`, ex, ey, { width: half - 20 }); ey = doc.y + 2;
-      doc.text(`Endereço: ${EMITENTE.endereco}`, ex, ey, { width: half - 20 }); ey = doc.y + 2;
-      doc.text(`${EMITENTE.cidadeUf}    IE: ${EMITENTE.ie}`, ex, ey, { width: half - 20 }); ey = doc.y + 2;
-      doc.text(`Telefone: ${EMITENTE.telefone}    Frete: ${EMITENTE.frete}`, ex, ey, { width: half - 20 });
+      // Emitente (duas colunas)
+      drawInfoBoxTwoCols('Emitente', [
+        [['Razão Social', EMITENTE.razao], ['Email', EMITENTE.email]],
+        [['Gestão', EMITENTE.gestao], ['Vendedor', EMITENTE.vendedor]],
+        [['CNPJ', EMITENTE.cnpj], ['IE', EMITENTE.ie]],
+        [['Loja', EMITENTE.loja], ['Telefone', EMITENTE.telefone]],
+        [['Endereço', EMITENTE.endereco], ['Cidade/UF', EMITENTE.cidadeUf]],
+        [['Frete', EMITENTE.frete], null],
+      ], left, y, half, 132);
 
       // Destinatário
       const nome = pedido.entidade_nome || pedido.partner_name || 'Não informado';
       const docRaw = pedido.entidade_document || pedido.partner_document || '';
       const tipoEnt = pedido.entidade_tipo || '-';
-      box(left + half + 12, y, half, 120, 'Destinatário');
-      const startX = left + half + 22;
-      let dy = y + 24;
-      doc.text(`Nome: ${nome}`, startX, dy, { width: half - 30 }); dy = doc.y + 2;
-      if (docRaw) { doc.text(`Documento: ${docRaw}`, startX, dy, { width: half - 30 }); dy = doc.y + 2; }
-      doc.text(`Tipo: ${tipoEnt}`, startX, dy, { width: half - 30 });
+      const destX = left + half + 12;
+      // Destinatário (duas colunas)
+      drawInfoBoxTwoCols('Destinatário', [
+        [['Nome', nome], ['Documento', formatCpfCnpj(docRaw)]],
+        [['Tipo', tipoEnt], ['Telefone', formatTelefone(pedido.entidade_telefone)]],
+        [['Email', STR(pedido.entidade_email)], ['CEP', formatCep(pedido.entidade_cep)]],
+      ], destX, y, half, 132);
 
       doc.moveDown(2);
-      doc.y = y + 130;
+      doc.y = y + 140;
     };
 
-    const drawItemsHeader = () => {
+    const computeItemColumns = () => {
       const left = doc.page.margins.left;
       const right = doc.page.width - doc.page.margins.right;
-      const y = doc.y + 6;
       const w = right - left;
-
-      // Título
-      doc.fontSize(11).fillColor('#111827').text('Itens', left, y);
-      const headerY = doc.y + 4;
-
-      // Colunas
       const fixed = 70 + 60 + 70 + 60 + 80; // cod + qtd + preço + desc + total
       const flex = w - fixed;
       const cols = [
@@ -195,6 +239,16 @@ async function getNF(req, res) {
         { key: 'desc', label: 'Desc.', x: left + 70 + flex + 60 + 70, w: 60, align: 'right' },
         { key: 'total', label: 'Total', x: left + 70 + flex + 60 + 70 + 60, w: 80, align: 'right' },
       ];
+      return { left, w, cols };
+    };
+
+    const drawItemsHeader = (colsMeta) => {
+      const y = doc.y + 6;
+      const { left, w, cols } = colsMeta;
+
+      // Título
+      doc.fontSize(11).fillColor('#111827').text('Itens', left, y);
+      const headerY = doc.y + 4;
 
       // Barra do cabeçalho
       doc.save();
@@ -205,14 +259,14 @@ async function getNF(req, res) {
       cols.forEach((c) => {
         doc.text(c.label, c.x + 6, headerY + 5, { width: c.w - 12, align: c.align });
       });
-
-      return { cols, yStart: headerY + 20, tableWidth: w };
+      return headerY + 20;
     };
 
-    const drawItemsRows = (cols, yStart) => {
+    const drawItemsRows = (colsMeta, yStart) => {
       const bottomLimit = doc.page.height - doc.page.margins.bottom - 120; // espaço para totais
       let y = yStart;
       let totalGeral = 0;
+      const { cols, left, w } = colsMeta;
       itensQ.rows.forEach((row, idx) => {
         const qtd = Number(row.quantidade);
         const preco = Number(row.preco_unitario);
@@ -225,17 +279,11 @@ async function getNF(req, res) {
         if (y + rowHeight > bottomLimit) {
           doc.addPage();
           drawHeader();
-          const meta = drawItemsHeader();
-          cols = meta.cols; // reatribui referências
-          y = meta.yStart;
+          y = drawItemsHeader(colsMeta);
         }
 
         // Zebra
-        if (idx % 2 === 1) {
-          doc.save();
-          doc.rect(cols[0].x, y, cols[0].w + cols[1].w + cols[2].w + cols[3].w + cols[4].w + cols[5].w, rowHeight).fill('#FAFAFA');
-          doc.restore();
-        }
+        if (idx % 2 === 1) doc.rect(left, y, w, rowHeight).fill('#FAFAFA').fillColor('#111827');
 
         // Borda inferior da linha
         doc.strokeColor('#F3F4F6').lineWidth(1).moveTo(cols[0].x, y + rowHeight).lineTo(cols[5].x + cols[5].w, y + rowHeight).stroke();
@@ -244,7 +292,7 @@ async function getNF(req, res) {
         doc.fillColor('#111827').fontSize(9);
         doc.text(String(row.produto_id), cols[0].x + 6, y + 5, { width: cols[0].w - 12, align: 'left' });
         doc.text(String(row.produto_nome || row.produto_id), cols[1].x + 6, y + 5, { width: cols[1].w - 12, align: 'left' });
-        doc.text(qtd.toFixed(3), cols[2].x + 6, y + 5, { width: cols[2].w - 12, align: 'right' });
+        doc.text(String(Math.trunc(qtd)), cols[2].x + 6, y + 5, { width: cols[2].w - 12, align: 'right' });
         doc.text(BRL(preco), cols[3].x + 6, y + 5, { width: cols[3].w - 12, align: 'right' });
         doc.text(BRL(desc), cols[4].x + 6, y + 5, { width: cols[4].w - 12, align: 'right' });
         doc.text(BRL(total), cols[5].x + 6, y + 5, { width: cols[5].w - 12, align: 'right' });
@@ -290,6 +338,45 @@ async function getNF(req, res) {
         doc.fontSize(10).fillColor('#111827').text('Observações', obsX, obsY);
         doc.fontSize(9).fillColor('#374151').text(String(pedido.observacao), obsX, obsY + 14, { width: obsW });
       }
+      // Retorna a base ocupada, considerando que doc.y pode ter sido avançado pelas observações
+      return Math.max(doc.y, y + 70);
+    };
+
+    const drawSignature = (startY) => {
+      const left = doc.page.margins.left;
+      const right = doc.page.width - doc.page.margins.right;
+      let y = (typeof startY === 'number' ? startY : doc.y + 16);
+      const required = 120; // altura reservada para o bloco de assinatura
+      const bottomY = doc.page.height - doc.page.margins.bottom;
+      const topY = doc.page.margins.top;
+      // Se não houver espaço suficiente na página atual, cria nova página
+      if (y + required > bottomY) {
+        doc.addPage();
+        drawHeader();
+        y = topY;
+      }
+
+      // Título
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#111827').text('Recebimento', left, y);
+      y = doc.y + 8;
+      const lineY = y + 18;
+      const colW = (right - left - 20) / 2;
+
+      // Linhas
+      doc.strokeColor('#D1D5DB').moveTo(left, lineY).lineTo(left + colW, lineY).stroke();
+      doc.strokeColor('#D1D5DB').moveTo(left + colW + 20, lineY).lineTo(right, lineY).stroke();
+      doc.font('Helvetica').fontSize(9).fillColor('#374151');
+      doc.text('Recebido por (nome legível):', left, y);
+      doc.text('Assinatura:', left + colW + 20, y);
+
+      // Segunda linha
+      const y2 = lineY + 24;
+      const lineY2 = y2 + 18;
+      doc.strokeColor('#D1D5DB').moveTo(left, lineY2).lineTo(left + colW, lineY2).stroke();
+      doc.strokeColor('#D1D5DB').moveTo(left + colW + 20, lineY2).lineTo(right, lineY2).stroke();
+      doc.text('CPF:', left, y2);
+      doc.text('Data:', left + colW + 20, y2);
+      doc.moveDown(2);
     };
 
     const drawFooter = () => {
@@ -303,9 +390,11 @@ async function getNF(req, res) {
     // Desenho
     drawHeader();
     drawParties();
-    const meta = drawItemsHeader();
-    const { y: yAfterRows, totalGeral } = drawItemsRows(meta.cols, meta.yStart);
-    drawTotals(yAfterRows, totalGeral);
+    const colsMeta = computeItemColumns();
+    const yStart = drawItemsHeader(colsMeta);
+    const { y: yAfterRows, totalGeral } = drawItemsRows(colsMeta, yStart);
+    const bottomAfterTotals = drawTotals(yAfterRows, totalGeral);
+    drawSignature(bottomAfterTotals + 16);
     drawFooter();
 
     doc.end();
