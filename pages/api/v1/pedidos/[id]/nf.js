@@ -11,6 +11,7 @@ import {
 import {
   drawHeader,
   drawParties,
+  drawTransportadora,
   computeItemColumns,
   drawItemsHeader,
   drawItemsRows,
@@ -89,6 +90,36 @@ async function getNF(req, res) {
     // Desenho (modular)
     drawHeader(doc, pedido, LOGO_PNG);
     drawParties(doc, pedido, DEST_ENDERECO);
+
+    // Transportadora: valores fixos fornecidos + campos calculados (quantidade e pesos)
+    const parseWeightKgFromName = (name = '') => {
+      // Suporta: "25kg", "25 KG", "25Kg", "125kg" e tolera espaços entre K e G, e plural opcional (kgs)
+      const m = String(name || '').match(/(\d+(?:[.,]\d+)?)\s*(?:k\s*g\s*s?)/i);
+      if (!m) return 0;
+      const n = Number(String(m[1]).replace(',', '.'));
+      return Number.isFinite(n) ? n : 0;
+    };
+    const totals = itensQ.rows.reduce((acc, row) => {
+      const qtd = Number(row.quantidade) || 0;
+      acc.quantidade += qtd;
+      const unitKg = parseWeightKgFromName(row.produto_nome || '');
+      acc.pesoKg += unitKg * qtd;
+      return acc;
+    }, { quantidade: 0, pesoKg: 0 });
+
+    const pesoFmt = `${totals.pesoKg.toFixed(2)} kg`;
+    drawTransportadora(doc, {
+      razao: 'Nosso Transporte',
+      cpf: '406,986,885-20',
+      placa: 'IAI1506',
+      // Usa UF do ViaCEP quando disponível; fallback para 'SE' (apenas sigla)
+      uf: (viaCepAddr && viaCepAddr.uf) ? viaCepAddr.uf : 'SE',
+      quantidade: totals.quantidade,
+      especie: '',
+      pesoB: pesoFmt,
+      pesoL: pesoFmt,
+    });
+
     const colsMeta = computeItemColumns(doc);
     const yStart = drawItemsHeader(doc, colsMeta);
     const { y: yAfterRows, totalGeral } = drawItemsRows(doc, colsMeta, itensQ.rows, yStart);
