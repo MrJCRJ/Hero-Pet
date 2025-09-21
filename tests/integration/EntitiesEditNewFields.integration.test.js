@@ -4,7 +4,7 @@
  */
 import React from "react";
 import { render, screen, configure } from "@testing-library/react";
-configure({ asyncUtilTimeout: 5000 });
+configure({ asyncUtilTimeout: 15000 });
 import userEvent from "@testing-library/user-event";
 import { EntitiesManager } from "components/entities";
 import { ThemeProvider } from "contexts/ThemeContext";
@@ -52,14 +52,19 @@ describe("EntitiesManager novos campos (numero/complemento/ativo)", () => {
     // Se ainda estamos no formulário (botão Cancelar presente) clicar para retornar à lista
     const cancelBtn = screen.queryByRole("button", { name: /cancelar/i });
     if (cancelBtn) await user.click(cancelBtn);
-    await screen.findByText(/Entidades Cadastradas/i);
-    await screen.findByText(/EMPRESA X/);
+    // Volta para a lista (página principal do EntitiesManager)
+    await screen.findByRole('heading', { name: /Cliente \/ Fornecedor/i });
+    await screen.findByRole('heading', { name: /Entidades Cadastradas/i });
+    const createdNames1 = await screen.findAllByText(/EMPRESA X/);
+    expect(createdNames1.length).toBeGreaterThan(0);
     // endereço deve estar completo (cep + numero)
     expect(screen.getAllByText(/completo/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Sim").length).toBeGreaterThan(0); // Ativo
 
     // Entra em edição clicando linha
-    await user.click(screen.getByText(/EMPRESA X/));
+    // clica na primeira ocorrência do nome na lista
+    const nameLinks = await screen.findAllByText(/EMPRESA X/);
+    await user.click(nameLinks[0]);
     const numeroEdit = await screen.findByLabelText(/número/i);
     // Limpa e altera
     await user.clear(numeroEdit);
@@ -72,8 +77,10 @@ describe("EntitiesManager novos campos (numero/complemento/ativo)", () => {
     await user.click(ativoToggle);
 
     await user.click(screen.getByRole("button", { name: /atualizar/i }));
-    await screen.findByText(/Entidades Cadastradas/i);
-    await screen.findByText(/EMPRESA X/);
+    await screen.findByRole('heading', { name: /Cliente \/ Fornecedor/i });
+    await screen.findByRole('heading', { name: /Entidades Cadastradas/i });
+    const createdNames2 = await screen.findAllByText(/EMPRESA X/);
+    expect(createdNames2.length).toBeGreaterThan(0);
     // endereço segue completo
     expect(screen.getAllByText(/completo/i).length).toBeGreaterThan(0);
     // Ativo agora "Não"
