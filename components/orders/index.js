@@ -132,9 +132,15 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 </td>
                 <td className="px-3 py-2 text-center">
                   {p.parcelado ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      fullWidth={false}
+                      onClick={() => window.open(`/api/v1/pedidos/${p.id}/promissorias-pdf`, '_blank', 'noopener')}
+                      title="Baixar Promissórias (PDF)"
+                    >
                       📝 Promissórias
-                    </span>
+                    </Button>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
