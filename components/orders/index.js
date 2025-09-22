@@ -91,7 +91,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
               <th className="text-left px-3 py-2">Emissão</th>
               <th className="text-center px-3 py-2">NF</th>
               <th className="text-center px-3 py-2">Promissórias</th>
-              <th className="text-right px-3 py-2">Total / Pago</th>
+              <th className="text-right px-3 py-2">Total</th>
               <th className="text-center px-3 py-2">Parcelas</th>
               <th className="text-right px-3 py-2">Ações</th>
             </tr>

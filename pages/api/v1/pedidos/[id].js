@@ -27,7 +27,7 @@ async function getPedido(req, res) {
     const promissorias = await database.query({
       text: `SELECT id, pedido_id, seq,
                     to_char(due_date, 'YYYY-MM-DD') AS due_date,
-                    amount, paid_at, pix_txid, pix_brcode,
+                    amount, paid_at,
                     CASE 
                       WHEN paid_at IS NOT NULL THEN 'PAGO'
                       WHEN due_date < CURRENT_DATE THEN 'ATRASADO'
