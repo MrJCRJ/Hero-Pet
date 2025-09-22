@@ -85,7 +85,6 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
         <table className="min-w-full">
           <thead>
             <tr className="bg-[var(--color-bg-secondary)]">
-              <th className="text-left px-3 py-2">#</th>
               <th className="text-left px-3 py-2">Tipo</th>
               <th className="text-left px-3 py-2">Parceiro</th>
               <th className="text-left px-3 py-2">Emissão</th>
@@ -99,9 +98,15 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
           <tbody>
             {data.map((p) => (
               <tr key={p.id} className="border-t">
-                <td className="px-3 py-2">{p.id}</td>
                 <td className="px-3 py-2">{p.tipo}</td>
-                <td className="px-3 py-2">{p.partner_name || "-"}</td>
+                <td className="px-3 py-2">
+                  <div
+                    className="max-w-[220px] truncate"
+                    title={p.partner_name || "-"}
+                  >
+                    {p.partner_name || "-"}
+                  </div>
+                </td>
                 <td className="px-3 py-2">
                   {p.data_emissao
                     ? new Date(p.data_emissao).toLocaleDateString()
@@ -121,9 +126,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                         )
                       }
                       title="Baixar NF (PDF)"
-                    >
-                      📄 NF
-                    </Button>
+                    >📄</Button>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
@@ -142,9 +145,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                         )
                       }
                       title="Baixar Promissórias (PDF)"
-                    >
-                      📝 Promissórias
-                    </Button>
+                    >📝</Button>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
@@ -206,14 +207,14 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
             ))}
             {!loading && data.length === 0 && (
               <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={9}>
+                <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
                   Nenhum pedido encontrado
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={9}>
+                <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
                   Carregando...
                 </td>
               </tr>
