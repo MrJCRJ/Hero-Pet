@@ -142,3 +142,24 @@ O seed cria:
 Configuração opcional:
 
 - `SEED_BASE_URL`: URL base da API (padrão `http://localhost:3000`). Ex.: `SEED_BASE_URL=http://127.0.0.1:3000 npm run seed:demo`
+
+## Migrações: Auto-apply e Runbook
+
+Por padrão, as migrações devem ser aplicadas explicitamente via endpoint de migrações no deploy. Há um fallback opcional de auto-aplicação em runtime que pode ser habilitado por env.
+
+- MIGRATIONS_AUTO_APPLY (opcional)
+  - Valores aceitos para habilitar: `1`, `true` (case-insensitive)
+  - Comportamento: ao detectar `42P01` (tabela/relacionamento ausente), a API tenta aplicar as migrações (node-pg-migrate) e reexecuta a operação UMA vez.
+  - Observações: pode aumentar a latência da primeira requisição; requer permissões DDL no banco. Concor­rência é protegida por um lock em memória por processo.
+
+Runbook recomendado (produção):
+
+1. Antes de ativar o novo build, aplique migrações:
+   - `POST /api/v1/migrations` (idempotente; retorna 201 se migrou algo, 200 se nada pendente)
+2. Após migrações OK, publique o build.
+3. (Opcional) Healthcheck/readiness com `GET /api/v1/migrations` para validar ausência de pendências.
+
+Quando considerar habilitar MIGRATIONS_AUTO_APPLY:
+
+- Ambientes dinâmicos/efêmeros (ex.: pré-visualização) ou cenários onde o orchestrator pode inicializar instâncias antes da etapa de migração.
+- Lembre-se de manter desabilitado em produção caso sua política exija migrações controladas e auditáveis.

@@ -16,7 +16,11 @@ async function updateProduto(req, res) {
     const b = req.body || {};
 
     // opcionalmente validar fornecedor PJ
-    let fornecedorId = b.fornecedor_id ?? undefined; // undefined = não alterar, null = limpar
+    // Atenção: precisamos distinguir entre "não enviado" (undefined) e "limpar" (null)
+    // Usar ?? aqui quebraria o caso null -> vira undefined. Portanto, checamos presença da chave.
+    let fornecedorId = Object.prototype.hasOwnProperty.call(b, "fornecedor_id")
+      ? b.fornecedor_id
+      : undefined; // undefined = não alterar, null = limpar
     if (fornecedorId !== undefined && fornecedorId !== null) {
       const r = await database.query({
         text: `SELECT entity_type FROM entities WHERE id = $1 LIMIT 1`,
