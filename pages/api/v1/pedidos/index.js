@@ -84,20 +84,29 @@ async function postPedido(req, res) {
 
     // (Re)gerar tabela de promissórias para o pedido recém criado
     if (numeroPromissorias > 1 && totalLiquido > 0) {
-      // Parse seguro para 'YYYY-MM-DD' como data local sem timezone
-      const firstDate = b.data_primeira_promissoria
-        ? parseDateYMD(b.data_primeira_promissoria)
-        : new Date();
-      // normaliza para meia-noite local
-      const baseDate = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate());
       const amount = Number((totalLiquido / numeroPromissorias).toFixed(2));
-      for (let i = 0; i < numeroPromissorias; i++) {
-        const due = new Date(baseDate);
-        due.setMonth(due.getMonth() + i);
-        await client.query({
-          text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
-          values: [pedido.id, i + 1, formatDateYMD(due), amount],
-        });
+      const datas = Array.isArray(b.promissoria_datas) ? b.promissoria_datas.filter((s) => /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s))) : [];
+      if (datas.length >= numeroPromissorias) {
+        for (let i = 0; i < numeroPromissorias; i++) {
+          await client.query({
+            text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
+            values: [pedido.id, i + 1, datas[i], amount],
+          });
+        }
+      } else {
+        // Fallback: mensal a partir da primeira data
+        const firstDate = b.data_primeira_promissoria
+          ? parseDateYMD(b.data_primeira_promissoria)
+          : new Date();
+        const baseDate = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate());
+        for (let i = 0; i < numeroPromissorias; i++) {
+          const due = new Date(baseDate);
+          due.setMonth(due.getMonth() + i);
+          await client.query({
+            text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
+            values: [pedido.id, i + 1, formatDateYMD(due), amount],
+          });
+        }
       }
     }
     // Gerar movimentos de estoque imediatamente (CRUD sem rascunho)

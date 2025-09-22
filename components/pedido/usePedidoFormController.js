@@ -8,17 +8,22 @@ import { emitInventoryChanged } from "./events";
 
 export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   const { push } = useToast();
+  // Flags para controlar interferência do autogerador de cronograma
+  // 1) Evita que a primeira execução sobrescreva o cronograma hidratado
+  const skipNextAutoGenRef = React.useRef(false);
+  // 2) Marca que estamos editando e já hidratamos datas, para não sobrepor em execuções subsequentes
+  const editingHydratedRef = React.useRef(Boolean(editingOrder?.promissorias && editingOrder.promissorias.length));
   const [submitting, setSubmitting] = useState(false);
-  const [tipo, setTipo] = useState("VENDA");
-  const [originalTipo, setOriginalTipo] = useState("VENDA");
-  const [partnerId, setPartnerId] = useState("");
-  const [partnerLabel, setPartnerLabel] = useState("");
-  const [partnerName, setPartnerName] = useState("");
-  const [observacao, setObservacao] = useState("");
-  const [dataEmissao, setDataEmissao] = useState("");
-  const [dataEntrega, setDataEntrega] = useState("");
-  const [temNotaFiscal, setTemNotaFiscal] = useState(false);
-  const [parcelado, setParcelado] = useState(false);
+  const [tipo, setTipo] = useState(() => editingOrder?.tipo || "VENDA");
+  const [originalTipo, setOriginalTipo] = useState(() => editingOrder?.tipo || "VENDA");
+  const [partnerId, setPartnerId] = useState(() => String(editingOrder?.partner_entity_id || ""));
+  const [partnerLabel, setPartnerLabel] = useState(() => editingOrder?.partner_name || "");
+  const [partnerName, setPartnerName] = useState(() => editingOrder?.partner_name || "");
+  const [observacao, setObservacao] = useState(() => editingOrder?.observacao || "");
+  const [dataEmissao, setDataEmissao] = useState(() => editingOrder?.data_emissao ? String(editingOrder.data_emissao).slice(0, 10) : "");
+  const [dataEntrega, setDataEntrega] = useState(() => editingOrder?.data_entrega ? new Date(editingOrder.data_entrega).toISOString().slice(0, 10) : "");
+  const [temNotaFiscal, setTemNotaFiscal] = useState(() => editingOrder ? Boolean(editingOrder.tem_nota_fiscal) : true);
+  const [parcelado, setParcelado] = useState(() => Boolean(editingOrder?.parcelado));
   const [itens, setItens] = useState([
     { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null },
   ]);
@@ -30,9 +35,29 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   const [pendingTipo, setPendingTipo] = useState("");
 
   // Promissórias
-  const [numeroPromissorias, setNumeroPromissorias] = useState(1);
-  const [dataPrimeiraPromissoria, setDataPrimeiraPromissoria] = useState("");
-  const [valorPorPromissoria, setValorPorPromissoria] = useState(0);
+  const [numeroPromissorias, setNumeroPromissorias] = useState(() => {
+    const n = Number(editingOrder?.numero_promissorias || 0);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  });
+  const [dataPrimeiraPromissoria, setDataPrimeiraPromissoria] = useState(() => editingOrder?.data_primeira_promissoria ? String(editingOrder.data_primeira_promissoria).slice(0, 10) : "");
+  const [valorPorPromissoria, setValorPorPromissoria] = useState(() => Number(editingOrder?.valor_por_promissoria || 0));
+  // Controle avançado de cronograma
+  const [frequenciaPromissorias, setFrequenciaPromissorias] = useState('mensal'); // 'mensal' | 'quinzenal' | 'semanal' | 'dias' | 'manual'
+  const [intervaloDiasPromissorias, setIntervaloDiasPromissorias] = useState(30);
+  const [promissoriaDatas, setPromissoriaDatas] = useState(() => Array.isArray(editingOrder?.promissorias) && editingOrder.promissorias.length
+    ? editingOrder.promissorias.map((p) => p.due_date).filter(Boolean)
+    : []);
+  const [promissoriasMeta, setPromissoriasMeta] = useState(() => {
+    if (Array.isArray(editingOrder?.promissorias) && editingOrder.promissorias.length) {
+      const paidSeqs = editingOrder.promissorias.filter((p) => p.paid_at).map((p) => p.seq);
+      const today = new Date();
+      const overdueSeqs = editingOrder.promissorias
+        .filter((p) => !p.paid_at && p.due_date && new Date(p.due_date + 'T00:00:00') < new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+        .map((p) => p.seq);
+      return { anyPaid: paidSeqs.length > 0, paidSeqs, overdueSeqs };
+    }
+    return { anyPaid: false, paidSeqs: [], overdueSeqs: [] };
+  });
 
   // Diff de itens
   const { getItemChanges, getItemDiffClass, getItemDiffIcon } = useItemDiff(itens, originalItens, editingOrder);
@@ -60,6 +85,23 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     setItens(itensFinais);
     setOriginalItens(mapped);
     setCreated({ id: editingOrder.id, status: editingOrder.status });
+
+    // Hidratar cronograma se vier do GET /pedidos/:id
+    if (Array.isArray(editingOrder.promissorias) && editingOrder.promissorias.length) {
+      const datas = editingOrder.promissorias.map((p) => p.due_date).filter(Boolean);
+      setPromissoriaDatas(datas);
+      // Evitar que o efeito de geração automática sobreponha imediatamente o cronograma hidratado
+      skipNextAutoGenRef.current = true;
+      editingHydratedRef.current = true;
+      const paidSeqs = editingOrder.promissorias.filter((p) => p.paid_at).map((p) => p.seq);
+      const today = new Date();
+      const overdueSeqs = editingOrder.promissorias
+        .filter((p) => !p.paid_at && p.due_date && new Date(p.due_date + 'T00:00:00') < new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+        .map((p) => p.seq);
+      setPromissoriasMeta({ anyPaid: paidSeqs.length > 0, paidSeqs, overdueSeqs });
+    } else {
+      setPromissoriasMeta({ anyPaid: false, paidSeqs: [], overdueSeqs: [] });
+    }
   }, [editingOrder]);
 
   const canSubmit = useMemo(() => {
@@ -97,6 +139,12 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     setCreated(null);
   }, []);
 
+  // Forçar temNotaFiscal=true para VENDA (não exibido na UI)
+  React.useEffect(() => {
+    // Política: VENDA => sempre true; COMPRA => false (não exibido na UI)
+    setTemNotaFiscal(tipo === 'VENDA');
+  }, [tipo]);
+
   // Saldo para VENDA
   useSaldoSync({ tipo, itens, setItens });
 
@@ -115,9 +163,50 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   React.useEffect(() => {
     const total = computeOrderTotalEstimate();
     if (numeroPromissorias > 0) {
-      setValorPorPromissoria(Number((total / numeroPromissorias).toFixed(2)));
+      const next = Number((total / numeroPromissorias).toFixed(2));
+      if (valorPorPromissoria !== next) setValorPorPromissoria(next);
     }
-  }, [itens, numeroPromissorias, computeOrderTotalEstimate]);
+  }, [itens, numeroPromissorias, computeOrderTotalEstimate, valorPorPromissoria]);
+
+  // Gerar cronograma quando não está no modo manual
+  React.useEffect(() => {
+    // Se a próxima execução deve ser ignorada (cronograma acabou de ser hidratado), não gerar nada
+    if (skipNextAutoGenRef.current) {
+      skipNextAutoGenRef.current = false;
+      return;
+    }
+    // Se estamos editando e já temos datas hidratadas, não regenerar automaticamente
+    if (editingHydratedRef.current && Array.isArray(promissoriaDatas) && promissoriaDatas.length > 0) {
+      return;
+    }
+    if (!parcelado) { if (Array.isArray(promissoriaDatas) && promissoriaDatas.length) setPromissoriaDatas([]); return; }
+    if (frequenciaPromissorias === 'manual') return; // manter manual
+    if (!dataPrimeiraPromissoria || !numeroPromissorias || numeroPromissorias < 2) {
+      if (Array.isArray(promissoriaDatas) && promissoriaDatas.length) setPromissoriaDatas([]);
+      return;
+    }
+    const base = new Date(dataPrimeiraPromissoria);
+    const datas = [];
+    for (let i = 0; i < numeroPromissorias; i++) {
+      const d = new Date(base);
+      if (frequenciaPromissorias === 'mensal') {
+        d.setMonth(d.getMonth() + i);
+      } else if (frequenciaPromissorias === 'quinzenal') {
+        d.setDate(d.getDate() + (i * 15));
+      } else if (frequenciaPromissorias === 'semanal') {
+        d.setDate(d.getDate() + (i * 7));
+      } else if (frequenciaPromissorias === 'dias') {
+        const n = Number(intervaloDiasPromissorias) || 30;
+        d.setDate(d.getDate() + (i * n));
+      }
+      const iso = d.toISOString().slice(0, 10);
+      datas.push(iso);
+    }
+    const isSame = Array.isArray(promissoriaDatas)
+      && promissoriaDatas.length === datas.length
+      && promissoriaDatas.every((v, i) => v === datas[i]);
+    if (!isSame) setPromissoriaDatas(datas);
+  }, [parcelado, frequenciaPromissorias, dataPrimeiraPromissoria, numeroPromissorias, intervaloDiasPromissorias, promissoriaDatas]);
 
   // Fetch helpers
   const { fetchEntities, fetchProdutos } = usePedidoFetchers({ tipo, partnerId });
@@ -133,6 +222,12 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     parcelado: parcelado,
     numero_promissorias: Number(numeroPromissorias) || 1,
     data_primeira_promissoria: dataPrimeiraPromissoria || null,
+    // Enviar cronograma explícito quando existir (manual ou gerado)
+    promissoria_datas: Array.isArray(promissoriaDatas)
+      ? promissoriaDatas
+        .filter((s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s))
+        .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
+      : [],
     itens: itens
       .filter((it) => Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0)
       .map((it) => ({
@@ -141,7 +236,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
         ...(numOrNull(it.preco_unitario) != null ? { preco_unitario: numOrNull(it.preco_unitario) } : {}),
         ...(numOrNull(it.desconto_unitario) != null ? { desconto_unitario: numOrNull(it.desconto_unitario) } : {}),
       })),
-  }), [partnerId, partnerName, observacao, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, itens]);
+  }), [partnerId, partnerName, observacao, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, itens, promissoriaDatas]);
 
   const updateOrder = useCallback(async (orderId, payloadBase) => {
     const body = {
@@ -155,6 +250,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       parcelado: parcelado,
       numero_promissorias: Number(numeroPromissorias) || 1,
       data_primeira_promissoria: dataPrimeiraPromissoria || null,
+      promissoria_datas: payloadBase.promissoria_datas || [],
       itens: payloadBase.itens,
     };
     return updateOrderService(editingOrder?.id ?? orderId, body);
@@ -255,6 +351,9 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     productModalIndex, setProductModalIndex,
     // promissórias
     numeroPromissorias, setNumeroPromissorias, dataPrimeiraPromissoria, setDataPrimeiraPromissoria, valorPorPromissoria,
+    frequenciaPromissorias, setFrequenciaPromissorias, intervaloDiasPromissorias, setIntervaloDiasPromissorias,
+    promissoriaDatas, setPromissoriaDatas,
+    promissoriasMeta,
     // helpers
     computeItemTotal, computeOrderTotalEstimate,
     // fetchers

@@ -19,7 +19,20 @@ async function getPedido(req, res) {
       text: `SELECT i.*, p.nome AS produto_nome, p.codigo_barras FROM pedido_itens i JOIN produtos p ON p.id = i.produto_id WHERE i.pedido_id = $1 ORDER BY i.id`,
       values: [id],
     });
-    return res.status(200).json({ ...head.rows[0], itens: itens.rows });
+    // Attach promissorias schedule (same shape as list endpoint)
+    const promissorias = await database.query({
+      text: `SELECT id, pedido_id, seq,
+                    to_char(due_date, 'YYYY-MM-DD') AS due_date,
+                    amount, paid_at, pix_txid, pix_brcode,
+                    CASE 
+                      WHEN paid_at IS NOT NULL THEN 'PAGO'
+                      WHEN due_date < CURRENT_DATE THEN 'ATRASADO'
+                      ELSE 'PENDENTE'
+                    END AS status
+             FROM pedido_promissorias WHERE pedido_id = $1 ORDER BY seq`,
+      values: [id],
+    });
+    return res.status(200).json({ ...head.rows[0], itens: itens.rows, promissorias: promissorias.rows });
   } catch (e) {
     console.error("GET /pedidos/:id error", e);
     if (isRelationMissing(e)) return res.status(503).json({ error: "Schema not migrated (pedidos/pedido_itens missing)", dependency: "database", code: e.code, action: "Run migrations" });
@@ -161,16 +174,26 @@ async function putPedido(req, res) {
           if (!anyPaid.rows.length) {
             // apaga cronograma atual
             await client.query({ text: `DELETE FROM pedido_promissorias WHERE pedido_id = $1`, values: [id] });
-            const baseDate = firstDate ? parseDateYMD(firstDate) : new Date();
-            const norm = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
             const amt = Number(vpp.toFixed(2));
-            for (let i = 0; i < np; i++) {
-              const due = new Date(norm);
-              due.setMonth(due.getMonth() + i);
-              await client.query({
-                text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
-                values: [id, i + 1, formatDateYMD(due), amt],
-              });
+            const datas = Array.isArray(b.promissoria_datas) ? b.promissoria_datas.filter((s) => /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s))) : [];
+            if (datas.length >= np) {
+              for (let i = 0; i < np; i++) {
+                await client.query({
+                  text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
+                  values: [id, i + 1, datas[i], amt],
+                });
+              }
+            } else {
+              const baseDate = firstDate ? parseDateYMD(firstDate) : new Date();
+              const norm = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+              for (let i = 0; i < np; i++) {
+                const due = new Date(norm);
+                due.setMonth(due.getMonth() + i);
+                await client.query({
+                  text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
+                  values: [id, i + 1, formatDateYMD(due), amt],
+                });
+              }
             }
           }
         } else {

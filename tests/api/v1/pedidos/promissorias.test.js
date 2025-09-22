@@ -56,12 +56,12 @@ describe('API Pedidos - Promissórias', () => {
     });
     produto = produtoData;
 
-    // Semear estoque com uma COMPRA (10 unidades para todos os testes)
+    // Semear estoque com uma COMPRA (estoque alto para todos os testes)
     await api('POST', '/api/v1/pedidos', {
       tipo: 'COMPRA',
       partner_entity_id: fornecedor.id,
       itens: [
-        { produto_id: produto.id, quantidade: 10, preco_unitario: 100.00, desconto_unitario: 0 }
+        { produto_id: produto.id, quantidade: 50, preco_unitario: 100.00, desconto_unitario: 0 }
       ]
     });
   });
@@ -131,6 +131,36 @@ describe('API Pedidos - Promissórias', () => {
 
     expect(promissorias[1].due_date).toBe('2025-11-01');
     expect(promissorias[2].due_date).toBe('2025-12-01');
+  });
+
+  test('deve respeitar cronograma manual (promissoria_datas) no POST', async () => {
+    const datas = ['2025-12-05', '2026-01-10', '2026-02-15'];
+    const { data: pedido } = await api('POST', '/api/v1/pedidos', {
+      tipo: 'VENDA',
+      partner_entity_id: cliente.id,
+      numero_promissorias: 3,
+      data_primeira_promissoria: '2025-12-05',
+      promissoria_datas: datas,
+      itens: [{ produto_id: produto.id, quantidade: 1, preco_unitario: 300 }]
+    });
+
+    const { data: promissorias } = await api('GET', `/api/v1/pedidos/${pedido.id}/promissorias`);
+    expect(promissorias.map(p => p.due_date)).toEqual(datas);
+  });
+
+  test('PUT deve aceitar promissoria_datas e regenerar cronograma quando nenhuma parcela foi paga', async () => {
+    const { data: pedido } = await api('POST', '/api/v1/pedidos', {
+      tipo: 'VENDA',
+      partner_entity_id: cliente.id,
+      numero_promissorias: 2,
+      data_primeira_promissoria: '2025-09-25',
+      itens: [{ produto_id: produto.id, quantidade: 1, preco_unitario: 200 }]
+    });
+
+    const novasDatas = ['2025-10-20', '2025-11-20'];
+    await api('PUT', `/api/v1/pedidos/${pedido.id}`, { promissoria_datas: novasDatas, numero_promissorias: 2 });
+    const { data: promissorias } = await api('GET', `/api/v1/pedidos/${pedido.id}/promissorias`);
+    expect(promissorias.map(p => p.due_date)).toEqual(novasDatas);
   });
 
   test('deve gerar PIX para promissória', async () => {
@@ -217,6 +247,13 @@ describe('API Pedidos - Promissórias', () => {
   });
 
   test('deve retornar 404 para promissória inexistente', async () => {
+    // Repor estoque para evitar flake por falta de saldo devido a testes anteriores
+    await api('POST', '/api/v1/pedidos', {
+      tipo: 'COMPRA',
+      partner_entity_id: fornecedor.id,
+      itens: [{ produto_id: produto.id, quantidade: 2, preco_unitario: 100 }]
+    });
+
     const { data: pedido } = await api('POST', '/api/v1/pedidos', {
       tipo: 'VENDA',
       partner_entity_id: cliente.id,
@@ -226,5 +263,48 @@ describe('API Pedidos - Promissórias', () => {
 
     const { status } = await api('POST', `/api/v1/pedidos/${pedido.id}/promissorias/99?action=pix`, {}, false);
     expect(status).toBe(404);
+  });
+
+  test('GET /pedidos/:id deve incluir promissorias com status e campos principais', async () => {
+    const { data: pedido } = await api('POST', '/api/v1/pedidos', {
+      tipo: 'VENDA',
+      partner_entity_id: cliente.id,
+      numero_promissorias: 2,
+      data_primeira_promissoria: '2025-12-01',
+      itens: [{ produto_id: produto.id, quantidade: 1, preco_unitario: 100 }]
+    });
+
+    const { data: full } = await api('GET', `/api/v1/pedidos/${pedido.id}`);
+    expect(Array.isArray(full.promissorias)).toBe(true);
+    expect(full.promissorias.length).toBe(2);
+    expect(full.promissorias[0]).toHaveProperty('seq');
+    expect(full.promissorias[0]).toHaveProperty('due_date');
+    expect(full.promissorias[0]).toHaveProperty('amount');
+    expect(['PENDENTE', 'ATRASADO', 'PAGO']).toContain(full.promissorias[0].status);
+  });
+
+  test('PUT com promissoria_datas após pagar 1ª parcela não altera parcela paga', async () => {
+    const { data: pedido } = await api('POST', '/api/v1/pedidos', {
+      tipo: 'VENDA',
+      partner_entity_id: cliente.id,
+      numero_promissorias: 2,
+      data_primeira_promissoria: '2025-11-10',
+      itens: [{ produto_id: produto.id, quantidade: 1, preco_unitario: 200 }]
+    });
+
+    // Pagar a primeira parcela
+    await api('POST', `/api/v1/pedidos/${pedido.id}/promissorias/1?action=pay`);
+    const before = await api('GET', `/api/v1/pedidos/${pedido.id}/promissorias`);
+    const paidDate = before.data[0].due_date;
+
+    // Tentar atualizar cronograma manual
+    const novas = ['2025-12-20', '2026-01-20'];
+    await api('PUT', `/api/v1/pedidos/${pedido.id}`, { promissoria_datas: novas, numero_promissorias: 2 });
+
+    const after = await api('GET', `/api/v1/pedidos/${pedido.id}/promissorias`);
+    expect(after.data.length).toBe(2);
+    // Primeira continua paga e mantém data original
+    expect(after.data[0].status).toBe('PAGO');
+    expect(after.data[0].due_date).toBe(paidDate);
   });
 });

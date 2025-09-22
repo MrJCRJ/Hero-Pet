@@ -16,13 +16,16 @@ export function PedidoFormView(props) {
     showPartnerModal, setShowPartnerModal,
     // datas e flags
     dataEmissao, setDataEmissao, dataEntrega, setDataEntrega, observacao, setObservacao,
-    temNotaFiscal, setTemNotaFiscal, parcelado, setParcelado,
+    parcelado, setParcelado,
     // itens
     itens, setItens, updateItem, addItem, removeItem, originalItens,
     getItemChanges, getItemDiffClass, getItemDiffIcon,
     productModalIndex, setProductModalIndex,
     // promissórias
     numeroPromissorias, setNumeroPromissorias, dataPrimeiraPromissoria, setDataPrimeiraPromissoria, valorPorPromissoria,
+    frequenciaPromissorias, setFrequenciaPromissorias, intervaloDiasPromissorias, setIntervaloDiasPromissorias,
+    promissoriaDatas, setPromissoriaDatas,
+    promissoriasMeta,
     // helpers
     computeItemTotal, computeOrderTotalEstimate,
     // fetchers
@@ -34,6 +37,12 @@ export function PedidoFormView(props) {
     // services
     fetchSaldoService,
   } = props;
+
+  // Handlers estáveis
+  const handleNumeroPromissoriasChange = React.useCallback((n) => {
+    setNumeroPromissorias(n);
+    // O controller recalcula valorPorPromissoria em efeito, então não precisamos setar aqui
+  }, [setNumeroPromissorias]);
 
   return (
     <FormContainer title="Pedido (MVP)" onSubmit={handleSubmit}>
@@ -55,10 +64,7 @@ export function PedidoFormView(props) {
         onObservacaoChange={setObservacao}
         dataEntrega={dataEntrega}
         onDataEntregaChange={setDataEntrega}
-        temNotaFiscal={temNotaFiscal}
-        onTemNotaFiscalChange={setTemNotaFiscal}
-        parcelado={parcelado}
-        onParceladoChange={setParcelado}
+
         showPartnerModal={showPartnerModal}
         onShowPartnerModal={setShowPartnerModal}
         fetchEntities={fetchEntities}
@@ -91,16 +97,18 @@ export function PedidoFormView(props) {
         parcelado={parcelado}
         onParceladoChange={setParcelado}
         numeroPromissorias={numeroPromissorias}
-        onNumeroPromissoriasChange={(n, valorCalc) => {
-          setNumeroPromissorias(n);
-          if (Number.isFinite(Number(valorCalc))) {
-            // o controller recalcula em efeito
-          }
-        }}
+        onNumeroPromissoriasChange={handleNumeroPromissoriasChange}
         dataPrimeiraPromissoria={dataPrimeiraPromissoria}
         onDataPrimeiraPromissoriasChange={setDataPrimeiraPromissoria}
         valorPorPromissoria={valorPorPromissoria}
         totalLiquido={computeOrderTotalEstimate()}
+        frequenciaPromissorias={frequenciaPromissorias}
+        onFrequenciaPromissoriasChange={setFrequenciaPromissorias}
+        intervaloDiasPromissorias={intervaloDiasPromissorias}
+        onIntervaloDiasPromissoriasChange={setIntervaloDiasPromissorias}
+        promissoriaDatas={promissoriaDatas}
+        onPromissoriaDatasChange={setPromissoriaDatas}
+        promissoriasMeta={promissoriasMeta}
       />
 
       <PedidoFormActions

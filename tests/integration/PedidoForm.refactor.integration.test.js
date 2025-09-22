@@ -162,4 +162,60 @@ describe('PedidoForm Refatoração - Integração', () => {
     await user.type(dataInput, '2024-12-31');
     expect(dataInput).toHaveValue('2024-12-31');
   });
+
+  test('cronograma: travar manual e mostrar inputs + badge PAGO + confirmar ao editar paga', async () => {
+    const user = userEvent.setup();
+
+    const editingOrder = {
+      id: 123,
+      tipo: 'VENDA',
+      parcelado: true,
+      numero_promissorias: 3,
+      data_primeira_promissoria: '2025-10-01',
+      status: 'confirmado',
+      itens: [],
+      promissorias: [
+        { seq: 1, due_date: '2025-10-01', amount: '100.00', paid_at: '2025-10-05' },
+        { seq: 2, due_date: '2000-01-01', amount: '100.00', paid_at: null }, // atrasado
+        { seq: 3, due_date: '2099-12-31', amount: '100.00', paid_at: null },
+      ],
+    };
+
+    render(
+      <ComponentWrapper>
+        <PedidoForm editingOrder={editingOrder} />
+      </ComponentWrapper>
+    );
+
+    // Seção de cronograma deve existir e mostrar badges
+    expect(screen.getByText('Cronograma de Vencimentos')).toBeInTheDocument();
+    expect(screen.getAllByText('PAGO')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('ATRASADO')[0]).toBeInTheDocument();
+
+    // Travar manual usando o botão
+    const lockBtn = screen.getByRole('button', { name: /Usar cronograma manual atual/i });
+    await user.click(lockBtn);
+
+    // Deve haver inputs de data preenchidos com as 3 datas
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue('2025-10-01').length).toBeGreaterThan(0);
+      expect(screen.getAllByDisplayValue('2000-01-01').length).toBeGreaterThan(0);
+      expect(screen.getAllByDisplayValue('2099-12-31').length).toBeGreaterThan(0);
+    });
+
+    // Ao tentar editar a 1ª (paga), deve exibir alerta informativo (sem bloquear)
+    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => { });
+    const paidInput = screen.getAllByDisplayValue('2025-10-01')[0];
+    await user.clear(paidInput);
+    await user.type(paidInput, '2025-10-10');
+    expect(alertSpy).toHaveBeenCalled();
+    // A alteração deve persistir mesmo sendo parcela paga
+    expect(paidInput).toHaveValue('2025-10-10');
+
+    // Edição subsequente continua permitida
+    await user.clear(paidInput);
+    await user.type(paidInput, '2025-10-15');
+    expect(paidInput).toHaveValue('2025-10-15');
+    alertSpy.mockRestore();
+  });
 });

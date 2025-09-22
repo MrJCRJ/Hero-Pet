@@ -15,13 +15,16 @@ export function PedidoForm(props) {
     showPartnerModal, setShowPartnerModal,
     // datas e flags
     dataEmissao, setDataEmissao, dataEntrega, setDataEntrega, observacao, setObservacao,
-    temNotaFiscal, setTemNotaFiscal, parcelado, setParcelado,
+    parcelado, setParcelado,
     // itens
     itens, setItens, updateItem, addItem, removeItem, originalItens,
     getItemChanges, getItemDiffClass, getItemDiffIcon,
     productModalIndex, setProductModalIndex,
     // promissórias
     numeroPromissorias, setNumeroPromissorias, dataPrimeiraPromissoria, setDataPrimeiraPromissoria, valorPorPromissoria,
+    frequenciaPromissorias, setFrequenciaPromissorias, intervaloDiasPromissorias, setIntervaloDiasPromissorias,
+    promissoriaDatas, setPromissoriaDatas,
+    promissoriasMeta,
     // helpers
     computeItemTotal, computeOrderTotalEstimate,
     // fetchers
@@ -60,8 +63,6 @@ export function PedidoForm(props) {
       setDataEntrega={setDataEntrega}
       observacao={observacao}
       setObservacao={setObservacao}
-      temNotaFiscal={temNotaFiscal}
-      setTemNotaFiscal={setTemNotaFiscal}
       parcelado={parcelado}
       setParcelado={setParcelado}
       // itens
@@ -82,6 +83,13 @@ export function PedidoForm(props) {
       dataPrimeiraPromissoria={dataPrimeiraPromissoria}
       setDataPrimeiraPromissoria={setDataPrimeiraPromissoria}
       valorPorPromissoria={valorPorPromissoria}
+      frequenciaPromissorias={frequenciaPromissorias}
+      setFrequenciaPromissorias={setFrequenciaPromissorias}
+      intervaloDiasPromissorias={intervaloDiasPromissorias}
+      setIntervaloDiasPromissorias={setIntervaloDiasPromissorias}
+      promissoriaDatas={promissoriaDatas}
+      setPromissoriaDatas={setPromissoriaDatas}
+      promissoriasMeta={promissoriasMeta}
       // helpers
       computeItemTotal={computeItemTotal}
       computeOrderTotalEstimate={computeOrderTotalEstimate}

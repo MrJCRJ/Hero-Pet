@@ -14,10 +14,6 @@ export function PedidoFormHeader({
   onObservacaoChange,
   dataEntrega,
   onDataEntregaChange,
-  temNotaFiscal,
-  onTemNotaFiscalChange,
-  parcelado,
-  onParceladoChange,
   showPartnerModal,
   onShowPartnerModal,
   fetchEntities,
@@ -74,14 +70,6 @@ export function PedidoFormHeader({
             onChange={(e) => onDataEntregaChange(e.target.value)}
           />
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={temNotaFiscal} onChange={(e) => onTemNotaFiscalChange(e.target.checked)} />
-          Tem Nota Fiscal
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={parcelado} onChange={(e) => onParceladoChange(e.target.checked)} />
-          Parcelado
-        </label>
         <div className="md:col-span-3">
           <FormField
             label="Observação"
