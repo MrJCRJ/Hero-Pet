@@ -124,7 +124,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                     : "-"}
                 </td>
                 <td className="px-3 py-2 text-center">
-                  {p.tem_nota_fiscal && p.tipo === "VENDA" ? (
+                  {p.tipo === "VENDA" && p.tem_nota_fiscal ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -145,7 +145,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                   )}
                 </td>
                 <td className="px-3 py-2 text-center">
-                  {p.parcelado ? (
+                  {p.tipo === "VENDA" && p.parcelado ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -171,17 +171,17 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                       p.total_liquido != null ? Number(p.total_liquido) : NaN;
                     const totalFmt = Number.isFinite(n)
                       ? n.toLocaleString(undefined, {
-                          style: "currency",
-                          currency: "BRL",
-                        })
+                        style: "currency",
+                        currency: "BRL",
+                      })
                       : "-";
                     const pago =
                       p.total_pago != null ? Number(p.total_pago) : 0;
                     const pagoFmt = Number.isFinite(pago)
                       ? pago.toLocaleString(undefined, {
-                          style: "currency",
-                          currency: "BRL",
-                        })
+                        style: "currency",
+                        currency: "BRL",
+                      })
                       : "R$ 0,00";
                     return (
                       <div className="text-right">
@@ -315,7 +315,7 @@ export function OrdersManager({ limit = 20 }) {
   );
 }
 
-function PromissoriasDots({ pedidoId }) {
+function PromissoriasDots({ pedidoId, count }) {
   const [rows, setRows] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(null); // seq da promissória com menu aberto
@@ -465,8 +465,19 @@ function PromissoriasDots({ pedidoId }) {
   };
 
   if (loading) return <span className="text-xs text-gray-400">...</span>;
-  if (!rows || rows.length === 0)
+  if (!rows || rows.length === 0) {
+    const n = Math.max(0, Number(count) || 0);
+    if (n >= 1) {
+      return (
+        <div className="inline-flex gap-1" title={`${n} parcela(s)`}>
+          {Array.from({ length: n }).map((_, i) => (
+            <span key={i} className="inline-block w-2.5 h-2.5 rounded-full bg-yellow-500" />
+          ))}
+        </div>
+      );
+    }
     return <span className="text-gray-400">-</span>;
+  }
 
   return (
     <div className="relative inline-flex gap-1">
