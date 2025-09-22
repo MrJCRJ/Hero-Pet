@@ -1,0 +1,185 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Jest - produtos put/delete and movimentos GET",
+      "type": "shell",
+      "command": "npm test --silent -- tests/api/v1/produtos/put-delete.test.js tests/api/v1/estoque/get-movimentos.test.js",
+      "isBackground": false,
+      "group": "build"
+    },
+    {
+      "label": "Run Jest targeted",
+      "type": "shell",
+      "command": "npm test -- tests/api/v1/produtos/put-delete.test.js tests/api/v1/estoque/get-movimentos.test.js",
+      "isBackground": false,
+      "group": "build"
+    },
+    {
+      "label": "Run Jest - pagination/meta smoke",
+      "type": "shell",
+      "command": "npm test -- -t \"/api/v1/produtos.*GET|/api/v1/estoque/movimentos.*GET\"",
+      "isBackground": false,
+      "group": "build"
+    },
+    {
+      "label": "Run Jest - new pagination tests (none yet, smoke existing)",
+      "type": "shell",
+      "command": "npm test -- -t \"GET \\/api\\/v1\\/produtos|GET \\/api\\/v1\\/estoque\\/movimentos\"",
+      "isBackground": false,
+      "group": "build"
+    },
+    {
+      "label": "Run Jest - new pagination/meta tests",
+      "type": "shell",
+      "command": "npm test -- tests/api/v1/produtos/pagination-meta.test.js tests/api/v1/estoque/get-movimentos-filters.test.js",
+      "isBackground": false,
+      "group": "build"
+    },
+    {
+      "label": "Run Jest - pagination/meta new tests only",
+      "type": "shell",
+      "command": "npm test -- tests/api/v1/produtos/pagination-meta.test.js tests/api/v1/estoque/get-movimentos-filters.test.js",
+      "isBackground": false,
+      "group": "build"
+    },
+    {
+      "label": "Run Jest single test",
+      "type": "shell",
+      "command": "npm",
+      "args": ["test", "--", "tests/api/v1/status/get.test.js", "-s"],
+      "isBackground": false,
+      "problemMatcher": ["$eslint-stylish"],
+      "group": "test"
+    },
+    {
+      "label": "Run Jest single test (no -s)",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test",
+        "--",
+        "tests/api/v1/status/get.test.js",
+        "--runInBand",
+        "--verbose",
+        "--detectOpenHandles"
+      ],
+      "isBackground": false,
+      "problemMatcher": ["$eslint-stylish"],
+      "group": "test"
+    },
+    {
+      "label": "Run Jest migrations tests",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test",
+        "--",
+        "tests/api/v1/migrations/get.test.js",
+        "tests/api/v1/migrations/post.test.js",
+        "--runInBand",
+        "--verbose",
+        "--detectOpenHandles"
+      ],
+      "isBackground": false,
+      "problemMatcher": ["$eslint-stylish"],
+      "group": "test"
+    },
+    {
+      "label": "Run Jest API smoke (status+migrations)",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test",
+        "--",
+        "tests/api/v1/status/get.test.js",
+        "tests/api/v1/migrations/get.test.js",
+        "tests/api/v1/migrations/post.test.js",
+        "--runInBand",
+        "--verbose",
+        "--detectOpenHandles"
+      ],
+      "isBackground": false,
+      "problemMatcher": ["$eslint-stylish"],
+      "group": "test"
+    },
+    {
+      "label": "Run NF PDF test",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test",
+        "--",
+        "tests/api/v1/pedidos/pdf.test.js",
+        "--runInBand",
+        "--verbose",
+        "--detectOpenHandles"
+      ],
+      "isBackground": false,
+      "problemMatcher": ["$eslint-stylish"],
+      "group": "test"
+    },
+    {
+      "label": "Run Promissorias tests",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test",
+        "--",
+        "tests/api/v1/pedidos/promissorias.test.js",
+        "--runInBand",
+        "--verbose",
+        "--detectOpenHandles"
+      ],
+      "isBackground": false,
+      "problemMatcher": ["$eslint-stylish"],
+      "group": "test"
+    },
+    {
+      "label": "Run migrations and PDF tests",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test",
+        "--",
+        "tests/api/v1/migrations",
+        "tests/api/v1/pedidos/pdf.test.js",
+        "--runInBand",
+        "--verbose",
+        "--detectOpenHandles"
+      ],
+      "isBackground": false,
+      "group": "test"
+    },
+    {
+      "label": "Re-run migrations and PDF tests",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test",
+        "--",
+        "tests/api/v1/migrations",
+        "tests/api/v1/pedidos/pdf.test.js",
+        "--runInBand",
+        "--verbose",
+        "--detectOpenHandles"
+      ],
+      "isBackground": false,
+      "group": "test"
+    },
+    {
+      "label": "Run UI integration test for PedidoForm",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test",
+        "--",
+        "tests/integration/PedidoForm.refactor.integration.test.js",
+        "--runInBand",
+        "--verbose"
+      ],
+      "isBackground": false,
+      "group": "test"
+    }
+  ]
+}

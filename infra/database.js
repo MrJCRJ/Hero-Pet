@@ -26,6 +26,8 @@ async function query(queryObject) {
 const database = {
   query,
   getNewClient,
+  getClient,
+  safeRollback,
 };
 
 export default database;
@@ -52,4 +54,18 @@ function getSSLValues() {
   }
 
   return process.env.NODE_ENV === "production" ? true : false;
+}
+
+// retorna um client conectado para transações manuais (BEGIN/COMMIT/ROLLBACK)
+async function getClient() {
+  return await getNewClient();
+}
+
+async function safeRollback(client) {
+  if (!client) return;
+  try {
+    await client.query("ROLLBACK");
+  } catch (_) {
+    // noop
+  }
 }

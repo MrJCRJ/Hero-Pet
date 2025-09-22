@@ -1,31 +1,146 @@
 import React from "react";
-import { Button } from "./ui/Button";
-import { FormContainer, FormField } from "./ui/Form";
+import { PedidoFormView } from "./pedido/PedidoFormView";
+import { usePedidoFormController } from "./pedido/usePedidoFormController";
+import { fetchSaldo as fetchSaldoService } from "./pedido/service";
 
-export function PedidoForm() {
+export function PedidoForm(props) {
+  const controller = usePedidoFormController(props);
+  const {
+    // estado geral
+    submitting,
+    canSubmit,
+    created,
+    clearForm,
+    // tipo e parceiro
+    tipo,
+    handleTipoChange,
+    originalTipo,
+    pendingTipo,
+    confirmTipoChange,
+    cancelTipoChange,
+    showTypeChangeModal,
+    partnerId,
+    partnerLabel,
+    setPartnerId,
+    setPartnerLabel,
+    setPartnerName,
+    showPartnerModal,
+    setShowPartnerModal,
+    // datas e flags
+    dataEmissao,
+    setDataEmissao,
+    dataEntrega,
+    setDataEntrega,
+    observacao,
+    setObservacao,
+    parcelado,
+    setParcelado,
+    // itens
+    itens,
+    setItens,
+    updateItem,
+    addItem,
+    removeItem,
+    originalItens,
+    getItemChanges,
+    getItemDiffClass,
+    getItemDiffIcon,
+    productModalIndex,
+    setProductModalIndex,
+    // promissórias
+    numeroPromissorias,
+    setNumeroPromissorias,
+    dataPrimeiraPromissoria,
+    setDataPrimeiraPromissoria,
+    valorPorPromissoria,
+    frequenciaPromissorias,
+    setFrequenciaPromissorias,
+    intervaloDiasPromissorias,
+    setIntervaloDiasPromissorias,
+    promissoriaDatas,
+    setPromissoriaDatas,
+    promissoriasMeta,
+    // helpers
+    computeItemTotal,
+    computeOrderTotalEstimate,
+    // fetchers
+    fetchEntities,
+    fetchProdutos,
+    // ações
+    handleSubmit,
+    handleDelete,
+    editingOrder,
+  } = controller;
+
   return (
-    <FormContainer title="Formulário de Pedido">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <FormField label="ID do Cliente" name="clienteId" required />
-        <div className="md:col-span-2">
-          <FormField label="Produto" name="produto" required />
-        </div>
-        <FormField
-          label="Quantidade"
-          name="quantidade"
-          type="number"
-          min="1"
-          required
-        />
-        <div className="md:col-span-2">
-          <FormField label="Observação" name="observacao" />
-        </div>
-      </div>
-      <div className="flex justify-end mt-8">
-        <Button type="submit" variant="primary" size="sm" fullWidth={false}>
-          Enviar
-        </Button>
-      </div>
-    </FormContainer>
+    <PedidoFormView
+      // estado geral
+      submitting={submitting}
+      canSubmit={canSubmit}
+      created={created}
+      clearForm={clearForm}
+      // tipo e parceiro
+      tipo={tipo}
+      handleTipoChange={handleTipoChange}
+      originalTipo={originalTipo}
+      pendingTipo={pendingTipo}
+      confirmTipoChange={confirmTipoChange}
+      cancelTipoChange={cancelTipoChange}
+      showTypeChangeModal={showTypeChangeModal}
+      partnerId={partnerId}
+      partnerLabel={partnerLabel}
+      setPartnerId={setPartnerId}
+      setPartnerLabel={setPartnerLabel}
+      setPartnerName={setPartnerName}
+      showPartnerModal={showPartnerModal}
+      setShowPartnerModal={setShowPartnerModal}
+      // datas e flags
+      dataEmissao={dataEmissao}
+      setDataEmissao={setDataEmissao}
+      dataEntrega={dataEntrega}
+      setDataEntrega={setDataEntrega}
+      observacao={observacao}
+      setObservacao={setObservacao}
+      parcelado={parcelado}
+      setParcelado={setParcelado}
+      // itens
+      itens={itens}
+      setItens={setItens}
+      updateItem={updateItem}
+      addItem={addItem}
+      removeItem={removeItem}
+      originalItens={originalItens}
+      getItemChanges={getItemChanges}
+      getItemDiffClass={getItemDiffClass}
+      getItemDiffIcon={getItemDiffIcon}
+      productModalIndex={productModalIndex}
+      setProductModalIndex={setProductModalIndex}
+      // promissórias
+      numeroPromissorias={numeroPromissorias}
+      setNumeroPromissorias={setNumeroPromissorias}
+      dataPrimeiraPromissoria={dataPrimeiraPromissoria}
+      setDataPrimeiraPromissoria={setDataPrimeiraPromissoria}
+      valorPorPromissoria={valorPorPromissoria}
+      frequenciaPromissorias={frequenciaPromissorias}
+      setFrequenciaPromissorias={setFrequenciaPromissorias}
+      intervaloDiasPromissorias={intervaloDiasPromissorias}
+      setIntervaloDiasPromissorias={setIntervaloDiasPromissorias}
+      promissoriaDatas={promissoriaDatas}
+      setPromissoriaDatas={setPromissoriaDatas}
+      promissoriasMeta={promissoriasMeta}
+      // helpers
+      computeItemTotal={computeItemTotal}
+      computeOrderTotalEstimate={computeOrderTotalEstimate}
+      // fetchers
+      fetchEntities={fetchEntities}
+      fetchProdutos={fetchProdutos}
+      // ações
+      handleSubmit={handleSubmit}
+      handleDelete={handleDelete}
+      // externas
+      editingOrder={editingOrder}
+      // services
+      fetchSaldoService={fetchSaldoService}
+    />
   );
 }
