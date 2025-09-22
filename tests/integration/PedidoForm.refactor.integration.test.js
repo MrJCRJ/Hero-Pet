@@ -121,9 +121,7 @@ describe("PedidoForm Refatoração - Integração", () => {
     await user.clear(numero);
     await user.type(numero, "2");
     // Campo de data está sempre disponível agora
-    expect(
-      screen.getByLabelText("Data da 1ª Promissória"),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Data da 1ª Promissória")).toBeInTheDocument();
   });
 
   test("deve manter estado consistente entre componentes modulares", async () => {
@@ -158,9 +156,7 @@ describe("PedidoForm Refatoração - Integração", () => {
     const numero = screen.getByLabelText("Número de Promissórias");
     await user.clear(numero);
     await user.type(numero, "3");
-    expect(
-      screen.getByLabelText("Data da 1ª Promissória"),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Data da 1ª Promissória")).toBeInTheDocument();
     const dataInput = screen.getByLabelText("Data da 1ª Promissória");
     await user.clear(dataInput);
     await user.type(dataInput, "2024-12-31");
@@ -221,7 +217,7 @@ describe("PedidoForm Refatoração - Integração", () => {
     });
 
     // Ao tentar editar a 1ª (paga), deve exibir alerta informativo (sem bloquear)
-    const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => { });
+    const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
     const paidInput = screen.getAllByDisplayValue("2025-10-01")[0];
     await user.clear(paidInput);
     await user.type(paidInput, "2025-10-10");
