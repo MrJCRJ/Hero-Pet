@@ -19,6 +19,17 @@ export function PedidoFormItems({
   onSetProductModalIndex,
   fetchProdutos,
 }) {
+  const totalItens = React.useMemo(() => {
+    try {
+      return (itens || []).reduce((acc, it) => {
+        const t = computeItemTotal ? computeItemTotal(it) : null;
+        const n = t != null && Number.isFinite(Number(t)) ? Number(t) : 0;
+        return acc + n;
+      }, 0);
+    } catch (_) {
+      return 0;
+    }
+  }, [itens, computeItemTotal]);
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-2">
@@ -142,6 +153,13 @@ export function PedidoFormItems({
         ))}
       </div>
 
+      {/* Totalizador dos itens */}
+      <div className="flex justify-end mt-2">
+        <div className="text-right text-sm md:text-base font-semibold">
+          Total dos itens: R$ {Number(totalItens || 0).toFixed(2)}
+        </div>
+      </div>
+
       {/* Modal de seleção de produto */}
       {Number.isInteger(productModalIndex) && productModalIndex >= 0 && (
         <SelectionModal
@@ -258,7 +276,7 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
           <label className="block text-xs mb-1">Quantidade</label>
           <input
             type="number"
-            step="0.001"
+            step="1"
             className="w-full border rounded px-2 py-1"
             value={quantidade}
             onChange={(e) => setQuantidade(e.target.value)}
