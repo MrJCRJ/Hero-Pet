@@ -91,7 +91,7 @@ async function postPedido(req, res) {
 
     // Calcular valor por promissória se aplicável
     const numeroPromissorias = Number(b.numero_promissorias) || 1;
-    if (numeroPromissorias > 1 && totalLiquido > 0) {
+    if (numeroPromissorias >= 1 && totalLiquido > 0) {
       const valorPorPromissoria = totalLiquido / numeroPromissorias;
       await client.query({
         text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
@@ -100,7 +100,7 @@ async function postPedido(req, res) {
     }
 
     // (Re)gerar tabela de promissórias para o pedido recém criado
-    if (numeroPromissorias > 1 && totalLiquido > 0) {
+    if (numeroPromissorias >= 1 && totalLiquido > 0) {
       const amount = Number((totalLiquido / numeroPromissorias).toFixed(2));
       const datas = Array.isArray(b.promissoria_datas)
         ? b.promissoria_datas.filter((s) =>

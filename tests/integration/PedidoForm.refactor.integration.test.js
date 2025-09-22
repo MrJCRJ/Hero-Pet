@@ -85,7 +85,8 @@ describe("PedidoForm Refatoração - Integração", () => {
         <PedidoForm />
       </ComponentWrapper>,
     );
-    const combo = screen.getByRole("combobox");
+    // Há dois combobox: Tipo (primeiro) e Frequência (segundo)
+    const combo = screen.getAllByRole("combobox")[0];
     // valor inicial VENDA
     expect(combo).toHaveValue("VENDA");
     await user.selectOptions(combo, "COMPRA");
@@ -102,16 +103,13 @@ describe("PedidoForm Refatoração - Integração", () => {
         <PedidoForm />
       </ComponentWrapper>,
     );
-    // Ativar promissórias
-    const chk = screen.getByLabelText("Parcelar em Promissórias");
-    await user.click(chk);
     const numero = screen.getByLabelText("Número de Promissórias");
     await user.clear(numero);
     await user.type(numero, "3");
     expect(numero).toHaveValue(3);
   });
 
-  test("deve mostrar seção de promissórias quando número > 1", async () => {
+  test("deve mostrar seção de promissórias e campos principais", async () => {
     const user = userEvent.setup();
 
     render(
@@ -119,17 +117,11 @@ describe("PedidoForm Refatoração - Integração", () => {
         <PedidoForm />
       </ComponentWrapper>,
     );
-    // Ativar promissórias e definir 2+
-    await user.click(screen.getByLabelText("Parcelar em Promissórias"));
     const numero = screen.getByLabelText("Número de Promissórias");
     await user.clear(numero);
     await user.type(numero, "2");
-    // Campo de data deve aparecer
-    await waitFor(() => {
-      expect(
-        screen.getByLabelText("Data da 1ª Promissória"),
-      ).toBeInTheDocument();
-    });
+    // Campo de data está sempre disponível agora
+    expect(screen.getByLabelText("Data da 1ª Promissória")).toBeInTheDocument();
   });
 
   test("deve manter estado consistente entre componentes modulares", async () => {
@@ -141,13 +133,11 @@ describe("PedidoForm Refatoração - Integração", () => {
       </ComponentWrapper>,
     );
 
-    // Alterar tipo via combobox
-    const combo = screen.getByRole("combobox");
+    // Alterar tipo via combobox (primeiro select)
+    const combo = screen.getAllByRole("combobox")[0];
     await user.selectOptions(combo, "COMPRA");
     expect(combo).toHaveValue("COMPRA");
 
-    // Ativar promissórias e ajustar número
-    await user.click(screen.getByLabelText("Parcelar em Promissórias"));
     const numero = screen.getByLabelText("Número de Promissórias");
     await user.clear(numero);
     await user.type(numero, "4");
@@ -163,15 +153,10 @@ describe("PedidoForm Refatoração - Integração", () => {
       </ComponentWrapper>,
     );
 
-    await user.click(screen.getByLabelText("Parcelar em Promissórias"));
     const numero = screen.getByLabelText("Número de Promissórias");
     await user.clear(numero);
     await user.type(numero, "3");
-    await waitFor(() => {
-      expect(
-        screen.getByLabelText("Data da 1ª Promissória"),
-      ).toBeInTheDocument();
-    });
+    expect(screen.getByLabelText("Data da 1ª Promissória")).toBeInTheDocument();
     const dataInput = screen.getByLabelText("Data da 1ª Promissória");
     await user.clear(dataInput);
     await user.type(dataInput, "2024-12-31");

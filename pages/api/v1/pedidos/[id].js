@@ -27,7 +27,7 @@ async function getPedido(req, res) {
     const promissorias = await database.query({
       text: `SELECT id, pedido_id, seq,
                     to_char(due_date, 'YYYY-MM-DD') AS due_date,
-                    amount, paid_at, pix_txid, pix_brcode,
+                    amount, paid_at,
                     CASE 
                       WHEN paid_at IS NOT NULL THEN 'PAGO'
                       WHEN due_date < CURRENT_DATE THEN 'ATRASADO'
@@ -222,7 +222,7 @@ async function putPedido(req, res) {
       });
       const numeroPromissorias =
         Number(pedidoAtualizado.rows[0]?.numero_promissorias) || 1;
-      if (numeroPromissorias > 1 && totalLiquido > 0) {
+      if (numeroPromissorias >= 1 && totalLiquido > 0) {
         const valorPorPromissoria = totalLiquido / numeroPromissorias;
         await client.query({
           text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
@@ -241,7 +241,7 @@ async function putPedido(req, res) {
         const tl = Number(headNow.rows[0].total_liquido || 0);
         const np = Number(headNow.rows[0].numero_promissorias || 1);
         const firstDate = headNow.rows[0].data_primeira_promissoria;
-        if (np > 1 && tl > 0) {
+        if (np >= 1 && tl > 0) {
           const vpp = tl / np;
           await client.query({
             text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,

@@ -151,7 +151,6 @@ describe("API Pedidos - Promissórias", () => {
     expect(promissorias[0].amount).toBe("50.00");
     expect(promissorias[0].status).toBe("PENDENTE");
     expect(promissorias[0].paid_at).toBeNull();
-    expect(promissorias[0].pix_txid).toBeNull();
 
     expect(promissorias[1].due_date).toBe("2025-11-01");
     expect(promissorias[2].due_date).toBe("2025-12-01");
@@ -196,32 +195,7 @@ describe("API Pedidos - Promissórias", () => {
     expect(promissorias.map((p) => p.due_date)).toEqual(novasDatas);
   });
 
-  test("deve gerar PIX para promissória", async () => {
-    const { data: pedido } = await api("POST", "/api/v1/pedidos", {
-      tipo: "VENDA",
-      partner_entity_id: cliente.id,
-      numero_promissorias: 2,
-      data_primeira_promissoria: "2025-09-25",
-      itens: [{ produto_id: produto.id, quantidade: 1, preco_unitario: 200 }],
-    });
-
-    const { data: pixData } = await api(
-      "POST",
-      `/api/v1/pedidos/${pedido.id}/promissorias/1?action=pix`,
-    );
-
-    expect(pixData.txid).toMatch(/^PED\d+-SEQ1-\d+$/);
-    expect(pixData.brcode).toContain("00020126");
-    expect(pixData.brcode).toContain("10000"); // valor formatado 100.00 -> 10000
-
-    // Verificar se foi salvo
-    const { data: promissorias } = await api(
-      "GET",
-      `/api/v1/pedidos/${pedido.id}/promissorias`,
-    );
-    expect(promissorias[0].pix_txid).toBe(pixData.txid);
-    expect(promissorias[0].pix_brcode).toBe(pixData.brcode);
-  });
+  // teste de geração de PIX removido: funcionalidade descontinuada
 
   test("deve marcar promissória como paga", async () => {
     // Escolhe uma data de primeira promissória dois meses atrás para garantir que a 2a parcela já esteja vencida
@@ -294,29 +268,7 @@ describe("API Pedidos - Promissórias", () => {
     expect(result.alreadyPaid).toBe(true);
   });
 
-  test("deve retornar 404 para promissória inexistente", async () => {
-    // Repor estoque para evitar flake por falta de saldo devido a testes anteriores
-    await api("POST", "/api/v1/pedidos", {
-      tipo: "COMPRA",
-      partner_entity_id: fornecedor.id,
-      itens: [{ produto_id: produto.id, quantidade: 2, preco_unitario: 100 }],
-    });
-
-    const { data: pedido } = await api("POST", "/api/v1/pedidos", {
-      tipo: "VENDA",
-      partner_entity_id: cliente.id,
-      numero_promissorias: 2,
-      itens: [{ produto_id: produto.id, quantidade: 1, preco_unitario: 100 }],
-    });
-
-    const { status } = await api(
-      "POST",
-      `/api/v1/pedidos/${pedido.id}/promissorias/99?action=pix`,
-      {},
-      false,
-    );
-    expect(status).toBe(404);
-  });
+  // teste de action=pix removido: funcionalidade descontinuada
 
   test("GET /pedidos/:id deve incluir promissorias com status e campos principais", async () => {
     const { data: pedido } = await api("POST", "/api/v1/pedidos", {
