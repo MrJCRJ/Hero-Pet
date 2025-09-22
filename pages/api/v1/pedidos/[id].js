@@ -222,7 +222,7 @@ async function putPedido(req, res) {
       });
       const numeroPromissorias =
         Number(pedidoAtualizado.rows[0]?.numero_promissorias) || 1;
-      if (numeroPromissorias > 1 && totalLiquido > 0) {
+      if (numeroPromissorias >= 1 && totalLiquido > 0) {
         const valorPorPromissoria = totalLiquido / numeroPromissorias;
         await client.query({
           text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
@@ -241,7 +241,7 @@ async function putPedido(req, res) {
         const tl = Number(headNow.rows[0].total_liquido || 0);
         const np = Number(headNow.rows[0].numero_promissorias || 1);
         const firstDate = headNow.rows[0].data_primeira_promissoria;
-        if (np > 1 && tl > 0) {
+        if (np >= 1 && tl > 0) {
           const vpp = tl / np;
           await client.query({
             text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
@@ -262,8 +262,8 @@ async function putPedido(req, res) {
             const amt = Number(vpp.toFixed(2));
             const datas = Array.isArray(b.promissoria_datas)
               ? b.promissoria_datas.filter((s) =>
-                  /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
-                )
+                /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
+              )
               : [];
             if (datas.length >= np) {
               for (let i = 0; i < np; i++) {

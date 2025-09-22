@@ -56,10 +56,12 @@ async function getPromissoriasPDF(req, res) {
       return res
         .status(400)
         .json({ error: "Promissórias válidas apenas para pedidos de VENDA" });
-    if (!pedido.parcelado)
+    // Aceita PDF quando houver ao menos 1 promissória registrada/configurada
+    const numeroPromissorias = Number(pedido.numero_promissorias) || 0;
+    if (numeroPromissorias < 1)
       return res
         .status(400)
-        .json({ error: "Pedido não está parcelado em promissórias" });
+        .json({ error: "Pedido não possui promissórias" });
 
     // Buscar itens para fallback de total
     const itensQ = await database.query({

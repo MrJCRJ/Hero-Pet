@@ -90,7 +90,6 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
 
-  // confirmação não é mais usada (CRUD sem rascunhos)
 
   return (
     <div className="text-sm">
@@ -145,7 +144,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                   )}
                 </td>
                 <td className="px-3 py-2 text-center">
-                  {p.tipo === "VENDA" && p.parcelado ? (
+                  {p.tipo === "VENDA" && Number(p.numero_promissorias) >= 1 ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -469,10 +468,64 @@ function PromissoriasDots({ pedidoId, count }) {
     const n = Math.max(0, Number(count) || 0);
     if (n >= 1) {
       return (
-        <div className="inline-flex gap-1" title={`${n} parcela(s)`}>
+        <div className="relative inline-flex gap-1" title={`${n} parcela(s)`}>
           {Array.from({ length: n }).map((_, i) => (
-            <span key={i} className="inline-block w-2.5 h-2.5 rounded-full bg-yellow-500" />
+            <button
+              key={i}
+              type="button"
+              className="inline-block w-2.5 h-2.5 rounded-full bg-yellow-500 cursor-pointer hover:scale-110 transition-transform"
+              title={`Abrir parcela #${i + 1}`}
+              disabled={actionLoading}
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await reloadPromissorias();
+                } catch (e) {
+                  // fallback: erro ao recarregar promissórias (ignorado)
+                  console.debug("reloadPromissorias falhou", e);
+                }
+                setMenuOpen(i + 1);
+              }}
+            />
           ))}
+
+          {Number.isInteger(menuOpen) && (
+            <>
+              <div
+                className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 min-w-[160px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-3 py-2 text-xs opacity-70">
+                  Dados indisponíveis (ainda)
+                </div>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await reloadPromissorias();
+                    // mantém menu aberto; se rows carregar, o componente migra para o modo completo
+                  }}
+                  disabled={actionLoading}
+                  className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                >
+                  🔄 Recarregar parcelas
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(null);
+                  }}
+                  className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  ✖️ Fechar
+                </button>
+              </div>
+              {/* Clique fora para fechar menu */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setMenuOpen(null)}
+              />
+            </>
+          )}
         </div>
       );
     }
@@ -484,14 +537,20 @@ function PromissoriasDots({ pedidoId, count }) {
       {rows.map((r) => (
         <div key={r.seq} className="relative">
           <button
-            onClick={() => setMenuOpen(menuOpen === r.seq ? null : r.seq)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(menuOpen === r.seq ? null : r.seq);
+            }}
             title={`${r.status} • vence ${new Date(r.due_date).toLocaleDateString()} • ${Number(r.amount).toLocaleString(undefined, { style: "currency", currency: "BRL" })}${r.pix_txid ? " • PIX gerado" : ""}`}
             className={`inline-block w-2.5 h-2.5 rounded-full ${colorFor(r.status)} ${borderFor(r)} cursor-pointer hover:scale-110 transition-transform`}
             disabled={actionLoading}
           />
 
           {menuOpen === r.seq && (
-            <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 min-w-[120px]">
+            <div
+              className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 min-w-[120px]"
+              onClick={(e) => e.stopPropagation()}
+            >
               {r.status !== "PAGO" && (
                 <>
                   <button
