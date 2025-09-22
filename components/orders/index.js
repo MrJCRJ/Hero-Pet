@@ -92,12 +92,15 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
               <th className="text-center px-3 py-2">Promissórias</th>
               <th className="text-right px-3 py-2">Total</th>
               <th className="text-center px-3 py-2">Parcelas</th>
-              <th className="text-right px-3 py-2">Ações</th>
             </tr>
           </thead>
           <tbody>
             {data.map((p) => (
-              <tr key={p.id} className="border-t">
+              <tr
+                key={p.id}
+                className="border-t hover:bg-[var(--color-bg-secondary)] cursor-pointer"
+                onClick={() => onEdit && onEdit(p)}
+              >
                 <td className="px-3 py-2">{p.tipo}</td>
                 <td className="px-3 py-2">
                   <div
@@ -118,13 +121,15 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                       size="sm"
                       variant="outline"
                       fullWidth={false}
-                      onClick={() =>
+                      onClick={(e) => {
+                        e.stopPropagation();
+
                         window.open(
                           `/api/v1/pedidos/${p.id}/nf`,
                           "_blank",
                           "noopener",
-                        )
-                      }
+                        );
+                      }}
                       title="Baixar NF (PDF)"
                     >📄</Button>
                   ) : (
@@ -137,13 +142,15 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                       size="sm"
                       variant="outline"
                       fullWidth={false}
-                      onClick={() =>
+                      onClick={(e) => {
+                        e.stopPropagation();
+
                         window.open(
                           `/api/v1/pedidos/${p.id}/promissorias-pdf`,
                           "_blank",
                           "noopener",
-                        )
-                      }
+                        );
+                      }}
                       title="Baixar Promissórias (PDF)"
                     >📝</Button>
                   ) : (
@@ -191,30 +198,19 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                     onChanged={reload}
                   />
                 </td>
-                <td className="px-3 py-2 text-right">
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      size="sm"
-                      fullWidth={false}
-                      variant="outline"
-                      onClick={() => onEdit && onEdit(p)}
-                    >
-                      Editar
-                    </Button>
-                  </div>
-                </td>
+
               </tr>
             ))}
             {!loading && data.length === 0 && (
               <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
+                <td className="px-3 py-6 text-center opacity-70" colSpan={7}>
                   Nenhum pedido encontrado
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
+                <td className="px-3 py-6 text-center opacity-70" colSpan={7}>
                   Carregando...
                 </td>
               </tr>
