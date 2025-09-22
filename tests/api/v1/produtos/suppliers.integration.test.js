@@ -129,12 +129,16 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
     const list = await resp.json();
     const byName = Object.fromEntries(list.map((x) => [x.nome, x]));
 
-    expect(byName["Produto A"].suppliers).toEqual(expect.arrayContaining([pj1.id]));
+    expect(byName["Produto A"].suppliers).toEqual(
+      expect.arrayContaining([pj1.id]),
+    );
     expect(byName["Produto C"].suppliers).toEqual(
       expect.arrayContaining([pj1.id, pj2.id]),
     );
     expect(Array.isArray(byName["Produto B"].supplier_labels)).toBe(true);
-    expect(byName["Produto C"].supplier_labels.some((s) => s.name.includes("PJ 2"))).toBe(true);
+    expect(
+      byName["Produto C"].supplier_labels.some((s) => s.name.includes("PJ 2")),
+    ).toBe(true);
   });
 
   test("GET filtra por supplier_id (legacy ou junção)", async () => {
@@ -168,28 +172,22 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
   });
 
   test("PUT não permite remover todos os fornecedores (regra mínima)", async () => {
-    const resp = await fetch(
-      `http://localhost:3000/api/v1/produtos/${pA.id}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fornecedor_id: null, suppliers: [] }),
-      },
-    );
+    const resp = await fetch(`http://localhost:3000/api/v1/produtos/${pA.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fornecedor_id: null, suppliers: [] }),
+    });
     expect(resp.status).toBe(400);
     const body = await resp.json();
     expect(body).toHaveProperty("error");
   });
 
   test("PUT atualiza suppliers corretamente (troca pj1 -> pj2)", async () => {
-    const resp = await fetch(
-      `http://localhost:3000/api/v1/produtos/${pA.id}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fornecedor_id: null, suppliers: [pj2.id] }),
-      },
-    );
+    const resp = await fetch(`http://localhost:3000/api/v1/produtos/${pA.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fornecedor_id: null, suppliers: [pj2.id] }),
+    });
     expect(resp.status).toBe(200);
     const updated = await resp.json();
     expect(updated).toHaveProperty("id", pA.id);

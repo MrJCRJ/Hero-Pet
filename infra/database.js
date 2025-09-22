@@ -104,7 +104,10 @@ async function ensureMigrationsIfEnabledOnce(client) {
       MIGRATIONS_ENSURED = true;
     } catch (err) {
       // Não derruba a app por causa do auto-apply: mantém comportamento opcional
-      console.warn("Auto-migrate falhou (continuando sem interromper):", err?.message || err);
+      console.warn(
+        "Auto-migrate falhou (continuando sem interromper):",
+        err?.message || err,
+      );
     } finally {
       MIGRATIONS_ENSURING = null;
     }
