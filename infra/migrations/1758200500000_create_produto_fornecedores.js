@@ -8,24 +8,28 @@ exports.up = (pgm) => {
     produto_id: {
       type: "integer",
       notNull: true,
-      references: 'produtos',
-      onDelete: 'cascade',
+      references: "produtos",
+      onDelete: "cascade",
     },
     entity_id: {
       type: "integer",
       notNull: true,
-      references: 'entities',
-      onDelete: 'restrict',
+      references: "entities",
+      onDelete: "restrict",
     },
-    created_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
+    created_at: {
+      type: "timestamptz",
+      notNull: true,
+      default: pgm.func("NOW()"),
+    },
   });
-  pgm.addConstraint('produto_fornecedores', 'uniq_produto_fornecedor', {
-    unique: ['produto_id', 'entity_id'],
+  pgm.addConstraint("produto_fornecedores", "uniq_produto_fornecedor", {
+    unique: ["produto_id", "entity_id"],
   });
-  pgm.createIndex('produto_fornecedores', ['produto_id']);
-  pgm.createIndex('produto_fornecedores', ['entity_id']);
+  pgm.createIndex("produto_fornecedores", ["produto_id"]);
+  pgm.createIndex("produto_fornecedores", ["entity_id"]);
 };
 
 exports.down = (pgm) => {
-  pgm.dropTable('produto_fornecedores');
+  pgm.dropTable("produto_fornecedores");
 };

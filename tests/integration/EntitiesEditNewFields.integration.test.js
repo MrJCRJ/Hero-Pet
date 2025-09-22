@@ -53,8 +53,8 @@ describe("EntitiesManager novos campos (numero/complemento/ativo)", () => {
     const cancelBtn = screen.queryByRole("button", { name: /cancelar/i });
     if (cancelBtn) await user.click(cancelBtn);
     // Volta para a lista (página principal do EntitiesManager)
-    await screen.findByRole('heading', { name: /Cliente \/ Fornecedor/i });
-    await screen.findByRole('heading', { name: /Entidades Cadastradas/i });
+    await screen.findByRole("heading", { name: /Cliente \/ Fornecedor/i });
+    await screen.findByRole("heading", { name: /Entidades Cadastradas/i });
     const createdNames1 = await screen.findAllByText(/EMPRESA X/);
     expect(createdNames1.length).toBeGreaterThan(0);
     // endereço deve estar completo (cep + numero)
@@ -77,8 +77,8 @@ describe("EntitiesManager novos campos (numero/complemento/ativo)", () => {
     await user.click(ativoToggle);
 
     await user.click(screen.getByRole("button", { name: /atualizar/i }));
-    await screen.findByRole('heading', { name: /Cliente \/ Fornecedor/i });
-    await screen.findByRole('heading', { name: /Entidades Cadastradas/i });
+    await screen.findByRole("heading", { name: /Cliente \/ Fornecedor/i });
+    await screen.findByRole("heading", { name: /Entidades Cadastradas/i });
     const createdNames2 = await screen.findAllByText(/EMPRESA X/);
     expect(createdNames2.length).toBeGreaterThan(0);
     // endereço segue completo

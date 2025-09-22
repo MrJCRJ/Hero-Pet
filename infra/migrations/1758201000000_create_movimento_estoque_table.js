@@ -8,7 +8,12 @@ exports.shorthands = undefined;
 exports.up = (pgm) => {
   pgm.createTable("movimento_estoque", {
     id: "id",
-    produto_id: { type: "integer", notNull: true, references: "produtos", onDelete: "CASCADE" },
+    produto_id: {
+      type: "integer",
+      notNull: true,
+      references: "produtos",
+      onDelete: "CASCADE",
+    },
     tipo: { type: "varchar(10)", notNull: true }, // ENTRADA | SAIDA | AJUSTE
     quantidade: { type: "numeric(12,3)", notNull: true },
     valor_unitario: { type: "numeric(12,2)" },
@@ -17,7 +22,11 @@ exports.up = (pgm) => {
     valor_total: { type: "numeric(14,2)" },
     documento: { type: "text" },
     observacao: { type: "text" },
-    data_movimento: { type: "timestamptz", notNull: true, default: pgm.func("NOW()") },
+    data_movimento: {
+      type: "timestamptz",
+      notNull: true,
+      default: pgm.func("NOW()"),
+    },
     usuario: { type: "text" },
   });
 
@@ -25,11 +34,9 @@ exports.up = (pgm) => {
     check: "tipo IN ('ENTRADA','SAIDA','AJUSTE')",
   });
 
-  pgm.createIndex(
-    "movimento_estoque",
-    ["produto_id", "data_movimento"],
-    { name: "movimento_estoque_produto_dt_idx" },
-  );
+  pgm.createIndex("movimento_estoque", ["produto_id", "data_movimento"], {
+    name: "movimento_estoque_produto_dt_idx",
+  });
 };
 
 exports.down = (pgm) => {

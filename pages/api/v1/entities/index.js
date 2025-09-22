@@ -166,7 +166,9 @@ async function getEntities(req, res) {
       const onlyDigits = (q || "").replace(/\D+/g, "");
       if (onlyDigits) {
         values.push(text, `%${onlyDigits}%`);
-        clauses.push(`(name ILIKE $${values.length - 1} OR document_digits LIKE $${values.length})`);
+        clauses.push(
+          `(name ILIKE $${values.length - 1} OR document_digits LIKE $${values.length})`,
+        );
       } else {
         values.push(text);
         clauses.push(`name ILIKE $${values.length}`);

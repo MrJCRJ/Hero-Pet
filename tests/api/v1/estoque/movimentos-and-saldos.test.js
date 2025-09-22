@@ -36,7 +36,11 @@ beforeAll(async () => {
   const p = await fetch("http://localhost:3000/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nome: "Teste Estoque", categoria: "TESTE", fornecedor_id: fornecedor.id }),
+    body: JSON.stringify({
+      nome: "Teste Estoque",
+      categoria: "TESTE",
+      fornecedor_id: fornecedor.id,
+    }),
   });
   if (![200, 201].includes(p.status)) {
     throw new Error(`Falha seed produto base. status=${p.status}`);
@@ -84,7 +88,11 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
     resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ produto_id: produto.id, tipo: "SAIDA", quantidade: 3 }),
+      body: JSON.stringify({
+        produto_id: produto.id,
+        tipo: "SAIDA",
+        quantidade: 3,
+      }),
     });
     expect([200, 201]).toContain(resp.status);
 
@@ -92,7 +100,11 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
     resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ produto_id: produto.id, tipo: "AJUSTE", quantidade: -2 }),
+      body: JSON.stringify({
+        produto_id: produto.id,
+        tipo: "AJUSTE",
+        quantidade: -2,
+      }),
     });
     expect([200, 201]).toContain(resp.status);
 
@@ -113,7 +125,11 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
     let resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ produto_id: produto.id, tipo: "XYZ", quantidade: 1 }),
+      body: JSON.stringify({
+        produto_id: produto.id,
+        tipo: "XYZ",
+        quantidade: 1,
+      }),
     });
     expect(resp.status).toBe(400);
 
@@ -121,7 +137,11 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
     resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ produto_id: produto.id, tipo: "SAIDA", quantidade: -1 }),
+      body: JSON.stringify({
+        produto_id: produto.id,
+        tipo: "SAIDA",
+        quantidade: -1,
+      }),
     });
     expect(resp.status).toBe(400);
   });

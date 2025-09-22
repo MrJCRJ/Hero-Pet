@@ -23,7 +23,10 @@ export function ProductDetail({ open, onClose, product }) {
   const [offset, setOffset] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const canLoadMore = useMemo(() => (movTotal == null ? false : movs.length < movTotal), [movs.length, movTotal]);
+  const canLoadMore = useMemo(
+    () => (movTotal == null ? false : movs.length < movTotal),
+    [movs.length, movTotal],
+  );
 
   useEffect(() => {
     if (!open || !product?.id) return;
@@ -54,7 +57,7 @@ export function ProductDetail({ open, onClose, product }) {
         setMovs((prev) => (offset === 0 ? data : [...prev, ...data]));
         setMovTotal(meta?.total ?? null);
       })
-      .catch(() => { })
+      .catch(() => {})
       .finally(() => setMovLoading(false));
   }, [open, product?.id, tipo, from, to, limit, offset, reloadKey]);
 
@@ -68,24 +71,34 @@ export function ProductDetail({ open, onClose, product }) {
         // Força recarregar saldos e movimentos
         setOffset(0);
         setReloadKey((k) => k + 1);
-      } catch (_) { /* noop */ }
+      } catch (_) {
+        /* noop */
+      }
     }
-    window.addEventListener('inventory-changed', onInventoryChanged);
-    return () => window.removeEventListener('inventory-changed', onInventoryChanged);
+    window.addEventListener("inventory-changed", onInventoryChanged);
+    return () =>
+      window.removeEventListener("inventory-changed", onInventoryChanged);
   }, [open, product?.id]);
 
   // filtros e paginação controlam o offset diretamente
 
   return (
-    <Modal open={open} onClose={onClose} title={product ? `Detalhe: ${product.nome}` : "Detalhe do Produto"}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={product ? `Detalhe: ${product.nome}` : "Detalhe do Produto"}
+    >
       {!product ? (
         <div className="p-4">Produto inválido.</div>
       ) : (
         <div className="space-y-4">
           {/* Fornecedores do produto */}
           <section className="p-3 rounded-md border border-[var(--color-border)]">
-            <div className="text-xs text-[var(--color-text-secondary)] mb-2">Fornecedores</div>
-            {Array.isArray(product.supplier_labels) && product.supplier_labels.length ? (
+            <div className="text-xs text-[var(--color-text-secondary)] mb-2">
+              Fornecedores
+            </div>
+            {Array.isArray(product.supplier_labels) &&
+            product.supplier_labels.length ? (
               <div className="flex flex-wrap gap-2">
                 {product.supplier_labels.map((s) => (
                   <a
@@ -99,45 +112,96 @@ export function ProductDetail({ open, onClose, product }) {
                 ))}
               </div>
             ) : (
-              <div className="text-xs opacity-70">Nenhum fornecedor vinculado.</div>
+              <div className="text-xs opacity-70">
+                Nenhum fornecedor vinculado.
+              </div>
             )}
           </section>
 
           <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3 rounded-md border border-[var(--color-border)]">
-              <div className="text-xs text-[var(--color-text-secondary)]">Saldo</div>
-              <div className="text-lg font-semibold">{loadingSaldos ? "…" : saldos?.saldo ?? "-"}</div>
+              <div className="text-xs text-[var(--color-text-secondary)]">
+                Saldo
+              </div>
+              <div className="text-lg font-semibold">
+                {loadingSaldos ? "…" : (saldos?.saldo ?? "-")}
+              </div>
             </div>
             <div className="p-3 rounded-md border border-[var(--color-border)]">
-              <div className="text-xs text-[var(--color-text-secondary)]">Custo médio</div>
-              <div className="text-lg font-semibold">{loadingSaldos ? "…" : fmtBRL(saldos?.custo_medio)}</div>
+              <div className="text-xs text-[var(--color-text-secondary)]">
+                Custo médio
+              </div>
+              <div className="text-lg font-semibold">
+                {loadingSaldos ? "…" : fmtBRL(saldos?.custo_medio)}
+              </div>
             </div>
             <div className="p-3 rounded-md border border-[var(--color-border)]">
-              <div className="text-xs text-[var(--color-text-secondary)]">Último custo</div>
-              <div className="text-lg font-semibold">{loadingSaldos ? "…" : fmtBRL(saldos?.ultimo_custo)}</div>
+              <div className="text-xs text-[var(--color-text-secondary)]">
+                Último custo
+              </div>
+              <div className="text-lg font-semibold">
+                {loadingSaldos ? "…" : fmtBRL(saldos?.ultimo_custo)}
+              </div>
             </div>
           </section>
 
           <div className="p-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] text-xs">
-            Movimentos de estoque são gerados automaticamente pelos Pedidos. Este painel exibe saldos e histórico (somente leitura).
+            Movimentos de estoque são gerados automaticamente pelos Pedidos.
+            Este painel exibe saldos e histórico (somente leitura).
           </div>
 
           <section className="space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-              <select className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]" value={tipo} onChange={(e) => { setTipo(e.target.value); setOffset(0); }}>
+              <select
+                className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                value={tipo}
+                onChange={(e) => {
+                  setTipo(e.target.value);
+                  setOffset(0);
+                }}
+              >
                 <option value="">Tipo: Todos</option>
                 <option value="ENTRADA">ENTRADA</option>
                 <option value="SAIDA">SAÍDA</option>
                 <option value="AJUSTE">AJUSTE</option>
               </select>
-              <input type="date" className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]" value={from} onChange={(e) => { setFrom(e.target.value); setOffset(0); }} />
-              <input type="date" className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]" value={to} onChange={(e) => { setTo(e.target.value); setOffset(0); }} />
-              <select className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]" value={limit} onChange={(e) => { setLimit(Number(e.target.value) || 10); setOffset(0); }}>
+              <input
+                type="date"
+                className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                value={from}
+                onChange={(e) => {
+                  setFrom(e.target.value);
+                  setOffset(0);
+                }}
+              />
+              <input
+                type="date"
+                className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                value={to}
+                onChange={(e) => {
+                  setTo(e.target.value);
+                  setOffset(0);
+                }}
+              />
+              <select
+                className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value) || 10);
+                  setOffset(0);
+                }}
+              >
                 <option value={10}>10 por página</option>
                 <option value={20}>20 por página</option>
               </select>
               <div className="flex items-center">
-                <Button fullWidth={false} onClick={() => setOffset(0)} loading={movLoading}>Recarregar</Button>
+                <Button
+                  fullWidth={false}
+                  onClick={() => setOffset(0)}
+                  loading={movLoading}
+                >
+                  Recarregar
+                </Button>
               </div>
             </div>
 
@@ -156,26 +220,51 @@ export function ProductDetail({ open, onClose, product }) {
                 </thead>
                 <tbody>
                   {movs.map((m) => (
-                    <tr key={m.id} className="border-t border-[var(--color-border)]">
-                      <td className="p-2">{new Date(m.data_movimento).toLocaleString()}</td>
+                    <tr
+                      key={m.id}
+                      className="border-t border-[var(--color-border)]"
+                    >
+                      <td className="p-2">
+                        {new Date(m.data_movimento).toLocaleString()}
+                      </td>
                       <td className="p-2">{m.tipo}</td>
                       <td className="p-2">{m.quantidade}</td>
-                      <td className="p-2">{m.valor_unitario != null ? fmtBRL(m.valor_unitario) : "-"}</td>
-                      <td className="p-2">{m.valor_total != null ? fmtBRL(m.valor_total) : "-"}</td>
+                      <td className="p-2">
+                        {m.valor_unitario != null
+                          ? fmtBRL(m.valor_unitario)
+                          : "-"}
+                      </td>
+                      <td className="p-2">
+                        {m.valor_total != null ? fmtBRL(m.valor_total) : "-"}
+                      </td>
                       <td className="p-2">{m.documento || "-"}</td>
                       <td className="p-2">{m.observacao || "-"}</td>
                     </tr>
                   ))}
                   {!movs.length && (
                     <tr>
-                      <td colSpan={7} className="p-4 text-center text-[var(--color-text-secondary)]">{movLoading ? "Carregando..." : "Nenhum movimento encontrado."}</td>
+                      <td
+                        colSpan={7}
+                        className="p-4 text-center text-[var(--color-text-secondary)]"
+                      >
+                        {movLoading
+                          ? "Carregando..."
+                          : "Nenhum movimento encontrado."}
+                      </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
             <div className="flex justify-end">
-              <Button fullWidth={false} onClick={() => setOffset((o) => o + limit)} disabled={!canLoadMore || movLoading} loading={movLoading}>Carregar mais</Button>
+              <Button
+                fullWidth={false}
+                onClick={() => setOffset((o) => o + limit)}
+                disabled={!canLoadMore || movLoading}
+                loading={movLoading}
+              >
+                Carregar mais
+              </Button>
             </div>
           </section>
         </div>

@@ -1,7 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Modal } from "./Modal";
 
-export function SelectionModal({ title, fetcher, extractLabel, onSelect, onClose, placeholder = "Buscar...", emptyMessage, footer }) {
+export function SelectionModal({
+  title,
+  fetcher,
+  extractLabel,
+  onSelect,
+  onClose,
+  placeholder = "Buscar...",
+  emptyMessage,
+  footer,
+}) {
   const [q, setQ] = useState("");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -20,7 +29,10 @@ export function SelectionModal({ title, fetcher, extractLabel, onSelect, onClose
       }
     };
     const t = setTimeout(run, 150);
-    return () => { active = false; clearTimeout(t); };
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, [q, fetcher]);
 
   const filtered = useMemo(() => {
@@ -43,7 +55,9 @@ export function SelectionModal({ title, fetcher, extractLabel, onSelect, onClose
       <div className="max-h-80 overflow-auto border rounded">
         {loading && <div className="p-3 text-xs opacity-70">Carregando...</div>}
         {!loading && filtered.length === 0 && (
-          <div className="p-3 text-xs opacity-70">{emptyMessage || "Nenhum resultado"}</div>
+          <div className="p-3 text-xs opacity-70">
+            {emptyMessage || "Nenhum resultado"}
+          </div>
         )}
         <ul>
           {filtered.map((it) => (
@@ -58,11 +72,7 @@ export function SelectionModal({ title, fetcher, extractLabel, onSelect, onClose
           ))}
         </ul>
       </div>
-      {footer && (
-        <div className="mt-3 text-right">
-          {footer}
-        </div>
-      )}
+      {footer && <div className="mt-3 text-right">{footer}</div>}
     </Modal>
   );
 }

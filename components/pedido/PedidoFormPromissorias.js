@@ -22,42 +22,61 @@ export function PedidoFormPromissorias({
   const warnedPaidRef = React.useRef(new Set());
 
   // Confirmação no foco para parcelas pagas; libera edição local se confirmado
-  const handlePaidFocus = React.useCallback((idx) => {
-    const seq = idx + 1;
-    const isPaid = Array.isArray(promissoriasMeta?.paidSeqs) && promissoriasMeta.paidSeqs.includes(seq);
-    if (!isPaid) return;
-    if (warnedPaidRef.current.has(seq)) return;
-    window.alert(
-      `A ${seq}ª parcela já está PAGA. Alterar a data não terá efeito ao salvar (o cronograma pago é preservado).`
-    );
-    warnedPaidRef.current.add(seq);
-  }, [promissoriasMeta?.paidSeqs]);
+  const handlePaidFocus = React.useCallback(
+    (idx) => {
+      const seq = idx + 1;
+      const isPaid =
+        Array.isArray(promissoriasMeta?.paidSeqs) &&
+        promissoriasMeta.paidSeqs.includes(seq);
+      if (!isPaid) return;
+      if (warnedPaidRef.current.has(seq)) return;
+      window.alert(
+        `A ${seq}ª parcela já está PAGA. Alterar a data não terá efeito ao salvar (o cronograma pago é preservado).`,
+      );
+      warnedPaidRef.current.add(seq);
+    },
+    [promissoriasMeta?.paidSeqs],
+  );
 
   // Edição manual: impede alteração de paga sem permissão; atualiza estado nos demais casos
-  const handleManualDateEdit = React.useCallback((idx, e) => {
-    const newValue = e?.target?.value ?? '';
-    const next = [...promissoriaDatas];
-    next[idx] = newValue;
-    onPromissoriaDatasChange(next);
-  }, [promissoriaDatas, onPromissoriaDatasChange]);
+  const handleManualDateEdit = React.useCallback(
+    (idx, e) => {
+      const newValue = e?.target?.value ?? "";
+      const next = [...promissoriaDatas];
+      next[idx] = newValue;
+      onPromissoriaDatasChange(next);
+    },
+    [promissoriaDatas, onPromissoriaDatasChange],
+  );
 
   // Edição da 1ª data via campo "Data da 1ª Promissória" (quando em modo manual, aplicar mesmas regras)
-  const handlePrimeiraDataChange = React.useCallback((value) => {
-    if (frequenciaPromissorias === 'manual') {
-      const seq = 1;
-      const isPaid = Array.isArray(promissoriasMeta?.paidSeqs) && promissoriasMeta.paidSeqs.includes(seq);
-      if (isPaid && !warnedPaidRef.current.has(seq)) {
-        window.alert(
-          `A ${seq}ª parcela já está PAGA. Alterar a data não terá efeito ao salvar (o cronograma pago é preservado).`
-        );
-        warnedPaidRef.current.add(seq);
+  const handlePrimeiraDataChange = React.useCallback(
+    (value) => {
+      if (frequenciaPromissorias === "manual") {
+        const seq = 1;
+        const isPaid =
+          Array.isArray(promissoriasMeta?.paidSeqs) &&
+          promissoriasMeta.paidSeqs.includes(seq);
+        if (isPaid && !warnedPaidRef.current.has(seq)) {
+          window.alert(
+            `A ${seq}ª parcela já está PAGA. Alterar a data não terá efeito ao salvar (o cronograma pago é preservado).`,
+          );
+          warnedPaidRef.current.add(seq);
+        }
+        const next = [...promissoriaDatas];
+        next[0] = value || "";
+        onPromissoriaDatasChange(next);
       }
-      const next = [...promissoriaDatas];
-      next[0] = value || '';
-      onPromissoriaDatasChange(next);
-    }
-    onDataPrimeiraPromissoriasChange(value);
-  }, [frequenciaPromissorias, promissoriasMeta?.paidSeqs, promissoriaDatas, onPromissoriaDatasChange, onDataPrimeiraPromissoriasChange]);
+      onDataPrimeiraPromissoriasChange(value);
+    },
+    [
+      frequenciaPromissorias,
+      promissoriasMeta?.paidSeqs,
+      promissoriaDatas,
+      onPromissoriaDatasChange,
+      onDataPrimeiraPromissoriasChange,
+    ],
+  );
   // Calcular valor por promissória quando há total
   React.useEffect(() => {
     if (totalLiquido > 0 && numeroPromissorias > 0) {
@@ -79,8 +98,12 @@ export function PedidoFormPromissorias({
       result.push(d.toISOString().slice(0, 10));
     }
     return result;
-  }, [parcelado, promissoriaDatas, dataPrimeiraPromissoria, numeroPromissorias]);
-
+  }, [
+    parcelado,
+    promissoriaDatas,
+    dataPrimeiraPromissoria,
+    numeroPromissorias,
+  ]);
 
   return (
     <div className="mt-4 border border-[var(--color-border)] rounded-lg p-4">
@@ -106,7 +129,9 @@ export function PedidoFormPromissorias({
         {parcelado && (
           <>
             <div>
-              <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Frequência</label>
+              <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">
+                Frequência
+              </label>
               <select
                 className=" border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)] w-full"
                 value={frequenciaPromissorias}
@@ -120,7 +145,7 @@ export function PedidoFormPromissorias({
               </select>
             </div>
 
-            {frequenciaPromissorias === 'dias' && (
+            {frequenciaPromissorias === "dias" && (
               <div>
                 <FormField
                   label="Intervalo (dias)"
@@ -128,7 +153,9 @@ export function PedidoFormPromissorias({
                   type="number"
                   min="1"
                   value={intervaloDiasPromissorias}
-                  onChange={(e) => onIntervaloDiasPromissoriasChange(Number(e.target.value))}
+                  onChange={(e) =>
+                    onIntervaloDiasPromissoriasChange(Number(e.target.value))
+                  }
                 />
               </div>
             )}
@@ -141,7 +168,9 @@ export function PedidoFormPromissorias({
                 min="2"
                 max="12"
                 value={numeroPromissorias}
-                onChange={(e) => onNumeroPromissoriasChange(Number(e.target.value))}
+                onChange={(e) =>
+                  onNumeroPromissoriasChange(Number(e.target.value))
+                }
               />
             </div>
 
@@ -173,24 +202,37 @@ export function PedidoFormPromissorias({
           <div className="px-3 py-2 bg-[var(--color-bg-secondary)] flex items-center justify-between gap-2">
             <h5 className="text-sm font-medium">Cronograma de Vencimentos</h5>
             <div className="flex items-center gap-2">
-              {frequenciaPromissorias !== 'manual' && (
+              {frequenciaPromissorias !== "manual" && (
                 <button
                   type="button"
                   className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-primary)]"
                   onClick={() => {
-                    const base = (promissoriaDatas && promissoriaDatas.length) ? promissoriaDatas : datasVencimento;
-                    onPromissoriaDatasChange(base.slice(0, Math.max(2, numeroPromissorias)));
-                    onFrequenciaPromissoriasChange('manual');
+                    const base =
+                      promissoriaDatas && promissoriaDatas.length
+                        ? promissoriaDatas
+                        : datasVencimento;
+                    onPromissoriaDatasChange(
+                      base.slice(0, Math.max(2, numeroPromissorias)),
+                    );
+                    onFrequenciaPromissoriasChange("manual");
                   }}
                 >
                   Usar cronograma manual atual
                 </button>
               )}
-              {frequenciaPromissorias === 'manual' && (
+              {frequenciaPromissorias === "manual" && (
                 <button
                   type="button"
                   className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-primary)]"
-                  onClick={() => onPromissoriaDatasChange(new Array(Math.max(2, numeroPromissorias)).fill('').map((_, i) => i === 0 ? dataPrimeiraPromissoria : ''))}
+                  onClick={() =>
+                    onPromissoriaDatasChange(
+                      new Array(Math.max(2, numeroPromissorias))
+                        .fill("")
+                        .map((_, i) =>
+                          i === 0 ? dataPrimeiraPromissoria : "",
+                        ),
+                    )
+                  }
                 >
                   Resetar Manual
                 </button>
@@ -200,57 +242,80 @@ export function PedidoFormPromissorias({
           <div className="p-3">
             {promissoriasMeta?.anyPaid && (
               <div className="mb-3 text-amber-600 text-xs">
-                Existem parcelas já pagas (#{Array.isArray(promissoriasMeta.paidSeqs) ? promissoriasMeta.paidSeqs.join(', ') : ''}).
-                Alterar datas dessas parcelas não será aplicado ao salvar.
+                Existem parcelas já pagas (#
+                {Array.isArray(promissoriasMeta.paidSeqs)
+                  ? promissoriasMeta.paidSeqs.join(", ")
+                  : ""}
+                ). Alterar datas dessas parcelas não será aplicado ao salvar.
               </div>
             )}
-            {frequenciaPromissorias === 'manual' ? (
+            {frequenciaPromissorias === "manual" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {Array.from({ length: Math.max(2, numeroPromissorias) }).map((_, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-sm">
-                    <span className="w-6 text-right">{idx + 1}ª</span>
-                    {Array.isArray(promissoriasMeta?.paidSeqs) && promissoriasMeta.paidSeqs.includes(idx + 1) && (
-                      <span className="text-[10px] px-1 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">PAGO</span>
-                    )}
-                    {Array.isArray(promissoriasMeta?.overdueSeqs) && promissoriasMeta.overdueSeqs.includes(idx + 1) && (
-                      <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">ATRASADO</span>
-                    )}
-                    {(() => {
-                      return (
-                        <input
-                          type="date"
-                          className="border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg-primary)]"
-                          value={promissoriaDatas[idx] || ''}
-                          onFocus={() => handlePaidFocus(idx)}
-                          onChange={(e) => handleManualDateEdit(idx, e)}
-                          onInput={(e) => handleManualDateEdit(idx, e)}
-                        />
-                      );
-                    })()}
+                {Array.from({ length: Math.max(2, numeroPromissorias) }).map(
+                  (_, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm">
+                      <span className="w-6 text-right">{idx + 1}ª</span>
+                      {Array.isArray(promissoriasMeta?.paidSeqs) &&
+                        promissoriasMeta.paidSeqs.includes(idx + 1) && (
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
+                            PAGO
+                          </span>
+                        )}
+                      {Array.isArray(promissoriasMeta?.overdueSeqs) &&
+                        promissoriasMeta.overdueSeqs.includes(idx + 1) && (
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
+                            ATRASADO
+                          </span>
+                        )}
+                      {(() => {
+                        return (
+                          <input
+                            type="date"
+                            className="border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg-primary)]"
+                            value={promissoriaDatas[idx] || ""}
+                            onFocus={() => handlePaidFocus(idx)}
+                            onChange={(e) => handleManualDateEdit(idx, e)}
+                            onInput={(e) => handleManualDateEdit(idx, e)}
+                          />
+                        );
+                      })()}
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : datasVencimento.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
+                {datasVencimento.map((data, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between gap-2 border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg-primary)]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>{idx + 1}ª</span>
+                      {Array.isArray(promissoriasMeta?.paidSeqs) &&
+                        promissoriasMeta.paidSeqs.includes(idx + 1) && (
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
+                            PAGO
+                          </span>
+                        )}
+                      {Array.isArray(promissoriasMeta?.overdueSeqs) &&
+                        promissoriasMeta.overdueSeqs.includes(idx + 1) && (
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
+                            ATRASADO
+                          </span>
+                        )}
+                    </div>
+                    <span className="font-mono">
+                      {new Date(data + "T00:00:00").toLocaleDateString("pt-BR")}
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              datasVencimento.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
-                  {datasVencimento.map((data, idx) => (
-                    <div key={idx} className="flex items-center justify-between gap-2 border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg-primary)]">
-                      <div className="flex items-center gap-2">
-                        <span>{idx + 1}ª</span>
-                        {Array.isArray(promissoriasMeta?.paidSeqs) && promissoriasMeta.paidSeqs.includes(idx + 1) && (
-                          <span className="text-[10px] px-1 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">PAGO</span>
-                        )}
-                        {Array.isArray(promissoriasMeta?.overdueSeqs) && promissoriasMeta.overdueSeqs.includes(idx + 1) && (
-                          <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">ATRASADO</span>
-                        )}
-                      </div>
-                      <span className="font-mono">{new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-xs opacity-70">Defina a 1ª data e o número de promissórias para ver o cronograma.</div>
-              )
+              <div className="text-xs opacity-70">
+                Defina a 1ª data e o número de promissórias para ver o
+                cronograma.
+              </div>
             )}
           </div>
         </div>

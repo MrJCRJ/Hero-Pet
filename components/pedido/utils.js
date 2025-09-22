@@ -23,7 +23,8 @@ export function mapEditingOrderToItems(editingOrder) {
     produto_label: it.produto_nome || "",
     quantidade: String(it.quantidade),
     preco_unitario: it.preco_unitario != null ? String(it.preco_unitario) : "",
-    desconto_unitario: it.desconto_unitario != null ? String(it.desconto_unitario) : "",
+    desconto_unitario:
+      it.desconto_unitario != null ? String(it.desconto_unitario) : "",
     produto_saldo: null,
   }));
 }
@@ -32,7 +33,14 @@ export function mapEditingOrderToItems(editingOrder) {
  * Cria item vazio padrão
  */
 export function defaultEmptyItem() {
-  return { produto_id: "", produto_label: "", quantidade: "", preco_unitario: "", desconto_unitario: "", produto_saldo: null };
+  return {
+    produto_id: "",
+    produto_label: "",
+    quantidade: "",
+    preco_unitario: "",
+    desconto_unitario: "",
+    produto_saldo: null,
+  };
 }
 
 /**

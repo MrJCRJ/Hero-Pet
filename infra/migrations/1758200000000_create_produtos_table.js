@@ -22,8 +22,16 @@ exports.up = (pgm) => {
     markup_percent_default: { type: "numeric(5,2)" },
     estoque_minimo: { type: "numeric(12,3)" },
     ativo: { type: "boolean", notNull: true, default: true },
-    created_at: { type: "timestamptz", notNull: true, default: pgm.func("NOW()") },
-    updated_at: { type: "timestamptz", notNull: true, default: pgm.func("NOW()") },
+    created_at: {
+      type: "timestamptz",
+      notNull: true,
+      default: pgm.func("NOW()"),
+    },
+    updated_at: {
+      type: "timestamptz",
+      notNull: true,
+      default: pgm.func("NOW()"),
+    },
   });
 
   // Índices

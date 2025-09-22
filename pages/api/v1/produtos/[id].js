@@ -11,7 +11,8 @@ export default async function handler(req, res) {
 async function updateProduto(req, res) {
   try {
     const id = parseInt(req.query.id, 10);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: "invalid id" });
+    if (!Number.isFinite(id))
+      return res.status(400).json({ error: "invalid id" });
     const b = req.body || {};
 
     // opcionalmente validar fornecedor PJ
@@ -41,12 +42,24 @@ async function updateProduto(req, res) {
     // suppliers múltiplos (opcional)
     let suppliers = undefined;
     if (Array.isArray(b.suppliers)) {
-      suppliers = b.suppliers.filter((v) => Number.isFinite(Number(v))).map((v) => Number(v));
+      suppliers = b.suppliers
+        .filter((v) => Number.isFinite(Number(v)))
+        .map((v) => Number(v));
       suppliers = Array.from(new Set(suppliers));
       if (suppliers.length) {
-        const r = await database.query({ text: `SELECT id, entity_type FROM entities WHERE id = ANY($1::int[])`, values: [suppliers] });
-        const ids = new Set(r.rows.filter((x) => x.entity_type === 'PJ').map((x) => x.id));
-        if (ids.size !== suppliers.length) return res.status(400).json({ error: "suppliers inválidos: todos devem existir e ser PJ" });
+        const r = await database.query({
+          text: `SELECT id, entity_type FROM entities WHERE id = ANY($1::int[])`,
+          values: [suppliers],
+        });
+        const ids = new Set(
+          r.rows.filter((x) => x.entity_type === "PJ").map((x) => x.id),
+        );
+        if (ids.size !== suppliers.length)
+          return res
+            .status(400)
+            .json({
+              error: "suppliers inválidos: todos devem existir e ser PJ",
+            });
       }
     }
 
@@ -59,14 +72,22 @@ async function updateProduto(req, res) {
     };
     if (b.nome !== undefined) set("nome", (b.nome || "").trim());
     if (b.descricao !== undefined) set("descricao", b.descricao || null);
-    if (b.codigo_barras !== undefined) set("codigo_barras", b.codigo_barras || null);
+    if (b.codigo_barras !== undefined)
+      set("codigo_barras", b.codigo_barras || null);
     if (b.categoria !== undefined) set("categoria", b.categoria || null);
     if (fornecedorId !== undefined) set("fornecedor_id", fornecedorId);
-    if (b.preco_tabela !== undefined) set("preco_tabela", b.preco_tabela === null ? null : b.preco_tabela);
+    if (b.preco_tabela !== undefined)
+      set("preco_tabela", b.preco_tabela === null ? null : b.preco_tabela);
     if (b.markup_percent_default !== undefined)
-      set("markup_percent_default", b.markup_percent_default === null ? null : b.markup_percent_default);
+      set(
+        "markup_percent_default",
+        b.markup_percent_default === null ? null : b.markup_percent_default,
+      );
     if (b.estoque_minimo !== undefined)
-      set("estoque_minimo", b.estoque_minimo === null ? null : b.estoque_minimo);
+      set(
+        "estoque_minimo",
+        b.estoque_minimo === null ? null : b.estoque_minimo,
+      );
     if (b.ativo !== undefined) set("ativo", b.ativo === false ? false : true);
 
     // sempre atualiza updated_at
@@ -78,7 +99,8 @@ async function updateProduto(req, res) {
         text: `SELECT id FROM produtos WHERE id = $1`,
         values: [id],
       });
-      if (!check.rows.length) return res.status(404).json({ error: "Not found" });
+      if (!check.rows.length)
+        return res.status(404).json({ error: "Not found" });
     }
 
     const query = {
@@ -92,9 +114,12 @@ async function updateProduto(req, res) {
 
     // atualizar tabela de junção se fornecida
     if (suppliers) {
-      await database.query({ text: `DELETE FROM produto_fornecedores WHERE produto_id = $1`, values: [id] });
+      await database.query({
+        text: `DELETE FROM produto_fornecedores WHERE produto_id = $1`,
+        values: [id],
+      });
       if (suppliers.length) {
-        const rows = suppliers.map((eid, i) => `($1, $${i + 2})`).join(',');
+        const rows = suppliers.map((eid, i) => `($1, $${i + 2})`).join(",");
         await database.query({
           text: `INSERT INTO produto_fornecedores (produto_id, entity_id) VALUES ${rows} ON CONFLICT DO NOTHING`,
           values: [id, ...suppliers],
@@ -103,12 +128,23 @@ async function updateProduto(req, res) {
     }
 
     // verificar regra de pelo menos um fornecedor
-    const check = await database.query({ text: `SELECT fornecedor_id FROM produtos WHERE id = $1`, values: [id] });
+    const check = await database.query({
+      text: `SELECT fornecedor_id FROM produtos WHERE id = $1`,
+      values: [id],
+    });
     const fornecedorAtual = check.rows[0]?.fornecedor_id || null;
     if (fornecedorAtual == null) {
-      const rpf = await database.query({ text: `SELECT 1 FROM produto_fornecedores WHERE produto_id = $1 LIMIT 1`, values: [id] });
+      const rpf = await database.query({
+        text: `SELECT 1 FROM produto_fornecedores WHERE produto_id = $1 LIMIT 1`,
+        values: [id],
+      });
       if (!rpf.rows.length) {
-        return res.status(400).json({ error: "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])" });
+        return res
+          .status(400)
+          .json({
+            error:
+              "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])",
+          });
       }
     }
 
@@ -142,7 +178,8 @@ async function updateProduto(req, res) {
 async function deleteProduto(req, res) {
   try {
     const id = parseInt(req.query.id, 10);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: "invalid id" });
+    if (!Number.isFinite(id))
+      return res.status(400).json({ error: "invalid id" });
     const q = {
       text: `UPDATE produtos SET ativo = false, updated_at = NOW() WHERE id = $1
              RETURNING id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,

@@ -36,7 +36,9 @@ function Home() {
   // Permite navegar por hash ex: #tab=entities&highlightId=123
   useEffect(() => {
     function applyFromHash() {
-      const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+      const hash = window.location.hash.startsWith("#")
+        ? window.location.hash.slice(1)
+        : window.location.hash;
       const params = new URLSearchParams(hash);
       const tab = params.get("tab");
       if (tab && formConfig[tab]) setActiveForm(tab);
@@ -100,9 +102,16 @@ function Home() {
               if (!active) return null;
               const { Component } = active;
               if (Component === EntitiesManager)
-                return <Component browserLimit={20} highlightId={entitiesHighlightId || undefined} />;
+                return (
+                  <Component
+                    browserLimit={20}
+                    highlightId={entitiesHighlightId || undefined}
+                  />
+                );
               if (Component === ProductsManager)
-                return <Component linkSupplierId={linkSupplierId || undefined} />;
+                return (
+                  <Component linkSupplierId={linkSupplierId || undefined} />
+                );
               return <Component />;
             })()}
           </div>

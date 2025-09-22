@@ -27,13 +27,23 @@ exports.up = (pgm) => {
   `);
 
   // Criar índice para consultas por promissórias
-  pgm.createIndex("pedidos", ["numero_promissorias"], { name: "pedidos_numero_promissorias_idx" });
-  pgm.createIndex("pedidos", ["data_primeira_promissoria"], { name: "pedidos_data_primeira_promissoria_idx" });
+  pgm.createIndex("pedidos", ["numero_promissorias"], {
+    name: "pedidos_numero_promissorias_idx",
+  });
+  pgm.createIndex("pedidos", ["data_primeira_promissoria"], {
+    name: "pedidos_data_primeira_promissoria_idx",
+  });
 };
 
 exports.down = (pgm) => {
-  pgm.dropIndex("pedidos", ["data_primeira_promissoria"], { name: "pedidos_data_primeira_promissoria_idx", ifExists: true });
-  pgm.dropIndex("pedidos", ["numero_promissorias"], { name: "pedidos_numero_promissorias_idx", ifExists: true });
+  pgm.dropIndex("pedidos", ["data_primeira_promissoria"], {
+    name: "pedidos_data_primeira_promissoria_idx",
+    ifExists: true,
+  });
+  pgm.dropIndex("pedidos", ["numero_promissorias"], {
+    name: "pedidos_numero_promissorias_idx",
+    ifExists: true,
+  });
 
   pgm.dropColumn("pedidos", "valor_por_promissoria", { ifExists: true });
   pgm.dropColumn("pedidos", "data_primeira_promissoria", { ifExists: true });

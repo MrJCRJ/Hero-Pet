@@ -12,8 +12,12 @@ export default async function handler(req, res) {
 async function getPedido(req, res) {
   try {
     const id = Number(req.query.id);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: "invalid id" });
-    const head = await database.query({ text: `SELECT * FROM pedidos WHERE id = $1`, values: [id] });
+    if (!Number.isFinite(id))
+      return res.status(400).json({ error: "invalid id" });
+    const head = await database.query({
+      text: `SELECT * FROM pedidos WHERE id = $1`,
+      values: [id],
+    });
     if (!head.rows.length) return res.status(404).json({ error: "Not found" });
     const itens = await database.query({
       text: `SELECT i.*, p.nome AS produto_nome, p.codigo_barras FROM pedido_itens i JOIN produtos p ON p.id = i.produto_id WHERE i.pedido_id = $1 ORDER BY i.id`,
@@ -32,11 +36,32 @@ async function getPedido(req, res) {
              FROM pedido_promissorias WHERE pedido_id = $1 ORDER BY seq`,
       values: [id],
     });
-    return res.status(200).json({ ...head.rows[0], itens: itens.rows, promissorias: promissorias.rows });
+    return res
+      .status(200)
+      .json({
+        ...head.rows[0],
+        itens: itens.rows,
+        promissorias: promissorias.rows,
+      });
   } catch (e) {
     console.error("GET /pedidos/:id error", e);
-    if (isRelationMissing(e)) return res.status(503).json({ error: "Schema not migrated (pedidos/pedido_itens missing)", dependency: "database", code: e.code, action: "Run migrations" });
-    if (isConnectionError(e)) return res.status(503).json({ error: "Database unreachable", dependency: "database", code: e.code });
+    if (isRelationMissing(e))
+      return res
+        .status(503)
+        .json({
+          error: "Schema not migrated (pedidos/pedido_itens missing)",
+          dependency: "database",
+          code: e.code,
+          action: "Run migrations",
+        });
+    if (isConnectionError(e))
+      return res
+        .status(503)
+        .json({
+          error: "Database unreachable",
+          dependency: "database",
+          code: e.code,
+        });
     return res.status(500).json({ error: "Internal error" });
   }
 }
@@ -45,8 +70,12 @@ async function putPedido(req, res) {
   const client = await database.getClient();
   try {
     const id = Number(req.query.id);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: "invalid id" });
-    const head = await client.query({ text: `SELECT * FROM pedidos WHERE id = $1`, values: [id] });
+    if (!Number.isFinite(id))
+      return res.status(400).json({ error: "invalid id" });
+    const head = await client.query({
+      text: `SELECT * FROM pedidos WHERE id = $1`,
+      values: [id],
+    });
     if (!head.rows.length) return res.status(404).json({ error: "Not found" });
 
     const b = req.body || {};
@@ -55,53 +84,87 @@ async function putPedido(req, res) {
     // 1) Atualizar cabeçalho flexível (agora permite alterar tipo e parceiro)
     const sets = [];
     const values = [];
-    const set = (field, value) => { values.push(value); sets.push(`${field} = $${values.length}`); };
-    if (b.partner_document !== undefined) set("partner_document", b.partner_document || null);
-    if (b.data_emissao !== undefined) set("data_emissao", b.data_emissao || null);
-    if (b.partner_name !== undefined) set("partner_name", b.partner_name || null);
-    if (b.data_entrega !== undefined) set("data_entrega", b.data_entrega || null);
+    const set = (field, value) => {
+      values.push(value);
+      sets.push(`${field} = $${values.length}`);
+    };
+    if (b.partner_document !== undefined)
+      set("partner_document", b.partner_document || null);
+    if (b.data_emissao !== undefined)
+      set("data_emissao", b.data_emissao || null);
+    if (b.partner_name !== undefined)
+      set("partner_name", b.partner_name || null);
+    if (b.data_entrega !== undefined)
+      set("data_entrega", b.data_entrega || null);
     if (b.observacao !== undefined) set("observacao", b.observacao || null);
-    if (b.tem_nota_fiscal !== undefined) set("tem_nota_fiscal", b.tem_nota_fiscal);
+    if (b.tem_nota_fiscal !== undefined)
+      set("tem_nota_fiscal", b.tem_nota_fiscal);
     if (b.parcelado !== undefined) set("parcelado", b.parcelado);
-    if (b.numero_promissorias !== undefined) set("numero_promissorias", Number(b.numero_promissorias) || 1);
-    if (b.data_primeira_promissoria !== undefined) set("data_primeira_promissoria", b.data_primeira_promissoria || null);
+    if (b.numero_promissorias !== undefined)
+      set("numero_promissorias", Number(b.numero_promissorias) || 1);
+    if (b.data_primeira_promissoria !== undefined)
+      set("data_primeira_promissoria", b.data_primeira_promissoria || null);
     // permitir alterar tipo e parceiro (validações básicas)
     let tipoAtual = head.rows[0].tipo;
     if (b.tipo !== undefined) {
-      if (!['VENDA', 'COMPRA'].includes(b.tipo)) throw new Error('tipo inválido');
+      if (!["VENDA", "COMPRA"].includes(b.tipo))
+        throw new Error("tipo inválido");
       tipoAtual = b.tipo;
-      set('tipo', b.tipo);
+      set("tipo", b.tipo);
     }
     if (b.partner_entity_id !== undefined) {
       const pid = Number(b.partner_entity_id);
-      if (!Number.isFinite(pid)) throw new Error('partner_entity_id inválido');
+      if (!Number.isFinite(pid)) throw new Error("partner_entity_id inválido");
       // verificar ativo
-      const ent = await client.query({ text: `SELECT ativo FROM entities WHERE id = $1`, values: [pid] });
-      if (!ent.rows.length) throw new Error('Entidade não encontrada');
-      if (ent.rows[0].ativo === false) throw new Error('Entidade inativa');
-      set('partner_entity_id', pid);
+      const ent = await client.query({
+        text: `SELECT ativo FROM entities WHERE id = $1`,
+        values: [pid],
+      });
+      if (!ent.rows.length) throw new Error("Entidade não encontrada");
+      if (ent.rows[0].ativo === false) throw new Error("Entidade inativa");
+      set("partner_entity_id", pid);
     }
     if (sets.length) {
       sets.push(`updated_at = NOW()`);
-      await client.query({ text: `UPDATE pedidos SET ${sets.join(', ')} WHERE id = $${values.length + 1}`, values: [...values, id] });
+      await client.query({
+        text: `UPDATE pedidos SET ${sets.join(", ")} WHERE id = $${values.length + 1}`,
+        values: [...values, id],
+      });
     }
 
     // 2) Reprocessar itens e movimentos se itens forem enviados
     if (Array.isArray(b.itens)) {
       const docTag = `PEDIDO:${id}`;
       // apagar movimentos anteriores deste pedido (idempotência)
-      await client.query({ text: `DELETE FROM movimento_estoque WHERE documento = $1`, values: [docTag] });
+      await client.query({
+        text: `DELETE FROM movimento_estoque WHERE documento = $1`,
+        values: [docTag],
+      });
       // apagar itens anteriores
-      await client.query({ text: `DELETE FROM pedido_itens WHERE pedido_id = $1`, values: [id] });
+      await client.query({
+        text: `DELETE FROM pedido_itens WHERE pedido_id = $1`,
+        values: [id],
+      });
 
-      let totalBruto = 0, descontoTotal = 0, totalLiquido = 0;
+      let totalBruto = 0,
+        descontoTotal = 0,
+        totalLiquido = 0;
       for (const it of b.itens) {
-        const rProd = await client.query({ text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`, values: [it.produto_id] });
-        if (!rProd.rows.length) throw new Error(`produto_id inválido: ${it.produto_id}`);
+        const rProd = await client.query({
+          text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`,
+          values: [it.produto_id],
+        });
+        if (!rProd.rows.length)
+          throw new Error(`produto_id inválido: ${it.produto_id}`);
         const qtd = Number(it.quantidade);
-        if (!Number.isFinite(qtd) || qtd <= 0) throw new Error(`quantidade inválida`);
-        const preco = it.preco_unitario != null ? Number(it.preco_unitario) : Number(rProd.rows[0].preco_tabela ?? 0);
-        const desconto = it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
+        if (!Number.isFinite(qtd) || qtd <= 0)
+          throw new Error(`quantidade inválida`);
+        const preco =
+          it.preco_unitario != null
+            ? Number(it.preco_unitario)
+            : Number(rProd.rows[0].preco_tabela ?? 0);
+        const desconto =
+          it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
         const totalItem = (preco - desconto) * qtd;
         totalBruto += preco * qtd;
         descontoTotal += desconto * qtd;
@@ -113,7 +176,7 @@ async function putPedido(req, res) {
         });
 
         // reinsert movimentos conforme tipo atual
-        if (tipoAtual === 'VENDA') {
+        if (tipoAtual === "VENDA") {
           // checar saldo disponível
           const saldoQ = await client.query({
             text: `SELECT COALESCE((
@@ -123,17 +186,32 @@ async function putPedido(req, res) {
             values: [it.produto_id],
           });
           const saldo = Number(saldoQ.rows[0].saldo || 0);
-          if (saldo < qtd) throw new Error(`Saldo insuficiente para o produto ${it.produto_id}`);
+          if (saldo < qtd)
+            throw new Error(
+              `Saldo insuficiente para o produto ${it.produto_id}`,
+            );
           await client.query({
             text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao)
                    VALUES ($1,'SAIDA',$2,$3,$4)`,
-            values: [it.produto_id, qtd, docTag, `SAÍDA por edição de pedido ${id}`],
+            values: [
+              it.produto_id,
+              qtd,
+              docTag,
+              `SAÍDA por edição de pedido ${id}`,
+            ],
           });
-        } else if (tipoAtual === 'COMPRA') {
+        } else if (tipoAtual === "COMPRA") {
           await client.query({
             text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
                    VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
-            values: [it.produto_id, qtd, preco, preco * qtd, docTag, `ENTRADA por edição de pedido ${id}`],
+            values: [
+              it.produto_id,
+              qtd,
+              preco,
+              preco * qtd,
+              docTag,
+              `ENTRADA por edição de pedido ${id}`,
+            ],
           });
         }
       }
@@ -144,8 +222,12 @@ async function putPedido(req, res) {
       });
 
       // Calcular valor por promissória se aplicável
-      const pedidoAtualizado = await client.query({ text: `SELECT numero_promissorias FROM pedidos WHERE id = $1`, values: [id] });
-      const numeroPromissorias = Number(pedidoAtualizado.rows[0]?.numero_promissorias) || 1;
+      const pedidoAtualizado = await client.query({
+        text: `SELECT numero_promissorias FROM pedidos WHERE id = $1`,
+        values: [id],
+      });
+      const numeroPromissorias =
+        Number(pedidoAtualizado.rows[0]?.numero_promissorias) || 1;
       if (numeroPromissorias > 1 && totalLiquido > 0) {
         const valorPorPromissoria = totalLiquido / numeroPromissorias;
         await client.query({
@@ -167,15 +249,28 @@ async function putPedido(req, res) {
         const firstDate = headNow.rows[0].data_primeira_promissoria;
         if (np > 1 && tl > 0) {
           const vpp = tl / np;
-          await client.query({ text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`, values: [vpp, id] });
+          await client.query({
+            text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
+            values: [vpp, id],
+          });
 
           // Regenerar cronograma de promissórias se não houver nenhuma paga ainda
-          const anyPaid = await client.query({ text: `SELECT 1 FROM pedido_promissorias WHERE pedido_id = $1 AND paid_at IS NOT NULL LIMIT 1`, values: [id] });
+          const anyPaid = await client.query({
+            text: `SELECT 1 FROM pedido_promissorias WHERE pedido_id = $1 AND paid_at IS NOT NULL LIMIT 1`,
+            values: [id],
+          });
           if (!anyPaid.rows.length) {
             // apaga cronograma atual
-            await client.query({ text: `DELETE FROM pedido_promissorias WHERE pedido_id = $1`, values: [id] });
+            await client.query({
+              text: `DELETE FROM pedido_promissorias WHERE pedido_id = $1`,
+              values: [id],
+            });
             const amt = Number(vpp.toFixed(2));
-            const datas = Array.isArray(b.promissoria_datas) ? b.promissoria_datas.filter((s) => /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s))) : [];
+            const datas = Array.isArray(b.promissoria_datas)
+              ? b.promissoria_datas.filter((s) =>
+                  /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
+                )
+              : [];
             if (datas.length >= np) {
               for (let i = 0; i < np; i++) {
                 await client.query({
@@ -185,7 +280,11 @@ async function putPedido(req, res) {
               }
             } else {
               const baseDate = firstDate ? parseDateYMD(firstDate) : new Date();
-              const norm = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+              const norm = new Date(
+                baseDate.getFullYear(),
+                baseDate.getMonth(),
+                baseDate.getDate(),
+              );
               for (let i = 0; i < np; i++) {
                 const due = new Date(norm);
                 due.setMonth(due.getMonth() + i);
@@ -197,11 +296,20 @@ async function putPedido(req, res) {
             }
           }
         } else {
-          await client.query({ text: `UPDATE pedidos SET valor_por_promissoria = NULL WHERE id = $1`, values: [id] });
+          await client.query({
+            text: `UPDATE pedidos SET valor_por_promissoria = NULL WHERE id = $1`,
+            values: [id],
+          });
           // sem parcelamento: remover cronograma existente (se não houver pago)
-          const anyPaid = await client.query({ text: `SELECT 1 FROM pedido_promissorias WHERE pedido_id = $1 AND paid_at IS NOT NULL LIMIT 1`, values: [id] });
+          const anyPaid = await client.query({
+            text: `SELECT 1 FROM pedido_promissorias WHERE pedido_id = $1 AND paid_at IS NOT NULL LIMIT 1`,
+            values: [id],
+          });
           if (!anyPaid.rows.length) {
-            await client.query({ text: `DELETE FROM pedido_promissorias WHERE pedido_id = $1`, values: [id] });
+            await client.query({
+              text: `DELETE FROM pedido_promissorias WHERE pedido_id = $1`,
+              values: [id],
+            });
           }
         }
       }
@@ -214,12 +322,31 @@ async function putPedido(req, res) {
   } catch (e) {
     await database.safeRollback(client);
     console.error("PUT /pedidos/:id error", e);
-    if (isRelationMissing(e)) return res.status(503).json({ error: "Schema not migrated (pedidos/pedido_itens missing)", dependency: "database", code: e.code, action: "Run migrations" });
-    if (isConnectionError(e)) return res.status(503).json({ error: "Database unreachable", dependency: "database", code: e.code });
+    if (isRelationMissing(e))
+      return res
+        .status(503)
+        .json({
+          error: "Schema not migrated (pedidos/pedido_itens missing)",
+          dependency: "database",
+          code: e.code,
+          action: "Run migrations",
+        });
+    if (isConnectionError(e))
+      return res
+        .status(503)
+        .json({
+          error: "Database unreachable",
+          dependency: "database",
+          code: e.code,
+        });
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     if (client) {
-      try { await client.end(); } catch (_) { /* noop */ }
+      try {
+        await client.end();
+      } catch (_) {
+        /* noop */
+      }
     }
   }
 }
@@ -228,41 +355,73 @@ async function deletePedido(req, res) {
   const client = await database.getClient();
   try {
     const id = Number(req.query.id);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
-    await client.query('BEGIN');
-    const head = await client.query({ text: `SELECT id FROM pedidos WHERE id = $1`, values: [id] });
+    if (!Number.isFinite(id))
+      return res.status(400).json({ error: "invalid id" });
+    await client.query("BEGIN");
+    const head = await client.query({
+      text: `SELECT id FROM pedidos WHERE id = $1`,
+      values: [id],
+    });
     if (!head.rows.length) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Not found' });
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Not found" });
     }
     const docTag = `PEDIDO:${id}`;
-    await client.query({ text: `DELETE FROM movimento_estoque WHERE documento = $1`, values: [docTag] });
-    await client.query({ text: `DELETE FROM pedido_itens WHERE pedido_id = $1`, values: [id] });
-    await client.query({ text: `DELETE FROM pedidos WHERE id = $1`, values: [id] });
-    await client.query('COMMIT');
+    await client.query({
+      text: `DELETE FROM movimento_estoque WHERE documento = $1`,
+      values: [docTag],
+    });
+    await client.query({
+      text: `DELETE FROM pedido_itens WHERE pedido_id = $1`,
+      values: [id],
+    });
+    await client.query({
+      text: `DELETE FROM pedidos WHERE id = $1`,
+      values: [id],
+    });
+    await client.query("COMMIT");
     return res.status(200).json({ ok: true });
   } catch (e) {
     await database.safeRollback(client);
-    console.error('DELETE /pedidos/:id error', e);
-    if (isRelationMissing(e)) return res.status(503).json({ error: 'Schema not migrated', dependency: 'database', code: e.code, action: 'Run migrations' });
-    if (isConnectionError(e)) return res.status(503).json({ error: 'Database unreachable', dependency: 'database', code: e.code });
-    return res.status(400).json({ error: e.message || 'Invalid payload' });
+    console.error("DELETE /pedidos/:id error", e);
+    if (isRelationMissing(e))
+      return res
+        .status(503)
+        .json({
+          error: "Schema not migrated",
+          dependency: "database",
+          code: e.code,
+          action: "Run migrations",
+        });
+    if (isConnectionError(e))
+      return res
+        .status(503)
+        .json({
+          error: "Database unreachable",
+          dependency: "database",
+          code: e.code,
+        });
+    return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     if (client) {
-      try { await client.end(); } catch (_) { /* noop */ }
+      try {
+        await client.end();
+      } catch (_) {
+        /* noop */
+      }
     }
   }
 }
 
 function formatDateYMD(d) {
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
 function parseDateYMD(input) {
-  if (typeof input === 'string') {
+  if (typeof input === "string") {
     const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (m) {
       const y = parseInt(m[1], 10);

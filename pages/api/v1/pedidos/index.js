@@ -13,16 +13,24 @@ async function postPedido(req, res) {
   try {
     const b = req.body || {};
     const tipo = b.tipo;
-    if (!["VENDA", "COMPRA"].includes(tipo)) return res.status(400).json({ error: "tipo inválido" });
+    if (!["VENDA", "COMPRA"].includes(tipo))
+      return res.status(400).json({ error: "tipo inválido" });
 
     // cliente/fornecedor: obrigatório e ativo
     const partnerIdRaw = b.partner_entity_id;
-    if (partnerIdRaw == null) return res.status(400).json({ error: "partner_entity_id obrigatório" });
+    if (partnerIdRaw == null)
+      return res.status(400).json({ error: "partner_entity_id obrigatório" });
     const partnerId = Number(partnerIdRaw);
-    if (!Number.isFinite(partnerId)) return res.status(400).json({ error: "partner_entity_id inválido" });
-    const r = await client.query({ text: `SELECT id, ativo FROM entities WHERE id = $1`, values: [partnerId] });
-    if (!r.rows.length) return res.status(400).json({ error: "Entidade não encontrada" });
-    if (r.rows[0].ativo === false) return res.status(400).json({ error: "Entidade inativa" });
+    if (!Number.isFinite(partnerId))
+      return res.status(400).json({ error: "partner_entity_id inválido" });
+    const r = await client.query({
+      text: `SELECT id, ativo FROM entities WHERE id = $1`,
+      values: [partnerId],
+    });
+    if (!r.rows.length)
+      return res.status(400).json({ error: "Entidade não encontrada" });
+    if (r.rows[0].ativo === false)
+      return res.status(400).json({ error: "Entidade inativa" });
 
     await client.query("BEGIN");
     const head = await client.query({
@@ -50,12 +58,21 @@ async function postPedido(req, res) {
     let descontoTotal = 0;
     let totalLiquido = 0;
     for (const it of itens) {
-      const rProd = await client.query({ text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`, values: [it.produto_id] });
-      if (!rProd.rows.length) throw new Error(`produto_id inválido: ${it.produto_id}`);
+      const rProd = await client.query({
+        text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`,
+        values: [it.produto_id],
+      });
+      if (!rProd.rows.length)
+        throw new Error(`produto_id inválido: ${it.produto_id}`);
       const qtd = Number(it.quantidade);
-      if (!Number.isFinite(qtd) || qtd <= 0) throw new Error(`quantidade inválida`);
-      const preco = it.preco_unitario != null ? Number(it.preco_unitario) : Number(rProd.rows[0].preco_tabela ?? 0);
-      const desconto = it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
+      if (!Number.isFinite(qtd) || qtd <= 0)
+        throw new Error(`quantidade inválida`);
+      const preco =
+        it.preco_unitario != null
+          ? Number(it.preco_unitario)
+          : Number(rProd.rows[0].preco_tabela ?? 0);
+      const desconto =
+        it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
       const totalItem = (preco - desconto) * qtd;
       totalBruto += preco * qtd;
       descontoTotal += desconto * qtd;
@@ -85,7 +102,11 @@ async function postPedido(req, res) {
     // (Re)gerar tabela de promissórias para o pedido recém criado
     if (numeroPromissorias > 1 && totalLiquido > 0) {
       const amount = Number((totalLiquido / numeroPromissorias).toFixed(2));
-      const datas = Array.isArray(b.promissoria_datas) ? b.promissoria_datas.filter((s) => /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s))) : [];
+      const datas = Array.isArray(b.promissoria_datas)
+        ? b.promissoria_datas.filter((s) =>
+            /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
+          )
+        : [];
       if (datas.length >= numeroPromissorias) {
         for (let i = 0; i < numeroPromissorias; i++) {
           await client.query({
@@ -98,7 +119,11 @@ async function postPedido(req, res) {
         const firstDate = b.data_primeira_promissoria
           ? parseDateYMD(b.data_primeira_promissoria)
           : new Date();
-        const baseDate = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate());
+        const baseDate = new Date(
+          firstDate.getFullYear(),
+          firstDate.getMonth(),
+          firstDate.getDate(),
+        );
         for (let i = 0; i < numeroPromissorias; i++) {
           const due = new Date(baseDate);
           due.setMonth(due.getMonth() + i);
@@ -111,9 +136,12 @@ async function postPedido(req, res) {
     }
     // Gerar movimentos de estoque imediatamente (CRUD sem rascunho)
     const docTag = `PEDIDO:${pedido.id}`;
-    const itensCriados = await client.query({ text: `SELECT * FROM pedido_itens WHERE pedido_id = $1 ORDER BY id`, values: [pedido.id] });
+    const itensCriados = await client.query({
+      text: `SELECT * FROM pedido_itens WHERE pedido_id = $1 ORDER BY id`,
+      values: [pedido.id],
+    });
     for (const it of itensCriados.rows) {
-      if (tipo === 'VENDA') {
+      if (tipo === "VENDA") {
         // checa saldo disponível
         const saldoQ = await client.query({
           text: `SELECT COALESCE((
@@ -125,17 +153,29 @@ async function postPedido(req, res) {
         const saldo = Number(saldoQ.rows[0].saldo || 0);
         if (saldo < Number(it.quantidade)) {
           // buscar nome do produto para mensagem mais amigável
-          const pinfo = await client.query({ text: `SELECT nome FROM produtos WHERE id = $1`, values: [it.produto_id] });
+          const pinfo = await client.query({
+            text: `SELECT nome FROM produtos WHERE id = $1`,
+            values: [it.produto_id],
+          });
           const pnome = pinfo.rows?.[0]?.nome || String(it.produto_id);
           await client.query("ROLLBACK");
-          return res.status(400).json({ error: `Saldo insuficiente para o produto "${pnome}" (ID ${it.produto_id})` });
+          return res
+            .status(400)
+            .json({
+              error: `Saldo insuficiente para o produto "${pnome}" (ID ${it.produto_id})`,
+            });
         }
         await client.query({
           text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao)
                  VALUES ($1,'SAIDA',$2,$3,$4)`,
-          values: [it.produto_id, it.quantidade, docTag, `SAÍDA por criação de pedido ${pedido.id}`],
+          values: [
+            it.produto_id,
+            it.quantidade,
+            docTag,
+            `SAÍDA por criação de pedido ${pedido.id}`,
+          ],
         });
-      } else if (tipo === 'COMPRA') {
+      } else if (tipo === "COMPRA") {
         await client.query({
           text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
                  VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
@@ -151,32 +191,54 @@ async function postPedido(req, res) {
       }
     }
 
-    const finalHead = await client.query({ text: `SELECT * FROM pedidos WHERE id = $1`, values: [pedido.id] });
+    const finalHead = await client.query({
+      text: `SELECT * FROM pedidos WHERE id = $1`,
+      values: [pedido.id],
+    });
 
     await client.query("COMMIT");
     return res.status(201).json(finalHead.rows[0]);
   } catch (e) {
     await database.safeRollback(client);
     console.error("POST /pedidos error", e);
-    if (isRelationMissing(e)) return res.status(503).json({ error: "Schema not migrated (pedidos|pedido_itens missing)", dependency: "database", code: e.code, action: "Run migrations" });
-    if (isConnectionError(e)) return res.status(503).json({ error: "Database unreachable", dependency: "database", code: e.code });
+    if (isRelationMissing(e))
+      return res
+        .status(503)
+        .json({
+          error: "Schema not migrated (pedidos|pedido_itens missing)",
+          dependency: "database",
+          code: e.code,
+          action: "Run migrations",
+        });
+    if (isConnectionError(e))
+      return res
+        .status(503)
+        .json({
+          error: "Database unreachable",
+          dependency: "database",
+          code: e.code,
+        });
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     if (client) {
-      try { await client.end(); } catch (_) { /* noop */ }
+      try {
+        await client.end();
+      } catch (_) {
+        /* noop */
+      }
     }
   }
 }
 
 function formatDateYMD(d) {
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
 function parseDateYMD(input) {
-  if (typeof input === 'string') {
+  if (typeof input === "string") {
     const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (m) {
       const y = parseInt(m[1], 10);
@@ -196,18 +258,22 @@ async function getPedidos(req, res) {
     const clauses = [];
     const values = [];
     if (tipo) {
-      if (!["VENDA", "COMPRA"].includes(tipo)) return res.status(400).json({ error: "tipo inválido" });
+      if (!["VENDA", "COMPRA"].includes(tipo))
+        return res.status(400).json({ error: "tipo inválido" });
       values.push(tipo);
       clauses.push(`tipo = $${values.length}`);
     }
     if (status) {
-      if (!["confirmado", "cancelado"].includes(status)) return res.status(400).json({ error: "status inválido" });
+      if (!["confirmado", "cancelado"].includes(status))
+        return res.status(400).json({ error: "status inválido" });
       values.push(status);
       clauses.push(`status = $${values.length}`);
     }
     if (q) {
       values.push(`%${q}%`);
-      clauses.push(`(partner_name ILIKE $${values.length} OR partner_document ILIKE $${values.length})`);
+      clauses.push(
+        `(partner_name ILIKE $${values.length} OR partner_document ILIKE $${values.length})`,
+      );
     }
     if (from) {
       values.push(from);
@@ -229,7 +295,7 @@ async function getPedidos(req, res) {
              FROM pedidos p
              LEFT JOIN entities e ON e.id = p.partner_entity_id
              LEFT JOIN pedido_promissorias pp ON pp.pedido_id = p.id
-             ${where.replace(/\bFROM pedidos\b/, 'FROM pedidos p')}
+             ${where.replace(/\bFROM pedidos\b/, "FROM pedidos p")}
              GROUP BY p.id, e.name
              ORDER BY p.data_emissao DESC, p.id DESC
              LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`,
@@ -237,15 +303,35 @@ async function getPedidos(req, res) {
     };
     const result = await database.query(listQuery);
     if (String(meta) === "1") {
-      const countQuery = { text: `SELECT COUNT(*)::int AS total FROM pedidos ${where}`, values };
+      const countQuery = {
+        text: `SELECT COUNT(*)::int AS total FROM pedidos ${where}`,
+        values,
+      };
       const count = await database.query(countQuery);
-      return res.status(200).json({ data: result.rows, meta: { total: count.rows[0].total } });
+      return res
+        .status(200)
+        .json({ data: result.rows, meta: { total: count.rows[0].total } });
     }
     return res.status(200).json(result.rows);
   } catch (e) {
     console.error("GET /pedidos error", e);
-    if (isRelationMissing(e)) return res.status(503).json({ error: "Schema not migrated (pedidos missing)", dependency: "database", code: e.code, action: "Run migrations" });
-    if (isConnectionError(e)) return res.status(503).json({ error: "Database unreachable", dependency: "database", code: e.code });
+    if (isRelationMissing(e))
+      return res
+        .status(503)
+        .json({
+          error: "Schema not migrated (pedidos missing)",
+          dependency: "database",
+          code: e.code,
+          action: "Run migrations",
+        });
+    if (isConnectionError(e))
+      return res
+        .status(503)
+        .json({
+          error: "Database unreachable",
+          dependency: "database",
+          code: e.code,
+        });
     return res.status(500).json({ error: "Internal error" });
   }
 }

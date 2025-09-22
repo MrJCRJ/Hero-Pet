@@ -9,28 +9,39 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
   const [ativo, setAtivo] = useState(initial.ativo ?? true);
   const [descricao, setDescricao] = useState(initial.descricao || "");
   const [precoTabela, setPrecoTabela] = useState(
-    initial.preco_tabela !== undefined && initial.preco_tabela !== null ? String(initial.preco_tabela) : ""
+    initial.preco_tabela !== undefined && initial.preco_tabela !== null
+      ? String(initial.preco_tabela)
+      : "",
   );
   const [markupPercent, setMarkupPercent] = useState(
-    initial.markup_percent_default !== undefined && initial.markup_percent_default !== null
+    initial.markup_percent_default !== undefined &&
+      initial.markup_percent_default !== null
       ? String(initial.markup_percent_default)
-      : ""
+      : "",
   );
   const [estoqueMinimo, setEstoqueMinimo] = useState(
-    initial.estoque_minimo !== undefined && initial.estoque_minimo !== null ? String(initial.estoque_minimo) : ""
+    initial.estoque_minimo !== undefined && initial.estoque_minimo !== null
+      ? String(initial.estoque_minimo)
+      : "",
   );
-  const [suppliers, setSuppliers] = useState(Array.isArray(initial.suppliers) ? initial.suppliers : []);
+  const [suppliers, setSuppliers] = useState(
+    Array.isArray(initial.suppliers) ? initial.suppliers : [],
+  );
   const [supplierLabels, setSupplierLabels] = useState(
     Array.isArray(initial.supplier_labels)
-      ? initial.supplier_labels.map((s) => ({ id: s.id, label: s.name || s.label || String(s.id) }))
-      : []
+      ? initial.supplier_labels.map((s) => ({
+          id: s.id,
+          label: s.name || s.label || String(s.id),
+        }))
+      : [],
   );
   const [showSupplierModal, setShowSupplierModal] = useState(false);
 
   function handleSubmit(e) {
     e.preventDefault();
     if (!nome.trim()) return alert("Nome é obrigatório");
-    if (!suppliers.length) return alert("Selecione ao menos um fornecedor (PJ)");
+    if (!suppliers.length)
+      return alert("Selecione ao menos um fornecedor (PJ)");
     onSubmit({
       nome: nome.trim(),
       categoria: categoria || null,
@@ -38,7 +49,8 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
       ativo,
       descricao: descricao || null,
       preco_tabela: precoTabela === "" ? null : Number(precoTabela),
-      markup_percent_default: markupPercent === "" ? null : Number(markupPercent),
+      markup_percent_default:
+        markupPercent === "" ? null : Number(markupPercent),
       estoque_minimo: estoqueMinimo === "" ? null : Number(estoqueMinimo),
       suppliers,
     });
@@ -108,14 +120,24 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
           />
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={ativo}
+            onChange={(e) => setAtivo(e.target.checked)}
+          />
           Ativo
         </label>
         <div className="text-sm">
           <div className="flex items-center justify-between mb-1">
             <span className="block">Fornecedores *</span>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" fullWidth={false} onClick={() => setShowSupplierModal(true)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                fullWidth={false}
+                onClick={() => setShowSupplierModal(true)}
+              >
                 Adicionar fornecedor
               </Button>
               {suppliers.length > 0 && (
@@ -124,7 +146,10 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
                   variant="secondary"
                   size="sm"
                   fullWidth={false}
-                  onClick={() => { setSuppliers([]); setSupplierLabels([]); }}
+                  onClick={() => {
+                    setSuppliers([]);
+                    setSupplierLabels([]);
+                  }}
                 >
                   Limpar
                 </Button>
@@ -135,14 +160,32 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
             {supplierLabels.length ? (
               <div className="flex flex-wrap gap-2">
                 {supplierLabels.map((s) => (
-                  <span key={s.id} className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)]">
+                  <span
+                    key={s.id}
+                    className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)]"
+                  >
                     {s.label}
-                    <button className="ml-2 opacity-70 hover:opacity-100" onClick={(e) => { e.preventDefault(); setSuppliers((prev) => prev.filter((id) => id !== s.id)); setSupplierLabels((prev) => prev.filter((x) => x.id !== s.id)); }}>×</button>
+                    <button
+                      className="ml-2 opacity-70 hover:opacity-100"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSuppliers((prev) =>
+                          prev.filter((id) => id !== s.id),
+                        );
+                        setSupplierLabels((prev) =>
+                          prev.filter((x) => x.id !== s.id),
+                        );
+                      }}
+                    >
+                      ×
+                    </button>
                   </span>
                 ))}
               </div>
             ) : (
-              <span className="opacity-60 text-xs">Nenhum fornecedor selecionado</span>
+              <span className="opacity-60 text-xs">
+                Nenhum fornecedor selecionado
+              </span>
             )}
           </div>
         </div>
@@ -168,15 +211,26 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
             const url = `/api/v1/entities?q=${encodeURIComponent(q)}&ativo=true&entity_type=PJ`;
             const res = await fetch(url, { cache: "no-store" });
             const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || "Falha na busca de fornecedores");
-            return data.map((e) => ({ id: e.id, label: `${e.name} • ${e.entity_type}`, name: e.name }));
+            if (!res.ok)
+              throw new Error(data?.error || "Falha na busca de fornecedores");
+            return data.map((e) => ({
+              id: e.id,
+              label: `${e.name} • ${e.entity_type}`,
+              name: e.name,
+            }));
           }}
           extractLabel={(it) => it.label}
           onSelect={(it) => {
             setShowSupplierModal(false);
             if (it) {
-              setSuppliers((prev) => (prev.includes(it.id) ? prev : [...prev, it.id]));
-              setSupplierLabels((prev) => (prev.find((x) => x.id === it.id) ? prev : [...prev, { id: it.id, label: it.label }]));
+              setSuppliers((prev) =>
+                prev.includes(it.id) ? prev : [...prev, it.id],
+              );
+              setSupplierLabels((prev) =>
+                prev.find((x) => x.id === it.id)
+                  ? prev
+                  : [...prev, { id: it.id, label: it.label }],
+              );
             }
           }}
           onClose={() => setShowSupplierModal(false)}

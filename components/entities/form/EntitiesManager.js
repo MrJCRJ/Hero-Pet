@@ -15,7 +15,10 @@ import {
 } from "./index";
 import { FormContainer } from "components/ui/Form";
 
-export function EntitiesManager({ browserLimit = 20, highlightId: externalHighlightId }) {
+export function EntitiesManager({
+  browserLimit = 20,
+  highlightId: externalHighlightId,
+}) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(() => createInitialEntityForm());
   const [editingId, setEditingId] = useState(null);
@@ -99,7 +102,7 @@ export function EntitiesManager({ browserLimit = 20, highlightId: externalHighli
         }
         throw new Error(
           data.error ||
-          `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
+            `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
         );
       }
       // Sucesso: registrar highlight antes de limpar editingId

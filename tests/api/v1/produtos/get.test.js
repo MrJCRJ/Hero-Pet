@@ -39,10 +39,18 @@ beforeAll(async () => {
 
   // Seeds mínimos
   const base = [
-    { nome: "Ração Filhote 2kg", categoria: "RACOES", codigo_barras: "789100000001" },
+    {
+      nome: "Ração Filhote 2kg",
+      categoria: "RACOES",
+      codigo_barras: "789100000001",
+    },
     { nome: "Ração Adulto 10kg", categoria: "RACOES" },
     { nome: "Areia Fina 4kg", categoria: "HIGIENE", ativo: false },
-    { nome: "Shampoo Neutro 500ml", categoria: "HIGIENE", codigo_barras: "789200000001" },
+    {
+      nome: "Shampoo Neutro 500ml",
+      categoria: "HIGIENE",
+      codigo_barras: "789200000001",
+    },
   ];
   for (const p of base) {
     const resp = await fetch("http://localhost:3000/api/v1/produtos", {

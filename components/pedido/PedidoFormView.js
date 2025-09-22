@@ -9,29 +9,68 @@ import { PedidoFormPromissorias } from "./PedidoFormPromissorias";
 export function PedidoFormView(props) {
   const {
     // estado geral
-    submitting, canSubmit, created, clearForm,
+    submitting,
+    canSubmit,
+    created,
+    clearForm,
     // tipo e parceiro
-    tipo, handleTipoChange, originalTipo, pendingTipo, confirmTipoChange, cancelTipoChange, showTypeChangeModal,
-    partnerId, partnerLabel, setPartnerId, setPartnerLabel, setPartnerName,
-    showPartnerModal, setShowPartnerModal,
+    tipo,
+    handleTipoChange,
+    originalTipo,
+    pendingTipo,
+    confirmTipoChange,
+    cancelTipoChange,
+    showTypeChangeModal,
+    partnerId,
+    partnerLabel,
+    setPartnerId,
+    setPartnerLabel,
+    setPartnerName,
+    showPartnerModal,
+    setShowPartnerModal,
     // datas e flags
-    dataEmissao, setDataEmissao, dataEntrega, setDataEntrega, observacao, setObservacao,
-    parcelado, setParcelado,
+    dataEmissao,
+    setDataEmissao,
+    dataEntrega,
+    setDataEntrega,
+    observacao,
+    setObservacao,
+    parcelado,
+    setParcelado,
     // itens
-    itens, setItens, updateItem, addItem, removeItem, originalItens,
-    getItemChanges, getItemDiffClass, getItemDiffIcon,
-    productModalIndex, setProductModalIndex,
+    itens,
+    setItens,
+    updateItem,
+    addItem,
+    removeItem,
+    originalItens,
+    getItemChanges,
+    getItemDiffClass,
+    getItemDiffIcon,
+    productModalIndex,
+    setProductModalIndex,
     // promissórias
-    numeroPromissorias, setNumeroPromissorias, dataPrimeiraPromissoria, setDataPrimeiraPromissoria, valorPorPromissoria,
-    frequenciaPromissorias, setFrequenciaPromissorias, intervaloDiasPromissorias, setIntervaloDiasPromissorias,
-    promissoriaDatas, setPromissoriaDatas,
+    numeroPromissorias,
+    setNumeroPromissorias,
+    dataPrimeiraPromissoria,
+    setDataPrimeiraPromissoria,
+    valorPorPromissoria,
+    frequenciaPromissorias,
+    setFrequenciaPromissorias,
+    intervaloDiasPromissorias,
+    setIntervaloDiasPromissorias,
+    promissoriaDatas,
+    setPromissoriaDatas,
     promissoriasMeta,
     // helpers
-    computeItemTotal, computeOrderTotalEstimate,
+    computeItemTotal,
+    computeOrderTotalEstimate,
     // fetchers
-    fetchEntities, fetchProdutos,
+    fetchEntities,
+    fetchProdutos,
     // ações
-    handleSubmit, handleDelete,
+    handleSubmit,
+    handleDelete,
     // externas
     editingOrder,
     // services
@@ -39,10 +78,13 @@ export function PedidoFormView(props) {
   } = props;
 
   // Handlers estáveis
-  const handleNumeroPromissoriasChange = React.useCallback((n) => {
-    setNumeroPromissorias(n);
-    // O controller recalcula valorPorPromissoria em efeito, então não precisamos setar aqui
-  }, [setNumeroPromissorias]);
+  const handleNumeroPromissoriasChange = React.useCallback(
+    (n) => {
+      setNumeroPromissorias(n);
+      // O controller recalcula valorPorPromissoria em efeito, então não precisamos setar aqui
+    },
+    [setNumeroPromissorias],
+  );
 
   return (
     <FormContainer title="Pedido (MVP)" onSubmit={handleSubmit}>
@@ -64,7 +106,6 @@ export function PedidoFormView(props) {
         onObservacaoChange={setObservacao}
         dataEntrega={dataEntrega}
         onDataEntregaChange={setDataEntrega}
-
         showPartnerModal={showPartnerModal}
         onShowPartnerModal={setShowPartnerModal}
         fetchEntities={fetchEntities}
@@ -129,31 +170,59 @@ export function PedidoFormView(props) {
             const targetIndex = productModalIndex;
             setProductModalIndex(null);
             if (it && Number.isInteger(targetIndex)) {
-              updateItem(targetIndex, { produto_id: String(it.id), produto_label: it.label, produto_saldo: null });
-              if (tipo === 'VENDA') {
-                fetchSaldoService(it.id).then((saldo) => {
-                  setItens((prev) => prev.map((row, i) => i === targetIndex ? { ...row, produto_saldo: saldo } : row));
-                }).catch(() => {
-                  setItens((prev) => prev.map((row, i) => i === targetIndex ? { ...row, produto_saldo: null } : row));
-                });
+              updateItem(targetIndex, {
+                produto_id: String(it.id),
+                produto_label: it.label,
+                produto_saldo: null,
+              });
+              if (tipo === "VENDA") {
+                fetchSaldoService(it.id)
+                  .then((saldo) => {
+                    setItens((prev) =>
+                      prev.map((row, i) =>
+                        i === targetIndex
+                          ? { ...row, produto_saldo: saldo }
+                          : row,
+                      ),
+                    );
+                  })
+                  .catch(() => {
+                    setItens((prev) =>
+                      prev.map((row, i) =>
+                        i === targetIndex
+                          ? { ...row, produto_saldo: null }
+                          : row,
+                      ),
+                    );
+                  });
               }
             }
           }}
           onClose={() => setProductModalIndex(null)}
-          emptyMessage={tipo === 'COMPRA' ? 'Este fornecedor não possui produtos relacionados' : 'Nenhum produto encontrado'}
-          footer={tipo === 'COMPRA' && Number.isFinite(Number(partnerId)) ? (
-            <button
-              type="button"
-              className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-secondary)]"
-              onClick={() => {
-                const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
-                try { window.location.hash = target; } catch (_) { /* noop */ }
-                setProductModalIndex(null);
-              }}
-            >
-              + Vincular produto ao fornecedor
-            </button>
-          ) : null}
+          emptyMessage={
+            tipo === "COMPRA"
+              ? "Este fornecedor não possui produtos relacionados"
+              : "Nenhum produto encontrado"
+          }
+          footer={
+            tipo === "COMPRA" && Number.isFinite(Number(partnerId)) ? (
+              <button
+                type="button"
+                className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-secondary)]"
+                onClick={() => {
+                  const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
+                  try {
+                    window.location.hash = target;
+                  } catch (_) {
+                    /* noop */
+                  }
+                  setProductModalIndex(null);
+                }}
+              >
+                + Vincular produto ao fornecedor
+              </button>
+            ) : null
+          }
         />
       )}
     </FormContainer>

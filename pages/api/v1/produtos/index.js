@@ -17,25 +17,45 @@ async function postProduto(req, res) {
     // fornecedor legacy (único) ainda suportado; novo: suppliers: number[]
     let fornecedorId = b.fornecedor_id || null;
     let suppliers = Array.isArray(b.suppliers) ? b.suppliers : [];
-    suppliers = suppliers.filter((v) => Number.isFinite(Number(v))).map((v) => Number(v));
+    suppliers = suppliers
+      .filter((v) => Number.isFinite(Number(v)))
+      .map((v) => Number(v));
     suppliers = Array.from(new Set(suppliers));
 
     // validar fornecedor único se fornecido
     if (fornecedorId != null) {
-      const r = await database.query({ text: `SELECT id, entity_type FROM entities WHERE id = $1 LIMIT 1`, values: [fornecedorId] });
-      if (!r.rows.length) return res.status(400).json({ error: "fornecedor_id inválido" });
-      if (r.rows[0].entity_type !== "PJ") return res.status(400).json({ error: "fornecedor deve ser PJ" });
+      const r = await database.query({
+        text: `SELECT id, entity_type FROM entities WHERE id = $1 LIMIT 1`,
+        values: [fornecedorId],
+      });
+      if (!r.rows.length)
+        return res.status(400).json({ error: "fornecedor_id inválido" });
+      if (r.rows[0].entity_type !== "PJ")
+        return res.status(400).json({ error: "fornecedor deve ser PJ" });
     }
     // validar suppliers múltiplos (todos PJ)
     if (suppliers.length) {
-      const r = await database.query({ text: `SELECT id, entity_type FROM entities WHERE id = ANY($1::int[])`, values: [suppliers] });
-      const ids = new Set(r.rows.filter((x) => x.entity_type === 'PJ').map((x) => x.id));
-      if (ids.size !== suppliers.length) return res.status(400).json({ error: "suppliers inválidos: todos devem existir e ser PJ" });
+      const r = await database.query({
+        text: `SELECT id, entity_type FROM entities WHERE id = ANY($1::int[])`,
+        values: [suppliers],
+      });
+      const ids = new Set(
+        r.rows.filter((x) => x.entity_type === "PJ").map((x) => x.id),
+      );
+      if (ids.size !== suppliers.length)
+        return res
+          .status(400)
+          .json({ error: "suppliers inválidos: todos devem existir e ser PJ" });
     }
 
     // regra solicitada: pelo menos um fornecedor válido
     if (fornecedorId == null && suppliers.length === 0) {
-      return res.status(400).json({ error: "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])" });
+      return res
+        .status(400)
+        .json({
+          error:
+            "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])",
+        });
     }
 
     // unique parcial codigo_barras: validar antes para 409 amigável
@@ -71,7 +91,7 @@ async function postProduto(req, res) {
     const product = r.rows[0];
     // inserir fornecedores múltiplos
     if (suppliers.length) {
-      const rows = suppliers.map((eid, i) => `($1, $${i + 2})`).join(',');
+      const rows = suppliers.map((eid, i) => `($1, $${i + 2})`).join(",");
       await database.query({
         text: `INSERT INTO produto_fornecedores (produto_id, entity_id) VALUES ${rows} ON CONFLICT DO NOTHING`,
         values: [product.id, ...suppliers],
@@ -107,7 +127,17 @@ async function postProduto(req, res) {
 
 async function getProdutos(req, res) {
   try {
-    const { q, categoria, codigo_barras, ativo, limit, offset, meta, fields, supplier_id } = req.query;
+    const {
+      q,
+      categoria,
+      codigo_barras,
+      ativo,
+      limit,
+      offset,
+      meta,
+      fields,
+      supplier_id,
+    } = req.query;
     const clauses = [];
     const values = [];
 
@@ -132,24 +162,31 @@ async function getProdutos(req, res) {
       clauses.push(`ativo = $${values.length}`);
     }
     // filtrar por fornecedor (legacy fornecedor_id OU relação produto_fornecedores)
-    const supplierId = supplier_id != null ? parseInt(String(supplier_id), 10) : null;
+    const supplierId =
+      supplier_id != null ? parseInt(String(supplier_id), 10) : null;
     if (Number.isFinite(supplierId)) {
       values.push(supplierId);
       const idx = values.length;
-      clauses.push(`(fornecedor_id = $${idx} OR id IN (SELECT produto_id FROM produto_fornecedores WHERE entity_id = $${idx}))`);
+      clauses.push(
+        `(fornecedor_id = $${idx} OR id IN (SELECT produto_id FROM produto_fornecedores WHERE entity_id = $${idx}))`,
+      );
     }
 
     const effectiveLimit = Math.min(parseInt(limit || "100", 10) || 100, 500);
     const effectiveOffset = Math.max(parseInt(offset || "0", 10) || 0, 0);
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-    const baseSelect = String(fields) === 'id-nome'
-      ? `SELECT id, nome FROM produtos`
-      : `SELECT id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at FROM produtos`;
-    const listQuery = { text: `${baseSelect} ${where} ORDER BY created_at DESC LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`, values };
+    const baseSelect =
+      String(fields) === "id-nome"
+        ? `SELECT id, nome FROM produtos`
+        : `SELECT id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at FROM produtos`;
+    const listQuery = {
+      text: `${baseSelect} ${where} ORDER BY created_at DESC LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`,
+      values,
+    };
     const result = await database.query(listQuery);
     // opcionalmente expand suppliers (muitos-para-muitos) e supplier_labels para UI (sempre que não for fields=id-nome)
     let rows = result.rows;
-    if (String(fields) !== 'id-nome' && rows.length) {
+    if (String(fields) !== "id-nome" && rows.length) {
       const produtoIds = rows.map((r) => r.id);
       const prodToSupplierIds = new Map();
       // inicializa com fornecedor_id legado quando existir
@@ -159,24 +196,34 @@ async function getProdutos(req, res) {
         if (base.length) prodToSupplierIds.set(p.id, base);
       }
       if (produtoIds.length) {
-        const r2 = await database.query({ text: `SELECT produto_id, entity_id FROM produto_fornecedores WHERE produto_id = ANY($1::int[])`, values: [produtoIds] });
+        const r2 = await database.query({
+          text: `SELECT produto_id, entity_id FROM produto_fornecedores WHERE produto_id = ANY($1::int[])`,
+          values: [produtoIds],
+        });
         for (const row of r2.rows) {
-          if (!prodToSupplierIds.has(row.produto_id)) prodToSupplierIds.set(row.produto_id, []);
+          if (!prodToSupplierIds.has(row.produto_id))
+            prodToSupplierIds.set(row.produto_id, []);
           prodToSupplierIds.get(row.produto_id).push(row.entity_id);
         }
       }
       // Buscar nomes dos fornecedores uma única vez (inclui fornecedor_id quando aplicável)
-      const allSupplierIds = Array.from(new Set([
-        ...Array.from(prodToSupplierIds.values()).flat(),
-      ]));
+      const allSupplierIds = Array.from(
+        new Set([...Array.from(prodToSupplierIds.values()).flat()]),
+      );
       const idToName = new Map();
       if (allSupplierIds.length) {
-        const r3 = await database.query({ text: `SELECT id, name FROM entities WHERE id = ANY($1::int[])`, values: [allSupplierIds] });
+        const r3 = await database.query({
+          text: `SELECT id, name FROM entities WHERE id = ANY($1::int[])`,
+          values: [allSupplierIds],
+        });
         for (const row of r3.rows) idToName.set(row.id, row.name);
       }
       rows = rows.map((p) => {
         const sids = prodToSupplierIds.get(p.id) || [];
-        const labels = sids.map((id) => ({ id, name: idToName.get(id) || `#${id}` }));
+        const labels = sids.map((id) => ({
+          id,
+          name: idToName.get(id) || `#${id}`,
+        }));
         return { ...p, suppliers: sids, supplier_labels: labels };
       });
     }
@@ -186,7 +233,9 @@ async function getProdutos(req, res) {
         values,
       };
       const count = await database.query(countQuery);
-      return res.status(200).json({ data: rows, meta: { total: count.rows[0].total } });
+      return res
+        .status(200)
+        .json({ data: rows, meta: { total: count.rows[0].total } });
     }
     return res.status(200).json(rows);
   } catch (e) {

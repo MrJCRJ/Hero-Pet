@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "components/ui/Button";
 import { Modal } from "./Modal";
 import { ProductForm } from "./ProductForm";
@@ -13,37 +19,45 @@ function useProducts() {
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
-  const query = useMemo(() => ({ q, categoria, ativo, limit, offset }), [q, categoria, ativo, limit, offset]);
+  const query = useMemo(
+    () => ({ q, categoria, ativo, limit, offset }),
+    [q, categoria, ativo, limit, offset],
+  );
 
   const offsetRef = useRef(0);
 
-  const fetchList = useCallback(async (reset = false) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (q) params.set("q", q);
-      if (categoria) params.set("categoria", categoria);
-      if (ativo !== "") params.set("ativo", ativo);
-      params.set("limit", String(limit));
-      const baseOffset = reset ? 0 : offsetRef.current;
-      params.set("offset", String(baseOffset));
-      params.set("meta", "1");
-      const resp = await fetch(`/api/v1/produtos?${params.toString()}`, { cache: 'no-store' });
-      if (!resp.ok) throw new Error(`GET produtos ${resp.status}`);
-      const json = await resp.json();
-      const data = Array.isArray(json) ? json : json.data;
-      const meta = Array.isArray(json) ? { total: null } : json.meta;
-      setRows((prev) => (reset ? data : [...prev, ...data]));
-      setTotal(meta?.total ?? null);
-      setOffset((prev) => {
-        const next = (reset ? 0 : prev) + data.length;
-        offsetRef.current = next;
-        return next;
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [q, categoria, ativo, limit]);
+  const fetchList = useCallback(
+    async (reset = false) => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (q) params.set("q", q);
+        if (categoria) params.set("categoria", categoria);
+        if (ativo !== "") params.set("ativo", ativo);
+        params.set("limit", String(limit));
+        const baseOffset = reset ? 0 : offsetRef.current;
+        params.set("offset", String(baseOffset));
+        params.set("meta", "1");
+        const resp = await fetch(`/api/v1/produtos?${params.toString()}`, {
+          cache: "no-store",
+        });
+        if (!resp.ok) throw new Error(`GET produtos ${resp.status}`);
+        const json = await resp.json();
+        const data = Array.isArray(json) ? json : json.data;
+        const meta = Array.isArray(json) ? { total: null } : json.meta;
+        setRows((prev) => (reset ? data : [...prev, ...data]));
+        setTotal(meta?.total ?? null);
+        setOffset((prev) => {
+          const next = (reset ? 0 : prev) + data.length;
+          offsetRef.current = next;
+          return next;
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [q, categoria, ativo, limit],
+  );
 
   const refresh = useCallback(() => {
     offsetRef.current = 0;
@@ -55,11 +69,33 @@ function useProducts() {
     fetchList(false);
   }, [fetchList]);
 
-  return { rows, total, loading, query, setQ, setCategoria, setAtivo, setLimit, refresh, loadMore };
+  return {
+    rows,
+    total,
+    loading,
+    query,
+    setQ,
+    setCategoria,
+    setAtivo,
+    setLimit,
+    refresh,
+    loadMore,
+  };
 }
 
 export function ProductsManager({ linkSupplierId }) {
-  const { rows, total, loading, query, setQ, setCategoria, setAtivo, setLimit, refresh, loadMore } = useProducts();
+  const {
+    rows,
+    total,
+    loading,
+    query,
+    setQ,
+    setCategoria,
+    setAtivo,
+    setLimit,
+    refresh,
+    loadMore,
+  } = useProducts();
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -80,10 +116,13 @@ export function ProductsManager({ linkSupplierId }) {
         const visibleIds = new Set(rows.map((r) => r.id));
         const anyVisible = ids.some((id) => visibleIds.has(Number(id)));
         if (anyVisible) refresh();
-      } catch (_) { /* noop */ }
+      } catch (_) {
+        /* noop */
+      }
     }
-    window.addEventListener('inventory-changed', onInventoryChanged);
-    return () => window.removeEventListener('inventory-changed', onInventoryChanged);
+    window.addEventListener("inventory-changed", onInventoryChanged);
+    return () =>
+      window.removeEventListener("inventory-changed", onInventoryChanged);
   }, [rows, refresh]);
 
   const canLoadMore = total == null ? false : rows.length < total;
@@ -107,7 +146,9 @@ export function ProductsManager({ linkSupplierId }) {
     try {
       setSubmitting(true);
       const method = editing ? "PUT" : "POST";
-      const url = editing ? `/api/v1/produtos/${editing.id}` : "/api/v1/produtos";
+      const url = editing
+        ? `/api/v1/produtos/${editing.id}`
+        : "/api/v1/produtos";
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -177,10 +218,16 @@ export function ProductsManager({ linkSupplierId }) {
 
       <div className="flex justify-between items-center gap-2">
         <div>
-          <Button variant="outline" onClick={refresh} fullWidth={false}>Atualizar</Button>
+          <Button variant="outline" onClick={refresh} fullWidth={false}>
+            Atualizar
+          </Button>
         </div>
         {Number.isFinite(Number(linkSupplierId)) && (
-          <Button onClick={() => openNew({ ativo: true, suppliers: [Number(linkSupplierId)] })}>
+          <Button
+            onClick={() =>
+              openNew({ ativo: true, suppliers: [Number(linkSupplierId)] })
+            }
+          >
             Novo Produto para Fornecedor #{Number(linkSupplierId)}
           </Button>
         )}
@@ -208,23 +255,53 @@ export function ProductsManager({ linkSupplierId }) {
                 <td className="p-2">{p.codigo_barras || "-"}</td>
                 <td className="p-2 text-xs">
                   {Array.isArray(p.supplier_labels) && p.supplier_labels.length
-                    ? p.supplier_labels.map((s) => s.name || s.label || `#${s.id}`).join(", ")
-                    : '-'}
+                    ? p.supplier_labels
+                        .map((s) => s.name || s.label || `#${s.id}`)
+                        .join(", ")
+                    : "-"}
                 </td>
-                <td className="p-2">{p.preco_tabela != null ? `R$ ${Number(p.preco_tabela).toFixed(2)}` : "-"}</td>
+                <td className="p-2">
+                  {p.preco_tabela != null
+                    ? `R$ ${Number(p.preco_tabela).toFixed(2)}`
+                    : "-"}
+                </td>
                 <td className="p-2">{p.ativo ? "Sim" : "Não"}</td>
                 <td className="p-2">
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" fullWidth={false} onClick={() => openDetail(p)}>Detalhe</Button>
-                    <Button size="sm" variant="outline" fullWidth={false} onClick={() => openEdit(p)}>Editar</Button>
-                    <Button size="sm" variant="secondary" fullWidth={false} onClick={() => handleInactivate(p)}>Inativar</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      fullWidth={false}
+                      onClick={() => openDetail(p)}
+                    >
+                      Detalhe
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      fullWidth={false}
+                      onClick={() => openEdit(p)}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      fullWidth={false}
+                      onClick={() => handleInactivate(p)}
+                    >
+                      Inativar
+                    </Button>
                   </div>
                 </td>
               </tr>
             ))}
             {!rows.length && (
               <tr>
-                <td colSpan={7} className="p-4 text-center text-[var(--color-text-secondary)]">
+                <td
+                  colSpan={7}
+                  className="p-4 text-center text-[var(--color-text-secondary)]"
+                >
                   {loading ? "Carregando..." : "Nenhum produto encontrado."}
                 </td>
               </tr>
@@ -235,16 +312,34 @@ export function ProductsManager({ linkSupplierId }) {
 
       <div className="flex items-center justify-between">
         <div className="text-[var(--color-text-secondary)] text-xs">
-          {total != null ? `${rows.length} de ${total}` : `${rows.length}`} registros
+          {total != null ? `${rows.length} de ${total}` : `${rows.length}`}{" "}
+          registros
         </div>
-        <Button onClick={loadMore} disabled={!canLoadMore || loading} loading={loading} fullWidth={false}>
+        <Button
+          onClick={loadMore}
+          disabled={!canLoadMore || loading}
+          loading={loading}
+          fullWidth={false}
+        >
           Carregar mais
         </Button>
       </div>
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? "Editar Produto" : "Novo Produto"}>
-        <ProductForm initial={editing || { ativo: true, suppliers: [] }} onSubmit={handleSubmit} submitting={submitting} />
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? "Editar Produto" : "Novo Produto"}
+      >
+        <ProductForm
+          initial={editing || { ativo: true, suppliers: [] }}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+        />
       </Modal>
-      <ProductDetail open={showDetail} onClose={() => setShowDetail(false)} product={editing} />
+      <ProductDetail
+        open={showDetail}
+        onClose={() => setShowDetail(false)}
+        product={editing}
+      />
     </div>
   );
 }

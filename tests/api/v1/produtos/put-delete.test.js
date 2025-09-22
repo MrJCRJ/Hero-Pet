@@ -37,13 +37,18 @@ beforeAll(async () => {
       ativo: true,
     }),
   });
-  if (forn.status !== 201) throw new Error(`seed fornecedor PUT fail: ${forn.status}`);
+  if (forn.status !== 201)
+    throw new Error(`seed fornecedor PUT fail: ${forn.status}`);
   global.__FORN_ID__ = (await forn.json()).id;
 });
 
 describe("PUT/DELETE /api/v1/produtos/:id", () => {
   test("PUT atualiza campos básicos", async () => {
-    const created = await postProduto({ nome: "Produto X", categoria: "X", fornecedor_id: global.__FORN_ID__ });
+    const created = await postProduto({
+      nome: "Produto X",
+      categoria: "X",
+      fornecedor_id: global.__FORN_ID__,
+    });
     expect([200, 201]).toContain(created.status);
     const id = created.json.id;
     const resp = await fetch(`http://localhost:3000/api/v1/produtos/${id}`, {
@@ -59,20 +64,36 @@ describe("PUT/DELETE /api/v1/produtos/:id", () => {
   });
 
   test("PUT valida unique de codigo_barras", async () => {
-    const a = await postProduto({ nome: "A", codigo_barras: "789A", fornecedor_id: global.__FORN_ID__ });
-    const b = await postProduto({ nome: "B", fornecedor_id: global.__FORN_ID__ });
-    const resp = await fetch(`http://localhost:3000/api/v1/produtos/${b.json.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome: "B2", codigo_barras: a.json.codigo_barras }),
+    const a = await postProduto({
+      nome: "A",
+      codigo_barras: "789A",
+      fornecedor_id: global.__FORN_ID__,
     });
+    const b = await postProduto({
+      nome: "B",
+      fornecedor_id: global.__FORN_ID__,
+    });
+    const resp = await fetch(
+      `http://localhost:3000/api/v1/produtos/${b.json.id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: "B2",
+          codigo_barras: a.json.codigo_barras,
+        }),
+      },
+    );
     expect(resp.status).toBe(409);
     const err = await resp.json();
     expect(err).toHaveProperty("error");
   });
 
   test("DELETE inativa (soft delete)", async () => {
-    const created = await postProduto({ nome: "Para Deletar", fornecedor_id: global.__FORN_ID__ });
+    const created = await postProduto({
+      nome: "Para Deletar",
+      fornecedor_id: global.__FORN_ID__,
+    });
     const id = created.json.id;
     const del = await fetch(`http://localhost:3000/api/v1/produtos/${id}`, {
       method: "DELETE",

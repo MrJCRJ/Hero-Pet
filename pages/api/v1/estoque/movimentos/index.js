@@ -5,22 +5,28 @@ import { isConnectionError, isRelationMissing } from "lib/errors";
 export default async function handler(req, res) {
   if (req.method === "GET") return listMovimentos(req, res);
   if (req.method !== "POST")
-    return res.status(405).json({ error: `Method "${req.method}" not allowed` });
+    return res
+      .status(405)
+      .json({ error: `Method "${req.method}" not allowed` });
   try {
     const b = req.body || {};
     const produtoId = b.produto_id;
     const tipo = b.tipo;
     const quantidade = Number(b.quantidade);
-    if (!produtoId) return res.status(400).json({ error: "produto_id is required" });
+    if (!produtoId)
+      return res.status(400).json({ error: "produto_id is required" });
     if (!["ENTRADA", "SAIDA", "AJUSTE"].includes(tipo))
       return res.status(400).json({ error: "tipo inválido" });
     if (!Number.isFinite(quantidade) || quantidade === 0)
       return res.status(400).json({ error: "quantidade inválida" });
     if (tipo === "SAIDA" && quantidade < 0)
-      return res.status(400).json({ error: "quantidade de saída deve ser positiva" });
+      return res
+        .status(400)
+        .json({ error: "quantidade de saída deve ser positiva" });
 
     // ENTRADA: valor_unitario requerido (>=0); SAIDA/AJUSTE ignoram custo
-    let valor_unitario = b.valor_unitario != null ? Number(b.valor_unitario) : null;
+    let valor_unitario =
+      b.valor_unitario != null ? Number(b.valor_unitario) : null;
     let frete = b.frete != null ? Number(b.frete) : 0;
     let outras = b.outras_despesas != null ? Number(b.outras_despesas) : 0;
     if (tipo === "ENTRADA") {
@@ -41,7 +47,7 @@ export default async function handler(req, res) {
     const insert = {
       text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-             RETURNING id, produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, data_movimento` ,
+             RETURNING id, produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, data_movimento`,
       values: [
         produtoId,
         tipo,
@@ -121,9 +127,14 @@ async function listMovimentos(req, res) {
     const r = await database.query(listQ);
 
     if (String(meta) === "1") {
-      const countQ = { text: `SELECT COUNT(*)::int AS total FROM movimento_estoque ${where}`, values };
+      const countQ = {
+        text: `SELECT COUNT(*)::int AS total FROM movimento_estoque ${where}`,
+        values,
+      };
       const c = await database.query(countQ);
-      return res.status(200).json({ data: r.rows, meta: { total: c.rows[0].total } });
+      return res
+        .status(200)
+        .json({ data: r.rows, meta: { total: c.rows[0].total } });
     }
 
     return res.status(200).json(r.rows);

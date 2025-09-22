@@ -43,7 +43,9 @@ export function Autocomplete({
   return (
     <div className="relative" ref={boxRef}>
       {label && (
-        <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">{label}</label>
+        <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">
+          {label}
+        </label>
       )}
       <div className="flex gap-2">
         <input

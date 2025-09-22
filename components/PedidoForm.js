@@ -3,34 +3,72 @@ import { PedidoFormView } from "./pedido/PedidoFormView";
 import { usePedidoFormController } from "./pedido/usePedidoFormController";
 import { fetchSaldo as fetchSaldoService } from "./pedido/service";
 
-
 export function PedidoForm(props) {
   const controller = usePedidoFormController(props);
   const {
     // estado geral
-    submitting, canSubmit, created, clearForm,
+    submitting,
+    canSubmit,
+    created,
+    clearForm,
     // tipo e parceiro
-    tipo, handleTipoChange, originalTipo, pendingTipo, confirmTipoChange, cancelTipoChange, showTypeChangeModal,
-    partnerId, partnerLabel, setPartnerId, setPartnerLabel, setPartnerName,
-    showPartnerModal, setShowPartnerModal,
+    tipo,
+    handleTipoChange,
+    originalTipo,
+    pendingTipo,
+    confirmTipoChange,
+    cancelTipoChange,
+    showTypeChangeModal,
+    partnerId,
+    partnerLabel,
+    setPartnerId,
+    setPartnerLabel,
+    setPartnerName,
+    showPartnerModal,
+    setShowPartnerModal,
     // datas e flags
-    dataEmissao, setDataEmissao, dataEntrega, setDataEntrega, observacao, setObservacao,
-    parcelado, setParcelado,
+    dataEmissao,
+    setDataEmissao,
+    dataEntrega,
+    setDataEntrega,
+    observacao,
+    setObservacao,
+    parcelado,
+    setParcelado,
     // itens
-    itens, setItens, updateItem, addItem, removeItem, originalItens,
-    getItemChanges, getItemDiffClass, getItemDiffIcon,
-    productModalIndex, setProductModalIndex,
+    itens,
+    setItens,
+    updateItem,
+    addItem,
+    removeItem,
+    originalItens,
+    getItemChanges,
+    getItemDiffClass,
+    getItemDiffIcon,
+    productModalIndex,
+    setProductModalIndex,
     // promissórias
-    numeroPromissorias, setNumeroPromissorias, dataPrimeiraPromissoria, setDataPrimeiraPromissoria, valorPorPromissoria,
-    frequenciaPromissorias, setFrequenciaPromissorias, intervaloDiasPromissorias, setIntervaloDiasPromissorias,
-    promissoriaDatas, setPromissoriaDatas,
+    numeroPromissorias,
+    setNumeroPromissorias,
+    dataPrimeiraPromissoria,
+    setDataPrimeiraPromissoria,
+    valorPorPromissoria,
+    frequenciaPromissorias,
+    setFrequenciaPromissorias,
+    intervaloDiasPromissorias,
+    setIntervaloDiasPromissorias,
+    promissoriaDatas,
+    setPromissoriaDatas,
     promissoriasMeta,
     // helpers
-    computeItemTotal, computeOrderTotalEstimate,
+    computeItemTotal,
+    computeOrderTotalEstimate,
     // fetchers
-    fetchEntities, fetchProdutos,
+    fetchEntities,
+    fetchProdutos,
     // ações
-    handleSubmit, handleDelete,
+    handleSubmit,
+    handleDelete,
     editingOrder,
   } = controller;
 

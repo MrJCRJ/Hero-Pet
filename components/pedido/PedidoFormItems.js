@@ -17,7 +17,7 @@ export function PedidoFormItems({
   editingOrder,
   productModalIndex,
   onSetProductModalIndex,
-  fetchProdutos
+  fetchProdutos,
 }) {
   return (
     <div className="mt-6">
@@ -33,7 +33,14 @@ export function PedidoFormItems({
         onUpdateItem={onUpdateItem}
         onAddItem={onAddItem}
         onAppend={(row) => {
-          const newRow = { produto_id: String(row.produto_id || ''), produto_label: row.produto_label || '', quantidade: String(row.quantidade || ''), preco_unitario: String(row.preco_unitario ?? ''), desconto_unitario: String(row.desconto_unitario ?? ''), produto_saldo: null };
+          const newRow = {
+            produto_id: String(row.produto_id || ""),
+            produto_label: row.produto_label || "",
+            quantidade: String(row.quantidade || ""),
+            preco_unitario: String(row.preco_unitario ?? ""),
+            desconto_unitario: String(row.desconto_unitario ?? ""),
+            produto_saldo: null,
+          };
           // try to fill first empty placeholder
           const emptyIdx = itens.findIndex((r) => !r.produto_id);
           if (emptyIdx >= 0) {
@@ -49,53 +56,85 @@ export function PedidoFormItems({
       />
 
       {/* Mostrar itens removidos se houver */}
-      {editingOrder && originalItens.length > 0 && (() => {
-        const changes = getItemChanges();
-        return changes.removed.length > 0 && (
-          <div className="mb-4 p-3 border border-red-500 bg-red-50 dark:bg-red-900/20 rounded-md">
-            <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
-              Itens removidos ({changes.removed.length}):
-            </h4>
-            {changes.removed.map((removedItem, idx) => (
-              <div key={idx} className="text-sm text-red-700 dark:text-red-300">
-                • {removedItem.produto_label || `Produto ID: ${removedItem.produto_id}`}
-                - Qtd: {removedItem.quantidade}
-                - Preço: R$ {Number(removedItem.preco_unitario || 0).toFixed(2)}
+      {editingOrder &&
+        originalItens.length > 0 &&
+        (() => {
+          const changes = getItemChanges();
+          return (
+            changes.removed.length > 0 && (
+              <div className="mb-4 p-3 border border-red-500 bg-red-50 dark:bg-red-900/20 rounded-md">
+                <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                  Itens removidos ({changes.removed.length}):
+                </h4>
+                {changes.removed.map((removedItem, idx) => (
+                  <div
+                    key={idx}
+                    className="text-sm text-red-700 dark:text-red-300"
+                  >
+                    •{" "}
+                    {removedItem.produto_label ||
+                      `Produto ID: ${removedItem.produto_id}`}
+                    - Qtd: {removedItem.quantidade}- Preço: R${" "}
+                    {Number(removedItem.preco_unitario || 0).toFixed(2)}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        );
-      })()}
+            )
+          );
+        })()}
 
       {/* Lista de itens estilo supermercado */}
       <div className="divide-y border rounded-md">
         {itens.map((it, idx) => (
-          <div key={idx} className={`flex items-center gap-2 p-2 ${getItemDiffClass(it) || ''}`}>
+          <div
+            key={idx}
+            className={`flex items-center gap-2 p-2 ${getItemDiffClass(it) || ""}`}
+          >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium truncate">{it.produto_label || 'Produto não selecionado'}</span>
+                <span className="text-sm font-medium truncate">
+                  {it.produto_label || "Produto não selecionado"}
+                </span>
                 {getItemDiffIcon(it)}
-                {tipo === 'VENDA' && Number(it.produto_id) > 0 && (
+                {tipo === "VENDA" && Number(it.produto_id) > 0 && (
                   <span className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] whitespace-nowrap">
-                    Est.: {it.produto_saldo != null ? Number(it.produto_saldo).toFixed(3) : '...'}
+                    Est.:{" "}
+                    {it.produto_saldo != null
+                      ? Number(it.produto_saldo).toFixed(3)
+                      : "..."}
                   </span>
                 )}
               </div>
             </div>
             <div className="w-24 text-right text-sm">
-              Qtd: {String(it.quantidade || '')}
+              Qtd: {String(it.quantidade || "")}
             </div>
             <div className="w-28 text-right text-sm">
-              Preço: {it.preco_unitario !== '' ? `R$ ${Number(it.preco_unitario).toFixed(2)}` : '—'}
+              Preço:{" "}
+              {it.preco_unitario !== ""
+                ? `R$ ${Number(it.preco_unitario).toFixed(2)}`
+                : "—"}
             </div>
             <div className="w-28 text-right text-sm">
-              Desc.: {it.desconto_unitario !== '' ? `R$ ${Number(it.desconto_unitario).toFixed(2)}` : '—'}
+              Desc.:{" "}
+              {it.desconto_unitario !== ""
+                ? `R$ ${Number(it.desconto_unitario).toFixed(2)}`
+                : "—"}
             </div>
             <div className="w-28 text-right font-semibold">
-              {(() => { const t = computeItemTotal(it); return t != null ? `R$ ${t.toFixed(2)}` : '—'; })()}
+              {(() => {
+                const t = computeItemTotal(it);
+                return t != null ? `R$ ${t.toFixed(2)}` : "—";
+              })()}
             </div>
             <div className="w-24 text-right">
-              <Button variant="secondary" size="sm" fullWidth={false} onClick={() => onRemoveItem(idx)} disabled={itens.length === 1}>
+              <Button
+                variant="secondary"
+                size="sm"
+                fullWidth={false}
+                onClick={() => onRemoveItem(idx)}
+                disabled={itens.length === 1}
+              >
                 Remover
               </Button>
             </div>
@@ -113,33 +152,49 @@ export function PedidoFormItems({
             const targetIndex = productModalIndex;
             onSetProductModalIndex(null);
             if (it && Number.isInteger(targetIndex)) {
-              onUpdateItem(targetIndex, { produto_id: String(it.id), produto_label: it.label, produto_saldo: null });
-              if (tipo === 'VENDA') {
+              onUpdateItem(targetIndex, {
+                produto_id: String(it.id),
+                produto_label: it.label,
+                produto_saldo: null,
+              });
+              if (tipo === "VENDA") {
                 // buscar saldo após seleção
-                fetchSaldo(it.id).then((saldo) => {
-                  onUpdateItem(targetIndex, { produto_saldo: saldo });
-                }).catch(() => {
-                  onUpdateItem(targetIndex, { produto_saldo: null });
-                });
+                fetchSaldo(it.id)
+                  .then((saldo) => {
+                    onUpdateItem(targetIndex, { produto_saldo: saldo });
+                  })
+                  .catch(() => {
+                    onUpdateItem(targetIndex, { produto_saldo: null });
+                  });
               }
             }
           }}
           onClose={() => onSetProductModalIndex(null)}
-          emptyMessage={tipo === 'COMPRA' ? 'Este fornecedor não possui produtos relacionados' : 'Nenhum produto encontrado'}
-          footer={tipo === 'COMPRA' && Number.isFinite(Number(partnerId)) ? (
-            <button
-              type="button"
-              className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-secondary)]"
-              onClick={() => {
-                // Navega para Produtos com contexto de vincular fornecedor via hash
-                const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
-                try { window.location.hash = target; } catch (_) { /* noop */ }
-                onSetProductModalIndex(null);
-              }}
-            >
-              + Vincular produto ao fornecedor
-            </button>
-          ) : null}
+          emptyMessage={
+            tipo === "COMPRA"
+              ? "Este fornecedor não possui produtos relacionados"
+              : "Nenhum produto encontrado"
+          }
+          footer={
+            tipo === "COMPRA" && Number.isFinite(Number(partnerId)) ? (
+              <button
+                type="button"
+                className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-secondary)]"
+                onClick={() => {
+                  // Navega para Produtos com contexto de vincular fornecedor via hash
+                  const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
+                  try {
+                    window.location.hash = target;
+                  } catch (_) {
+                    /* noop */
+                  }
+                  onSetProductModalIndex(null);
+                }}
+              >
+                + Vincular produto ao fornecedor
+              </button>
+            ) : null
+          }
         />
       )}
     </div>
@@ -149,7 +204,9 @@ export function PedidoFormItems({
 // Função auxiliar para buscar saldo (movida do componente principal)
 async function fetchSaldo(produtoId) {
   try {
-    const res = await fetch(`/api/v1/estoque/saldos?produto_id=${produtoId}`, { cache: 'no-store' });
+    const res = await fetch(`/api/v1/estoque/saldos?produto_id=${produtoId}`, {
+      cache: "no-store",
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || "Falha ao buscar saldo");
     return Number(data.saldo);
@@ -170,7 +227,13 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
     // Validar seleção de produto e quantidade
     if (!produtoId) return;
     if (!Number.isFinite(Number(quantidade)) || Number(quantidade) <= 0) return;
-    onAppend({ produto_id: produtoId, produto_label: label, quantidade, preco_unitario: preco, desconto_unitario: desconto });
+    onAppend({
+      produto_id: produtoId,
+      produto_label: label,
+      quantidade,
+      preco_unitario: preco,
+      desconto_unitario: desconto,
+    });
     setLabel("");
     setProdutoId("");
     setQuantidade("");
@@ -183,24 +246,53 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
       <div className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
         <div className="md:col-span-3">
           <label className="block text-xs mb-1">Produto</label>
-          <button type="button" className="w-full text-left border rounded px-2 py-1 hover:bg-[var(--color-bg-primary)]" onClick={() => setShowModal(true)}>
-            {label || 'Selecionar produto'}
+          <button
+            type="button"
+            className="w-full text-left border rounded px-2 py-1 hover:bg-[var(--color-bg-primary)]"
+            onClick={() => setShowModal(true)}
+          >
+            {label || "Selecionar produto"}
           </button>
         </div>
         <div>
           <label className="block text-xs mb-1">Quantidade</label>
-          <input type="number" step="0.001" className="w-full border rounded px-2 py-1" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
+          <input
+            type="number"
+            step="0.001"
+            className="w-full border rounded px-2 py-1"
+            value={quantidade}
+            onChange={(e) => setQuantidade(e.target.value)}
+          />
         </div>
         <div>
           <label className="block text-xs mb-1">Preço Unitário</label>
-          <input type="number" step="0.01" className="w-full border rounded px-2 py-1" value={preco} onChange={(e) => setPreco(e.target.value)} />
+          <input
+            type="number"
+            step="0.01"
+            className="w-full border rounded px-2 py-1"
+            value={preco}
+            onChange={(e) => setPreco(e.target.value)}
+          />
         </div>
         <div>
           <label className="block text-xs mb-1">Desconto Unitário</label>
-          <input type="number" step="0.01" className="w-full border rounded px-2 py-1" value={desconto} onChange={(e) => setDesconto(e.target.value)} />
+          <input
+            type="number"
+            step="0.01"
+            className="w-full border rounded px-2 py-1"
+            value={desconto}
+            onChange={(e) => setDesconto(e.target.value)}
+          />
         </div>
         <div className="text-right">
-          <Button variant="primary" size="sm" fullWidth={false} onClick={handleAdd}>+ Adicionar item</Button>
+          <Button
+            variant="primary"
+            size="sm"
+            fullWidth={false}
+            onClick={handleAdd}
+          >
+            + Adicionar item
+          </Button>
         </div>
       </div>
       {showModal && (
@@ -211,7 +303,9 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
           onSelect={(it) => {
             setShowModal(false);
             if (it) {
-              const precoDefault = Number.isFinite(Number(it.preco_tabela)) ? String(it.preco_tabela) : "";
+              const precoDefault = Number.isFinite(Number(it.preco_tabela))
+                ? String(it.preco_tabela)
+                : "";
               setProdutoId(String(it.id));
               setLabel(it.label);
               if (!quantidade) setQuantidade("1");
@@ -219,20 +313,30 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
             }
           }}
           onClose={() => setShowModal(false)}
-          emptyMessage={tipo === 'COMPRA' ? 'Este fornecedor não possui produtos relacionados' : 'Nenhum produto encontrado'}
-          footer={tipo === 'COMPRA' && Number.isFinite(Number(partnerId)) ? (
-            <button
-              type="button"
-              className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-primary)]"
-              onClick={() => {
-                const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
-                try { window.location.hash = target; } catch (_) { /* noop */ }
-                setShowModal(false);
-              }}
-            >
-              + Vincular produto ao fornecedor
-            </button>
-          ) : null}
+          emptyMessage={
+            tipo === "COMPRA"
+              ? "Este fornecedor não possui produtos relacionados"
+              : "Nenhum produto encontrado"
+          }
+          footer={
+            tipo === "COMPRA" && Number.isFinite(Number(partnerId)) ? (
+              <button
+                type="button"
+                className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-primary)]"
+                onClick={() => {
+                  const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
+                  try {
+                    window.location.hash = target;
+                  } catch (_) {
+                    /* noop */
+                  }
+                  setShowModal(false);
+                }}
+              >
+                + Vincular produto ao fornecedor
+              </button>
+            ) : null
+          }
         />
       )}
     </div>

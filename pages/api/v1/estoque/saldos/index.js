@@ -4,7 +4,9 @@ import { isConnectionError, isRelationMissing } from "lib/errors";
 
 export default async function handler(req, res) {
   if (req.method !== "GET")
-    return res.status(405).json({ error: `Method "${req.method}" not allowed` });
+    return res
+      .status(405)
+      .json({ error: `Method "${req.method}" not allowed` });
   try {
     const produtoId = Number(req.query.produto_id);
     if (!Number.isFinite(produtoId)) {
@@ -33,7 +35,7 @@ export default async function handler(req, res) {
     const custoRes = await database.query(custoQuery);
     const totalValor = Number(custoRes.rows[0].total_valor || 0);
     const totalQtd = Number(custoRes.rows[0].total_qtd || 0);
-    const custo_medio = totalQtd > 0 ? (totalValor / totalQtd) : 0;
+    const custo_medio = totalQtd > 0 ? totalValor / totalQtd : 0;
 
     // último custo: última entrada (valor_total / quantidade) se existir
     const lastQuery = {
