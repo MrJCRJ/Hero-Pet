@@ -59,9 +59,7 @@ async function getPromissoriasPDF(req, res) {
     // Aceita PDF quando houver ao menos 1 promissória registrada/configurada
     const numeroPromissorias = Number(pedido.numero_promissorias) || 0;
     if (numeroPromissorias < 1)
-      return res
-        .status(400)
-        .json({ error: "Pedido não possui promissórias" });
+      return res.status(400).json({ error: "Pedido não possui promissórias" });
 
     // Buscar itens para fallback de total
     const itensQ = await database.query({

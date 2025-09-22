@@ -6,9 +6,7 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     const action = req.query.action || req.body?.action;
     if (action === "pay") return markPaid(req, res);
-    return res
-      .status(400)
-      .json({ error: "Ação inválida. Use action=pay" });
+    return res.status(400).json({ error: "Ação inválida. Use action=pay" });
   }
   if (req.method === "PUT") return updateDueDate(req, res);
   return res.status(405).json({ error: `Method "${req.method}" not allowed` });

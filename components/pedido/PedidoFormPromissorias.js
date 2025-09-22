@@ -140,7 +140,9 @@ export function PedidoFormPromissorias({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Sistema sempre ativo: sem checkbox */}
         <div>
-          <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">Frequência</label>
+          <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">
+            Frequência
+          </label>
           <select
             className=" border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-bg-primary)] w-full"
             value={frequenciaPromissorias}
@@ -162,7 +164,9 @@ export function PedidoFormPromissorias({
               type="number"
               min="1"
               value={intervaloDiasPromissorias}
-              onChange={(e) => onIntervaloDiasPromissoriasChange(Number(e.target.value))}
+              onChange={(e) =>
+                onIntervaloDiasPromissoriasChange(Number(e.target.value))
+              }
             />
           </div>
         )}
@@ -192,7 +196,9 @@ export function PedidoFormPromissorias({
         {valorPorPromissoria > 0 && (
           <div className="text-sm">
             <span className="font-medium">Valor por Promissória: </span>
-            <span className="text-green-600 font-semibold">R$ {valorPorPromissoria.toFixed(2)}</span>
+            <span className="text-green-600 font-semibold">
+              R$ {valorPorPromissoria.toFixed(2)}
+            </span>
           </div>
         )}
       </div>
@@ -207,8 +213,13 @@ export function PedidoFormPromissorias({
                 type="button"
                 className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-primary)]"
                 onClick={() => {
-                  const base = promissoriaDatas && promissoriaDatas.length ? promissoriaDatas : datasVencimento;
-                  onPromissoriaDatasChange(base.slice(0, Math.max(1, numeroPromissorias)));
+                  const base =
+                    promissoriaDatas && promissoriaDatas.length
+                      ? promissoriaDatas
+                      : datasVencimento;
+                  onPromissoriaDatasChange(
+                    base.slice(0, Math.max(1, numeroPromissorias)),
+                  );
                   onFrequenciaPromissoriasChange("manual");
                 }}
               >
@@ -236,34 +247,42 @@ export function PedidoFormPromissorias({
           {promissoriasMeta?.anyPaid && (
             <div className="mb-3 text-amber-600 text-xs">
               Existem parcelas já pagas (#
-              {Array.isArray(promissoriasMeta.paidSeqs) ? promissoriasMeta.paidSeqs.join(", ") : ""}
+              {Array.isArray(promissoriasMeta.paidSeqs)
+                ? promissoriasMeta.paidSeqs.join(", ")
+                : ""}
               ). Alterar datas dessas parcelas não será aplicado ao salvar.
             </div>
           )}
 
           {frequenciaPromissorias === "manual" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {Array.from({ length: Math.max(1, numeroPromissorias) }).map((_, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm">
-                  <span className="w-6 text-right">{idx + 1}ª</span>
-                  {Array.isArray(promissoriasMeta?.paidSeqs) &&
-                    promissoriasMeta.paidSeqs.includes(idx + 1) && (
-                      <span className="text-[10px] px-1 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">PAGO</span>
-                    )}
-                  {Array.isArray(promissoriasMeta?.overdueSeqs) &&
-                    promissoriasMeta.overdueSeqs.includes(idx + 1) && (
-                      <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">ATRASADO</span>
-                    )}
-                  <input
-                    type="date"
-                    className="border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg-primary)]"
-                    value={promissoriaDatas[idx] || ""}
-                    onFocus={() => handlePaidFocus(idx)}
-                    onChange={(e) => handleManualDateEdit(idx, e)}
-                    onInput={(e) => handleManualDateEdit(idx, e)}
-                  />
-                </div>
-              ))}
+              {Array.from({ length: Math.max(1, numeroPromissorias) }).map(
+                (_, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-sm">
+                    <span className="w-6 text-right">{idx + 1}ª</span>
+                    {Array.isArray(promissoriasMeta?.paidSeqs) &&
+                      promissoriasMeta.paidSeqs.includes(idx + 1) && (
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
+                          PAGO
+                        </span>
+                      )}
+                    {Array.isArray(promissoriasMeta?.overdueSeqs) &&
+                      promissoriasMeta.overdueSeqs.includes(idx + 1) && (
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
+                          ATRASADO
+                        </span>
+                      )}
+                    <input
+                      type="date"
+                      className="border border-[var(--color-border)] rounded px-2 py-1 bg-[var(--color-bg-primary)]"
+                      value={promissoriaDatas[idx] || ""}
+                      onFocus={() => handlePaidFocus(idx)}
+                      onChange={(e) => handleManualDateEdit(idx, e)}
+                      onInput={(e) => handleManualDateEdit(idx, e)}
+                    />
+                  </div>
+                ),
+              )}
             </div>
           ) : datasVencimento.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
@@ -276,11 +295,15 @@ export function PedidoFormPromissorias({
                     <span>{idx + 1}ª</span>
                     {Array.isArray(promissoriasMeta?.paidSeqs) &&
                       promissoriasMeta.paidSeqs.includes(idx + 1) && (
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">PAGO</span>
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
+                          PAGO
+                        </span>
                       )}
                     {Array.isArray(promissoriasMeta?.overdueSeqs) &&
                       promissoriasMeta.overdueSeqs.includes(idx + 1) && (
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">ATRASADO</span>
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
+                          ATRASADO
+                        </span>
                       )}
                   </div>
                   <span className="font-mono">
@@ -290,7 +313,9 @@ export function PedidoFormPromissorias({
               ))}
             </div>
           ) : (
-            <div className="text-xs opacity-70">Defina a 1ª data e o número de promissórias para ver o cronograma.</div>
+            <div className="text-xs opacity-70">
+              Defina a 1ª data e o número de promissórias para ver o cronograma.
+            </div>
           )}
         </div>
       </div>

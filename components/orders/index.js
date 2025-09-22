@@ -77,7 +77,6 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
 
-
   return (
     <div className="text-sm">
       <FilterBar filters={filters} onChange={setFilters} onReload={reload} />
@@ -89,7 +88,9 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
               <th className="text-left px-3 py-2">Parceiro</th>
               <th className="text-left px-3 py-2">Emissão</th>
               <th className="text-center px-3 py-2">NF</th>
-              <th className="text-center px-3 py-2" title="Promissórias">Promiss.</th>
+              <th className="text-center px-3 py-2" title="Promissórias">
+                Promiss.
+              </th>
               <th className="text-right px-3 py-2">Total</th>
               <th className="text-center px-3 py-2">Parcelas</th>
             </tr>
@@ -132,7 +133,9 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                         );
                       }}
                       title="Baixar NF (PDF)"
-                    >📄</Button>
+                    >
+                      📄
+                    </Button>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
@@ -154,7 +157,9 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                         );
                       }}
                       title="Baixar Promissórias (PDF)"
-                    >📝</Button>
+                    >
+                      📝
+                    </Button>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
@@ -165,17 +170,17 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                       p.total_liquido != null ? Number(p.total_liquido) : NaN;
                     const totalFmt = Number.isFinite(n)
                       ? n.toLocaleString(undefined, {
-                        style: "currency",
-                        currency: "BRL",
-                      })
+                          style: "currency",
+                          currency: "BRL",
+                        })
                       : "-";
                     const pago =
                       p.total_pago != null ? Number(p.total_pago) : 0;
                     const pagoFmt = Number.isFinite(pago)
                       ? pago.toLocaleString(undefined, {
-                        style: "currency",
-                        currency: "BRL",
-                      })
+                          style: "currency",
+                          currency: "BRL",
+                        })
                       : "R$ 0,00";
                     const fullyPaid =
                       Number.isFinite(n) && Number.isFinite(pago)
@@ -200,7 +205,6 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                     onChanged={reload}
                   />
                 </td>
-
               </tr>
             ))}
             {!loading && data.length === 0 && (
