@@ -17,18 +17,6 @@ function FilterBar({ filters, onChange, onReload }) {
           <option value="COMPRA">COMPRA</option>
         </select>
       </div>
-      <div>
-        <label className="block text-xs mb-1">Status</label>
-        <select
-          className="border rounded px-2 py-1"
-          value={filters.status}
-          onChange={(e) => onChange({ ...filters, status: e.target.value })}
-        >
-          <option value="">Todos</option>
-          <option value="confirmado">confirmado</option>
-          <option value="cancelado">cancelado</option>
-        </select>
-      </div>
       <div className="flex-1 min-w-[200px]">
         <label className="block text-xs mb-1">Busca</label>
         <input
@@ -51,7 +39,6 @@ function usePedidos(filters, limit = 20) {
   const params = useMemo(() => {
     const p = new URLSearchParams();
     if (filters.tipo) p.set("tipo", filters.tipo);
-    if (filters.status) p.set("status", filters.status);
     if (filters.q) p.set("q", filters.q);
     p.set("limit", String(limit));
     return p.toString();
@@ -82,7 +69,7 @@ function usePedidos(filters, limit = 20) {
 }
 
 export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
-  const [filters, setFilters] = useState({ tipo: "", status: "", q: "" });
+  const [filters, setFilters] = useState({ tipo: "", q: "" });
   const { loading, data, reload } = usePedidos(filters, limit);
   useEffect(() => {
     // quando refreshTick muda, recarrega
@@ -100,7 +87,6 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
             <tr className="bg-[var(--color-bg-secondary)]">
               <th className="text-left px-3 py-2">#</th>
               <th className="text-left px-3 py-2">Tipo</th>
-              <th className="text-left px-3 py-2">Status</th>
               <th className="text-left px-3 py-2">Parceiro</th>
               <th className="text-left px-3 py-2">Emissão</th>
               <th className="text-center px-3 py-2">NF</th>
@@ -115,7 +101,6 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
               <tr key={p.id} className="border-t">
                 <td className="px-3 py-2">{p.id}</td>
                 <td className="px-3 py-2">{p.tipo}</td>
-                <td className="px-3 py-2">{p.status}</td>
                 <td className="px-3 py-2">{p.partner_name || "-"}</td>
                 <td className="px-3 py-2">
                   {p.data_emissao
@@ -182,12 +167,18 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                         currency: "BRL",
                       })
                       : "R$ 0,00";
+                    const fullyPaid =
+                      Number.isFinite(n) && Number.isFinite(pago)
+                        ? Math.abs(pago - n) < 0.005 || pago > n
+                        : false;
                     return (
                       <div className="text-right">
                         <div>{totalFmt}</div>
-                        <div className="text-xs text-blue-600 dark:text-blue-300">
-                          Pago: {pagoFmt}
-                        </div>
+                        {!fullyPaid && (
+                          <div className="text-xs text-blue-600 dark:text-blue-300">
+                            Pago: {pagoFmt}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -196,6 +187,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                   <PromissoriasDots
                     pedidoId={p.id}
                     count={p.numero_promissorias}
+                    onChanged={reload}
                   />
                 </td>
                 <td className="px-3 py-2 text-right">
@@ -314,13 +306,11 @@ export function OrdersManager({ limit = 20 }) {
   );
 }
 
-function PromissoriasDots({ pedidoId, count }) {
+function PromissoriasDots({ pedidoId, count, onChanged }) {
   const [rows, setRows] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(null); // seq da promissória com menu aberto
   const [actionLoading, setActionLoading] = React.useState(false);
-  const [editingSeq, setEditingSeq] = React.useState(null);
-  const [newDueDate, setNewDueDate] = React.useState("");
 
   React.useEffect(() => {
     let cancelled = false;
@@ -357,40 +347,6 @@ function PromissoriasDots({ pedidoId, count }) {
     }
   };
 
-  const handleGeneratePix = async (seq) => {
-    setActionLoading(true);
-    try {
-      const res = await fetch(
-        `/api/v1/pedidos/${pedidoId}/promissorias/${seq}?action=pix`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Falha ao gerar PIX");
-
-      // Copiar BRCode para clipboard
-      if (data.brcode && navigator.clipboard) {
-        await navigator.clipboard.writeText(data.brcode);
-        alert(
-          `PIX gerado! BRCode copiado para área de transferência.\nTXID: ${data.txid}`,
-        );
-      } else {
-        alert(
-          `PIX gerado!\nTXID: ${data.txid}\nBRCode: ${data.brcode || "N/A"}`,
-        );
-      }
-
-      await reloadPromissorias();
-    } catch (e) {
-      alert(`Erro: ${e.message}`);
-    } finally {
-      setActionLoading(false);
-      setMenuOpen(null);
-    }
-  };
-
   const handleMarkPaid = async (seq) => {
     if (!confirm("Confirma o pagamento desta promissória?")) return;
 
@@ -408,46 +364,13 @@ function PromissoriasDots({ pedidoId, count }) {
 
       alert("Promissória marcada como paga!");
       await reloadPromissorias();
+      // avisa o pai para atualizar totais (Total / Pago)
+      if (typeof onChanged === "function") onChanged();
     } catch (e) {
       alert(`Erro: ${e.message}`);
     } finally {
       setActionLoading(false);
       setMenuOpen(null);
-    }
-  };
-
-  const openEditDueDate = (row) => {
-    setEditingSeq(row.seq);
-    try {
-      const d = String(row.due_date).slice(0, 10);
-      setNewDueDate(d);
-    } catch (_) {
-      setNewDueDate("");
-    }
-  };
-  const handleSaveDueDate = async () => {
-    if (!editingSeq || !newDueDate) {
-      setEditingSeq(null);
-      return;
-    }
-    setActionLoading(true);
-    try {
-      const res = await fetch(
-        `/api/v1/pedidos/${pedidoId}/promissorias/${editingSeq}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ due_date: newDueDate }),
-        },
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Falha ao salvar data");
-      await reloadPromissorias();
-      setEditingSeq(null);
-    } catch (e) {
-      alert(`Erro: ${e.message}`);
-    } finally {
-      setActionLoading(false);
     }
   };
 
@@ -457,11 +380,7 @@ function PromissoriasDots({ pedidoId, count }) {
     return "bg-yellow-500";
   };
 
-  const borderFor = (row) => {
-    // Adiciona borda se PIX já foi gerado
-    if (row.pix_txid) return "ring-2 ring-blue-400";
-    return "";
-  };
+  const borderFor = () => ""; // sem destaque de PIX
 
   if (loading) return <span className="text-xs text-gray-400">...</span>;
   if (!rows || rows.length === 0) {
@@ -541,7 +460,7 @@ function PromissoriasDots({ pedidoId, count }) {
               e.stopPropagation();
               setMenuOpen(menuOpen === r.seq ? null : r.seq);
             }}
-            title={`${r.status} • vence ${new Date(r.due_date).toLocaleDateString()} • ${Number(r.amount).toLocaleString(undefined, { style: "currency", currency: "BRL" })}${r.pix_txid ? " • PIX gerado" : ""}`}
+            title={`${r.status} • vence ${new Date(r.due_date).toLocaleDateString()} • ${Number(r.amount).toLocaleString(undefined, { style: "currency", currency: "BRL" })}`}
             className={`inline-block w-2.5 h-2.5 rounded-full ${colorFor(r.status)} ${borderFor(r)} cursor-pointer hover:scale-110 transition-transform`}
             disabled={actionLoading}
           />
@@ -552,29 +471,13 @@ function PromissoriasDots({ pedidoId, count }) {
               onClick={(e) => e.stopPropagation()}
             >
               {r.status !== "PAGO" && (
-                <>
-                  <button
-                    onClick={() => handleGeneratePix(r.seq)}
-                    disabled={actionLoading}
-                    className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
-                  >
-                    {r.pix_txid ? "🔄 Regerar PIX" : "💳 Gerar PIX"}
-                  </button>
-                  <button
-                    onClick={() => handleMarkPaid(r.seq)}
-                    disabled={actionLoading}
-                    className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
-                  >
-                    ✅ Marcar Pago
-                  </button>
-                  <button
-                    onClick={() => openEditDueDate(r)}
-                    disabled={actionLoading}
-                    className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
-                  >
-                    ✏️ Alterar Vencimento
-                  </button>
-                </>
+                <button
+                  onClick={() => handleMarkPaid(r.seq)}
+                  disabled={actionLoading}
+                  className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                >
+                  ✅ Marcar Pago
+                </button>
               )}
               {r.status === "PAGO" && (
                 <div className="px-3 py-2 text-xs text-green-600 dark:text-green-400">
@@ -591,41 +494,7 @@ function PromissoriasDots({ pedidoId, count }) {
         <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
       )}
 
-      {/* Modal de edição de vencimento */}
-      {Number.isInteger(editingSeq) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setEditingSeq(null)}
-          />
-          <div className="relative bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded p-4 w-full max-w-sm">
-            <div className="text-sm font-semibold mb-2">
-              Alterar vencimento (parcela #{editingSeq})
-            </div>
-            <input
-              type="date"
-              className="w-full border rounded px-2 py-1 mb-3"
-              value={newDueDate}
-              onChange={(e) => setNewDueDate(e.target.value)}
-            />
-            <div className="flex gap-2 justify-end">
-              <button
-                className="px-3 py-1 border rounded"
-                onClick={() => setEditingSeq(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                className="px-3 py-1 border rounded bg-blue-600 text-white disabled:opacity-50"
-                disabled={!newDueDate || actionLoading}
-                onClick={handleSaveDueDate}
-              >
-                Salvar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Sem modal de edição de vencimento */}
     </div>
   );
 }
