@@ -159,11 +159,9 @@ async function postPedido(req, res) {
           });
           const pnome = pinfo.rows?.[0]?.nome || String(it.produto_id);
           await client.query("ROLLBACK");
-          return res
-            .status(400)
-            .json({
-              error: `Saldo insuficiente para o produto "${pnome}" (ID ${it.produto_id})`,
-            });
+          return res.status(400).json({
+            error: `Saldo insuficiente para o produto "${pnome}" (ID ${it.produto_id})`,
+          });
         }
         await client.query({
           text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao)
@@ -202,22 +200,18 @@ async function postPedido(req, res) {
     await database.safeRollback(client);
     console.error("POST /pedidos error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated (pedidos|pedido_itens missing)",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated (pedidos|pedido_itens missing)",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     if (client) {
@@ -316,22 +310,18 @@ async function getPedidos(req, res) {
   } catch (e) {
     console.error("GET /pedidos error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated (pedidos missing)",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated (pedidos missing)",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(500).json({ error: "Internal error" });
   }
 }

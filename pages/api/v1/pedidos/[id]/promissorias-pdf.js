@@ -146,22 +146,18 @@ async function getPromissoriasPDF(req, res) {
   } catch (e) {
     console.error("GET /pedidos/:id/promissorias-pdf error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated (pedidos|pedido_itens missing)",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated (pedidos|pedido_itens missing)",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(500).json({ error: "Internal error" });
   }
 }

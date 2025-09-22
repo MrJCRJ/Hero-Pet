@@ -55,11 +55,9 @@ async function updateProduto(req, res) {
           r.rows.filter((x) => x.entity_type === "PJ").map((x) => x.id),
         );
         if (ids.size !== suppliers.length)
-          return res
-            .status(400)
-            .json({
-              error: "suppliers inválidos: todos devem existir e ser PJ",
-            });
+          return res.status(400).json({
+            error: "suppliers inválidos: todos devem existir e ser PJ",
+          });
       }
     }
 
@@ -139,12 +137,10 @@ async function updateProduto(req, res) {
         values: [id],
       });
       if (!rpf.rows.length) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])",
-          });
+        return res.status(400).json({
+          error:
+            "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])",
+        });
       }
     }
 

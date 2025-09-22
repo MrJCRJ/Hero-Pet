@@ -52,22 +52,18 @@ async function createPIX(req, res) {
     await database.safeRollback(client);
     console.error("POST /pedidos/:id/promissorias/:seq?action=pix error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     try {
@@ -108,22 +104,18 @@ async function markPaid(req, res) {
     await database.safeRollback(client);
     console.error("POST /pedidos/:id/promissorias/:seq?action=pay error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     try {
@@ -174,22 +166,18 @@ async function updateDueDate(req, res) {
     await database.safeRollback(client);
     console.error("PUT /pedidos/:id/promissorias/:seq error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     try {

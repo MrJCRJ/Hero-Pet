@@ -52,11 +52,9 @@ async function getNF(req, res) {
     const pedido = head.rows[0];
 
     if (pedido.tipo !== "VENDA") {
-      return res
-        .status(400)
-        .json({
-          error: "Geração de NF permitida apenas para pedidos de VENDA",
-        });
+      return res.status(400).json({
+        error: "Geração de NF permitida apenas para pedidos de VENDA",
+      });
     }
     if (!pedido.tem_nota_fiscal) {
       return res
@@ -151,22 +149,18 @@ async function getNF(req, res) {
   } catch (e) {
     console.error("GET /pedidos/:id/nf error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated (pedidos|pedido_itens|produtos missing)",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated (pedidos|pedido_itens|produtos missing)",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(500).json({ error: "Internal error" });
   }
 }

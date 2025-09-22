@@ -36,32 +36,26 @@ async function getPedido(req, res) {
              FROM pedido_promissorias WHERE pedido_id = $1 ORDER BY seq`,
       values: [id],
     });
-    return res
-      .status(200)
-      .json({
-        ...head.rows[0],
-        itens: itens.rows,
-        promissorias: promissorias.rows,
-      });
+    return res.status(200).json({
+      ...head.rows[0],
+      itens: itens.rows,
+      promissorias: promissorias.rows,
+    });
   } catch (e) {
     console.error("GET /pedidos/:id error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated (pedidos/pedido_itens missing)",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated (pedidos/pedido_itens missing)",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(500).json({ error: "Internal error" });
   }
 }
@@ -323,22 +317,18 @@ async function putPedido(req, res) {
     await database.safeRollback(client);
     console.error("PUT /pedidos/:id error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated (pedidos/pedido_itens missing)",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated (pedidos/pedido_itens missing)",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     if (client) {
@@ -385,22 +375,18 @@ async function deletePedido(req, res) {
     await database.safeRollback(client);
     console.error("DELETE /pedidos/:id error", e);
     if (isRelationMissing(e))
-      return res
-        .status(503)
-        .json({
-          error: "Schema not migrated",
-          dependency: "database",
-          code: e.code,
-          action: "Run migrations",
-        });
+      return res.status(503).json({
+        error: "Schema not migrated",
+        dependency: "database",
+        code: e.code,
+        action: "Run migrations",
+      });
     if (isConnectionError(e))
-      return res
-        .status(503)
-        .json({
-          error: "Database unreachable",
-          dependency: "database",
-          code: e.code,
-        });
+      return res.status(503).json({
+        error: "Database unreachable",
+        dependency: "database",
+        code: e.code,
+      });
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     if (client) {

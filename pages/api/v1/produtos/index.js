@@ -50,12 +50,10 @@ async function postProduto(req, res) {
 
     // regra solicitada: pelo menos um fornecedor válido
     if (fornecedorId == null && suppliers.length === 0) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])",
-        });
+      return res.status(400).json({
+        error:
+          "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])",
+      });
     }
 
     // unique parcial codigo_barras: validar antes para 409 amigável
