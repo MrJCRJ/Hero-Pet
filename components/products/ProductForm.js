@@ -8,18 +8,18 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
   const [codigoBarras, setCodigoBarras] = useState(initial.codigo_barras || "");
   const [ativo, setAtivo] = useState(initial.ativo ?? true);
   const [descricao, setDescricao] = useState(initial.descricao || "");
-  const [precoTabela, setPrecoTabela] = useState(
+  const [precoTabela] = useState(
     initial.preco_tabela !== undefined && initial.preco_tabela !== null
       ? String(initial.preco_tabela)
       : "",
   );
-  const [markupPercent, setMarkupPercent] = useState(
+  const [markupPercent] = useState(
     initial.markup_percent_default !== undefined &&
       initial.markup_percent_default !== null
       ? String(initial.markup_percent_default)
       : "",
   );
-  const [estoqueMinimo, setEstoqueMinimo] = useState(
+  const [estoqueMinimo] = useState(
     initial.estoque_minimo !== undefined && initial.estoque_minimo !== null
       ? String(initial.estoque_minimo)
       : "",
@@ -30,12 +30,61 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
   const [supplierLabels, setSupplierLabels] = useState(
     Array.isArray(initial.supplier_labels)
       ? initial.supplier_labels.map((s) => ({
-          id: s.id,
-          label: s.name || s.label || String(s.id),
-        }))
+        id: s.id,
+        label: s.name || s.label || String(s.id),
+      }))
       : [],
   );
   const [showSupplierModal, setShowSupplierModal] = useState(false);
+  // Campos visuais: exibir valores calculados quando ausentes
+  const [costInfo, setCostInfo] = useState({ custo_medio: null, ultimo_custo: null });
+  const [suggestedPreco, setSuggestedPreco] = useState(null);
+  const [estoqueHint, setEstoqueHint] = useState(null);
+
+  // Buscar custo para cálculo de preço exibido (edição)
+  React.useEffect(() => {
+    const id = initial?.id;
+    if (!Number.isFinite(Number(id))) return;
+    fetch(`/api/v1/estoque/saldos?produto_id=${id}`, { cache: "no-store" })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) return;
+        const cm = Number(data.custo_medio);
+        const uc = Number(data.ultimo_custo);
+        setCostInfo({ custo_medio: cm, ultimo_custo: uc });
+      })
+      .catch(() => { });
+  }, [initial?.id]);
+
+  // Calcular sugestão de preço: custo × markup (fallback 30%)
+  React.useEffect(() => {
+    let md = Number(markupPercent);
+    if (!Number.isFinite(md) || md <= 0) md = 30; // fallback visual
+    const cm = Number(costInfo.custo_medio);
+    const uc = Number(costInfo.ultimo_custo);
+    const base = Number.isFinite(cm) && cm > 0 ? cm : Number.isFinite(uc) && uc > 0 ? uc : null;
+    if (base == null) {
+      setSuggestedPreco(null);
+      return;
+    }
+    setSuggestedPreco(Number((base * (1 + md / 100)).toFixed(2)));
+  }, [markupPercent, costInfo]);
+
+  // Calcular sugestão de estoque mínimo por consumo 30d (edição)
+  React.useEffect(() => {
+    const id = initial?.id;
+    if (!Number.isFinite(Number(id))) return;
+    const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const url = `/api/v1/estoque/movimentos?produto_id=${id}&tipo=SAIDA&from=${encodeURIComponent(from)}&limit=200`;
+    fetch(url, { cache: "no-store" })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok || !Array.isArray(data)) return;
+        const totalSaida = data.reduce((acc, mv) => acc + (Number(mv.quantidade) || 0), 0);
+        setEstoqueHint(Math.max(0, Math.ceil(totalSaida)));
+      })
+      .catch(() => { });
+  }, [initial?.id]);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -48,10 +97,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
       codigo_barras: codigoBarras || null,
       ativo,
       descricao: descricao || null,
-      preco_tabela: precoTabela === "" ? null : Number(precoTabela),
-      markup_percent_default:
-        markupPercent === "" ? null : Number(markupPercent),
-      estoque_minimo: estoqueMinimo === "" ? null : Number(estoqueMinimo),
+      // Campos calculados (visual-only): não enviar para criar/atualizar
       suppliers,
     });
   }
@@ -77,39 +123,46 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
           />
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <label className="text-sm">
+          <div className="text-sm">
             <span className="block mb-1">Preço Tabela</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
+            <div
               className="w-full px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-              value={precoTabela}
-              onChange={(e) => setPrecoTabela(e.target.value)}
-            />
-          </label>
-          <label className="text-sm">
+              title="Exibimos o Preço Tabela cadastrado; se ausente, usamos custo médio/último custo × markup (fallback 30%)."
+            >
+              {precoTabela !== ""
+                ? `R$ ${Number(precoTabela).toFixed(2)}`
+                : suggestedPreco != null
+                  ? `R$ ${Number(suggestedPreco).toFixed(2)}`
+                  : "–"}
+            </div>
+          </div>
+          <div className="text-sm">
             <span className="block mb-1">Markup % (default)</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
+            <div
               className="w-full px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-              value={markupPercent}
-              onChange={(e) => setMarkupPercent(e.target.value)}
-            />
-          </label>
-          <label className="text-sm">
+              title="Markup padrão do produto; se ausente, exibimos 30% como padrão visual."
+            >
+              {markupPercent !== ""
+                ? `${Number(markupPercent).toFixed(2)} %`
+                : `30.00 %`}
+            </div>
+          </div>
+          <div className="text-sm">
             <span className="block mb-1">Estoque mínimo</span>
-            <input
-              type="number"
-              step="1"
-              min="0"
+            <div
               className="w-full px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-              value={estoqueMinimo}
-              onChange={(e) => setEstoqueMinimo(e.target.value)}
-            />
-          </label>
+              title="Exibimos o Estoque mínimo cadastrado; se ausente, usamos sugestão por consumo (30 dias)."
+            >
+              {estoqueMinimo !== ""
+                ? Number(estoqueMinimo).toFixed(0)
+                : estoqueHint != null
+                  ? Number(estoqueHint).toFixed(0)
+                  : "–"}
+            </div>
+          </div>
+        </div>
+        <div className="text-xs opacity-70 mt-1">
+          Campos calculados automaticamente (com base em custos e consumo quando aplicável)
         </div>
         <label className="text-sm">
           <span className="block mb-1">Código de Barras</span>

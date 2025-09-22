@@ -240,6 +240,41 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
   const [preco, setPreco] = React.useState("");
   const [desconto, setDesconto] = React.useState("");
   const [showModal, setShowModal] = React.useState(false);
+  const [markupDefault, setMarkupDefault] = React.useState(null);
+  const [costInfo, setCostInfo] = React.useState({ custo_medio: null, ultimo_custo: null });
+  // removed loading UI; suggestion is applied silently when available
+  const [precoPadrao, setPrecoPadrao] = React.useState("");
+  const [allowAutoPrice, setAllowAutoPrice] = React.useState(true);
+
+  const suggestedPrice = React.useMemo(() => {
+    let md = Number(markupDefault);
+    // fallback automático: se não houver markup ou for <= 0, usar 30%
+    if (!Number.isFinite(md) || md <= 0) md = 30;
+    const cm = Number(costInfo.custo_medio);
+    const uc = Number(costInfo.ultimo_custo);
+    if (!Number.isFinite(md) || md < 0) return null;
+    const base = Number.isFinite(cm) && cm > 0 ? cm : Number.isFinite(uc) && uc > 0 ? uc : null;
+    if (!Number.isFinite(base) || base == null) return null;
+    const s = base * (1 + md / 100);
+    // arredonda para 2 casas
+    return Number(s.toFixed(2));
+  }, [markupDefault, costInfo]);
+
+  // auto-aplica preço sugerido quando disponível e o campo ainda estiver vazio
+  React.useEffect(() => {
+    if (tipo === "VENDA" && allowAutoPrice && suggestedPrice != null) {
+      setPreco(String(suggestedPrice));
+    }
+  }, [tipo, allowAutoPrice, suggestedPrice]);
+
+  // Fallback: se não houver sugestão por custo, usar preco_tabela padrão quando existir
+  React.useEffect(() => {
+    if (tipo === "VENDA" && allowAutoPrice && (suggestedPrice == null || !Number.isFinite(Number(suggestedPrice)))) {
+      if (preco === "" && precoPadrao !== "") {
+        setPreco(precoPadrao);
+      }
+    }
+  }, [tipo, allowAutoPrice, suggestedPrice, precoPadrao, preco]);
 
   const handleAdd = () => {
     // Validar seleção de produto e quantidade
@@ -289,7 +324,10 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
             step="0.01"
             className="w-full border rounded px-2 py-1"
             value={preco}
-            onChange={(e) => setPreco(e.target.value)}
+            onChange={(e) => {
+              setAllowAutoPrice(false);
+              setPreco(e.target.value);
+            }}
           />
         </div>
         <div>
@@ -326,8 +364,33 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
                 : "";
               setProdutoId(String(it.id));
               setLabel(it.label);
+              setPrecoPadrao(precoDefault);
+              setMarkupDefault(
+                Number.isFinite(Number(it.markup_percent_default))
+                  ? Number(it.markup_percent_default)
+                  : null,
+              );
+              setAllowAutoPrice(true);
               if (!quantidade) setQuantidade("1");
-              if (!preco) setPreco(precoDefault);
+              // Para VENDA, preferimos preencher via sugestão (custo × markup),
+              // então não aplicamos preco_tabela automaticamente.
+              // Para COMPRA, mantemos o comportamento de usar preco_tabela quando vazio.
+              if (tipo !== "VENDA" && !preco) setPreco(precoDefault);
+              // buscar custo médio/último custo para sugestão de preço (somente VENDA)
+              if (tipo === "VENDA") {
+                fetch(`/api/v1/estoque/saldos?produto_id=${it.id}`, {
+                  cache: "no-store",
+                })
+                  .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+                  .then(({ ok, data }) => {
+                    if (!ok) throw new Error(data?.error || "erro saldo");
+                    setCostInfo({
+                      custo_medio: Number(data.custo_medio),
+                      ultimo_custo: Number(data.ultimo_custo),
+                    });
+                  })
+                  .catch(() => setCostInfo({ custo_medio: null, ultimo_custo: null }));
+              }
             }
           }}
           onClose={() => setShowModal(false)}
