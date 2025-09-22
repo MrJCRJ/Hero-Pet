@@ -1,4 +1,6 @@
 import { Client } from "pg";
+import migrationRunner from "node-pg-migrate";
+import { join } from "node:path";
 
 async function query(queryObject) {
   let client;
@@ -43,6 +45,7 @@ async function getNewClient() {
   });
 
   await client.connect();
+  await ensureMigrationsIfEnabledOnce(client);
   return client;
 }
 
@@ -65,6 +68,49 @@ async function safeRollback(client) {
   if (!client) return;
   try {
     await client.query("ROLLBACK");
+  } catch (_) {
+    // noop
+  }
+}
+
+// --- Auto-apply de migrações (opcional) ---
+const MIGRATIONS_DIR = join("infra", "migrations");
+const MIGRATIONS_TABLE = "pgmigrations";
+let MIGRATIONS_ENSURED = false;
+let MIGRATIONS_ENSURING = null;
+
+async function ensureMigrationsIfEnabledOnce(client) {
+  const flag = String(process.env.MIGRATIONS_AUTO_APPLY || "").trim();
+  if (!flag || flag === "0" || flag.toLowerCase() === "false") return;
+  if (MIGRATIONS_ENSURED) return;
+  if (MIGRATIONS_ENSURING) {
+    try {
+      await MIGRATIONS_ENSURING;
+    } catch (_) {
+      // noop
+    }
+    return;
+  }
+  MIGRATIONS_ENSURING = (async () => {
+    try {
+      await migrationRunner({
+        direction: "up",
+        verbose: true,
+        dryRun: false,
+        dbClient: client,
+        dir: MIGRATIONS_DIR,
+        migrationsTable: MIGRATIONS_TABLE,
+      });
+      MIGRATIONS_ENSURED = true;
+    } catch (err) {
+      // Não derruba a app por causa do auto-apply: mantém comportamento opcional
+      console.warn("Auto-migrate falhou (continuando sem interromper):", err?.message || err);
+    } finally {
+      MIGRATIONS_ENSURING = null;
+    }
+  })();
+  try {
+    await MIGRATIONS_ENSURING;
   } catch (_) {
     // noop
   }
