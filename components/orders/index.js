@@ -458,32 +458,27 @@ function PromissoriasDots({ pedidoId, count, onChanged }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              // não abre menu para parcelas já pagas
+              if (r.status === "PAGO") return;
               setMenuOpen(menuOpen === r.seq ? null : r.seq);
             }}
             title={`${r.status} • vence ${new Date(r.due_date).toLocaleDateString()} • ${Number(r.amount).toLocaleString(undefined, { style: "currency", currency: "BRL" })}`}
-            className={`inline-block w-2.5 h-2.5 rounded-full ${colorFor(r.status)} ${borderFor(r)} cursor-pointer hover:scale-110 transition-transform`}
-            disabled={actionLoading}
+            className={`inline-block w-2.5 h-2.5 rounded-full ${colorFor(r.status)} ${borderFor(r)} ${r.status === "PAGO" ? "cursor-default" : "cursor-pointer hover:scale-110"} transition-transform`}
+            disabled={actionLoading || r.status === "PAGO"}
           />
 
-          {menuOpen === r.seq && (
+          {menuOpen === r.seq && r.status !== "PAGO" && (
             <div
               className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 min-w-[120px]"
               onClick={(e) => e.stopPropagation()}
             >
-              {r.status !== "PAGO" && (
-                <button
-                  onClick={() => handleMarkPaid(r.seq)}
-                  disabled={actionLoading}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
-                >
-                  ✅ Marcar Pago
-                </button>
-              )}
-              {r.status === "PAGO" && (
-                <div className="px-3 py-2 text-xs text-green-600 dark:text-green-400">
-                  ✅ Pago em {new Date(r.paid_at).toLocaleDateString()}
-                </div>
-              )}
+              <button
+                onClick={() => handleMarkPaid(r.seq)}
+                disabled={actionLoading}
+                className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                ✅ Marcar Pago
+              </button>
             </div>
           )}
         </div>
