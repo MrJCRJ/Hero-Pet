@@ -397,7 +397,7 @@ export function ProductsManager({ linkSupplierId }) {
                   <div className="flex items-center gap-2">
                     {p.ativo ? (
                       <button
-                        className="h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
+                        className="h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg)] hover:ring-2 hover:ring-[var(--color-border)] hover:shadow-sm transition"
                         title="Inativar"
                         aria-label="Inativar"
                         onClick={(e) => {
@@ -420,7 +420,7 @@ export function ProductsManager({ linkSupplierId }) {
                       </button>
                     ) : (
                       <button
-                        className="h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
+                        className="h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg)] hover:ring-2 hover:ring-[var(--color-border)] hover:shadow-sm transition"
                         title="Reativar"
                         aria-label="Reativar"
                         onClick={(e) => {
