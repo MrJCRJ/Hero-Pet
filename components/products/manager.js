@@ -1,14 +1,8 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "components/ui/Button";
 import { Modal } from "./Modal";
 import { ProductForm } from "./ProductForm";
-import { ProductDetail } from "./Detail";
+// import { ProductDetail } from "./Detail";
 
 function useProducts() {
   const [rows, setRows] = useState([]);
@@ -16,27 +10,21 @@ function useProducts() {
   const [q, setQ] = useState("");
   const [categoria, setCategoria] = useState("");
   const [ativo, setAtivo] = useState("true"); // default: somente ativos
-  const [limit, setLimit] = useState(10);
-  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const query = useMemo(
-    () => ({ q, categoria, ativo, limit, offset }),
-    [q, categoria, ativo, limit, offset],
+    () => ({ q, categoria, ativo }),
+    [q, categoria, ativo],
   );
 
-  const offsetRef = useRef(0);
-
   const fetchList = useCallback(
-    async (reset = false) => {
+    async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams();
         if (q) params.set("q", q);
         if (categoria) params.set("categoria", categoria);
         if (ativo !== "") params.set("ativo", ativo);
-        params.set("limit", String(limit));
-        const baseOffset = reset ? 0 : offsetRef.current;
-        params.set("offset", String(baseOffset));
+        params.set("limit", "500");
         params.set("meta", "1");
         const resp = await fetch(`/api/v1/produtos?${params.toString()}`, {
           cache: "no-store",
@@ -45,28 +33,17 @@ function useProducts() {
         const json = await resp.json();
         const data = Array.isArray(json) ? json : json.data;
         const meta = Array.isArray(json) ? { total: null } : json.meta;
-        setRows((prev) => (reset ? data : [...prev, ...data]));
+        setRows(data);
         setTotal(meta?.total ?? null);
-        setOffset((prev) => {
-          const next = (reset ? 0 : prev) + data.length;
-          offsetRef.current = next;
-          return next;
-        });
       } finally {
         setLoading(false);
       }
     },
-    [q, categoria, ativo, limit],
+    [q, categoria, ativo],
   );
 
   const refresh = useCallback(() => {
-    offsetRef.current = 0;
-    setOffset(0);
-    fetchList(true);
-  }, [fetchList]);
-
-  const loadMore = useCallback(() => {
-    fetchList(false);
+    fetchList();
   }, [fetchList]);
 
   return {
@@ -77,36 +54,31 @@ function useProducts() {
     setQ,
     setCategoria,
     setAtivo,
-    setLimit,
     refresh,
-    loadMore,
   };
 }
 
 export function ProductsManager({ linkSupplierId }) {
   const {
     rows,
-    total,
     loading,
     query,
     setQ,
     setCategoria,
     setAtivo,
-    setLimit,
     refresh,
-    loadMore,
   } = useProducts();
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [showDetail, setShowDetail] = useState(false);
-  const [costMap, setCostMap] = useState({}); // { [id]: { custo_medio:number|null, ultimo_custo:number|null } }
+  const [costMap, setCostMap] = useState({}); // { [id]: { saldo:number|null, custo_medio:number|null, ultimo_custo:number|null } }
+  const [onlyBelowMin, setOnlyBelowMin] = useState(false);
 
   useEffect(() => {
     // debounce simples
     const id = setTimeout(() => refresh(), 250);
     return () => clearTimeout(id);
-  }, [query.q, query.categoria, query.ativo, query.limit, refresh]);
+  }, [query.q, query.categoria, query.ativo, refresh]);
 
   // Refresh inteligente ao receber evento de inventário dos pedidos
   useEffect(() => {
@@ -126,7 +98,7 @@ export function ProductsManager({ linkSupplierId }) {
       window.removeEventListener("inventory-changed", onInventoryChanged);
   }, [rows, refresh]);
 
-  const canLoadMore = total == null ? false : rows.length < total;
+  // Sem paginação: carregamos até 500 por vez
 
   // Buscar custo médio/último custo para os produtos visíveis
   useEffect(() => {
@@ -144,18 +116,20 @@ export function ProductsManager({ linkSupplierId }) {
             if (res.ok) {
               const cm = Number(data?.custo_medio);
               const uc = Number(data?.ultimo_custo);
+              const sd = Number(data?.saldo);
               setCostMap((prev) => ({
                 ...prev,
                 [id]: {
+                  saldo: Number.isFinite(sd) ? sd : null,
                   custo_medio: Number.isFinite(cm) ? cm : null,
                   ultimo_custo: Number.isFinite(uc) ? uc : null,
                 },
               }));
             } else {
-              setCostMap((prev) => ({ ...prev, [id]: { custo_medio: null, ultimo_custo: null } }));
+              setCostMap((prev) => ({ ...prev, [id]: { saldo: null, custo_medio: null, ultimo_custo: null } }));
             }
           } catch (_) {
-            setCostMap((prev) => ({ ...prev, [id]: { custo_medio: null, ultimo_custo: null } }));
+            setCostMap((prev) => ({ ...prev, [id]: { saldo: null, custo_medio: null, ultimo_custo: null } }));
           }
         }),
       );
@@ -188,6 +162,64 @@ export function ProductsManager({ linkSupplierId }) {
     );
   }
 
+  function renderEstoqueCell(p) {
+    const saldo = costMap[p.id]?.saldo;
+    const minConfigured = p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
+    const minHint = costMap[p.id]?.min_hint ?? null;
+    const minimo = minConfigured != null ? minConfigured : minHint;
+    const below = Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo;
+    return (
+      <div className="text-xs">
+        <div className="flex items-center justify-between" title="Estoque atual do produto">
+          <span className="opacity-70">Atual</span>
+          <span className={below ? "text-red-500 font-medium" : ""}>
+            {Number.isFinite(saldo) ? saldo.toFixed(3) : "-"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between mt-0.5" title={minConfigured != null ? "Estoque mínimo cadastrado" : "Estoque mínimo sugerido (30 dias de consumo)"}>
+          <span className="opacity-70">Mínimo</span>
+          <span>{Number.isFinite(minimo) ? minimo.toFixed(0) : "-"}</span>
+        </div>
+        {null}
+      </div>
+    );
+  }
+
+  // Buscar sugestão de estoque mínimo (30 dias) para produtos sem mínimo cadastrado
+  useEffect(() => {
+    const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const missing = rows
+      .filter((p) => (p.estoque_minimo == null) && !(costMap[p.id] && Object.prototype.hasOwnProperty.call(costMap[p.id], 'min_hint')))
+      .map((p) => p.id);
+    if (!missing.length) return;
+    (async () => {
+      await Promise.all(
+        missing.map(async (id) => {
+          try {
+            const url = `/api/v1/estoque/movimentos?produto_id=${id}&tipo=SAIDA&from=${encodeURIComponent(from)}&limit=200`;
+            const res = await fetch(url, { cache: 'no-store' });
+            const data = await res.json();
+            let hint = null;
+            if (res.ok && Array.isArray(data)) {
+              const totalSaida = data.reduce((acc, mv) => acc + (Number(mv.quantidade) || 0), 0);
+              hint = Math.max(0, Math.ceil(totalSaida));
+            }
+            setCostMap((prev) => ({
+              ...prev,
+              [id]: { ...(prev[id] || {}), min_hint: hint },
+            }));
+          } catch (_) {
+            setCostMap((prev) => ({
+              ...prev,
+              [id]: { ...(prev[id] || {}), min_hint: null },
+            }));
+          }
+        })
+      );
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
   function openNew(prefill) {
     setEditing(prefill || null);
     setShowModal(true);
@@ -198,10 +230,11 @@ export function ProductsManager({ linkSupplierId }) {
     setShowModal(true);
   }
 
-  function openDetail(item) {
-    setEditing(item);
-    setShowDetail(true);
-  }
+  // Detalhe removido da UI; manteremos código comentado caso precise voltar
+  // function openDetail(item) {
+  //   setEditing(item);
+  //   setShowDetail(true);
+  // }
 
   async function handleSubmit(data) {
     try {
@@ -266,15 +299,14 @@ export function ProductsManager({ linkSupplierId }) {
           <option value="true">Somente ativos</option>
           <option value="false">Somente inativos</option>
         </select>
-        <select
-          className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-          value={query.limit}
-          onChange={(e) => setLimit(Number(e.target.value) || 10)}
-        >
-          <option value={10}>10 por página</option>
-          <option value={20}>20 por página</option>
-          <option value={50}>50 por página</option>
-        </select>
+        <label className="flex items-center gap-2 text-sm px-1">
+          <input
+            type="checkbox"
+            checked={onlyBelowMin}
+            onChange={(e) => setOnlyBelowMin(e.target.checked)}
+          />
+          Abaixo do mínimo
+        </label>
       </div>
 
       <div className="flex justify-between items-center gap-2">
@@ -303,12 +335,27 @@ export function ProductsManager({ linkSupplierId }) {
               <th className="p-2">Categoria</th>
               <th className="p-2">Fornecedores</th>
               <th className="p-2">Preço</th>
+              <th className="p-2">Estoque</th>
               <th className="p-2 w-1">Ações</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => (
-              <tr key={p.id} className="border-t border-[var(--color-border)]">
+            {(onlyBelowMin
+              ? rows.filter((p) => {
+                const saldo = costMap[p.id]?.saldo;
+                const minConfigured = p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
+                const minHint = costMap[p.id]?.min_hint ?? null;
+                const minimo = minConfigured != null ? minConfigured : minHint;
+                return Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo;
+              })
+              : rows
+            ).map((p) => (
+              <tr
+                key={p.id}
+                className="border-t border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] cursor-pointer"
+                onClick={() => openEdit(p)}
+                title="Clique na linha para editar"
+              >
                 <td className="p-2">
                   <div className="flex items-center gap-2">
                     <span
@@ -327,29 +374,17 @@ export function ProductsManager({ linkSupplierId }) {
                     : "-"}
                 </td>
                 <td className="p-2">{renderPrecoCell(p)}</td>
+                <td className="p-2">{renderEstoqueCell(p)}</td>
                 <td className="p-2">
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      variant="outline"
-                      fullWidth={false}
-                      onClick={() => openDetail(p)}
-                    >
-                      Detalhe
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      fullWidth={false}
-                      onClick={() => openEdit(p)}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      size="sm"
                       variant="secondary"
                       fullWidth={false}
-                      onClick={() => handleInactivate(p)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleInactivate(p);
+                      }}
                     >
                       Inativar
                     </Button>
@@ -360,7 +395,7 @@ export function ProductsManager({ linkSupplierId }) {
             {!rows.length && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="p-4 text-center text-[var(--color-text-secondary)]"
                 >
                   {loading ? "Carregando..." : "Nenhum produto encontrado."}
@@ -370,21 +405,7 @@ export function ProductsManager({ linkSupplierId }) {
           </tbody>
         </table>
       </div>
-
-      <div className="flex items-center justify-between">
-        <div className="text-[var(--color-text-secondary)] text-xs">
-          {total != null ? `${rows.length} de ${total}` : `${rows.length}`}{" "}
-          registros
-        </div>
-        <Button
-          onClick={loadMore}
-          disabled={!canLoadMore || loading}
-          loading={loading}
-          fullWidth={false}
-        >
-          Carregar mais
-        </Button>
-      </div>
+      {null}
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
@@ -396,11 +417,9 @@ export function ProductsManager({ linkSupplierId }) {
           submitting={submitting}
         />
       </Modal>
-      <ProductDetail
-        open={showDetail}
-        onClose={() => setShowDetail(false)}
-        product={editing}
-      />
+      {false && (
+        <div />
+      )}
     </div>
   );
 }
