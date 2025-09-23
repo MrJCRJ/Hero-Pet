@@ -241,7 +241,10 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
   const [desconto, setDesconto] = React.useState("");
   const [showModal, setShowModal] = React.useState(false);
   const [markupDefault, setMarkupDefault] = React.useState(null);
-  const [costInfo, setCostInfo] = React.useState({ custo_medio: null, ultimo_custo: null });
+  const [costInfo, setCostInfo] = React.useState({
+    custo_medio: null,
+    ultimo_custo: null,
+  });
   // removed loading UI; suggestion is applied silently when available
   const [precoPadrao, setPrecoPadrao] = React.useState("");
   const [allowAutoPrice, setAllowAutoPrice] = React.useState(true);
@@ -253,7 +256,12 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
     const cm = Number(costInfo.custo_medio);
     const uc = Number(costInfo.ultimo_custo);
     if (!Number.isFinite(md) || md < 0) return null;
-    const base = Number.isFinite(cm) && cm > 0 ? cm : Number.isFinite(uc) && uc > 0 ? uc : null;
+    const base =
+      Number.isFinite(cm) && cm > 0
+        ? cm
+        : Number.isFinite(uc) && uc > 0
+          ? uc
+          : null;
     if (!Number.isFinite(base) || base == null) return null;
     const s = base * (1 + md / 100);
     // arredonda para 2 casas
@@ -269,7 +277,11 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
 
   // Fallback: se não houver sugestão por custo, usar preco_tabela padrão quando existir
   React.useEffect(() => {
-    if (tipo === "VENDA" && allowAutoPrice && (suggestedPrice == null || !Number.isFinite(Number(suggestedPrice)))) {
+    if (
+      tipo === "VENDA" &&
+      allowAutoPrice &&
+      (suggestedPrice == null || !Number.isFinite(Number(suggestedPrice)))
+    ) {
       if (preco === "" && precoPadrao !== "") {
         setPreco(precoPadrao);
       }
@@ -381,7 +393,9 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
                 fetch(`/api/v1/estoque/saldos?produto_id=${it.id}`, {
                   cache: "no-store",
                 })
-                  .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+                  .then((res) =>
+                    res.json().then((data) => ({ ok: res.ok, data })),
+                  )
                   .then(({ ok, data }) => {
                     if (!ok) throw new Error(data?.error || "erro saldo");
                     setCostInfo({
@@ -389,7 +403,9 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
                       ultimo_custo: Number(data.ultimo_custo),
                     });
                   })
-                  .catch(() => setCostInfo({ custo_medio: null, ultimo_custo: null }));
+                  .catch(() =>
+                    setCostInfo({ custo_medio: null, ultimo_custo: null }),
+                  );
               }
             }
           }}

@@ -30,14 +30,17 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
   const [supplierLabels, setSupplierLabels] = useState(
     Array.isArray(initial.supplier_labels)
       ? initial.supplier_labels.map((s) => ({
-        id: s.id,
-        label: s.name || s.label || String(s.id),
-      }))
+          id: s.id,
+          label: s.name || s.label || String(s.id),
+        }))
       : [],
   );
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   // Campos visuais: exibir valores calculados quando ausentes
-  const [costInfo, setCostInfo] = useState({ custo_medio: null, ultimo_custo: null });
+  const [costInfo, setCostInfo] = useState({
+    custo_medio: null,
+    ultimo_custo: null,
+  });
   const [suggestedPreco, setSuggestedPreco] = useState(null);
   const [estoqueHint, setEstoqueHint] = useState(null);
 
@@ -53,7 +56,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
         const uc = Number(data.ultimo_custo);
         setCostInfo({ custo_medio: cm, ultimo_custo: uc });
       })
-      .catch(() => { });
+      .catch(() => {});
   }, [initial?.id]);
 
   // Calcular sugestão de preço: custo × markup (fallback 30%)
@@ -62,7 +65,12 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
     if (!Number.isFinite(md) || md <= 0) md = 30; // fallback visual
     const cm = Number(costInfo.custo_medio);
     const uc = Number(costInfo.ultimo_custo);
-    const base = Number.isFinite(cm) && cm > 0 ? cm : Number.isFinite(uc) && uc > 0 ? uc : null;
+    const base =
+      Number.isFinite(cm) && cm > 0
+        ? cm
+        : Number.isFinite(uc) && uc > 0
+          ? uc
+          : null;
     if (base == null) {
       setSuggestedPreco(null);
       return;
@@ -80,10 +88,13 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
       .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
       .then(({ ok, data }) => {
         if (!ok || !Array.isArray(data)) return;
-        const totalSaida = data.reduce((acc, mv) => acc + (Number(mv.quantidade) || 0), 0);
+        const totalSaida = data.reduce(
+          (acc, mv) => acc + (Number(mv.quantidade) || 0),
+          0,
+        );
         setEstoqueHint(Math.max(0, Math.ceil(totalSaida)));
       })
-      .catch(() => { });
+      .catch(() => {});
   }, [initial?.id]);
 
   function handleSubmit(e) {
@@ -162,7 +173,8 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
           </div>
         </div>
         <div className="text-xs opacity-70 mt-1">
-          Campos calculados automaticamente (com base em custos e consumo quando aplicável)
+          Campos calculados automaticamente (com base em custos e consumo quando
+          aplicável)
         </div>
         <label className="text-sm">
           <span className="block mb-1">Código de Barras</span>

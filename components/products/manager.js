@@ -12,36 +12,30 @@ function useProducts() {
   const [categoria, setCategoria] = useState("");
   const [ativo, setAtivo] = useState("true"); // default: somente ativos
   const [loading, setLoading] = useState(false);
-  const query = useMemo(
-    () => ({ q, categoria, ativo }),
-    [q, categoria, ativo],
-  );
+  const query = useMemo(() => ({ q, categoria, ativo }), [q, categoria, ativo]);
 
-  const fetchList = useCallback(
-    async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (q) params.set("q", q);
-        if (categoria) params.set("categoria", categoria);
-        if (ativo !== "") params.set("ativo", ativo);
-        params.set("limit", String(LIST_LIMIT));
-        params.set("meta", "1");
-        const resp = await fetch(`/api/v1/produtos?${params.toString()}`, {
-          cache: "no-store",
-        });
-        if (!resp.ok) throw new Error(`GET produtos ${resp.status}`);
-        const json = await resp.json();
-        const data = Array.isArray(json) ? json : json.data;
-        const meta = Array.isArray(json) ? { total: null } : json.meta;
-        setRows(data);
-        setTotal(meta?.total ?? null);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [q, categoria, ativo],
-  );
+  const fetchList = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (categoria) params.set("categoria", categoria);
+      if (ativo !== "") params.set("ativo", ativo);
+      params.set("limit", String(LIST_LIMIT));
+      params.set("meta", "1");
+      const resp = await fetch(`/api/v1/produtos?${params.toString()}`, {
+        cache: "no-store",
+      });
+      if (!resp.ok) throw new Error(`GET produtos ${resp.status}`);
+      const json = await resp.json();
+      const data = Array.isArray(json) ? json : json.data;
+      const meta = Array.isArray(json) ? { total: null } : json.meta;
+      setRows(data);
+      setTotal(meta?.total ?? null);
+    } finally {
+      setLoading(false);
+    }
+  }, [q, categoria, ativo]);
 
   const refresh = useCallback(() => {
     fetchList();
@@ -60,15 +54,8 @@ function useProducts() {
 }
 
 export function ProductsManager({ linkSupplierId }) {
-  const {
-    rows,
-    loading,
-    query,
-    setQ,
-    setCategoria,
-    setAtivo,
-    refresh,
-  } = useProducts();
+  const { rows, loading, query, setQ, setCategoria, setAtivo, refresh } =
+    useProducts();
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -103,7 +90,9 @@ export function ProductsManager({ linkSupplierId }) {
 
   // Buscar custo médio/último custo para os produtos visíveis
   useEffect(() => {
-    const ids = rows.map((r) => r.id).filter((id) => Number.isFinite(Number(id)));
+    const ids = rows
+      .map((r) => r.id)
+      .filter((id) => Number.isFinite(Number(id)));
     const missing = ids.filter((id) => !(id in costMap));
     if (!missing.length) return;
     (async () => {
@@ -127,10 +116,16 @@ export function ProductsManager({ linkSupplierId }) {
                 },
               }));
             } else {
-              setCostMap((prev) => ({ ...prev, [id]: { saldo: null, custo_medio: null, ultimo_custo: null } }));
+              setCostMap((prev) => ({
+                ...prev,
+                [id]: { saldo: null, custo_medio: null, ultimo_custo: null },
+              }));
             }
           } catch (_) {
-            setCostMap((prev) => ({ ...prev, [id]: { saldo: null, custo_medio: null, ultimo_custo: null } }));
+            setCostMap((prev) => ({
+              ...prev,
+              [id]: { saldo: null, custo_medio: null, ultimo_custo: null },
+            }));
           }
         }),
       );
@@ -144,20 +139,37 @@ export function ProductsManager({ linkSupplierId }) {
     const vendaTabela = p.preco_tabela != null ? Number(p.preco_tabela) : null;
     let venda = vendaTabela;
     if (!(Number.isFinite(venda) && venda > 0)) {
-      const base = Number.isFinite(cm) && cm > 0 ? cm : Number.isFinite(uc) && uc > 0 ? uc : null;
+      const base =
+        Number.isFinite(cm) && cm > 0
+          ? cm
+          : Number.isFinite(uc) && uc > 0
+            ? uc
+            : null;
       let mk = Number(p.markup_percent_default);
       if (!Number.isFinite(mk) || mk <= 0) mk = 30; // fallback visual
       venda = base == null ? null : Number((base * (1 + mk / 100)).toFixed(2));
     }
     return (
       <div className="text-xs">
-        <div className="flex items-center justify-between" title="Média ponderada de compras">
+        <div
+          className="flex items-center justify-between"
+          title="Média ponderada de compras"
+        >
           <span className="opacity-70">Compra</span>
-          <span>{Number.isFinite(cm) && cm > 0 ? `R$ ${cm.toFixed(2)}` : "-"}</span>
+          <span>
+            {Number.isFinite(cm) && cm > 0 ? `R$ ${cm.toFixed(2)}` : "-"}
+          </span>
         </div>
-        <div className="flex items-center justify-between mt-0.5" title="Preço de venda (tabela ou custo×markup)">
+        <div
+          className="flex items-center justify-between mt-0.5"
+          title="Preço de venda (tabela ou custo×markup)"
+        >
           <span className="opacity-70">Venda</span>
-          <span>{Number.isFinite(venda) && venda > 0 ? `R$ ${venda.toFixed(2)}` : "-"}</span>
+          <span>
+            {Number.isFinite(venda) && venda > 0
+              ? `R$ ${venda.toFixed(2)}`
+              : "-"}
+          </span>
         </div>
       </div>
     );
@@ -165,19 +177,34 @@ export function ProductsManager({ linkSupplierId }) {
 
   function renderEstoqueCell(p) {
     const saldo = costMap[p.id]?.saldo;
-    const minConfigured = p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
+    const minConfigured =
+      p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
     const minHint = costMap[p.id]?.min_hint ?? null;
     const minimo = minConfigured != null ? minConfigured : minHint;
-    const below = Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo;
+    const below =
+      Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo;
     return (
       <div className="text-xs">
-        <div className="flex items-center justify-between" title="Estoque atual do produto">
+        <div
+          className="flex items-center justify-between"
+          title="Estoque atual do produto"
+        >
           <span className="opacity-70">Atual</span>
-          <span className={below ? "text-red-500 font-medium" : ""} title={below ? "Abaixo do estoque mínimo" : undefined}>
+          <span
+            className={below ? "text-red-500 font-medium" : ""}
+            title={below ? "Abaixo do estoque mínimo" : undefined}
+          >
             {Number.isFinite(saldo) ? saldo.toFixed(3) : "-"}
           </span>
         </div>
-        <div className="flex items-center justify-between mt-0.5" title={minConfigured != null ? "Estoque mínimo cadastrado" : "Estoque mínimo sugerido (30 dias de consumo)"}>
+        <div
+          className="flex items-center justify-between mt-0.5"
+          title={
+            minConfigured != null
+              ? "Estoque mínimo cadastrado"
+              : "Estoque mínimo sugerido (30 dias de consumo)"
+          }
+        >
           <span className="opacity-70">Mínimo</span>
           <span>{Number.isFinite(minimo) ? minimo.toFixed(0) : "-"}</span>
         </div>
@@ -190,7 +217,14 @@ export function ProductsManager({ linkSupplierId }) {
   useEffect(() => {
     const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const missing = rows
-      .filter((p) => (p.estoque_minimo == null) && !(costMap[p.id] && Object.prototype.hasOwnProperty.call(costMap[p.id], 'min_hint')))
+      .filter(
+        (p) =>
+          p.estoque_minimo == null &&
+          !(
+            costMap[p.id] &&
+            Object.prototype.hasOwnProperty.call(costMap[p.id], "min_hint")
+          ),
+      )
       .map((p) => p.id);
     if (!missing.length) return;
     (async () => {
@@ -198,11 +232,14 @@ export function ProductsManager({ linkSupplierId }) {
         missing.map(async (id) => {
           try {
             const url = `/api/v1/estoque/movimentos?produto_id=${id}&tipo=SAIDA&from=${encodeURIComponent(from)}&limit=200`;
-            const res = await fetch(url, { cache: 'no-store' });
+            const res = await fetch(url, { cache: "no-store" });
             const data = await res.json();
             let hint = null;
             if (res.ok && Array.isArray(data)) {
-              const totalSaida = data.reduce((acc, mv) => acc + (Number(mv.quantidade) || 0), 0);
+              const totalSaida = data.reduce(
+                (acc, mv) => acc + (Number(mv.quantidade) || 0),
+                0,
+              );
               hint = Math.max(0, Math.ceil(totalSaida));
             }
             setCostMap((prev) => ({
@@ -215,7 +252,7 @@ export function ProductsManager({ linkSupplierId }) {
               [id]: { ...(prev[id] || {}), min_hint: null },
             }));
           }
-        })
+        }),
       );
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -283,7 +320,11 @@ export function ProductsManager({ linkSupplierId }) {
     const resp = await fetch(`/api/v1/produtos/${p.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome: p.nome, categoria: p.categoria || null, ativo: true }),
+      body: JSON.stringify({
+        nome: p.nome,
+        categoria: p.categoria || null,
+        ativo: true,
+      }),
     });
     if (!resp.ok) {
       const txt = await resp.text();
@@ -360,12 +401,18 @@ export function ProductsManager({ linkSupplierId }) {
           <tbody>
             {(onlyBelowMin
               ? rows.filter((p) => {
-                const saldo = costMap[p.id]?.saldo;
-                const minConfigured = p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
-                const minHint = costMap[p.id]?.min_hint ?? null;
-                const minimo = minConfigured != null ? minConfigured : minHint;
-                return Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo;
-              })
+                  const saldo = costMap[p.id]?.saldo;
+                  const minConfigured =
+                    p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
+                  const minHint = costMap[p.id]?.min_hint ?? null;
+                  const minimo =
+                    minConfigured != null ? minConfigured : minHint;
+                  return (
+                    Number.isFinite(saldo) &&
+                    Number.isFinite(minimo) &&
+                    saldo < minimo
+                  );
+                })
               : rows
             ).map((p) => (
               <tr
@@ -387,8 +434,8 @@ export function ProductsManager({ linkSupplierId }) {
                 <td className="p-2 text-xs">
                   {Array.isArray(p.supplier_labels) && p.supplier_labels.length
                     ? p.supplier_labels
-                      .map((s) => s.name || s.label || `#${s.id}`)
-                      .join(", ")
+                        .map((s) => s.name || s.label || `#${s.id}`)
+                        .join(", ")
                     : "-"}
                 </td>
                 <td className="p-2">{renderPrecoCell(p)}</td>
@@ -467,9 +514,7 @@ export function ProductsManager({ linkSupplierId }) {
           submitting={submitting}
         />
       </Modal>
-      {false && (
-        <div />
-      )}
+      {false && <div />}
     </div>
   );
 }
