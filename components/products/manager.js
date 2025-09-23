@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+const LIST_LIMIT = Number(process.env.NEXT_PUBLIC_PRODUCTS_LIMIT) || 500;
 import { Button } from "components/ui/Button";
 import { Modal } from "./Modal";
 import { ProductForm } from "./ProductForm";
@@ -24,7 +25,7 @@ function useProducts() {
         if (q) params.set("q", q);
         if (categoria) params.set("categoria", categoria);
         if (ativo !== "") params.set("ativo", ativo);
-        params.set("limit", "500");
+        params.set("limit", String(LIST_LIMIT));
         params.set("meta", "1");
         const resp = await fetch(`/api/v1/produtos?${params.toString()}`, {
           cache: "no-store",
@@ -172,7 +173,7 @@ export function ProductsManager({ linkSupplierId }) {
       <div className="text-xs">
         <div className="flex items-center justify-between" title="Estoque atual do produto">
           <span className="opacity-70">Atual</span>
-          <span className={below ? "text-red-500 font-medium" : ""}>
+          <span className={below ? "text-red-500 font-medium" : ""} title={below ? "Abaixo do estoque mínimo" : undefined}>
             {Number.isFinite(saldo) ? saldo.toFixed(3) : "-"}
           </span>
         </div>
@@ -270,6 +271,23 @@ export function ProductsManager({ linkSupplierId }) {
     if (!resp.ok) {
       const txt = await resp.text();
       alert(`Falha ao inativar: ${resp.status} ${txt}`);
+      return;
+    }
+    refresh();
+  }
+
+  async function handleReactivate(p) {
+    if (!p?.id) return;
+    const ok = window.confirm(`Reativar produto "${p.nome}"?`);
+    if (!ok) return;
+    const resp = await fetch(`/api/v1/produtos/${p.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome: p.nome, categoria: p.categoria || null, ativo: true }),
+    });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      alert(`Falha ao reativar: ${resp.status} ${txt}`);
       return;
     }
     refresh();
@@ -376,18 +394,50 @@ export function ProductsManager({ linkSupplierId }) {
                 <td className="p-2">{renderPrecoCell(p)}</td>
                 <td className="p-2">{renderEstoqueCell(p)}</td>
                 <td className="p-2">
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      fullWidth={false}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleInactivate(p);
-                      }}
-                    >
-                      Inativar
-                    </Button>
+                  <div className="flex items-center gap-2">
+                    {p.ativo ? (
+                      <button
+                        className="h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
+                        title="Inativar"
+                        aria-label="Inativar"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleInactivate(p);
+                        }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="h-4 w-4"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.536-12.536a6 6 0 00-8.485 8.485l8.485-8.485zm1.414 1.414l-8.485 8.485a6 6 0 008.485-8.485z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    ) : (
+                      <button
+                        className="h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
+                        title="Reativar"
+                        aria-label="Reativar"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReactivate(p);
+                        }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="h-4 w-4"
+                        >
+                          <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0L3.293 11.707a1 1 0 011.414-1.414L8 13.586l7.293-7.293a1 1 0 011.414 0z" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
