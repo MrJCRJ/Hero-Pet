@@ -40,6 +40,7 @@ export async function fetchProdutos({ q, tipo, partnerId }) {
     id: p.id,
     label: p.nome,
     preco_tabela: p.preco_tabela,
+    markup_percent_default: p.markup_percent_default,
   }));
 }
 
