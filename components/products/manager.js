@@ -100,6 +100,7 @@ export function ProductsManager({ linkSupplierId }) {
   const [editing, setEditing] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [costMap, setCostMap] = useState({}); // { [id]: { custo_medio:number|null, ultimo_custo:number|null } }
 
   useEffect(() => {
     // debounce simples
@@ -126,6 +127,66 @@ export function ProductsManager({ linkSupplierId }) {
   }, [rows, refresh]);
 
   const canLoadMore = total == null ? false : rows.length < total;
+
+  // Buscar custo médio/último custo para os produtos visíveis
+  useEffect(() => {
+    const ids = rows.map((r) => r.id).filter((id) => Number.isFinite(Number(id)));
+    const missing = ids.filter((id) => !(id in costMap));
+    if (!missing.length) return;
+    (async () => {
+      await Promise.all(
+        missing.map(async (id) => {
+          try {
+            const res = await fetch(`/api/v1/estoque/saldos?produto_id=${id}`, {
+              cache: "no-store",
+            });
+            const data = await res.json();
+            if (res.ok) {
+              const cm = Number(data?.custo_medio);
+              const uc = Number(data?.ultimo_custo);
+              setCostMap((prev) => ({
+                ...prev,
+                [id]: {
+                  custo_medio: Number.isFinite(cm) ? cm : null,
+                  ultimo_custo: Number.isFinite(uc) ? uc : null,
+                },
+              }));
+            } else {
+              setCostMap((prev) => ({ ...prev, [id]: { custo_medio: null, ultimo_custo: null } }));
+            }
+          } catch (_) {
+            setCostMap((prev) => ({ ...prev, [id]: { custo_medio: null, ultimo_custo: null } }));
+          }
+        }),
+      );
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
+  function renderPrecoCell(p) {
+    const cm = costMap[p.id]?.custo_medio ?? null;
+    const uc = costMap[p.id]?.ultimo_custo ?? null;
+    const vendaTabela = p.preco_tabela != null ? Number(p.preco_tabela) : null;
+    let venda = vendaTabela;
+    if (!(Number.isFinite(venda) && venda > 0)) {
+      const base = Number.isFinite(cm) && cm > 0 ? cm : Number.isFinite(uc) && uc > 0 ? uc : null;
+      let mk = Number(p.markup_percent_default);
+      if (!Number.isFinite(mk) || mk <= 0) mk = 30; // fallback visual
+      venda = base == null ? null : Number((base * (1 + mk / 100)).toFixed(2));
+    }
+    return (
+      <div className="text-xs">
+        <div className="flex items-center justify-between" title="Média ponderada de compras">
+          <span className="opacity-70">Compra</span>
+          <span>{Number.isFinite(cm) && cm > 0 ? `R$ ${cm.toFixed(2)}` : "-"}</span>
+        </div>
+        <div className="flex items-center justify-between mt-0.5" title="Preço de venda (tabela ou custo×markup)">
+          <span className="opacity-70">Venda</span>
+          <span>{Number.isFinite(venda) && venda > 0 ? `R$ ${venda.toFixed(2)}` : "-"}</span>
+        </div>
+      </div>
+    );
+  }
 
   function openNew(prefill) {
     setEditing(prefill || null);
@@ -240,32 +301,32 @@ export function ProductsManager({ linkSupplierId }) {
             <tr>
               <th className="p-2">Nome</th>
               <th className="p-2">Categoria</th>
-              <th className="p-2">Cód. Barras</th>
               <th className="p-2">Fornecedores</th>
               <th className="p-2">Preço</th>
-              <th className="p-2">Ativo</th>
               <th className="p-2 w-1">Ações</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((p) => (
               <tr key={p.id} className="border-t border-[var(--color-border)]">
-                <td className="p-2">{p.nome}</td>
+                <td className="p-2">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${p.ativo ? "bg-green-500" : "bg-red-500"}`}
+                      title={p.ativo ? "Ativo" : "Inativo"}
+                    />
+                    <span>{p.nome}</span>
+                  </div>
+                </td>
                 <td className="p-2">{p.categoria || "-"}</td>
-                <td className="p-2">{p.codigo_barras || "-"}</td>
                 <td className="p-2 text-xs">
                   {Array.isArray(p.supplier_labels) && p.supplier_labels.length
                     ? p.supplier_labels
-                        .map((s) => s.name || s.label || `#${s.id}`)
-                        .join(", ")
+                      .map((s) => s.name || s.label || `#${s.id}`)
+                      .join(", ")
                     : "-"}
                 </td>
-                <td className="p-2">
-                  {p.preco_tabela != null
-                    ? `R$ ${Number(p.preco_tabela).toFixed(2)}`
-                    : "-"}
-                </td>
-                <td className="p-2">{p.ativo ? "Sim" : "Não"}</td>
+                <td className="p-2">{renderPrecoCell(p)}</td>
                 <td className="p-2">
                   <div className="flex gap-2">
                     <Button
@@ -299,7 +360,7 @@ export function ProductsManager({ linkSupplierId }) {
             {!rows.length && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={5}
                   className="p-4 text-center text-[var(--color-text-secondary)]"
                 >
                   {loading ? "Carregando..." : "Nenhum produto encontrado."}
