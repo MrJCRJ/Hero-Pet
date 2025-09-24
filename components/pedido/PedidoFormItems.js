@@ -30,6 +30,34 @@ export function PedidoFormItems({
       return 0;
     }
   }, [itens, computeItemTotal]);
+  const totalFrete = React.useMemo(() => {
+    try {
+      return (itens || []).reduce((acc, it) => {
+        const f = Number(it.frete_unitario);
+        const q = Number(it.quantidade);
+        if (Number.isFinite(f) && f > 0 && Number.isFinite(q) && q > 0) {
+          return acc + f * q;
+        }
+        return acc;
+      }, 0);
+    } catch (_) {
+      return 0;
+    }
+  }, [itens]);
+  const descontoTotal = React.useMemo(() => {
+    try {
+      return (itens || []).reduce((acc, it) => {
+        const d = Number(it.desconto_unitario);
+        const q = Number(it.quantidade);
+        if (Number.isFinite(d) && d > 0 && Number.isFinite(q) && q > 0) {
+          return acc + d * q;
+        }
+        return acc;
+      }, 0);
+    } catch (_) {
+      return 0;
+    }
+  }, [itens]);
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-2">
@@ -132,6 +160,9 @@ export function PedidoFormItems({
                 ? `R$ ${Number(it.desconto_unitario).toFixed(2)}`
                 : "—"}
             </div>
+            <div className="w-28 text-right text-sm">
+              Frete: {it.frete_unitario !== "" ? `R$ ${Number(it.frete_unitario).toFixed(2)}` : "—"}
+            </div>
             <div className="w-28 text-right font-semibold">
               {(() => {
                 const t = computeItemTotal(it);
@@ -153,10 +184,13 @@ export function PedidoFormItems({
         ))}
       </div>
 
-      {/* Totalizador dos itens */}
-      <div className="flex justify-end mt-2">
-        <div className="text-right text-sm md:text-base font-semibold">
-          Total dos itens: R$ {Number(totalItens || 0).toFixed(2)}
+      {/* Totalizador detalhado */}
+      <div className="flex justify-end mt-4">
+        <div className="text-right text-xs md:text-sm space-y-1">
+          <div>Total dos itens (sem frete): <strong>R$ {Number(totalItens || 0).toFixed(2)}</strong></div>
+          <div>Desconto total: <strong>R$ {Number(descontoTotal || 0).toFixed(2)}</strong></div>
+          <div>Total frete: <strong>R$ {Number(totalFrete || 0).toFixed(2)}</strong></div>
+          <div className="pt-1 border-t font-semibold">Total com frete: R$ {Number(totalItens + totalFrete).toFixed(2)}</div>
         </div>
       </div>
 
@@ -239,6 +273,7 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
   const [quantidade, setQuantidade] = React.useState("");
   const [preco, setPreco] = React.useState("");
   const [desconto, setDesconto] = React.useState("");
+  const [frete, setFrete] = React.useState("");
   const [showModal, setShowModal] = React.useState(false);
   const [markupDefault, setMarkupDefault] = React.useState(null);
   const [costInfo, setCostInfo] = React.useState({
@@ -298,17 +333,19 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
       quantidade,
       preco_unitario: preco,
       desconto_unitario: desconto,
+      frete_unitario: frete,
     });
     setLabel("");
     setProdutoId("");
     setQuantidade("");
     setPreco("");
     setDesconto("");
+    setFrete("");
   };
 
   return (
     <div className="mb-4 p-3 border rounded-md bg-[var(--color-bg-secondary)]">
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-2 items-end">
         <div className="md:col-span-3">
           <label className="block text-xs mb-1">Produto</label>
           <button
@@ -350,6 +387,16 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
             className="w-full border rounded px-2 py-1"
             value={desconto}
             onChange={(e) => setDesconto(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Frete Unitário</label>
+          <input
+            type="number"
+            step="0.01"
+            className="w-full border rounded px-2 py-1"
+            value={frete}
+            onChange={(e) => setFrete(e.target.value)}
           />
         </div>
         <div className="text-right">

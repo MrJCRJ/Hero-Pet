@@ -64,6 +64,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       quantidade: "",
       preco_unitario: "",
       desconto_unitario: "",
+      frete_unitario: "",
       produto_saldo: null,
     },
   ]);
@@ -94,7 +95,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     useState(30);
   const [promissoriaDatas, setPromissoriaDatas] = useState(() =>
     Array.isArray(editingOrder?.promissorias) &&
-    editingOrder.promissorias.length
+      editingOrder.promissorias.length
       ? editingOrder.promissorias.map((p) => p.due_date).filter(Boolean)
       : [],
   );
@@ -113,7 +114,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             !p.paid_at &&
             p.due_date &&
             new Date(p.due_date + "T00:00:00") <
-              new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+            new Date(today.getFullYear(), today.getMonth(), today.getDate()),
         )
         .map((p) => p.seq);
       return { anyPaid: paidSeqs.length > 0, paidSeqs, overdueSeqs };
@@ -186,7 +187,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             !p.paid_at &&
             p.due_date &&
             new Date(p.due_date + "T00:00:00") <
-              new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+            new Date(today.getFullYear(), today.getMonth(), today.getDate()),
         )
         .map((p) => p.seq);
       setPromissoriasMeta({
@@ -251,7 +252,14 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       const t = computeItemTotal(it);
       return acc + (Number.isFinite(Number(t)) ? Number(t) : 0);
     }, 0);
-    return Number(sum.toFixed(2));
+    const frete = itens.reduce((acc, it) => {
+      const f = Number(it.frete_unitario);
+      const q = Number(it.quantidade);
+      if (Number.isFinite(f) && f > 0 && Number.isFinite(q) && q > 0)
+        return acc + f * q;
+      return acc;
+    }, 0);
+    return Number((sum + frete).toFixed(2));
   }, [itens, computeItemTotal]);
 
   // Atualiza valor por promissória quando total muda
@@ -350,10 +358,10 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       // Enviar cronograma explícito quando existir (manual ou gerado)
       promissoria_datas: Array.isArray(promissoriaDatas)
         ? promissoriaDatas
-            .filter(
-              (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s),
-            )
-            .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
+          .filter(
+            (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s),
+          )
+          .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
         : [],
       itens: itens
         .filter(
@@ -368,6 +376,9 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             : {}),
           ...(numOrNull(it.desconto_unitario) != null
             ? { desconto_unitario: numOrNull(it.desconto_unitario) }
+            : {}),
+          ...(numOrNull(it.frete_unitario) != null
+            ? { frete_unitario: numOrNull(it.frete_unitario) }
             : {}),
         })),
     }),

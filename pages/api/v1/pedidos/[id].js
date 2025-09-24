@@ -142,7 +142,8 @@ async function putPedido(req, res) {
 
       let totalBruto = 0,
         descontoTotal = 0,
-        totalLiquido = 0;
+        totalLiquido = 0, // sem frete
+        freteTotal = 0; // soma(frete_unitario * quantidade)
       for (const it of b.itens) {
         const rProd = await client.query({
           text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`,
@@ -159,14 +160,16 @@ async function putPedido(req, res) {
             : Number(rProd.rows[0].preco_tabela ?? 0);
         const desconto =
           it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
-        const totalItem = (preco - desconto) * qtd;
+        const freteUnit = it.frete_unitario != null ? Number(it.frete_unitario) : 0;
+        const totalItem = (preco - desconto) * qtd; // sem frete
         totalBruto += preco * qtd;
         descontoTotal += desconto * qtd;
         totalLiquido += totalItem;
+        if (Number.isFinite(freteUnit) && freteUnit > 0) freteTotal += freteUnit * qtd;
         await client.query({
-          text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, total_item)
-                 VALUES ($1,$2,$3,$4,$5,$6)`,
-          values: [id, it.produto_id, qtd, preco, desconto, totalItem],
+          text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, frete_unitario, total_item)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          values: [id, it.produto_id, qtd, preco, desconto, Number.isFinite(freteUnit) ? freteUnit : null, totalItem],
         });
 
         // reinsert movimentos conforme tipo atual
@@ -211,8 +214,8 @@ async function putPedido(req, res) {
       }
 
       await client.query({
-        text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, updated_at = NOW() WHERE id = $4`,
-        values: [totalBruto, descontoTotal, totalLiquido, id],
+        text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, frete_total = $4, updated_at = NOW() WHERE id = $5`,
+        values: [totalBruto, descontoTotal, totalLiquido, freteTotal > 0 ? freteTotal : null, id],
       });
 
       // Calcular valor por promissória se aplicável
@@ -239,10 +242,17 @@ async function putPedido(req, res) {
       });
       if (headNow.rows.length) {
         const tl = Number(headNow.rows[0].total_liquido || 0);
+        // buscar frete_total atual para compor valor_por_promissoria
+        const freteQ = await client.query({
+          text: `SELECT frete_total FROM pedidos WHERE id = $1`,
+          values: [id],
+        });
+        const ft = Number(freteQ.rows?.[0]?.frete_total || 0);
         const np = Number(headNow.rows[0].numero_promissorias || 1);
         const firstDate = headNow.rows[0].data_primeira_promissoria;
-        if (np >= 1 && tl > 0) {
-          const vpp = tl / np;
+        const baseParcelamento = tl + ft;
+        if (np >= 1 && baseParcelamento > 0) {
+          const vpp = baseParcelamento / np;
           await client.query({
             text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
             values: [vpp, id],
@@ -262,8 +272,8 @@ async function putPedido(req, res) {
             const amt = Number(vpp.toFixed(2));
             const datas = Array.isArray(b.promissoria_datas)
               ? b.promissoria_datas.filter((s) =>
-                  /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
-                )
+                /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
+              )
               : [];
             if (datas.length >= np) {
               for (let i = 0; i < np; i++) {
