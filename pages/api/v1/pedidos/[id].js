@@ -325,12 +325,26 @@ async function putPedido(req, res) {
                 });
               }
             } else {
-              const baseDate = firstDate ? parseDateYMD(firstDate) : new Date();
-              const norm = new Date(
-                baseDate.getFullYear(),
-                baseDate.getMonth(),
-                baseDate.getDate(),
-              );
+              // Normaliza baseDate aceitando string 'YYYY-MM-DD' ou Date
+              const toLocalMidnight = (input) => {
+                if (!input) return new Date();
+                if (
+                  typeof input === "string" &&
+                  /^\d{4}-\d{2}-\d{2}$/.test(input)
+                ) {
+                  const [y, m, d] = input.split("-").map(Number);
+                  return new Date(y, m - 1, d);
+                }
+                if (input instanceof Date && !isNaN(input)) {
+                  return new Date(
+                    input.getFullYear(),
+                    input.getMonth(),
+                    input.getDate(),
+                  );
+                }
+                return new Date();
+              };
+              const norm = toLocalMidnight(firstDate || new Date());
               const fmtYMD = (d) => {
                 const y = d.getFullYear();
                 const m = String(d.getMonth() + 1).padStart(2, "0");

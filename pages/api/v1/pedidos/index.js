@@ -22,6 +22,19 @@ function formatDateYMD(d) {
   return `${y}-${m}-${day}`;
 }
 
+// Converte entrada (string 'YYYY-MM-DD' ou Date) em Date normalizada (meia-noite local)
+function toLocalMidnightDate(input) {
+  if (!input) return new Date();
+  if (typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    const [y, m, d] = input.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+  if (input instanceof Date && !isNaN(input)) {
+    return new Date(input.getFullYear(), input.getMonth(), input.getDate());
+  }
+  return new Date();
+}
+
 async function postPedido(req, res) {
   const client = await database.getClient();
   try {
@@ -143,12 +156,8 @@ async function postPedido(req, res) {
         // Fallback: mensal a partir da primeira data
         const firstDate = b.data_primeira_promissoria
           ? parseDateYMD(b.data_primeira_promissoria)
-          : new Date();
-        const baseDate = new Date(
-          firstDate.getFullYear(),
-          firstDate.getMonth(),
-          firstDate.getDate(),
-        );
+          : null;
+        const baseDate = toLocalMidnightDate(firstDate || new Date());
         for (let i = 0; i < numeroPromissorias; i++) {
           const due = new Date(baseDate);
           due.setMonth(due.getMonth() + i);

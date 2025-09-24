@@ -132,12 +132,12 @@ async function getNF(req, res) {
     });
 
     const colsMeta = computeItemColumns(doc);
-    const yStart = drawItemsHeader(doc, colsMeta);
+    const headerMeta = drawItemsHeader(doc, colsMeta);
     const { y: yAfterRows, totalGeral } = drawItemsRows(
       doc,
       colsMeta,
       itensQ.rows,
-      yStart,
+      headerMeta,
     );
     const bottomAfterTotals = drawTotals(doc, pedido, yAfterRows, totalGeral);
     drawSignature(doc, bottomAfterTotals + 16, () =>
