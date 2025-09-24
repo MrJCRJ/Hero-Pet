@@ -37,7 +37,6 @@ export function PedidoFormItems({
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-semibold">Itens</h3>
       </div>
-
       {/* Quick add estilo supermercado */}
       <QuickAddItemRow
         tipo={tipo}
@@ -109,14 +108,6 @@ export function PedidoFormItems({
                   {it.produto_label || "Produto não selecionado"}
                 </span>
                 {getItemDiffIcon(it)}
-                {tipo === "VENDA" && Number(it.produto_id) > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] whitespace-nowrap">
-                    Est.:{" "}
-                    {it.produto_saldo != null
-                      ? formatQty(it.produto_saldo)
-                      : "..."}
-                  </span>
-                )}
               </div>
             </div>
             <div className="w-24 text-right text-sm">Qtd: {formatQty(it.quantidade)}</div>
@@ -138,16 +129,32 @@ export function PedidoFormItems({
                 return t != null ? `R$ ${t.toFixed(2)}` : "—";
               })()}
             </div>
-            <div className="w-24 text-right">
+            <div className="w-10 text-right">
               <Button
                 variant="secondary"
                 size="sm"
                 fullWidth={false}
                 onClick={() => onRemoveItem(idx)}
-                disabled={itens.length === 1}
-              >
-                Remover
-              </Button>
+                aria-label="Remover item"
+                className="px-2 py-1 text-white"
+                title="Remover item"
+                icon={(props) => (
+                  <svg
+                    {...props}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 7h12m-9 4v6m6-6v6M9 7l1-2h4l1 2m-9 0h12l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7z"
+                    />
+                  </svg>
+                )}
+              />
             </div>
           </div>
         ))}
@@ -338,20 +345,20 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
   return (
     <div className="mb-4 p-3 border rounded-md bg-[var(--color-bg-secondary)]">
       <div className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
-        <div className="md:col-span-3">
+        <div className="md:col-span-2">
           <label className="block text-xs mb-1">Produto</label>
           <button
             type="button"
-            className="w-full text-left border rounded px-2 py-1 hover:bg-[var(--color-bg-primary)]"
+            className="relative w-full text-left border rounded px-2 pr-24 py-1.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-primary)] whitespace-nowrap overflow-hidden"
             onClick={() => setShowModal(true)}
           >
-            {label || "Selecionar produto"}
+            <span className="inline-block truncate align-middle max-w-full">{label || "Selecionar produto"}</span>
+            {tipo === "VENDA" && produtoId && (
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-primary)]">
+                Est.: {saldo != null ? formatQty(saldo) : "…"}
+              </span>
+            )}
           </button>
-          {tipo === "VENDA" && produtoId && (
-            <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-              Est.: {saldo != null ? formatQty(saldo) : "..."}
-            </div>
-          )}
         </div>
         <div>
           <label className="block text-xs mb-1">Quantidade</label>
@@ -391,10 +398,21 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
             variant="primary"
             size="sm"
             fullWidth={false}
+            className="px-2 py-1"
             onClick={handleAdd}
-          >
-            + Adicionar item
-          </Button>
+            aria-label="Adicionar item"
+            title="Adicionar item"
+            icon={(props) => (
+              <svg
+                {...props}
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 5a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H6a1 1 0 110-2h5V6a1 1 0 011-1z" />
+              </svg>
+            )}
+          />
         </div>
       </div>
       {showModal && (
