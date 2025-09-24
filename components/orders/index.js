@@ -85,11 +85,11 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
           <thead>
             <tr className="bg-[var(--color-bg-secondary)]">
               <th className="text-left px-3 py-2">Tipo</th>
-              <th className="text-left px-3 py-2">Parceiro</th>
+              <th className="text-left px-3 py-2 w-[160px] max-w-[160px]">Parceiro</th>
               <th className="text-left px-3 py-2">Emissão</th>
               <th className="text-center px-3 py-2">NF</th>
-              <th className="text-center px-3 py-2" title="Promissórias">
-                Promiss.
+              <th className="text-center px-3 py-2" title="Duplicadas">
+                Dupl.
               </th>
               <th className="text-right px-3 py-2">Total</th>
               <th className="text-center px-3 py-2">Parcelas</th>
@@ -103,9 +103,9 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 onClick={() => onEdit && onEdit(p)}
               >
                 <td className="px-3 py-2">{p.tipo}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 w-[160px] align-top">
                   <div
-                    className="max-w-[220px] truncate"
+                    className="max-w-[160px] truncate whitespace-nowrap"
                     title={p.partner_name || "-"}
                   >
                     {p.partner_name || "-"}
@@ -156,7 +156,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                           "noopener",
                         );
                       }}
-                      title="Baixar Promissórias (PDF)"
+                      title="Baixar Duplicadas (PDF)"
                     >
                       📝
                     </Button>
@@ -170,17 +170,17 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                       p.total_liquido != null ? Number(p.total_liquido) : NaN;
                     const totalFmt = Number.isFinite(n)
                       ? n.toLocaleString(undefined, {
-                          style: "currency",
-                          currency: "BRL",
-                        })
+                        style: "currency",
+                        currency: "BRL",
+                      })
                       : "-";
                     const pago =
                       p.total_pago != null ? Number(p.total_pago) : 0;
                     const pagoFmt = Number.isFinite(pago)
                       ? pago.toLocaleString(undefined, {
-                          style: "currency",
-                          currency: "BRL",
-                        })
+                        style: "currency",
+                        currency: "BRL",
+                      })
                       : "R$ 0,00";
                     const fullyPaid =
                       Number.isFinite(n) && Number.isFinite(pago)

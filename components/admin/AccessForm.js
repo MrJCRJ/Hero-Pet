@@ -6,11 +6,17 @@ export function AccessForm({
   setAccessCode,
   onSubmit,
   incorrectCode,
+  hint,
 }) {
   return (
     <div className="bg-[var(--color-bg-secondary)] rounded-lg shadow-md p-4 max-w-xs mx-auto text-center">
       <h2 className="text-base font-semibold mb-2">Acesso Administrativo</h2>
       <p className="mb-3 text-sm">Digite o código de acesso:</p>
+      {hint && (
+        <p className="mb-2 text-[10px] text-[var(--color-text-secondary)] leading-snug">
+          {hint}
+        </p>
+      )}
       <form onSubmit={onSubmit} className="flex flex-col gap-2">
         <input
           type="password"

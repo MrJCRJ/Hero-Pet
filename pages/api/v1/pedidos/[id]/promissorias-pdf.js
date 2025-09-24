@@ -11,7 +11,7 @@ import {
 import {
   drawPromissoriaCard,
   PROMISSORIA_CARD_HEIGHT,
-} from "lib/pdf/promissoria/sections";
+} from "lib/pdf/duplicadas/sections";
 
 export default async function handler(req, res) {
   if (req.method === "GET") return getPromissoriasPDF(req, res);
@@ -120,7 +120,7 @@ async function getPromissoriasPDF(req, res) {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="Promissorias-${pedido.id}.pdf"`,
+      `attachment; filename="Duplicadas-${pedido.id}.pdf"`,
     );
     const doc = new PDFDocument({ margin: 36 });
     doc.pipe(res);

@@ -26,7 +26,7 @@ async function markPaid(req, res) {
     });
     if (!row.rows.length) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Promissória não encontrada" });
+      return res.status(404).json({ error: "Duplicata não encontrada" });
     }
     if (row.rows[0].paid_at) {
       await client.query("ROLLBACK");
@@ -83,13 +83,13 @@ async function updateDueDate(req, res) {
     });
     if (!row.rows.length) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Promissória não encontrada" });
+      return res.status(404).json({ error: "Duplicata não encontrada" });
     }
     if (row.rows[0].paid_at) {
       await client.query("ROLLBACK");
       return res
         .status(400)
-        .json({ error: "Não é possível alterar data de promissória já paga" });
+        .json({ error: "Não é possível alterar data de duplicata já paga" });
     }
     await client.query({
       text: `UPDATE pedido_promissorias SET due_date = $1, updated_at = NOW() WHERE pedido_id = $2 AND seq = $3`,
