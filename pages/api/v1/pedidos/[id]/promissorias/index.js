@@ -34,7 +34,7 @@ async function list(req, res) {
     });
     return res.status(200).json(rows.rows);
   } catch (e) {
-    console.error("GET /pedidos/:id/promissorias error", e);
+    console.error("GET /pedidos/:id/duplicatas error", e);
     if (isRelationMissing(e))
       return res.status(503).json({
         error: "Schema not migrated (pedido_promissorias missing)",

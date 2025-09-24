@@ -28,6 +28,7 @@ function Home() {
     setAccessCode,
     handleAccessCodeSubmit,
     handleLogout,
+    user,
   } = useAuth();
   const [activeForm, setActiveForm] = useState("entities");
   const [entitiesHighlightId, setEntitiesHighlightId] = useState(null);
@@ -81,7 +82,10 @@ function Home() {
             <StatusNav status={status} lastUpdate={lastUpdate} compact />
             <div className="flex items-center gap-4">
               <ThemeToggle />
-              <AdminHeader onLogout={handleLogout} user={{ name: "José" }} />
+              <AdminHeader
+                onLogout={handleLogout}
+                user={user || { name: "Usuário" }}
+              />
             </div>
           </div>
           <div className="flex gap-2 mb-4">

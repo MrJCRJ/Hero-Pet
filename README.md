@@ -52,6 +52,19 @@ curl -X POST http://localhost:3000/api/v1/migrations
 npm test
 ```
 
+### Testes em CI / Ambientes sem login no Docker
+
+- Se o pull do Postgres no Docker Hub exigir autenticação (erro "unauthorized: authentication required"), há três opções:
+  1. Faça login e faça o pull previamente: `docker login && docker pull postgres:16.10-alpine3.22`
+  2. Use o espelho público (já padrão no compose): `public.ecr.aws/docker/library/postgres:16-alpine` (ou defina `POSTGRES_IMAGE`)
+  3. Rode sem subir Docker (quando o Postgres já existe):
+
+```bash
+npm run test:ci
+```
+
+Veja `.env.ci.sample` para variáveis mínimas de conexão.
+
 ## Endpoints principais
 
 ### Status e Migrações
@@ -163,3 +176,73 @@ Quando considerar habilitar MIGRATIONS_AUTO_APPLY:
 
 - Ambientes dinâmicos/efêmeros (ex.: pré-visualização) ou cenários onde o orchestrator pode inicializar instâncias antes da etapa de migração.
 - Lembre-se de manter desabilitado em produção caso sua política exija migrações controladas e auditáveis.
+
+## Autenticação Administrativa (Codes via ENV)
+
+O painel administrativo utiliza hoje um mecanismo simples de códigos compartilhados (client-side) mapeando código -> nome de usuário. Para evitar hardcode no bundle, é possível definir a variável de ambiente `NEXT_PUBLIC_ADMIN_CODES`.
+
+### Formatos Aceitos
+
+`NEXT_PUBLIC_ADMIN_CODES` deve ser uma string JSON em um destes formatos:
+
+1. Objeto chave->valor (string ou objeto com name):
+
+```env
+NEXT_PUBLIC_ADMIN_CODES='{"hero123":"Icaro","admin":"Jose"}'
+```
+
+Ou:
+
+```env
+NEXT_PUBLIC_ADMIN_CODES='{"hero123":{"name":"Icaro"},"admin":{"name":"Jose"}}'
+```
+
+2. Array de objetos `{ code, name }`:
+
+```env
+NEXT_PUBLIC_ADMIN_CODES='[{"code":"hero123","name":"Icaro"},{"code":"admin","name":"Jose"}]'
+```
+
+### Fallback
+
+Se a variável não estiver definida ou o JSON for inválido, cai no fallback interno:
+
+```js
+{ hero123: { name: "Icaro" }, admin: { name: "Jose" } }
+```
+
+### Armazenamento Local
+
+- Ao autenticar, salva em `localStorage` as chaves:
+  - `adminAuthenticated` = "true"
+  - `adminAuthenticatedUser` = nome associado
+- Versões anteriores que só tinham `adminAuthenticated` sem o nome recebem fallback "Admin" (e persistem o nome).
+
+### Segurança / Limitações
+
+- Trata-se de proteção leve (obfuscation). O código fica acessível ao usuário (exposto no build ou no env público) — não usar para dados realmente sensíveis.
+- Para elevação real de privilégio, migrar futuramente para fluxo server-side (ex: endpoint de login + JWT + roles) e mover a lista de usuários/códigos para o backend.
+
+### Boas Práticas
+
+- Rotacionar códigos periodicamente (atualizando a env e redeploy).
+- Evitar reutilizar códigos triviais ("123", "admin").
+- Usar nomes de usuário consistentes para auditoria em logs (ex.: salvar user ao registrar movimentos/alterações futuras).
+
+### Exemplo Completo `.env.development`
+
+```env
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5433
+POSTGRES_DB=hero_pet
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/hero_pet
+NEXT_PUBLIC_ADMIN_CODES='{"hero123":"Icaro","admin":"Jose"}'
+```
+
+### Próxima Evolução Sugerida
+
+1. Adicionar expiração de sessão (timestamp em localStorage e revalidação após X horas).
+2. Persistir logs com o campo `usuario` (já existe em movimentos de estoque; reutilizar para outras ações administrativas).
+3. Migrar estrutura para autenticação server-driven se requisitos de segurança crescerem.

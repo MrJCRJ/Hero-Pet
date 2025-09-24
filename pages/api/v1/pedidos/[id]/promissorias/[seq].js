@@ -19,6 +19,13 @@ async function markPaid(req, res) {
     const seq = Number(req.query.seq);
     if (!Number.isFinite(id) || !Number.isFinite(seq))
       return res.status(400).json({ error: "invalid id/seq" });
+    const paidDateRaw = req.body?.paid_date || req.query?.paid_date || null;
+    if (
+      paidDateRaw != null &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(String(paidDateRaw))
+    ) {
+      return res.status(400).json({ error: "paid_date inválido (YYYY-MM-DD)" });
+    }
     await client.query("BEGIN");
     const row = await client.query({
       text: `SELECT * FROM pedido_promissorias WHERE pedido_id = $1 AND seq = $2`,
@@ -26,16 +33,23 @@ async function markPaid(req, res) {
     });
     if (!row.rows.length) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Promissória não encontrada" });
+      return res.status(404).json({ error: "Duplicata não encontrada" });
     }
     if (row.rows[0].paid_at) {
       await client.query("ROLLBACK");
       return res.status(200).json({ ok: true, alreadyPaid: true });
     }
-    await client.query({
-      text: `UPDATE pedido_promissorias SET paid_at = NOW(), updated_at = NOW() WHERE pedido_id = $1 AND seq = $2`,
-      values: [id, seq],
-    });
+    if (paidDateRaw) {
+      await client.query({
+        text: `UPDATE pedido_promissorias SET paid_at = ($1::date + time '00:00')::timestamptz, updated_at = NOW() WHERE pedido_id = $2 AND seq = $3`,
+        values: [paidDateRaw, id, seq],
+      });
+    } else {
+      await client.query({
+        text: `UPDATE pedido_promissorias SET paid_at = NOW(), updated_at = NOW() WHERE pedido_id = $1 AND seq = $2`,
+        values: [id, seq],
+      });
+    }
     await client.query("COMMIT");
     return res.status(200).json({ ok: true });
   } catch (e) {
@@ -83,13 +97,13 @@ async function updateDueDate(req, res) {
     });
     if (!row.rows.length) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Promissória não encontrada" });
+      return res.status(404).json({ error: "Duplicata não encontrada" });
     }
     if (row.rows[0].paid_at) {
       await client.query("ROLLBACK");
       return res
         .status(400)
-        .json({ error: "Não é possível alterar data de promissória já paga" });
+        .json({ error: "Não é possível alterar data de duplicata já paga" });
     }
     await client.query({
       text: `UPDATE pedido_promissorias SET due_date = $1, updated_at = NOW() WHERE pedido_id = $2 AND seq = $3`,

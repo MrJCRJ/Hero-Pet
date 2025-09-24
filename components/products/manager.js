@@ -194,7 +194,7 @@ export function ProductsManager({ linkSupplierId }) {
             className={below ? "text-red-500 font-medium" : ""}
             title={below ? "Abaixo do estoque mínimo" : undefined}
           >
-            {Number.isFinite(saldo) ? saldo.toFixed(3) : "-"}
+            {Number.isFinite(saldo) ? formatQtyBR(saldo) : "-"}
           </span>
         </div>
         <div
@@ -211,6 +211,12 @@ export function ProductsManager({ linkSupplierId }) {
         {null}
       </div>
     );
+  }
+
+  function formatQtyBR(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return String(value ?? "");
+    return n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
   }
 
   // Buscar sugestão de estoque mínimo (30 dias) para produtos sem mínimo cadastrado
@@ -392,7 +398,7 @@ export function ProductsManager({ linkSupplierId }) {
             <tr>
               <th className="p-2">Nome</th>
               <th className="p-2">Categoria</th>
-              <th className="p-2">Fornecedores</th>
+              <th className="p-2 w-[160px] max-w-[160px]">Fornecedores</th>
               <th className="p-2">Preço</th>
               <th className="p-2">Estoque</th>
               <th className="p-2 w-1">Ações</th>
@@ -431,12 +437,37 @@ export function ProductsManager({ linkSupplierId }) {
                   </div>
                 </td>
                 <td className="p-2">{p.categoria || "-"}</td>
-                <td className="p-2 text-xs">
-                  {Array.isArray(p.supplier_labels) && p.supplier_labels.length
-                    ? p.supplier_labels
-                        .map((s) => s.name || s.label || `#${s.id}`)
-                        .join(", ")
-                    : "-"}
+                <td className="p-2 text-xs align-top w-[160px] max-w-[160px]">
+                  <div
+                    className="max-w-[160px] truncate whitespace-nowrap"
+                    title={
+                      Array.isArray(p.supplier_labels) &&
+                      p.supplier_labels.length
+                        ? p.supplier_labels
+                            .map((s) => s.name || s.label || `#${s.id}`)
+                            .join(", ")
+                        : "-"
+                    }
+                  >
+                    {Array.isArray(p.supplier_labels) &&
+                    p.supplier_labels.length
+                      ? (() => {
+                          const names = p.supplier_labels.map(
+                            (s) => s.name || s.label || `#${s.id}`,
+                          );
+                          const shown = names.slice(0, 2).join(", ");
+                          const extra = names.length - 2;
+                          if (extra > 0) {
+                            return (
+                              <span>
+                                {shown} +{extra}
+                              </span>
+                            );
+                          }
+                          return <span>{shown}</span>;
+                        })()
+                      : "-"}
+                  </div>
                 </td>
                 <td className="p-2">{renderPrecoCell(p)}</td>
                 <td className="p-2">{renderEstoqueCell(p)}</td>

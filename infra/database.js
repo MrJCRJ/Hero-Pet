@@ -1,5 +1,10 @@
 import { Client } from "pg";
-import migrationRunner from "node-pg-migrate";
+// IMPORTANTE: "node-pg-migrate" em ambiente ESM (Node 20) pode retornar um objeto cujo
+// runner real está em .default. O import default puro acaba produzindo um objeto
+// (com chaves PgLiteral, Migration, PgType, default) e não a função diretamente,
+// causando erro "migrationRunner is not a function" quando chamado.
+// Para manter compatibilidade CJS/ESM usamos fallback para .default.
+import pgMigrate from "node-pg-migrate";
 import { join } from "node:path";
 
 async function query(queryObject) {
@@ -93,6 +98,7 @@ async function ensureMigrationsIfEnabledOnce(client) {
   }
   MIGRATIONS_ENSURING = (async () => {
     try {
+      const migrationRunner = pgMigrate?.default || pgMigrate; // compat layer
       await migrationRunner({
         direction: "up",
         verbose: true,

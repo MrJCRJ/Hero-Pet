@@ -55,18 +55,10 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     editingOrder ? Boolean(editingOrder.tem_nota_fiscal) : true,
   );
   const [parcelado, setParcelado] = useState(() =>
-    Boolean(editingOrder?.parcelado),
+    editingOrder?.parcelado != null ? Boolean(editingOrder.parcelado) : true,
   );
-  const [itens, setItens] = useState([
-    {
-      produto_id: "",
-      produto_label: "",
-      quantidade: "",
-      preco_unitario: "",
-      desconto_unitario: "",
-      produto_saldo: null,
-    },
-  ]);
+  const [itens, setItens] = useState([defaultEmptyItem()]);
+  const [freteTotal, setFreteTotal] = useState("");
   const [originalItens, setOriginalItens] = useState([]);
   const [created, setCreated] = useState(null);
   const [showPartnerModal, setShowPartnerModal] = useState(false);
@@ -164,6 +156,17 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     setOriginalItens(mapped);
     setCreated({ id: editingOrder.id, status: editingOrder.status });
 
+    // Hidratar frete_total ao editar (apenas armazena string; exibição/uso condicionado a tipo === "COMPRA")
+    if (Object.prototype.hasOwnProperty.call(editingOrder, "frete_total")) {
+      setFreteTotal(
+        editingOrder.frete_total != null
+          ? String(editingOrder.frete_total)
+          : "",
+      );
+    } else {
+      setFreteTotal("");
+    }
+
     // Hidratar cronograma se vier do GET /pedidos/:id
     if (
       Array.isArray(editingOrder.promissorias) &&
@@ -229,9 +232,11 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     setObservacao("");
     setDataEntrega("");
     setTemNotaFiscal(false);
-    setParcelado(false);
+    // Sistema de promissórias sempre ativo por padrão
+    setParcelado(true);
     setItens([defaultEmptyItem()]);
     setCreated(null);
+    setFreteTotal("");
   }, []);
 
   // Forçar temNotaFiscal=true para VENDA (não exibido na UI)
@@ -251,8 +256,11 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       const t = computeItemTotal(it);
       return acc + (Number.isFinite(Number(t)) ? Number(t) : 0);
     }, 0);
-    return Number(sum.toFixed(2));
-  }, [itens, computeItemTotal]);
+    const freteVal = tipo === "COMPRA" ? Number(freteTotal || 0) : 0;
+    return Number(
+      (sum + (Number.isFinite(freteVal) ? freteVal : 0)).toFixed(2),
+    );
+  }, [itens, computeItemTotal, tipo, freteTotal]);
 
   // Atualiza valor por promissória quando total muda
   React.useEffect(() => {
@@ -283,11 +291,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     ) {
       return;
     }
-    if (!parcelado) {
-      if (Array.isArray(promissoriaDatas) && promissoriaDatas.length)
-        setPromissoriaDatas([]);
-      return;
-    }
+    // Não limpar datas no modo manual, mesmo que parcelado esteja falso em ordens antigas
     if (frequenciaPromissorias === "manual") return; // manter manual
     if (
       !dataPrimeiraPromissoria ||
@@ -370,6 +374,11 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             ? { desconto_unitario: numOrNull(it.desconto_unitario) }
             : {}),
         })),
+      ...(tipo === "COMPRA" &&
+      numOrNull(freteTotal) != null &&
+      freteTotal !== ""
+        ? { frete_total: numOrNull(freteTotal) }
+        : {}),
     }),
     [
       partnerId,
@@ -383,6 +392,8 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       dataPrimeiraPromissoria,
       itens,
       promissoriaDatas,
+      freteTotal,
+      tipo,
     ],
   );
 
@@ -401,6 +412,10 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
         data_primeira_promissoria: dataPrimeiraPromissoria || null,
         promissoria_datas: payloadBase.promissoria_datas || [],
         itens: payloadBase.itens,
+        // Incluir frete_total no PUT quando presente no payload base (permite persistir/zerar)
+        ...(Object.prototype.hasOwnProperty.call(payloadBase, "frete_total")
+          ? { frete_total: payloadBase.frete_total }
+          : {}),
       };
       return updateOrderService(editingOrder?.id ?? orderId, body);
     },
@@ -594,5 +609,9 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     // ações
     handleSubmit,
     handleDelete,
+    // frete total (COMPRA)
+    // Frete agregado apenas para COMPRA
+    freteTotal,
+    setFreteTotal,
   };
 }

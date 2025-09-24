@@ -79,8 +79,12 @@ export const Button = ({
           />
         </svg>
       )}
-      {!loading && Icon && <Icon className="w-4 h-4 mr-2" />}
-      <span className={loading ? "opacity-70" : ""}>{children}</span>
+      {!loading && Icon && (
+        <Icon className={`w-4 h-4 ${children ? "mr-2" : ""}`} />
+      )}
+      {children ? (
+        <span className={loading ? "opacity-70" : ""}>{children}</span>
+      ) : null}
     </button>
   );
 };

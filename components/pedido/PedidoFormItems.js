@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "../ui/Button";
 import { SelectionModal } from "../common/SelectionModal";
+import { useToast } from "../entities/shared/toast";
 
 export function PedidoFormItems({
   itens,
@@ -18,6 +19,8 @@ export function PedidoFormItems({
   productModalIndex,
   onSetProductModalIndex,
   fetchProdutos,
+  freteTotal,
+  setFreteTotal,
 }) {
   const totalItens = React.useMemo(() => {
     try {
@@ -35,7 +38,6 @@ export function PedidoFormItems({
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-semibold">Itens</h3>
       </div>
-
       {/* Quick add estilo supermercado */}
       <QuickAddItemRow
         tipo={tipo}
@@ -107,18 +109,10 @@ export function PedidoFormItems({
                   {it.produto_label || "Produto não selecionado"}
                 </span>
                 {getItemDiffIcon(it)}
-                {tipo === "VENDA" && Number(it.produto_id) > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] whitespace-nowrap">
-                    Est.:{" "}
-                    {it.produto_saldo != null
-                      ? Number(it.produto_saldo).toFixed(3)
-                      : "..."}
-                  </span>
-                )}
               </div>
             </div>
             <div className="w-24 text-right text-sm">
-              Qtd: {String(it.quantidade || "")}
+              Qtd: {formatQty(it.quantidade)}
             </div>
             <div className="w-28 text-right text-sm">
               Preço:{" "}
@@ -138,25 +132,75 @@ export function PedidoFormItems({
                 return t != null ? `R$ ${t.toFixed(2)}` : "—";
               })()}
             </div>
-            <div className="w-24 text-right">
+            <div className="w-10 text-right">
               <Button
                 variant="secondary"
                 size="sm"
                 fullWidth={false}
                 onClick={() => onRemoveItem(idx)}
-                disabled={itens.length === 1}
-              >
-                Remover
-              </Button>
+                aria-label="Remover item"
+                className="px-2 py-1 text-white"
+                title="Remover item"
+                icon={(props) => (
+                  <svg
+                    {...props}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 7h12m-9 4v6m6-6v6M9 7l1-2h4l1 2m-9 0h12l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7z"
+                    />
+                  </svg>
+                )}
+              />
             </div>
           </div>
         ))}
       </div>
 
-      {/* Totalizador dos itens */}
-      <div className="flex justify-end mt-2">
-        <div className="text-right text-sm md:text-base font-semibold">
-          Total dos itens: R$ {Number(totalItens || 0).toFixed(2)}
+      {tipo === "COMPRA" && (
+        <div className="flex justify-end mt-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+              Frete
+            </span>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
+                R$
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                className="w-28 pl-6 pr-2 py-1 text-right border rounded bg-[var(--color-bg-primary)] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                aria-label="Frete"
+                value={freteTotal}
+                onChange={(e) => setFreteTotal(e.target.value)}
+                onBlur={(e) => {
+                  const v = String(e.target.value || "");
+                  const num = Number(v.replace(",", "."));
+                  if (Number.isFinite(num)) setFreteTotal(num.toFixed(2));
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end mt-3">
+        <div className="text-right text-sm font-semibold">
+          {(() => {
+            const freteVal = tipo === "COMPRA" ? Number(freteTotal || 0) : 0;
+            const total =
+              Number(totalItens || 0) +
+              (Number.isFinite(freteVal) ? freteVal : 0);
+            return `Total: R$ ${total.toFixed(2)}`;
+          })()}
         </div>
       </div>
 
@@ -233,7 +277,8 @@ async function fetchSaldo(produtoId) {
   }
 }
 
-function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
+function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProdutos }) {
+  const { push } = useToast();
   const [label, setLabel] = React.useState("");
   const [produtoId, setProdutoId] = React.useState("");
   const [quantidade, setQuantidade] = React.useState("");
@@ -245,9 +290,35 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
     custo_medio: null,
     ultimo_custo: null,
   });
+  const [saldo, setSaldo] = React.useState(null);
   // removed loading UI; suggestion is applied silently when available
   const [precoPadrao, setPrecoPadrao] = React.useState("");
   const [allowAutoPrice, setAllowAutoPrice] = React.useState(true);
+
+  // Quantidade já adicionada no formulário para o mesmo produto (VENDA)
+  const reservedQty = React.useMemo(() => {
+    if (!Array.isArray(itens) || !produtoId) return 0;
+    try {
+      return itens.reduce((acc, it) => {
+        if (String(it?.produto_id || "") === String(produtoId)) {
+          const q = Number(it?.quantidade);
+          return acc + (Number.isFinite(q) ? q : 0);
+        }
+        return acc;
+      }, 0);
+    } catch (_) {
+      return 0;
+    }
+  }, [itens, produtoId]);
+
+  // Saldo exibido = saldo do backend - reservado nos itens do formulário
+  const displaySaldo = React.useMemo(() => {
+    if (saldo == null || !Number.isFinite(Number(saldo))) return null;
+    const rem =
+      Number(saldo) -
+      (Number.isFinite(Number(reservedQty)) ? Number(reservedQty) : 0);
+    return rem;
+  }, [saldo, reservedQty]);
 
   const suggestedPrice = React.useMemo(() => {
     let md = Number(markupDefault);
@@ -292,6 +363,20 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
     // Validar seleção de produto e quantidade
     if (!produtoId) return;
     if (!Number.isFinite(Number(quantidade)) || Number(quantidade) <= 0) return;
+    // Bloquear quando quantidade excede estoque disponível (apenas VENDA)
+    if (
+      tipo === "VENDA" &&
+      displaySaldo != null &&
+      Number.isFinite(Number(displaySaldo)) &&
+      Number(quantidade) > Number(displaySaldo)
+    ) {
+      try {
+        push("Quantidade maior que o estoque disponível.", { type: "warning" });
+      } catch (_) {
+        /* noop */
+      }
+      return;
+    }
     onAppend({
       produto_id: produtoId,
       produto_label: label,
@@ -299,24 +384,29 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
       preco_unitario: preco,
       desconto_unitario: desconto,
     });
-    setLabel("");
-    setProdutoId("");
+    // Mantém o produto selecionado para permitir adições repetidas
+    // Atualiza apenas a quantidade (limpa para evitar repetição acidental)
     setQuantidade("");
-    setPreco("");
-    setDesconto("");
   };
 
   return (
     <div className="mb-4 p-3 border rounded-md bg-[var(--color-bg-secondary)]">
       <div className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
-        <div className="md:col-span-3">
+        <div className="md:col-span-2">
           <label className="block text-xs mb-1">Produto</label>
           <button
             type="button"
-            className="w-full text-left border rounded px-2 py-1 hover:bg-[var(--color-bg-primary)]"
+            className="relative w-full text-left border rounded px-2 pr-24 py-1.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-primary)] whitespace-nowrap overflow-hidden"
             onClick={() => setShowModal(true)}
           >
-            {label || "Selecionar produto"}
+            <span className="inline-block truncate align-middle max-w-full">
+              {label || "Selecionar produto"}
+            </span>
+            {tipo === "VENDA" && produtoId && (
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-primary)]">
+                Est.: {displaySaldo != null ? formatQty(displaySaldo) : "…"}
+              </span>
+            )}
           </button>
         </div>
         <div>
@@ -357,10 +447,37 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
             variant="primary"
             size="sm"
             fullWidth={false}
+            className="px-2 py-1"
             onClick={handleAdd}
-          >
-            + Adicionar item
-          </Button>
+            aria-label="Adicionar item"
+            title={
+              tipo === "VENDA" &&
+              displaySaldo != null &&
+              Number.isFinite(Number(quantidade)) &&
+              Number(quantidade) > Number(displaySaldo)
+                ? "Estoque insuficiente"
+                : "Adicionar item"
+            }
+            disabled={
+              (tipo === "VENDA" &&
+                displaySaldo != null &&
+                Number.isFinite(Number(quantidade)) &&
+                Number(quantidade) > Number(displaySaldo)) ||
+              !produtoId ||
+              !Number.isFinite(Number(quantidade)) ||
+              Number(quantidade) <= 0
+            }
+            icon={(props) => (
+              <svg
+                {...props}
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 5a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H6a1 1 0 110-2h5V6a1 1 0 011-1z" />
+              </svg>
+            )}
+          />
         </div>
       </div>
       {showModal && (
@@ -402,10 +519,12 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
                       custo_medio: Number(data.custo_medio),
                       ultimo_custo: Number(data.ultimo_custo),
                     });
+                    setSaldo(Number(data.saldo));
                   })
-                  .catch(() =>
-                    setCostInfo({ custo_medio: null, ultimo_custo: null }),
-                  );
+                  .catch(() => {
+                    setCostInfo({ custo_medio: null, ultimo_custo: null });
+                    setSaldo(null);
+                  });
               }
             }
           }}
@@ -438,4 +557,12 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
       )}
     </div>
   );
+}
+
+// Formata quantidade em pt-BR com até 3 casas decimais, sem zeros desnecessários
+function formatQty(value) {
+  if (value === "" || value == null) return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value ?? "");
+  return n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 }

@@ -1,6 +1,20 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "../ui/Button";
 import { PedidoForm } from "../PedidoForm";
+import { useToast } from "../entities/shared/toast";
+import { deleteOrder as deleteOrderService } from "../pedido/service";
+import { Modal } from "../common/Modal";
+
+// Evita o deslocamento de um dia ao exibir datas vindas do banco em timestamptz
+// Ao invés de criar um Date (que aplica timezone), formatamos o YYYY-MM-DD literalmente
+function formatYMDToBR(isoLike) {
+  if (!isoLike) return "-";
+  const s = String(isoLike);
+  const ymd = s.slice(0, 10);
+  const [y, m, d] = ymd.split("-");
+  if (!y || !m || !d) return "-";
+  return `${d}/${m}/${y}`;
+}
 
 function FilterBar({ filters, onChange, onReload }) {
   return (
@@ -16,6 +30,24 @@ function FilterBar({ filters, onChange, onReload }) {
           <option value="VENDA">VENDA</option>
           <option value="COMPRA">COMPRA</option>
         </select>
+      </div>
+      <div>
+        <label className="block text-xs mb-1">Emissão (De)</label>
+        <input
+          type="date"
+          className="border rounded px-2 py-1"
+          value={filters.from || ""}
+          onChange={(e) => onChange({ ...filters, from: e.target.value })}
+        />
+      </div>
+      <div>
+        <label className="block text-xs mb-1">Emissão (Até)</label>
+        <input
+          type="date"
+          className="border rounded px-2 py-1"
+          value={filters.to || ""}
+          onChange={(e) => onChange({ ...filters, to: e.target.value })}
+        />
       </div>
       <div className="flex-1 min-w-[200px]">
         <label className="block text-xs mb-1">Busca</label>
@@ -40,6 +72,8 @@ function usePedidos(filters, limit = 20) {
     const p = new URLSearchParams();
     if (filters.tipo) p.set("tipo", filters.tipo);
     if (filters.q) p.set("q", filters.q);
+    if (filters.from) p.set("from", filters.from);
+    if (filters.to) p.set("to", filters.to);
     p.set("limit", String(limit));
     return p.toString();
   }, [filters, limit]);
@@ -69,13 +103,29 @@ function usePedidos(filters, limit = 20) {
 }
 
 export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
-  const [filters, setFilters] = useState({ tipo: "", q: "" });
+  const [filters, setFilters] = useState({ tipo: "", q: "", from: "", to: "" });
   const { loading, data, reload } = usePedidos(filters, limit);
+  const { push } = useToast();
   useEffect(() => {
     // quando refreshTick muda, recarrega
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
+
+  const handleDelete = async (p, e) => {
+    e?.stopPropagation?.();
+    const ok = window.confirm(
+      `Excluir pedido #${p.id}? Esta ação remove movimentos e itens relacionados.`,
+    );
+    if (!ok) return;
+    try {
+      await deleteOrderService(p.id);
+      push(`Pedido #${p.id} excluído.`, { type: "success" });
+      await reload();
+    } catch (err) {
+      push(err.message || "Falha ao excluir pedido", { type: "error" });
+    }
+  };
 
   return (
     <div className="text-sm">
@@ -85,14 +135,17 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
           <thead>
             <tr className="bg-[var(--color-bg-secondary)]">
               <th className="text-left px-3 py-2">Tipo</th>
-              <th className="text-left px-3 py-2">Parceiro</th>
+              <th className="text-left px-3 py-2 w-[160px] max-w-[160px]">
+                Parceiro
+              </th>
               <th className="text-left px-3 py-2">Emissão</th>
               <th className="text-center px-3 py-2">NF</th>
-              <th className="text-center px-3 py-2" title="Promissórias">
-                Promiss.
+              <th className="text-center px-3 py-2" title="Duplicadas">
+                Dupl.
               </th>
               <th className="text-right px-3 py-2">Total</th>
               <th className="text-center px-3 py-2">Parcelas</th>
+              <th className="text-center px-3 py-2 w-10">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -103,18 +156,16 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 onClick={() => onEdit && onEdit(p)}
               >
                 <td className="px-3 py-2">{p.tipo}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 w-[160px] align-top">
                   <div
-                    className="max-w-[220px] truncate"
+                    className="max-w-[160px] truncate whitespace-nowrap"
                     title={p.partner_name || "-"}
                   >
                     {p.partner_name || "-"}
                   </div>
                 </td>
                 <td className="px-3 py-2">
-                  {p.data_emissao
-                    ? new Date(p.data_emissao).toLocaleDateString()
-                    : "-"}
+                  {p.data_emissao ? formatYMDToBR(p.data_emissao) : "-"}
                 </td>
                 <td className="px-3 py-2 text-center">
                   {p.tipo === "VENDA" && p.tem_nota_fiscal ? (
@@ -156,7 +207,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                           "noopener",
                         );
                       }}
-                      title="Baixar Promissórias (PDF)"
+                      title="Baixar Duplicadas (PDF)"
                     >
                       📝
                     </Button>
@@ -166,10 +217,15 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 </td>
                 <td className="px-3 py-2 text-right">
                   {(() => {
-                    const n =
+                    const tl =
                       p.total_liquido != null ? Number(p.total_liquido) : NaN;
-                    const totalFmt = Number.isFinite(n)
-                      ? n.toLocaleString(undefined, {
+                    const ft =
+                      p.frete_total != null ? Number(p.frete_total) : 0;
+                    const totalComFrete =
+                      (Number.isFinite(tl) ? tl : 0) +
+                      (Number.isFinite(ft) ? ft : 0);
+                    const totalFmt = Number.isFinite(totalComFrete)
+                      ? totalComFrete.toLocaleString(undefined, {
                           style: "currency",
                           currency: "BRL",
                         })
@@ -183,8 +239,9 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                         })
                       : "R$ 0,00";
                     const fullyPaid =
-                      Number.isFinite(n) && Number.isFinite(pago)
-                        ? Math.abs(pago - n) < 0.005 || pago > n
+                      Number.isFinite(totalComFrete) && Number.isFinite(pago)
+                        ? Math.abs(pago - totalComFrete) < 0.005 ||
+                          pago > totalComFrete
                         : false;
                     return (
                       <div className="text-right">
@@ -205,18 +262,45 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                     onChanged={reload}
                   />
                 </td>
+                <td className="px-3 py-2 text-center">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    fullWidth={false}
+                    className="px-2 py-1 text-white"
+                    title="Excluir pedido"
+                    aria-label="Excluir pedido"
+                    onClick={(e) => handleDelete(p, e)}
+                    icon={(props) => (
+                      <svg
+                        {...props}
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 7h12m-9 4v6m6-6v6M9 7l1-2h4l1 2m-9 0h12l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7z"
+                        />
+                      </svg>
+                    )}
+                  />
+                </td>
               </tr>
             ))}
             {!loading && data.length === 0 && (
               <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={7}>
+                <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
                   Nenhum pedido encontrado
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={7}>
+                <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
                   Carregando...
                 </td>
               </tr>
@@ -312,8 +396,8 @@ export function OrdersManager({ limit = 20 }) {
 function PromissoriasDots({ pedidoId, count, onChanged }) {
   const [rows, setRows] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
-  const [menuOpen, setMenuOpen] = React.useState(null); // seq da promissória com menu aberto
-  const [actionLoading, setActionLoading] = React.useState(false);
+  const [actionLoading] = React.useState(false);
+  const [payModal, setPayModal] = React.useState(null); // { seq, due_date, paid_date }
 
   React.useEffect(() => {
     let cancelled = false;
@@ -350,31 +434,19 @@ function PromissoriasDots({ pedidoId, count, onChanged }) {
     }
   };
 
-  const handleMarkPaid = async (seq) => {
-    if (!confirm("Confirma o pagamento desta promissória?")) return;
-
-    setActionLoading(true);
-    try {
-      const res = await fetch(
-        `/api/v1/pedidos/${pedidoId}/promissorias/${seq}?action=pay`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Falha ao marcar como pago");
-
-      alert("Promissória marcada como paga!");
-      await reloadPromissorias();
-      // avisa o pai para atualizar totais (Total / Pago)
-      if (typeof onChanged === "function") onChanged();
-    } catch (e) {
-      alert(`Erro: ${e.message}`);
-    } finally {
-      setActionLoading(false);
-      setMenuOpen(null);
-    }
+  const handleMarkPaid = (seq) => {
+    // Abre modal com data padrão (hoje) e mostra vencimento
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    const paid_date = `${y}-${m}-${d}`;
+    const row = rows?.find((r) => r.seq === seq);
+    setPayModal({
+      seq,
+      due_date: row?.due_date?.slice(0, 10) || null,
+      paid_date,
+    });
   };
 
   const colorFor = (status) => {
@@ -400,54 +472,16 @@ function PromissoriasDots({ pedidoId, count, onChanged }) {
               disabled={actionLoading}
               onClick={async (e) => {
                 e.stopPropagation();
-                try {
-                  await reloadPromissorias();
-                } catch (e) {
-                  // fallback: erro ao recarregar promissórias (ignorado)
-                  console.debug("reloadPromissorias falhou", e);
-                }
-                setMenuOpen(i + 1);
+                // Abre modal direto mesmo sem dados detalhados ainda
+                const today = new Date();
+                const y = today.getFullYear();
+                const m = String(today.getMonth() + 1).padStart(2, "0");
+                const d = String(today.getDate()).padStart(2, "0");
+                const paid_date = `${y}-${m}-${d}`;
+                setPayModal({ seq: i + 1, due_date: null, paid_date });
               }}
             />
           ))}
-
-          {Number.isInteger(menuOpen) && (
-            <>
-              <div
-                className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 min-w-[160px]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="px-3 py-2 text-xs opacity-70">
-                  Dados indisponíveis (ainda)
-                </div>
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await reloadPromissorias();
-                    // mantém menu aberto; se rows carregar, o componente migra para o modo completo
-                  }}
-                  disabled={actionLoading}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
-                >
-                  🔄 Recarregar parcelas
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(null);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  ✖️ Fechar
-                </button>
-              </div>
-              {/* Clique fora para fechar menu */}
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setMenuOpen(null)}
-              />
-            </>
-          )}
         </div>
       );
     }
@@ -461,38 +495,148 @@ function PromissoriasDots({ pedidoId, count, onChanged }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // não abre menu para parcelas já pagas
               if (r.status === "PAGO") return;
-              setMenuOpen(menuOpen === r.seq ? null : r.seq);
+              handleMarkPaid(r.seq);
             }}
-            title={`${r.status} • vence ${new Date(r.due_date).toLocaleDateString()} • ${Number(r.amount).toLocaleString(undefined, { style: "currency", currency: "BRL" })}`}
+            title={(() => {
+              const amountFmt = Number(r.amount).toLocaleString(undefined, {
+                style: "currency",
+                currency: "BRL",
+              });
+              if (r.status === "PAGO") {
+                const paidStr = r.paid_at
+                  ? formatYMDToBR(String(r.paid_at))
+                  : "-";
+                return `PAGO - ${paidStr} - ${amountFmt}`;
+              }
+              const dueStr = r.due_date ? formatYMDToBR(r.due_date) : "-";
+              if (r.status === "ATRASADO" && r.due_date) {
+                // calcula dias de atraso considerando apenas a data (sem timezone)
+                const [yy, mm, dd] = String(r.due_date)
+                  .slice(0, 10)
+                  .split("-")
+                  .map(Number);
+                const dueUTC = Date.UTC(yy || 1970, (mm || 1) - 1, dd || 1);
+                const now = new Date();
+                const todayUTC = Date.UTC(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate(),
+                );
+                const days = Math.max(
+                  0,
+                  Math.floor((todayUTC - dueUTC) / 86400000),
+                );
+                const plural = days === 1 ? "dia" : "dias";
+                return `ATRASADO - ${days} ${plural} em atraso - vence ${dueStr} - ${amountFmt}`;
+              }
+              return `${r.status} • vence ${dueStr} • ${amountFmt}`;
+            })()}
             className={`inline-block w-2.5 h-2.5 rounded-full ${colorFor(r.status)} ${borderFor(r)} ${r.status === "PAGO" ? "cursor-default" : "cursor-pointer hover:scale-110"} transition-transform`}
             disabled={actionLoading || r.status === "PAGO"}
           />
-
-          {menuOpen === r.seq && r.status !== "PAGO" && (
-            <div
-              className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 min-w-[120px]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => handleMarkPaid(r.seq)}
-                disabled={actionLoading}
-                className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
-              >
-                ✅ Marcar Pago
-              </button>
-            </div>
-          )}
         </div>
       ))}
 
-      {/* Clique fora para fechar menu */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
+      {/* Modal de marcar pago com data customizável */}
+      {payModal && (
+        <PayPromissoriaModal
+          pedidoId={pedidoId}
+          seq={payModal.seq}
+          dueDate={payModal.due_date}
+          defaultPaidDate={payModal.paid_date}
+          onClose={() => setPayModal(null)}
+          onSuccess={async () => {
+            try {
+              await reloadPromissorias();
+              if (typeof onChanged === "function") onChanged();
+            } catch (e) {
+              // noop
+            }
+          }}
+        />
       )}
-
-      {/* Sem modal de edição de vencimento */}
     </div>
+  );
+}
+
+function PayPromissoriaModal({
+  pedidoId,
+  seq,
+  dueDate,
+  defaultPaidDate,
+  onClose,
+  onSuccess,
+}) {
+  const [paidDate, setPaidDate] = React.useState(defaultPaidDate || "");
+  const [submitting, setSubmitting] = React.useState(false);
+  const { push } = useToast();
+
+  const save = async () => {
+    if (!paidDate || !/^\d{4}-\d{2}-\d{2}$/.test(paidDate)) {
+      push("Data de pagamento inválida (YYYY-MM-DD)", { type: "warning" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/v1/pedidos/${pedidoId}/promissorias/${seq}?action=pay`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paid_date: paidDate }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Falha ao marcar como pago");
+      push("Promissória marcada como paga!", { type: "success" });
+      onSuccess?.();
+      onClose?.();
+    } catch (e) {
+      push(e.message || "Erro ao marcar como pago", { type: "error" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal
+      title={`Marcar Pago • Parcela #${seq}`}
+      onClose={onClose}
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-3">
+        <div className="text-sm">
+          <div className="mb-1 text-xs text-gray-500">Vencimento</div>
+          <div className="font-medium">
+            {dueDate
+              ? `${dueDate.slice(8, 10)}/${dueDate.slice(5, 7)}/${dueDate.slice(0, 4)}`
+              : "-"}
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Data do Pagamento</label>
+          <input
+            type="date"
+            className="border rounded px-2 py-1 w-full"
+            value={paidDate}
+            onChange={(e) => setPaidDate(e.target.value)}
+          />
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" fullWidth={false} onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            fullWidth={false}
+            onClick={save}
+            loading={submitting}
+          >
+            Confirmar
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }

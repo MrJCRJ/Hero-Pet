@@ -9,6 +9,12 @@ export default async function handler(req, res) {
   return res.status(405).json({ error: `Method "${req.method}" not allowed` });
 }
 
+function parseDateYMD(ymd) {
+  if (!ymd || typeof ymd !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(ymd))
+    return null;
+  return ymd;
+}
+
 async function getPedido(req, res) {
   try {
     const id = Number(req.query.id);
@@ -85,11 +91,11 @@ async function putPedido(req, res) {
     if (b.partner_document !== undefined)
       set("partner_document", b.partner_document || null);
     if (b.data_emissao !== undefined)
-      set("data_emissao", b.data_emissao || null);
+      set("data_emissao", parseDateYMD(b.data_emissao) || null);
     if (b.partner_name !== undefined)
       set("partner_name", b.partner_name || null);
     if (b.data_entrega !== undefined)
-      set("data_entrega", b.data_entrega || null);
+      set("data_entrega", parseDateYMD(b.data_entrega) || null);
     if (b.observacao !== undefined) set("observacao", b.observacao || null);
     if (b.tem_nota_fiscal !== undefined)
       set("tem_nota_fiscal", b.tem_nota_fiscal);
@@ -97,7 +103,20 @@ async function putPedido(req, res) {
     if (b.numero_promissorias !== undefined)
       set("numero_promissorias", Number(b.numero_promissorias) || 1);
     if (b.data_primeira_promissoria !== undefined)
-      set("data_primeira_promissoria", b.data_primeira_promissoria || null);
+      set(
+        "data_primeira_promissoria",
+        parseDateYMD(b.data_primeira_promissoria) || null,
+      );
+    // permitir atualizar frete_total mesmo sem reenviar itens (escopo agregado atual)
+    if (b.frete_total !== undefined) {
+      const ftNum = Number(b.frete_total);
+      if (!Number.isNaN(ftNum) && ftNum > 0) {
+        set("frete_total", ftNum);
+      } else {
+        // zera se enviado 0 ou null
+        set("frete_total", null);
+      }
+    }
     // permitir alterar tipo e parceiro (validações básicas)
     let tipoAtual = head.rows[0].tipo;
     if (b.tipo !== undefined) {
@@ -126,9 +145,9 @@ async function putPedido(req, res) {
       });
     }
 
+    const docTag = `PEDIDO:${id}`;
     // 2) Reprocessar itens e movimentos se itens forem enviados
     if (Array.isArray(b.itens)) {
-      const docTag = `PEDIDO:${id}`;
       // apagar movimentos anteriores deste pedido (idempotência)
       await client.query({
         text: `DELETE FROM movimento_estoque WHERE documento = $1`,
@@ -142,7 +161,8 @@ async function putPedido(req, res) {
 
       let totalBruto = 0,
         descontoTotal = 0,
-        totalLiquido = 0;
+        totalLiquido = 0; // sem frete
+      const itensForRateio = [];
       for (const it of b.itens) {
         const rProd = await client.query({
           text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`,
@@ -159,14 +179,22 @@ async function putPedido(req, res) {
             : Number(rProd.rows[0].preco_tabela ?? 0);
         const desconto =
           it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
-        const totalItem = (preco - desconto) * qtd;
+        const totalItem = (preco - desconto) * qtd; // sem frete
         totalBruto += preco * qtd;
         descontoTotal += desconto * qtd;
         totalLiquido += totalItem;
         await client.query({
           text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, total_item)
-                 VALUES ($1,$2,$3,$4,$5,$6)`,
+       VALUES ($1,$2,$3,$4,$5,$6)`,
           values: [id, it.produto_id, qtd, preco, desconto, totalItem],
+        });
+
+        // guardar base para rateio de frete depois
+        itensForRateio.push({
+          produto_id: it.produto_id,
+          quantidade: qtd,
+          preco_unitario: preco,
+          base: preco * qtd,
         });
 
         // reinsert movimentos conforme tipo atual
@@ -194,25 +222,41 @@ async function putPedido(req, res) {
               `SAÍDA por edição de pedido ${id}`,
             ],
           });
-        } else if (tipoAtual === "COMPRA") {
+        }
+      }
+
+      const freteTotal = b.frete_total != null ? Number(b.frete_total) : 0;
+      // inserir movimentos com rateio de frete para COMPRA
+      if (tipoAtual === "COMPRA" && itensForRateio.length) {
+        const sumBase = itensForRateio.reduce((acc, r) => acc + r.base, 0);
+        for (const r of itensForRateio) {
+          const share =
+            freteTotal > 0 && sumBase > 0 ? (freteTotal * r.base) / sumBase : 0;
+          const valorTotal = r.base + share;
+          const valorUnit = valorTotal / r.quantidade;
           await client.query({
             text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
                    VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
             values: [
-              it.produto_id,
-              qtd,
-              preco,
-              preco * qtd,
+              r.produto_id,
+              r.quantidade,
+              valorUnit,
+              valorTotal,
               docTag,
-              `ENTRADA por edição de pedido ${id}`,
+              `ENTRADA por edição de pedido ${id} (rateio de frete)`,
             ],
           });
         }
       }
-
       await client.query({
-        text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, updated_at = NOW() WHERE id = $4`,
-        values: [totalBruto, descontoTotal, totalLiquido, id],
+        text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, frete_total = $4, updated_at = NOW() WHERE id = $5`,
+        values: [
+          totalBruto,
+          descontoTotal,
+          totalLiquido,
+          freteTotal > 0 ? freteTotal : null,
+          id,
+        ],
       });
 
       // Calcular valor por promissória se aplicável
@@ -222,8 +266,9 @@ async function putPedido(req, res) {
       });
       const numeroPromissorias =
         Number(pedidoAtualizado.rows[0]?.numero_promissorias) || 1;
-      if (numeroPromissorias >= 1 && totalLiquido > 0) {
-        const valorPorPromissoria = totalLiquido / numeroPromissorias;
+      if (numeroPromissorias >= 1 && totalLiquido + freteTotal > 0) {
+        const valorPorPromissoria =
+          (totalLiquido + freteTotal) / numeroPromissorias;
         await client.query({
           text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
           values: [valorPorPromissoria, id],
@@ -239,10 +284,17 @@ async function putPedido(req, res) {
       });
       if (headNow.rows.length) {
         const tl = Number(headNow.rows[0].total_liquido || 0);
+        // buscar frete_total atual para compor valor_por_promissoria
+        const freteQ = await client.query({
+          text: `SELECT frete_total FROM pedidos WHERE id = $1`,
+          values: [id],
+        });
+        const ft = Number(freteQ.rows?.[0]?.frete_total || 0);
         const np = Number(headNow.rows[0].numero_promissorias || 1);
         const firstDate = headNow.rows[0].data_primeira_promissoria;
-        if (np >= 1 && tl > 0) {
-          const vpp = tl / np;
+        const baseParcelamento = tl + ft;
+        if (np >= 1 && baseParcelamento > 0) {
+          const vpp = baseParcelamento / np;
           await client.query({
             text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
             values: [vpp, id],
@@ -273,20 +325,82 @@ async function putPedido(req, res) {
                 });
               }
             } else {
-              const baseDate = firstDate ? parseDateYMD(firstDate) : new Date();
-              const norm = new Date(
-                baseDate.getFullYear(),
-                baseDate.getMonth(),
-                baseDate.getDate(),
-              );
+              // Normaliza baseDate aceitando string 'YYYY-MM-DD' ou Date
+              const toLocalMidnight = (input) => {
+                if (!input) return new Date();
+                if (
+                  typeof input === "string" &&
+                  /^\d{4}-\d{2}-\d{2}$/.test(input)
+                ) {
+                  const [y, m, d] = input.split("-").map(Number);
+                  return new Date(y, m - 1, d);
+                }
+                if (input instanceof Date && !isNaN(input)) {
+                  return new Date(
+                    input.getFullYear(),
+                    input.getMonth(),
+                    input.getDate(),
+                  );
+                }
+                return new Date();
+              };
+              const norm = toLocalMidnight(firstDate || new Date());
+              const fmtYMD = (d) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, "0");
+                const dd = String(d.getDate()).padStart(2, "0");
+                return `${y}-${m}-${dd}`;
+              };
               for (let i = 0; i < np; i++) {
                 const due = new Date(norm);
                 due.setMonth(due.getMonth() + i);
                 await client.query({
                   text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
-                  values: [id, i + 1, formatDateYMD(due), amt],
+                  values: [id, i + 1, fmtYMD(due), amt],
                 });
               }
+            }
+          }
+
+          // 2b) Se não reenvia itens mas atualiza frete_total em COMPRA, reconstituir movimentos com rateio do frete
+          else if (b.frete_total !== undefined && tipoAtual === "COMPRA") {
+            // apagar movimentos anteriores deste pedido
+            await client.query({
+              text: `DELETE FROM movimento_estoque WHERE documento = $1`,
+              values: [docTag],
+            });
+            // buscar itens atuais do pedido
+            const itensAtuais = await client.query({
+              text: `SELECT produto_id, quantidade, preco_unitario FROM pedido_itens WHERE pedido_id = $1 ORDER BY id`,
+              values: [id],
+            });
+            const rows = itensAtuais.rows || [];
+            const sumBase = rows.reduce(
+              (acc, it) =>
+                acc + Number(it.preco_unitario) * Number(it.quantidade),
+              0,
+            );
+            const freteTotal = Number(b.frete_total || 0);
+            for (const it of rows) {
+              const base = Number(it.preco_unitario) * Number(it.quantidade);
+              const share =
+                freteTotal > 0 && sumBase > 0
+                  ? (freteTotal * base) / sumBase
+                  : 0;
+              const valorTotal = base + share;
+              const valorUnit = valorTotal / Number(it.quantidade);
+              await client.query({
+                text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
+                       VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
+                values: [
+                  it.produto_id,
+                  it.quantidade,
+                  valorUnit,
+                  valorTotal,
+                  docTag,
+                  `ENTRADA por edição de pedido ${id} (rateio de frete)`,
+                ],
+              });
             }
           }
         } else {
@@ -399,23 +513,4 @@ async function deletePedido(req, res) {
   }
 }
 
-function formatDateYMD(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function parseDateYMD(input) {
-  if (typeof input === "string") {
-    const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (m) {
-      const y = parseInt(m[1], 10);
-      const mm = parseInt(m[2], 10) - 1;
-      const dd = parseInt(m[3], 10);
-      return new Date(y, mm, dd);
-    }
-  }
-  const d = new Date(input);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
+// removed duplicate helpers (now defined above)

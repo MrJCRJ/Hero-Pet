@@ -70,6 +70,8 @@ export function PedidoForm(props) {
     handleSubmit,
     handleDelete,
     editingOrder,
+    freteTotal,
+    setFreteTotal,
   } = controller;
 
   return (
@@ -141,6 +143,8 @@ export function PedidoForm(props) {
       editingOrder={editingOrder}
       // services
       fetchSaldoService={fetchSaldoService}
+      freteTotal={freteTotal}
+      setFreteTotal={setFreteTotal}
     />
   );
 }

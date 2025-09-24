@@ -67,7 +67,9 @@ describe("PedidoForm Refatoração - Integração", () => {
     expect(screen.getByText("Tipo")).toBeInTheDocument();
     // Itens
     expect(screen.getByText("Itens")).toBeInTheDocument();
-    expect(screen.getByText("+ Adicionar item")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Adicionar item/i }),
+    ).toBeInTheDocument();
     // Promissórias (título da seção)
     expect(screen.getByText("Sistema de Promissórias")).toBeInTheDocument();
     // Ações
