@@ -24,9 +24,7 @@ async function markPaid(req, res) {
       paidDateRaw != null &&
       !/^\d{4}-\d{2}-\d{2}$/.test(String(paidDateRaw))
     ) {
-      return res
-        .status(400)
-        .json({ error: "paid_date inválido (YYYY-MM-DD)" });
+      return res.status(400).json({ error: "paid_date inválido (YYYY-MM-DD)" });
     }
     await client.query("BEGIN");
     const row = await client.query({

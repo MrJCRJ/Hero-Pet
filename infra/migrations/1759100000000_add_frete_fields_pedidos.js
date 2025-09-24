@@ -14,11 +14,16 @@ exports.up = (pgm) => {
   pgm.addColumn("pedidos", {
     frete_total: { type: "numeric(14,2)" }, // soma(frete_unitario * quantidade) (opcional)
   });
-  pgm.createIndex("pedidos", ["frete_total"], { name: "pedidos_frete_total_idx" });
+  pgm.createIndex("pedidos", ["frete_total"], {
+    name: "pedidos_frete_total_idx",
+  });
 };
 
 exports.down = (pgm) => {
-  pgm.dropIndex("pedidos", ["frete_total"], { name: "pedidos_frete_total_idx", ifExists: true });
+  pgm.dropIndex("pedidos", ["frete_total"], {
+    name: "pedidos_frete_total_idx",
+    ifExists: true,
+  });
   pgm.dropColumn("pedidos", "frete_total", { ifExists: true });
   pgm.dropColumn("pedido_itens", "frete_unitario", { ifExists: true });
 };

@@ -407,18 +407,18 @@ export function ProductsManager({ linkSupplierId }) {
           <tbody>
             {(onlyBelowMin
               ? rows.filter((p) => {
-                const saldo = costMap[p.id]?.saldo;
-                const minConfigured =
-                  p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
-                const minHint = costMap[p.id]?.min_hint ?? null;
-                const minimo =
-                  minConfigured != null ? minConfigured : minHint;
-                return (
-                  Number.isFinite(saldo) &&
-                  Number.isFinite(minimo) &&
-                  saldo < minimo
-                );
-              })
+                  const saldo = costMap[p.id]?.saldo;
+                  const minConfigured =
+                    p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
+                  const minHint = costMap[p.id]?.min_hint ?? null;
+                  const minimo =
+                    minConfigured != null ? minConfigured : minHint;
+                  return (
+                    Number.isFinite(saldo) &&
+                    Number.isFinite(minimo) &&
+                    saldo < minimo
+                  );
+                })
               : rows
             ).map((p) => (
               <tr
@@ -438,22 +438,35 @@ export function ProductsManager({ linkSupplierId }) {
                 </td>
                 <td className="p-2">{p.categoria || "-"}</td>
                 <td className="p-2 text-xs align-top w-[160px] max-w-[160px]">
-                  <div className="max-w-[160px] truncate whitespace-nowrap" title={Array.isArray(p.supplier_labels) && p.supplier_labels.length ? p.supplier_labels.map((s) => s.name || s.label || `#${s.id}`).join(", ") : "-"}>
-                    {Array.isArray(p.supplier_labels) && p.supplier_labels.length ? (
-                      (() => {
-                        const names = p.supplier_labels.map((s) => s.name || s.label || `#${s.id}`);
-                        const shown = names.slice(0, 2).join(", ");
-                        const extra = names.length - 2;
-                        if (extra > 0) {
-                          return (
-                            <span>{shown} +{extra}</span>
+                  <div
+                    className="max-w-[160px] truncate whitespace-nowrap"
+                    title={
+                      Array.isArray(p.supplier_labels) &&
+                      p.supplier_labels.length
+                        ? p.supplier_labels
+                            .map((s) => s.name || s.label || `#${s.id}`)
+                            .join(", ")
+                        : "-"
+                    }
+                  >
+                    {Array.isArray(p.supplier_labels) &&
+                    p.supplier_labels.length
+                      ? (() => {
+                          const names = p.supplier_labels.map(
+                            (s) => s.name || s.label || `#${s.id}`,
                           );
-                        }
-                        return <span>{shown}</span>;
-                      })()
-                    ) : (
-                      "-"
-                    )}
+                          const shown = names.slice(0, 2).join(", ");
+                          const extra = names.length - 2;
+                          if (extra > 0) {
+                            return (
+                              <span>
+                                {shown} +{extra}
+                              </span>
+                            );
+                          }
+                          return <span>{shown}</span>;
+                        })()
+                      : "-"}
                   </div>
                 </td>
                 <td className="p-2">{renderPrecoCell(p)}</td>

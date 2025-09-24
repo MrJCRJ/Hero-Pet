@@ -111,7 +111,9 @@ export function PedidoFormItems({
                 {getItemDiffIcon(it)}
               </div>
             </div>
-            <div className="w-24 text-right text-sm">Qtd: {formatQty(it.quantidade)}</div>
+            <div className="w-24 text-right text-sm">
+              Qtd: {formatQty(it.quantidade)}
+            </div>
             <div className="w-28 text-right text-sm">
               Preço:{" "}
               {it.preco_unitario !== ""
@@ -164,9 +166,13 @@ export function PedidoFormItems({
       {tipo === "COMPRA" && (
         <div className="flex justify-end mt-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Frete</span>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+              Frete
+            </span>
             <div className="relative">
-              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">R$</span>
+              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
+                R$
+              </span>
               <input
                 type="number"
                 inputMode="decimal"
@@ -190,7 +196,9 @@ export function PedidoFormItems({
         <div className="text-right text-sm font-semibold">
           {(() => {
             const freteVal = tipo === "COMPRA" ? Number(freteTotal || 0) : 0;
-            const total = Number(totalItens || 0) + (Number.isFinite(freteVal) ? freteVal : 0);
+            const total =
+              Number(totalItens || 0) +
+              (Number.isFinite(freteVal) ? freteVal : 0);
             return `Total: R$ ${total.toFixed(2)}`;
           })()}
         </div>
@@ -306,7 +314,9 @@ function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProdutos }) {
   // Saldo exibido = saldo do backend - reservado nos itens do formulário
   const displaySaldo = React.useMemo(() => {
     if (saldo == null || !Number.isFinite(Number(saldo))) return null;
-    const rem = Number(saldo) - (Number.isFinite(Number(reservedQty)) ? Number(reservedQty) : 0);
+    const rem =
+      Number(saldo) -
+      (Number.isFinite(Number(reservedQty)) ? Number(reservedQty) : 0);
     return rem;
   }, [saldo, reservedQty]);
 
@@ -389,7 +399,9 @@ function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProdutos }) {
             className="relative w-full text-left border rounded px-2 pr-24 py-1.5 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-primary)] whitespace-nowrap overflow-hidden"
             onClick={() => setShowModal(true)}
           >
-            <span className="inline-block truncate align-middle max-w-full">{label || "Selecionar produto"}</span>
+            <span className="inline-block truncate align-middle max-w-full">
+              {label || "Selecionar produto"}
+            </span>
             {tipo === "VENDA" && produtoId && (
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-primary)]">
                 Est.: {displaySaldo != null ? formatQty(displaySaldo) : "…"}
@@ -440,9 +452,9 @@ function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProdutos }) {
             aria-label="Adicionar item"
             title={
               tipo === "VENDA" &&
-                displaySaldo != null &&
-                Number.isFinite(Number(quantidade)) &&
-                Number(quantidade) > Number(displaySaldo)
+              displaySaldo != null &&
+              Number.isFinite(Number(quantidade)) &&
+              Number(quantidade) > Number(displaySaldo)
                 ? "Estoque insuficiente"
                 : "Adicionar item"
             }

@@ -86,7 +86,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     useState(30);
   const [promissoriaDatas, setPromissoriaDatas] = useState(() =>
     Array.isArray(editingOrder?.promissorias) &&
-      editingOrder.promissorias.length
+    editingOrder.promissorias.length
       ? editingOrder.promissorias.map((p) => p.due_date).filter(Boolean)
       : [],
   );
@@ -105,7 +105,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             !p.paid_at &&
             p.due_date &&
             new Date(p.due_date + "T00:00:00") <
-            new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+              new Date(today.getFullYear(), today.getMonth(), today.getDate()),
         )
         .map((p) => p.seq);
       return { anyPaid: paidSeqs.length > 0, paidSeqs, overdueSeqs };
@@ -159,7 +159,9 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     // Hidratar frete_total ao editar (apenas armazena string; exibição/uso condicionado a tipo === "COMPRA")
     if (Object.prototype.hasOwnProperty.call(editingOrder, "frete_total")) {
       setFreteTotal(
-        editingOrder.frete_total != null ? String(editingOrder.frete_total) : "",
+        editingOrder.frete_total != null
+          ? String(editingOrder.frete_total)
+          : "",
       );
     } else {
       setFreteTotal("");
@@ -187,7 +189,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             !p.paid_at &&
             p.due_date &&
             new Date(p.due_date + "T00:00:00") <
-            new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+              new Date(today.getFullYear(), today.getMonth(), today.getDate()),
         )
         .map((p) => p.seq);
       setPromissoriasMeta({
@@ -255,7 +257,9 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       return acc + (Number.isFinite(Number(t)) ? Number(t) : 0);
     }, 0);
     const freteVal = tipo === "COMPRA" ? Number(freteTotal || 0) : 0;
-    return Number((sum + (Number.isFinite(freteVal) ? freteVal : 0)).toFixed(2));
+    return Number(
+      (sum + (Number.isFinite(freteVal) ? freteVal : 0)).toFixed(2),
+    );
   }, [itens, computeItemTotal, tipo, freteTotal]);
 
   // Atualiza valor por promissória quando total muda
@@ -350,10 +354,10 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       // Enviar cronograma explícito quando existir (manual ou gerado)
       promissoria_datas: Array.isArray(promissoriaDatas)
         ? promissoriaDatas
-          .filter(
-            (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s),
-          )
-          .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
+            .filter(
+              (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s),
+            )
+            .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
         : [],
       itens: itens
         .filter(
@@ -370,7 +374,9 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             ? { desconto_unitario: numOrNull(it.desconto_unitario) }
             : {}),
         })),
-      ...(tipo === "COMPRA" && numOrNull(freteTotal) != null && freteTotal !== ""
+      ...(tipo === "COMPRA" &&
+      numOrNull(freteTotal) != null &&
+      freteTotal !== ""
         ? { frete_total: numOrNull(freteTotal) }
         : {}),
     }),

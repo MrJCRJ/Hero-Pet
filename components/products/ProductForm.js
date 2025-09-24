@@ -30,9 +30,9 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
   const [supplierLabels, setSupplierLabels] = useState(
     Array.isArray(initial.supplier_labels)
       ? initial.supplier_labels.map((s) => ({
-        id: s.id,
-        label: s.name || s.label || String(s.id),
-      }))
+          id: s.id,
+          label: s.name || s.label || String(s.id),
+        }))
       : [],
   );
   const [showSupplierModal, setShowSupplierModal] = useState(false);
@@ -57,7 +57,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
         const uc = Number(data.ultimo_custo);
         setCostInfo({ custo_medio: cm, ultimo_custo: uc });
       })
-      .catch(() => { });
+      .catch(() => {});
   }, [initial?.id]);
 
   // Calcular sugestão de preço: custo × markup (fallback 30%)
@@ -68,9 +68,9 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
     const uc = Number(costInfo.ultimo_custo);
     const base =
       Number.isFinite(cm) && cm > 0
-        ? (setSuggestedOrigin('custo_medio'), cm)
+        ? (setSuggestedOrigin("custo_medio"), cm)
         : Number.isFinite(uc) && uc > 0
-          ? (setSuggestedOrigin('ultimo_custo'), uc)
+          ? (setSuggestedOrigin("ultimo_custo"), uc)
           : (setSuggestedOrigin(null), null);
     if (base == null) {
       setSuggestedPreco(null);
@@ -95,7 +95,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
         );
         setEstoqueHint(Math.max(0, Math.ceil(totalSaida)));
       })
-      .catch(() => { });
+      .catch(() => {});
   }, [initial?.id]);
 
   function handleSubmit(e) {
@@ -141,20 +141,24 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
               className="w-full px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
               title="Exibimos o Preço Tabela cadastrado; se ausente, usamos custo médio/último custo × markup (fallback 30%). Os custos já incluem frete quando existente."
             >
-              {precoTabela !== ""
-                ? `R$ ${Number(precoTabela).toFixed(2)}`
-                : suggestedPreco != null
-                  ? (
-                    <span>
-                      {`R$ ${Number(suggestedPreco).toFixed(2)}`}
-                      {suggestedOrigin && (
-                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(
-                          {suggestedOrigin === 'custo_medio' ? 'base: custo médio' : 'base: último custo'}
-                          )</span>
-                      )}
+              {precoTabela !== "" ? (
+                `R$ ${Number(precoTabela).toFixed(2)}`
+              ) : suggestedPreco != null ? (
+                <span>
+                  {`R$ ${Number(suggestedPreco).toFixed(2)}`}
+                  {suggestedOrigin && (
+                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                      (
+                      {suggestedOrigin === "custo_medio"
+                        ? "base: custo médio"
+                        : "base: último custo"}
+                      )
                     </span>
-                  )
-                  : "–"}
+                  )}
+                </span>
+              ) : (
+                "–"
+              )}
             </div>
           </div>
           <div className="text-sm">

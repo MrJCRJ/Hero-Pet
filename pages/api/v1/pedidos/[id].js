@@ -230,7 +230,8 @@ async function putPedido(req, res) {
       if (tipoAtual === "COMPRA" && itensForRateio.length) {
         const sumBase = itensForRateio.reduce((acc, r) => acc + r.base, 0);
         for (const r of itensForRateio) {
-          const share = freteTotal > 0 && sumBase > 0 ? (freteTotal * r.base) / sumBase : 0;
+          const share =
+            freteTotal > 0 && sumBase > 0 ? (freteTotal * r.base) / sumBase : 0;
           const valorTotal = r.base + share;
           const valorUnit = valorTotal / r.quantidade;
           await client.query({
@@ -249,7 +250,13 @@ async function putPedido(req, res) {
       }
       await client.query({
         text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, frete_total = $4, updated_at = NOW() WHERE id = $5`,
-        values: [totalBruto, descontoTotal, totalLiquido, freteTotal > 0 ? freteTotal : null, id],
+        values: [
+          totalBruto,
+          descontoTotal,
+          totalLiquido,
+          freteTotal > 0 ? freteTotal : null,
+          id,
+        ],
       });
 
       // Calcular valor por promissória se aplicável
@@ -259,8 +266,9 @@ async function putPedido(req, res) {
       });
       const numeroPromissorias =
         Number(pedidoAtualizado.rows[0]?.numero_promissorias) || 1;
-      if (numeroPromissorias >= 1 && (totalLiquido + freteTotal) > 0) {
-        const valorPorPromissoria = (totalLiquido + freteTotal) / numeroPromissorias;
+      if (numeroPromissorias >= 1 && totalLiquido + freteTotal > 0) {
+        const valorPorPromissoria =
+          (totalLiquido + freteTotal) / numeroPromissorias;
         await client.query({
           text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
           values: [valorPorPromissoria, id],
@@ -306,8 +314,8 @@ async function putPedido(req, res) {
             const amt = Number(vpp.toFixed(2));
             const datas = Array.isArray(b.promissoria_datas)
               ? b.promissoria_datas.filter((s) =>
-                /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
-              )
+                  /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
+                )
               : [];
             if (datas.length >= np) {
               for (let i = 0; i < np; i++) {
@@ -354,13 +362,17 @@ async function putPedido(req, res) {
             });
             const rows = itensAtuais.rows || [];
             const sumBase = rows.reduce(
-              (acc, it) => acc + Number(it.preco_unitario) * Number(it.quantidade),
+              (acc, it) =>
+                acc + Number(it.preco_unitario) * Number(it.quantidade),
               0,
             );
             const freteTotal = Number(b.frete_total || 0);
             for (const it of rows) {
               const base = Number(it.preco_unitario) * Number(it.quantidade);
-              const share = freteTotal > 0 && sumBase > 0 ? (freteTotal * base) / sumBase : 0;
+              const share =
+                freteTotal > 0 && sumBase > 0
+                  ? (freteTotal * base) / sumBase
+                  : 0;
               const valorTotal = base + share;
               const valorUnit = valorTotal / Number(it.quantidade);
               await client.query({

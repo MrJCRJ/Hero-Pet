@@ -135,7 +135,9 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
           <thead>
             <tr className="bg-[var(--color-bg-secondary)]">
               <th className="text-left px-3 py-2">Tipo</th>
-              <th className="text-left px-3 py-2 w-[160px] max-w-[160px]">Parceiro</th>
+              <th className="text-left px-3 py-2 w-[160px] max-w-[160px]">
+                Parceiro
+              </th>
               <th className="text-left px-3 py-2">Emissão</th>
               <th className="text-center px-3 py-2">NF</th>
               <th className="text-center px-3 py-2" title="Duplicadas">
@@ -215,26 +217,31 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 </td>
                 <td className="px-3 py-2 text-right">
                   {(() => {
-                    const tl = p.total_liquido != null ? Number(p.total_liquido) : NaN;
-                    const ft = p.frete_total != null ? Number(p.frete_total) : 0;
-                    const totalComFrete = (Number.isFinite(tl) ? tl : 0) + (Number.isFinite(ft) ? ft : 0);
+                    const tl =
+                      p.total_liquido != null ? Number(p.total_liquido) : NaN;
+                    const ft =
+                      p.frete_total != null ? Number(p.frete_total) : 0;
+                    const totalComFrete =
+                      (Number.isFinite(tl) ? tl : 0) +
+                      (Number.isFinite(ft) ? ft : 0);
                     const totalFmt = Number.isFinite(totalComFrete)
                       ? totalComFrete.toLocaleString(undefined, {
-                        style: "currency",
-                        currency: "BRL",
-                      })
+                          style: "currency",
+                          currency: "BRL",
+                        })
                       : "-";
                     const pago =
                       p.total_pago != null ? Number(p.total_pago) : 0;
                     const pagoFmt = Number.isFinite(pago)
                       ? pago.toLocaleString(undefined, {
-                        style: "currency",
-                        currency: "BRL",
-                      })
+                          style: "currency",
+                          currency: "BRL",
+                        })
                       : "R$ 0,00";
                     const fullyPaid =
                       Number.isFinite(totalComFrete) && Number.isFinite(pago)
-                        ? Math.abs(pago - totalComFrete) < 0.005 || pago > totalComFrete
+                        ? Math.abs(pago - totalComFrete) < 0.005 ||
+                          pago > totalComFrete
                         : false;
                     return (
                       <div className="text-right">
@@ -435,7 +442,11 @@ function PromissoriasDots({ pedidoId, count, onChanged }) {
     const d = String(today.getDate()).padStart(2, "0");
     const paid_date = `${y}-${m}-${d}`;
     const row = rows?.find((r) => r.seq === seq);
-    setPayModal({ seq, due_date: row?.due_date?.slice(0, 10) || null, paid_date });
+    setPayModal({
+      seq,
+      due_date: row?.due_date?.slice(0, 10) || null,
+      paid_date,
+    });
   };
 
   const colorFor = (status) => {
@@ -493,17 +504,29 @@ function PromissoriasDots({ pedidoId, count, onChanged }) {
                 currency: "BRL",
               });
               if (r.status === "PAGO") {
-                const paidStr = r.paid_at ? formatYMDToBR(String(r.paid_at)) : "-";
+                const paidStr = r.paid_at
+                  ? formatYMDToBR(String(r.paid_at))
+                  : "-";
                 return `PAGO - ${paidStr} - ${amountFmt}`;
               }
               const dueStr = r.due_date ? formatYMDToBR(r.due_date) : "-";
               if (r.status === "ATRASADO" && r.due_date) {
                 // calcula dias de atraso considerando apenas a data (sem timezone)
-                const [yy, mm, dd] = String(r.due_date).slice(0, 10).split("-").map(Number);
+                const [yy, mm, dd] = String(r.due_date)
+                  .slice(0, 10)
+                  .split("-")
+                  .map(Number);
                 const dueUTC = Date.UTC(yy || 1970, (mm || 1) - 1, dd || 1);
                 const now = new Date();
-                const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-                const days = Math.max(0, Math.floor((todayUTC - dueUTC) / 86400000));
+                const todayUTC = Date.UTC(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate(),
+                );
+                const days = Math.max(
+                  0,
+                  Math.floor((todayUTC - dueUTC) / 86400000),
+                );
                 const plural = days === 1 ? "dia" : "dias";
                 return `ATRASADO - ${days} ${plural} em atraso - vence ${dueStr} - ${amountFmt}`;
               }
@@ -537,7 +560,14 @@ function PromissoriasDots({ pedidoId, count, onChanged }) {
   );
 }
 
-function PayPromissoriaModal({ pedidoId, seq, dueDate, defaultPaidDate, onClose, onSuccess }) {
+function PayPromissoriaModal({
+  pedidoId,
+  seq,
+  dueDate,
+  defaultPaidDate,
+  onClose,
+  onSuccess,
+}) {
   const [paidDate, setPaidDate] = React.useState(defaultPaidDate || "");
   const [submitting, setSubmitting] = React.useState(false);
   const { push } = useToast();
@@ -549,11 +579,14 @@ function PayPromissoriaModal({ pedidoId, seq, dueDate, defaultPaidDate, onClose,
     }
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/v1/pedidos/${pedidoId}/promissorias/${seq}?action=pay`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paid_date: paidDate }),
-      });
+      const res = await fetch(
+        `/api/v1/pedidos/${pedidoId}/promissorias/${seq}?action=pay`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paid_date: paidDate }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Falha ao marcar como pago");
       push("Promissória marcada como paga!", { type: "success" });
@@ -567,11 +600,19 @@ function PayPromissoriaModal({ pedidoId, seq, dueDate, defaultPaidDate, onClose,
   };
 
   return (
-    <Modal title={`Marcar Pago • Parcela #${seq}`} onClose={onClose} maxWidth="max-w-md">
+    <Modal
+      title={`Marcar Pago • Parcela #${seq}`}
+      onClose={onClose}
+      maxWidth="max-w-md"
+    >
       <div className="space-y-3">
         <div className="text-sm">
           <div className="mb-1 text-xs text-gray-500">Vencimento</div>
-          <div className="font-medium">{dueDate ? `${dueDate.slice(8, 10)}/${dueDate.slice(5, 7)}/${dueDate.slice(0, 4)}` : "-"}</div>
+          <div className="font-medium">
+            {dueDate
+              ? `${dueDate.slice(8, 10)}/${dueDate.slice(5, 7)}/${dueDate.slice(0, 4)}`
+              : "-"}
+          </div>
         </div>
         <div>
           <label className="block text-xs mb-1">Data do Pagamento</label>
@@ -583,8 +624,15 @@ function PayPromissoriaModal({ pedidoId, seq, dueDate, defaultPaidDate, onClose,
           />
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" fullWidth={false} onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" fullWidth={false} onClick={save} loading={submitting}>
+          <Button variant="outline" fullWidth={false} onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            fullWidth={false}
+            onClick={save}
+            loading={submitting}
+          >
             Confirmar
           </Button>
         </div>

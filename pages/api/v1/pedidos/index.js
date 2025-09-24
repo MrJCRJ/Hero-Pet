@@ -101,7 +101,13 @@ async function postPedido(req, res) {
     // Atualiza totais calculados
     await client.query({
       text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, frete_total = $4, updated_at = NOW() WHERE id = $5`,
-      values: [totalBruto, descontoTotal, totalLiquido, freteTotal > 0 ? freteTotal : null, pedido.id],
+      values: [
+        totalBruto,
+        descontoTotal,
+        totalLiquido,
+        freteTotal > 0 ? freteTotal : null,
+        pedido.id,
+      ],
     });
 
     // Calcular valor por promissória se aplicável
@@ -116,12 +122,15 @@ async function postPedido(req, res) {
     }
 
     // (Re)gerar tabela de promissórias para o pedido recém criado
-    if (numeroPromissorias >= 1 && (totalLiquido + (freteTotal > 0 ? freteTotal : 0)) > 0) {
+    if (
+      numeroPromissorias >= 1 &&
+      totalLiquido + (freteTotal > 0 ? freteTotal : 0) > 0
+    ) {
       const amount = Number((baseParcelamento / numeroPromissorias).toFixed(2));
       const datas = Array.isArray(b.promissoria_datas)
         ? b.promissoria_datas.filter((s) =>
-          /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
-        )
+            /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
+          )
         : [];
       if (datas.length >= numeroPromissorias) {
         for (let i = 0; i < numeroPromissorias; i++) {

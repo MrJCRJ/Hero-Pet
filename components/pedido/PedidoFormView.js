@@ -138,7 +138,6 @@ export function PedidoFormView(props) {
         setFreteTotal={setFreteTotal}
       />
 
-
       <PedidoFormPromissorias
         parcelado={parcelado}
         onParceladoChange={setParcelado}

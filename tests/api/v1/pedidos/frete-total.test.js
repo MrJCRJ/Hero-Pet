@@ -7,12 +7,13 @@ import database from "infra/database.js";
 
 jest.setTimeout(60000);
 
-
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   // schema isolado
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", { method: "POST" });
+  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+    method: "POST",
+  });
   if (![200, 201].includes(mig.status)) {
     throw new Error(`Falha migracoes status=${mig.status}`);
   }
@@ -33,12 +34,16 @@ async function criaProduto(nome = "Produto Frete", preco = 10) {
   const resp = await fetch("http://localhost:3000/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nome, preco_tabela: preco, ativo: true, fornecedor_id: forn.id }),
+    body: JSON.stringify({
+      nome,
+      preco_tabela: preco,
+      ativo: true,
+      fornecedor_id: forn.id,
+    }),
   });
   expect([200, 201]).toContain(resp.status);
   return await resp.json();
 }
-
 
 describe("Pedido COMPRA com frete_total agregado", () => {
   test("Cria COMPRA com frete_total e calcula valor_por_promissoria incluindo frete", async () => {
@@ -89,14 +94,19 @@ describe("Pedido COMPRA com frete_total agregado", () => {
     expect([200, 201]).toContain(post.status);
     const pedido = await post.json();
 
-    const put = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tipo: "COMPRA", frete_total: 15 }),
-    });
+    const put = await fetch(
+      `http://localhost:3000/api/v1/pedidos/${pedido.id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "COMPRA", frete_total: 15 }),
+      },
+    );
     expect(put.status).toBe(200);
     // GET final
-    const get = await fetch(`http://localhost:3000/api/v1/pedidos/${pedido.id}`);
+    const get = await fetch(
+      `http://localhost:3000/api/v1/pedidos/${pedido.id}`,
+    );
     const final = await get.json();
     expect(final.frete_total).toBe("15.00");
   });
