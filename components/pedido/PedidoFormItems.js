@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "../ui/Button";
 import { SelectionModal } from "../common/SelectionModal";
+import { useToast } from "../entities/shared/toast";
 
 export function PedidoFormItems({
   itens,
@@ -268,7 +269,8 @@ async function fetchSaldo(produtoId) {
   }
 }
 
-function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
+function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProdutos }) {
+  const { push } = useToast();
   const [label, setLabel] = React.useState("");
   const [produtoId, setProdutoId] = React.useState("");
   const [quantidade, setQuantidade] = React.useState("");
@@ -284,6 +286,29 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
   // removed loading UI; suggestion is applied silently when available
   const [precoPadrao, setPrecoPadrao] = React.useState("");
   const [allowAutoPrice, setAllowAutoPrice] = React.useState(true);
+
+  // Quantidade já adicionada no formulário para o mesmo produto (VENDA)
+  const reservedQty = React.useMemo(() => {
+    if (!Array.isArray(itens) || !produtoId) return 0;
+    try {
+      return itens.reduce((acc, it) => {
+        if (String(it?.produto_id || "") === String(produtoId)) {
+          const q = Number(it?.quantidade);
+          return acc + (Number.isFinite(q) ? q : 0);
+        }
+        return acc;
+      }, 0);
+    } catch (_) {
+      return 0;
+    }
+  }, [itens, produtoId]);
+
+  // Saldo exibido = saldo do backend - reservado nos itens do formulário
+  const displaySaldo = React.useMemo(() => {
+    if (saldo == null || !Number.isFinite(Number(saldo))) return null;
+    const rem = Number(saldo) - (Number.isFinite(Number(reservedQty)) ? Number(reservedQty) : 0);
+    return rem;
+  }, [saldo, reservedQty]);
 
   const suggestedPrice = React.useMemo(() => {
     let md = Number(markupDefault);
@@ -328,6 +353,20 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
     // Validar seleção de produto e quantidade
     if (!produtoId) return;
     if (!Number.isFinite(Number(quantidade)) || Number(quantidade) <= 0) return;
+    // Bloquear quando quantidade excede estoque disponível (apenas VENDA)
+    if (
+      tipo === "VENDA" &&
+      displaySaldo != null &&
+      Number.isFinite(Number(displaySaldo)) &&
+      Number(quantidade) > Number(displaySaldo)
+    ) {
+      try {
+        push("Quantidade maior que o estoque disponível.", { type: "warning" });
+      } catch (_) {
+        /* noop */
+      }
+      return;
+    }
     onAppend({
       produto_id: produtoId,
       produto_label: label,
@@ -335,11 +374,9 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
       preco_unitario: preco,
       desconto_unitario: desconto,
     });
-    setLabel("");
-    setProdutoId("");
+    // Mantém o produto selecionado para permitir adições repetidas
+    // Atualiza apenas a quantidade (limpa para evitar repetição acidental)
     setQuantidade("");
-    setPreco("");
-    setDesconto("");
   };
 
   return (
@@ -355,7 +392,7 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
             <span className="inline-block truncate align-middle max-w-full">{label || "Selecionar produto"}</span>
             {tipo === "VENDA" && produtoId && (
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-primary)]">
-                Est.: {saldo != null ? formatQty(saldo) : "…"}
+                Est.: {displaySaldo != null ? formatQty(displaySaldo) : "…"}
               </span>
             )}
           </button>
@@ -401,7 +438,23 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
             className="px-2 py-1"
             onClick={handleAdd}
             aria-label="Adicionar item"
-            title="Adicionar item"
+            title={
+              tipo === "VENDA" &&
+                displaySaldo != null &&
+                Number.isFinite(Number(quantidade)) &&
+                Number(quantidade) > Number(displaySaldo)
+                ? "Estoque insuficiente"
+                : "Adicionar item"
+            }
+            disabled={
+              (tipo === "VENDA" &&
+                displaySaldo != null &&
+                Number.isFinite(Number(quantidade)) &&
+                Number(quantidade) > Number(displaySaldo)) ||
+              !produtoId ||
+              !Number.isFinite(Number(quantidade)) ||
+              Number(quantidade) <= 0
+            }
             icon={(props) => (
               <svg
                 {...props}
