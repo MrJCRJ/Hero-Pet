@@ -52,6 +52,19 @@ curl -X POST http://localhost:3000/api/v1/migrations
 npm test
 ```
 
+### Testes em CI / Ambientes sem login no Docker
+
+- Se o pull do Postgres no Docker Hub exigir autenticação (erro "unauthorized: authentication required"), há três opções:
+  1. Faça login e faça o pull previamente: `docker login && docker pull postgres:16.10-alpine3.22`
+  2. Use o espelho público (já padrão no compose): `public.ecr.aws/docker/library/postgres:16-alpine` (ou defina `POSTGRES_IMAGE`)
+  3. Rode sem subir Docker (quando o Postgres já existe):
+
+```bash
+npm run test:ci
+```
+
+Veja `.env.ci.sample` para variáveis mínimas de conexão.
+
 ## Endpoints principais
 
 ### Status e Migrações
