@@ -57,7 +57,6 @@ async function postPedido(req, res) {
     let totalBruto = 0;
     let descontoTotal = 0;
     let totalLiquido = 0; // sem frete
-    let freteTotal = 0; // soma(frete_unitario * quantidade)
     for (const it of itens) {
       const rProd = await client.query({
         text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`,
@@ -74,20 +73,17 @@ async function postPedido(req, res) {
           : Number(rProd.rows[0].preco_tabela ?? 0);
       const desconto =
         it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
-      const freteUnit = it.frete_unitario != null ? Number(it.frete_unitario) : 0;
       const totalItem = (preco - desconto) * qtd; // mantém sem frete
       totalBruto += preco * qtd;
       descontoTotal += desconto * qtd;
       totalLiquido += totalItem;
-      if (Number.isFinite(freteUnit) && freteUnit > 0) {
-        freteTotal += freteUnit * qtd;
-      }
       await client.query({
-        text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, frete_unitario, total_item)
-               VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        values: [pedido.id, it.produto_id, qtd, preco, desconto, Number.isFinite(freteUnit) ? freteUnit : null, totalItem],
+        text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, total_item)
+               VALUES ($1,$2,$3,$4,$5,$6)`,
+        values: [pedido.id, it.produto_id, qtd, preco, desconto, totalItem],
       });
     }
+    const freteTotal = b.frete_total != null ? Number(b.frete_total) : 0;
     // Atualiza totais calculados
     await client.query({
       text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, frete_total = $4, updated_at = NOW() WHERE id = $5`,
@@ -96,7 +92,7 @@ async function postPedido(req, res) {
 
     // Calcular valor por promissória se aplicável
     const numeroPromissorias = Number(b.numero_promissorias) || 1;
-    const baseParcelamento = totalLiquido + freteTotal; // inclui frete no parcelamento
+    const baseParcelamento = totalLiquido + (freteTotal > 0 ? freteTotal : 0); // inclui frete no parcelamento
     if (numeroPromissorias >= 1 && baseParcelamento > 0) {
       const valorPorPromissoria = baseParcelamento / numeroPromissorias;
       await client.query({
@@ -106,8 +102,8 @@ async function postPedido(req, res) {
     }
 
     // (Re)gerar tabela de promissórias para o pedido recém criado
-    if (numeroPromissorias >= 1 && totalLiquido > 0) {
-      const amount = Number((totalLiquido / numeroPromissorias).toFixed(2));
+    if (numeroPromissorias >= 1 && (totalLiquido + (freteTotal > 0 ? freteTotal : 0)) > 0) {
+      const amount = Number((baseParcelamento / numeroPromissorias).toFixed(2));
       const datas = Array.isArray(b.promissoria_datas)
         ? b.promissoria_datas.filter((s) =>
           /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
@@ -146,6 +142,11 @@ async function postPedido(req, res) {
       text: `SELECT * FROM pedido_itens WHERE pedido_id = $1 ORDER BY id`,
       values: [pedido.id],
     });
+    // Pré-cálculo para rateio de frete em COMPRA
+    const freteTotalNumber = Number(b.frete_total || 0);
+    const sumBaseCompra = itensCriados.rows.reduce((acc, it) => {
+      return acc + Number(it.preco_unitario) * Number(it.quantidade);
+    }, 0);
     for (const it of itensCriados.rows) {
       if (tipo === "VENDA") {
         // checa saldo disponível
@@ -180,16 +181,23 @@ async function postPedido(req, res) {
           ],
         });
       } else if (tipo === "COMPRA") {
+        const base = Number(it.preco_unitario) * Number(it.quantidade);
+        const share =
+          freteTotalNumber > 0 && sumBaseCompra > 0
+            ? (freteTotalNumber * base) / sumBaseCompra
+            : 0;
+        const valorTotal = base + share;
+        const valorUnit = valorTotal / Number(it.quantidade);
         await client.query({
           text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
                  VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
           values: [
             it.produto_id,
             it.quantidade,
-            it.preco_unitario,
-            Number(it.preco_unitario) * Number(it.quantidade),
+            valorUnit,
+            valorTotal,
             docTag,
-            `ENTRADA por criação de pedido ${pedido.id}`,
+            `ENTRADA por criação de pedido ${pedido.id} (rateio de frete)`,
           ],
         });
       }

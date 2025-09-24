@@ -166,10 +166,11 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 </td>
                 <td className="px-3 py-2 text-right">
                   {(() => {
-                    const n =
-                      p.total_liquido != null ? Number(p.total_liquido) : NaN;
-                    const totalFmt = Number.isFinite(n)
-                      ? n.toLocaleString(undefined, {
+                    const tl = p.total_liquido != null ? Number(p.total_liquido) : NaN;
+                    const ft = p.frete_total != null ? Number(p.frete_total) : 0;
+                    const totalComFrete = (Number.isFinite(tl) ? tl : 0) + (Number.isFinite(ft) ? ft : 0);
+                    const totalFmt = Number.isFinite(totalComFrete)
+                      ? totalComFrete.toLocaleString(undefined, {
                         style: "currency",
                         currency: "BRL",
                       })
@@ -183,8 +184,8 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                       })
                       : "R$ 0,00";
                     const fullyPaid =
-                      Number.isFinite(n) && Number.isFinite(pago)
-                        ? Math.abs(pago - n) < 0.005 || pago > n
+                      Number.isFinite(totalComFrete) && Number.isFinite(pago)
+                        ? Math.abs(pago - totalComFrete) < 0.005 || pago > totalComFrete
                         : false;
                     return (
                       <div className="text-right">

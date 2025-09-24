@@ -75,6 +75,8 @@ export function PedidoFormView(props) {
     editingOrder,
     // services
     fetchSaldoService,
+    freteTotal,
+    setFreteTotal,
   } = props;
 
   // Handlers estáveis
@@ -132,7 +134,10 @@ export function PedidoFormView(props) {
         productModalIndex={productModalIndex}
         onSetProductModalIndex={setProductModalIndex}
         fetchProdutos={fetchProdutos}
+        freteTotal={freteTotal}
+        setFreteTotal={setFreteTotal}
       />
+
 
       <PedidoFormPromissorias
         parcelado={parcelado}

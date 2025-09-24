@@ -25,7 +25,6 @@ export function mapEditingOrderToItems(editingOrder) {
     preco_unitario: it.preco_unitario != null ? String(it.preco_unitario) : "",
     desconto_unitario:
       it.desconto_unitario != null ? String(it.desconto_unitario) : "",
-    frete_unitario: it.frete_unitario != null ? String(it.frete_unitario) : "",
     produto_saldo: null,
   }));
 }
@@ -40,7 +39,6 @@ export function defaultEmptyItem() {
     quantidade: "",
     preco_unitario: "",
     desconto_unitario: "",
-    frete_unitario: "",
     produto_saldo: null,
   };
 }

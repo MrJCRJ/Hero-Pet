@@ -98,6 +98,16 @@ async function putPedido(req, res) {
       set("numero_promissorias", Number(b.numero_promissorias) || 1);
     if (b.data_primeira_promissoria !== undefined)
       set("data_primeira_promissoria", b.data_primeira_promissoria || null);
+    // permitir atualizar frete_total mesmo sem reenviar itens (escopo agregado atual)
+    if (b.frete_total !== undefined) {
+      const ftNum = Number(b.frete_total);
+      if (!Number.isNaN(ftNum) && ftNum > 0) {
+        set("frete_total", ftNum);
+      } else {
+        // zera se enviado 0 ou null
+        set("frete_total", null);
+      }
+    }
     // permitir alterar tipo e parceiro (validações básicas)
     let tipoAtual = head.rows[0].tipo;
     if (b.tipo !== undefined) {
@@ -126,9 +136,9 @@ async function putPedido(req, res) {
       });
     }
 
+    const docTag = `PEDIDO:${id}`;
     // 2) Reprocessar itens e movimentos se itens forem enviados
     if (Array.isArray(b.itens)) {
-      const docTag = `PEDIDO:${id}`;
       // apagar movimentos anteriores deste pedido (idempotência)
       await client.query({
         text: `DELETE FROM movimento_estoque WHERE documento = $1`,
@@ -142,8 +152,8 @@ async function putPedido(req, res) {
 
       let totalBruto = 0,
         descontoTotal = 0,
-        totalLiquido = 0, // sem frete
-        freteTotal = 0; // soma(frete_unitario * quantidade)
+        totalLiquido = 0; // sem frete
+      const itensForRateio = [];
       for (const it of b.itens) {
         const rProd = await client.query({
           text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`,
@@ -160,16 +170,22 @@ async function putPedido(req, res) {
             : Number(rProd.rows[0].preco_tabela ?? 0);
         const desconto =
           it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
-        const freteUnit = it.frete_unitario != null ? Number(it.frete_unitario) : 0;
         const totalItem = (preco - desconto) * qtd; // sem frete
         totalBruto += preco * qtd;
         descontoTotal += desconto * qtd;
         totalLiquido += totalItem;
-        if (Number.isFinite(freteUnit) && freteUnit > 0) freteTotal += freteUnit * qtd;
         await client.query({
-          text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, frete_unitario, total_item)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          values: [id, it.produto_id, qtd, preco, desconto, Number.isFinite(freteUnit) ? freteUnit : null, totalItem],
+          text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, total_item)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+          values: [id, it.produto_id, qtd, preco, desconto, totalItem],
+        });
+
+        // guardar base para rateio de frete depois
+        itensForRateio.push({
+          produto_id: it.produto_id,
+          quantidade: qtd,
+          preco_unitario: preco,
+          base: preco * qtd,
         });
 
         // reinsert movimentos conforme tipo atual
@@ -197,22 +213,31 @@ async function putPedido(req, res) {
               `SAÍDA por edição de pedido ${id}`,
             ],
           });
-        } else if (tipoAtual === "COMPRA") {
+        }
+      }
+
+      const freteTotal = b.frete_total != null ? Number(b.frete_total) : 0;
+      // inserir movimentos com rateio de frete para COMPRA
+      if (tipoAtual === "COMPRA" && itensForRateio.length) {
+        const sumBase = itensForRateio.reduce((acc, r) => acc + r.base, 0);
+        for (const r of itensForRateio) {
+          const share = freteTotal > 0 && sumBase > 0 ? (freteTotal * r.base) / sumBase : 0;
+          const valorTotal = r.base + share;
+          const valorUnit = valorTotal / r.quantidade;
           await client.query({
             text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
                    VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
             values: [
-              it.produto_id,
-              qtd,
-              preco,
-              preco * qtd,
+              r.produto_id,
+              r.quantidade,
+              valorUnit,
+              valorTotal,
               docTag,
-              `ENTRADA por edição de pedido ${id}`,
+              `ENTRADA por edição de pedido ${id} (rateio de frete)`,
             ],
           });
         }
       }
-
       await client.query({
         text: `UPDATE pedidos SET total_bruto = $1, desconto_total = $2, total_liquido = $3, frete_total = $4, updated_at = NOW() WHERE id = $5`,
         values: [totalBruto, descontoTotal, totalLiquido, freteTotal > 0 ? freteTotal : null, id],
@@ -225,8 +250,8 @@ async function putPedido(req, res) {
       });
       const numeroPromissorias =
         Number(pedidoAtualizado.rows[0]?.numero_promissorias) || 1;
-      if (numeroPromissorias >= 1 && totalLiquido > 0) {
-        const valorPorPromissoria = totalLiquido / numeroPromissorias;
+      if (numeroPromissorias >= 1 && (totalLiquido + freteTotal) > 0) {
+        const valorPorPromissoria = (totalLiquido + freteTotal) / numeroPromissorias;
         await client.query({
           text: `UPDATE pedidos SET valor_por_promissoria = $1 WHERE id = $2`,
           values: [valorPorPromissoria, id],
@@ -297,6 +322,44 @@ async function putPedido(req, res) {
                   values: [id, i + 1, formatDateYMD(due), amt],
                 });
               }
+            }
+          }
+
+          // 2b) Se não reenvia itens mas atualiza frete_total em COMPRA, reconstituir movimentos com rateio do frete
+          else if (b.frete_total !== undefined && tipoAtual === "COMPRA") {
+            // apagar movimentos anteriores deste pedido
+            await client.query({
+              text: `DELETE FROM movimento_estoque WHERE documento = $1`,
+              values: [docTag],
+            });
+            // buscar itens atuais do pedido
+            const itensAtuais = await client.query({
+              text: `SELECT produto_id, quantidade, preco_unitario FROM pedido_itens WHERE pedido_id = $1 ORDER BY id`,
+              values: [id],
+            });
+            const rows = itensAtuais.rows || [];
+            const sumBase = rows.reduce(
+              (acc, it) => acc + Number(it.preco_unitario) * Number(it.quantidade),
+              0,
+            );
+            const freteTotal = Number(b.frete_total || 0);
+            for (const it of rows) {
+              const base = Number(it.preco_unitario) * Number(it.quantidade);
+              const share = freteTotal > 0 && sumBase > 0 ? (freteTotal * base) / sumBase : 0;
+              const valorTotal = base + share;
+              const valorUnit = valorTotal / Number(it.quantidade);
+              await client.query({
+                text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
+                       VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
+                values: [
+                  it.produto_id,
+                  it.quantidade,
+                  valorUnit,
+                  valorTotal,
+                  docTag,
+                  `ENTRADA por edição de pedido ${id} (rateio de frete)`,
+                ],
+              });
             }
           }
         } else {

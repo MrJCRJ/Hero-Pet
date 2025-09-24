@@ -30,9 +30,9 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
   const [supplierLabels, setSupplierLabels] = useState(
     Array.isArray(initial.supplier_labels)
       ? initial.supplier_labels.map((s) => ({
-          id: s.id,
-          label: s.name || s.label || String(s.id),
-        }))
+        id: s.id,
+        label: s.name || s.label || String(s.id),
+      }))
       : [],
   );
   const [showSupplierModal, setShowSupplierModal] = useState(false);
@@ -42,6 +42,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
     ultimo_custo: null,
   });
   const [suggestedPreco, setSuggestedPreco] = useState(null);
+  const [suggestedOrigin, setSuggestedOrigin] = useState(null); // 'custo_medio' | 'ultimo_custo' | null
   const [estoqueHint, setEstoqueHint] = useState(null);
 
   // Buscar custo para cálculo de preço exibido (edição)
@@ -56,7 +57,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
         const uc = Number(data.ultimo_custo);
         setCostInfo({ custo_medio: cm, ultimo_custo: uc });
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [initial?.id]);
 
   // Calcular sugestão de preço: custo × markup (fallback 30%)
@@ -67,10 +68,10 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
     const uc = Number(costInfo.ultimo_custo);
     const base =
       Number.isFinite(cm) && cm > 0
-        ? cm
+        ? (setSuggestedOrigin('custo_medio'), cm)
         : Number.isFinite(uc) && uc > 0
-          ? uc
-          : null;
+          ? (setSuggestedOrigin('ultimo_custo'), uc)
+          : (setSuggestedOrigin(null), null);
     if (base == null) {
       setSuggestedPreco(null);
       return;
@@ -94,7 +95,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
         );
         setEstoqueHint(Math.max(0, Math.ceil(totalSaida)));
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [initial?.id]);
 
   function handleSubmit(e) {
@@ -138,12 +139,21 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
             <span className="block mb-1">Preço Tabela</span>
             <div
               className="w-full px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-              title="Exibimos o Preço Tabela cadastrado; se ausente, usamos custo médio/último custo × markup (fallback 30%)."
+              title="Exibimos o Preço Tabela cadastrado; se ausente, usamos custo médio/último custo × markup (fallback 30%). Os custos já incluem frete quando existente."
             >
               {precoTabela !== ""
                 ? `R$ ${Number(precoTabela).toFixed(2)}`
                 : suggestedPreco != null
-                  ? `R$ ${Number(suggestedPreco).toFixed(2)}`
+                  ? (
+                    <span>
+                      {`R$ ${Number(suggestedPreco).toFixed(2)}`}
+                      {suggestedOrigin && (
+                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(
+                          {suggestedOrigin === 'custo_medio' ? 'base: custo médio' : 'base: último custo'}
+                          )</span>
+                      )}
+                    </span>
+                  )
                   : "–"}
             </div>
           </div>
