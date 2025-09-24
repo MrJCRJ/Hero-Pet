@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 
 // 🔹 Fallback padrão se variável de ambiente não estiver definida
 const DEFAULT_ACCESS_CODES = {
-  hero123: { name: "Icaro" },
-  admin: { name: "Jose" },
+  "ic@2025": { name: "Icaro" },
+  "jose@2025": { name: "Jose" },
 };
 
 /**
