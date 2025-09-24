@@ -113,15 +113,13 @@ export function PedidoFormItems({
                   <span className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] whitespace-nowrap">
                     Est.:{" "}
                     {it.produto_saldo != null
-                      ? Number(it.produto_saldo).toFixed(3)
+                      ? formatQty(it.produto_saldo)
                       : "..."}
                   </span>
                 )}
               </div>
             </div>
-            <div className="w-24 text-right text-sm">
-              Qtd: {String(it.quantidade || "")}
-            </div>
+            <div className="w-24 text-right text-sm">Qtd: {formatQty(it.quantidade)}</div>
             <div className="w-28 text-right text-sm">
               Preço:{" "}
               {it.preco_unitario !== ""
@@ -275,6 +273,7 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
     custo_medio: null,
     ultimo_custo: null,
   });
+  const [saldo, setSaldo] = React.useState(null);
   // removed loading UI; suggestion is applied silently when available
   const [precoPadrao, setPrecoPadrao] = React.useState("");
   const [allowAutoPrice, setAllowAutoPrice] = React.useState(true);
@@ -348,6 +347,11 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
           >
             {label || "Selecionar produto"}
           </button>
+          {tipo === "VENDA" && produtoId && (
+            <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+              Est.: {saldo != null ? formatQty(saldo) : "..."}
+            </div>
+          )}
         </div>
         <div>
           <label className="block text-xs mb-1">Quantidade</label>
@@ -432,10 +436,12 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
                       custo_medio: Number(data.custo_medio),
                       ultimo_custo: Number(data.ultimo_custo),
                     });
+                    setSaldo(Number(data.saldo));
                   })
-                  .catch(() =>
-                    setCostInfo({ custo_medio: null, ultimo_custo: null }),
-                  );
+                  .catch(() => {
+                    setCostInfo({ custo_medio: null, ultimo_custo: null });
+                    setSaldo(null);
+                  });
               }
             }
           }}
@@ -468,4 +474,12 @@ function QuickAddItemRow({ tipo, partnerId, onAppend, fetchProdutos }) {
       )}
     </div>
   );
+}
+
+// Formata quantidade em pt-BR com até 3 casas decimais, sem zeros desnecessários
+function formatQty(value) {
+  if (value === "" || value == null) return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value ?? "");
+  return n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 }

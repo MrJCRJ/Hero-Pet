@@ -9,6 +9,12 @@ export default async function handler(req, res) {
   return res.status(405).json({ error: `Method "${req.method}" not allowed` });
 }
 
+function parseDateYMD(ymd) {
+  if (!ymd || typeof ymd !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(ymd))
+    return null;
+  return ymd;
+}
+
 async function getPedido(req, res) {
   try {
     const id = Number(req.query.id);
@@ -85,11 +91,11 @@ async function putPedido(req, res) {
     if (b.partner_document !== undefined)
       set("partner_document", b.partner_document || null);
     if (b.data_emissao !== undefined)
-      set("data_emissao", b.data_emissao || null);
+      set("data_emissao", parseDateYMD(b.data_emissao) || null);
     if (b.partner_name !== undefined)
       set("partner_name", b.partner_name || null);
     if (b.data_entrega !== undefined)
-      set("data_entrega", b.data_entrega || null);
+      set("data_entrega", parseDateYMD(b.data_entrega) || null);
     if (b.observacao !== undefined) set("observacao", b.observacao || null);
     if (b.tem_nota_fiscal !== undefined)
       set("tem_nota_fiscal", b.tem_nota_fiscal);
@@ -97,7 +103,10 @@ async function putPedido(req, res) {
     if (b.numero_promissorias !== undefined)
       set("numero_promissorias", Number(b.numero_promissorias) || 1);
     if (b.data_primeira_promissoria !== undefined)
-      set("data_primeira_promissoria", b.data_primeira_promissoria || null);
+      set(
+        "data_primeira_promissoria",
+        parseDateYMD(b.data_primeira_promissoria) || null,
+      );
     // permitir atualizar frete_total mesmo sem reenviar itens (escopo agregado atual)
     if (b.frete_total !== undefined) {
       const ftNum = Number(b.frete_total);
@@ -314,12 +323,18 @@ async function putPedido(req, res) {
                 baseDate.getMonth(),
                 baseDate.getDate(),
               );
+              const fmtYMD = (d) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, "0");
+                const dd = String(d.getDate()).padStart(2, "0");
+                return `${y}-${m}-${dd}`;
+              };
               for (let i = 0; i < np; i++) {
                 const due = new Date(norm);
                 due.setMonth(due.getMonth() + i);
                 await client.query({
                   text: `INSERT INTO pedido_promissorias (pedido_id, seq, due_date, amount) VALUES ($1,$2,$3,$4)`,
-                  values: [id, i + 1, formatDateYMD(due), amt],
+                  values: [id, i + 1, fmtYMD(due), amt],
                 });
               }
             }
@@ -472,23 +487,4 @@ async function deletePedido(req, res) {
   }
 }
 
-function formatDateYMD(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function parseDateYMD(input) {
-  if (typeof input === "string") {
-    const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (m) {
-      const y = parseInt(m[1], 10);
-      const mm = parseInt(m[2], 10) - 1;
-      const dd = parseInt(m[3], 10);
-      return new Date(y, mm, dd);
-    }
-  }
-  const d = new Date(input);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
+// removed duplicate helpers (now defined above)

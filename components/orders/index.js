@@ -2,6 +2,17 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "../ui/Button";
 import { PedidoForm } from "../PedidoForm";
 
+// Evita o deslocamento de um dia ao exibir datas vindas do banco em timestamptz
+// Ao invés de criar um Date (que aplica timezone), formatamos o YYYY-MM-DD literalmente
+function formatYMDToBR(isoLike) {
+  if (!isoLike) return "-";
+  const s = String(isoLike);
+  const ymd = s.slice(0, 10);
+  const [y, m, d] = ymd.split("-");
+  if (!y || !m || !d) return "-";
+  return `${d}/${m}/${y}`;
+}
+
 function FilterBar({ filters, onChange, onReload }) {
   return (
     <div className="flex flex-wrap gap-2 items-end mb-3">
@@ -112,9 +123,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                   </div>
                 </td>
                 <td className="px-3 py-2">
-                  {p.data_emissao
-                    ? new Date(p.data_emissao).toLocaleDateString()
-                    : "-"}
+                  {p.data_emissao ? formatYMDToBR(p.data_emissao) : "-"}
                 </td>
                 <td className="px-3 py-2 text-center">
                   {p.tipo === "VENDA" && p.tem_nota_fiscal ? (

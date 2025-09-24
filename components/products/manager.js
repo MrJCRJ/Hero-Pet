@@ -194,7 +194,7 @@ export function ProductsManager({ linkSupplierId }) {
             className={below ? "text-red-500 font-medium" : ""}
             title={below ? "Abaixo do estoque mínimo" : undefined}
           >
-            {Number.isFinite(saldo) ? saldo.toFixed(3) : "-"}
+            {Number.isFinite(saldo) ? formatQtyBR(saldo) : "-"}
           </span>
         </div>
         <div
@@ -211,6 +211,12 @@ export function ProductsManager({ linkSupplierId }) {
         {null}
       </div>
     );
+  }
+
+  function formatQtyBR(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return String(value ?? "");
+    return n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
   }
 
   // Buscar sugestão de estoque mínimo (30 dias) para produtos sem mínimo cadastrado

@@ -8,6 +8,20 @@ export default async function handler(req, res) {
   return res.status(405).json({ error: `Method "${req.method}" not allowed` });
 }
 
+function parseDateYMD(ymd) {
+  // Espera 'YYYY-MM-DD'. Cria Date no fuso local à meia-noite e retorna string 'YYYY-MM-DD'
+  if (!ymd || typeof ymd !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(ymd))
+    return null;
+  return ymd;
+}
+
+function formatDateYMD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 async function postPedido(req, res) {
   const client = await database.getClient();
   try {
@@ -42,13 +56,13 @@ async function postPedido(req, res) {
         partnerId,
         b.partner_document || null,
         b.partner_name || null,
-        b.data_emissao || null,
-        b.data_entrega || null,
+        parseDateYMD(b.data_emissao) || null,
+        parseDateYMD(b.data_entrega) || null,
         b.observacao || null,
         b.tem_nota_fiscal ?? null,
         b.parcelado ?? null,
         Number(b.numero_promissorias) || 1,
-        b.data_primeira_promissoria || null,
+        parseDateYMD(b.data_primeira_promissoria) || null,
       ],
     });
     const pedido = head.rows[0];
@@ -238,27 +252,7 @@ async function postPedido(req, res) {
   }
 }
 
-function formatDateYMD(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function parseDateYMD(input) {
-  if (typeof input === "string") {
-    const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (m) {
-      const y = parseInt(m[1], 10);
-      const mm = parseInt(m[2], 10) - 1;
-      const dd = parseInt(m[3], 10);
-      return new Date(y, mm, dd);
-    }
-  }
-  // fallback
-  const d = new Date(input);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
+// removed duplicate helpers (now defined at top)
 
 async function getPedidos(req, res) {
   try {
@@ -297,8 +291,10 @@ async function getPedidos(req, res) {
     const listQuery = {
       text: `SELECT p.id, p.tipo, p.status, p.partner_entity_id, p.partner_document,
                     COALESCE(p.partner_name, e.name) AS partner_name,
-                    p.data_emissao, p.data_entrega, p.total_liquido, p.tem_nota_fiscal, p.parcelado,
-                    p.numero_promissorias, p.data_primeira_promissoria, p.valor_por_promissoria, p.created_at,
+                    to_char(p.data_emissao, 'YYYY-MM-DD') AS data_emissao,
+                    to_char(p.data_entrega, 'YYYY-MM-DD') AS data_entrega,
+                    p.total_liquido, p.tem_nota_fiscal, p.parcelado,
+                    p.numero_promissorias, to_char(p.data_primeira_promissoria, 'YYYY-MM-DD') AS data_primeira_promissoria, p.valor_por_promissoria, p.created_at,
                     COALESCE(SUM(CASE WHEN pp.paid_at IS NOT NULL THEN pp.amount ELSE 0 END), 0)::numeric(14,2) AS total_pago
           , p.frete_total
         FROM pedidos p

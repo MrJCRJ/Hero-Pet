@@ -55,7 +55,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     editingOrder ? Boolean(editingOrder.tem_nota_fiscal) : true,
   );
   const [parcelado, setParcelado] = useState(() =>
-    Boolean(editingOrder?.parcelado),
+    editingOrder?.parcelado != null ? Boolean(editingOrder.parcelado) : true,
   );
   const [itens, setItens] = useState([defaultEmptyItem()]);
   const [freteTotal, setFreteTotal] = useState("");
@@ -230,7 +230,8 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     setObservacao("");
     setDataEntrega("");
     setTemNotaFiscal(false);
-    setParcelado(false);
+    // Sistema de promissórias sempre ativo por padrão
+    setParcelado(true);
     setItens([defaultEmptyItem()]);
     setCreated(null);
     setFreteTotal("");
@@ -286,11 +287,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     ) {
       return;
     }
-    if (!parcelado) {
-      if (Array.isArray(promissoriaDatas) && promissoriaDatas.length)
-        setPromissoriaDatas([]);
-      return;
-    }
+    // Não limpar datas no modo manual, mesmo que parcelado esteja falso em ordens antigas
     if (frequenciaPromissorias === "manual") return; // manter manual
     if (
       !dataPrimeiraPromissoria ||
