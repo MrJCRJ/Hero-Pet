@@ -1,13 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Modal } from "./Modal";
 import { Button } from "components/ui/Button";
-
-function fmtBRL(v) {
-  if (v == null) return "-";
-  const n = Number(v);
-  if (!Number.isFinite(n)) return String(v);
-  return `R$ ${n.toFixed(2)}`;
-}
+import { formatBRL } from "components/common/format";
 
 export function ProductDetail({ open, onClose, product }) {
   const [saldos, setSaldos] = useState(null);
@@ -132,7 +126,7 @@ export function ProductDetail({ open, onClose, product }) {
                 Custo médio
               </div>
               <div className="text-lg font-semibold">
-                {loadingSaldos ? "…" : fmtBRL(saldos?.custo_medio)}
+                {loadingSaldos ? "…" : formatBRL(saldos?.custo_medio)}
               </div>
             </div>
             <div className="p-3 rounded-md border border-[var(--color-border)]">
@@ -140,7 +134,7 @@ export function ProductDetail({ open, onClose, product }) {
                 Último custo
               </div>
               <div className="text-lg font-semibold">
-                {loadingSaldos ? "…" : fmtBRL(saldos?.ultimo_custo)}
+                {loadingSaldos ? "…" : formatBRL(saldos?.ultimo_custo)}
               </div>
             </div>
           </section>
@@ -231,11 +225,11 @@ export function ProductDetail({ open, onClose, product }) {
                       <td className="p-2">{m.quantidade}</td>
                       <td className="p-2">
                         {m.valor_unitario != null
-                          ? fmtBRL(m.valor_unitario)
+                          ? formatBRL(m.valor_unitario)
                           : "-"}
                       </td>
                       <td className="p-2">
-                        {m.valor_total != null ? fmtBRL(m.valor_total) : "-"}
+                        {m.valor_total != null ? formatBRL(m.valor_total) : "-"}
                       </td>
                       <td className="p-2">{m.documento || "-"}</td>
                       <td className="p-2">{m.observacao || "-"}</td>

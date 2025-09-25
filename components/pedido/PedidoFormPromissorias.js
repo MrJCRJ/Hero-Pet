@@ -1,5 +1,6 @@
 import React from "react";
 import { FormField } from "../ui/Form";
+import { formatBRL } from "components/common/format";
 
 export function PedidoFormPromissorias({
   numeroPromissorias,
@@ -197,7 +198,7 @@ export function PedidoFormPromissorias({
           <div className="text-sm">
             <span className="font-medium">Valor por Promissória: </span>
             <span className="text-green-600 font-semibold">
-              R$ {valorPorPromissoria.toFixed(2)}
+              {formatBRL(Number(valorPorPromissoria))}
             </span>
           </div>
         )}

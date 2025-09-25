@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { formatBRL } from "components/common/format";
 import { Button } from "components/ui/Button";
 import { SelectionModal } from "components/common/SelectionModal";
 
@@ -142,10 +143,10 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
               title="Exibimos o Preço Tabela cadastrado; se ausente, usamos custo médio/último custo × markup (fallback 30%). Os custos já incluem frete quando existente."
             >
               {precoTabela !== "" ? (
-                `R$ ${Number(precoTabela).toFixed(2)}`
+                formatBRL(Number(precoTabela))
               ) : suggestedPreco != null ? (
                 <span>
-                  {`R$ ${Number(suggestedPreco).toFixed(2)}`}
+                  {formatBRL(Number(suggestedPreco))}
                   {suggestedOrigin && (
                     <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                       (
@@ -167,8 +168,8 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
               className="w-full px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
               title="Markup padrão do produto; se ausente, exibimos 30% como padrão visual."
             >
-              {markupPercent !== ""
-                ? `${Number(markupPercent).toFixed(2)} %`
+                {markupPercent !== ""
+                  ? `${Number(markupPercent).toFixed(2)} %`
                 : `30.00 %`}
             </div>
           </div>
@@ -178,8 +179,8 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
               className="w-full px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
               title="Exibimos o Estoque mínimo cadastrado; se ausente, usamos sugestão por consumo (30 dias)."
             >
-              {estoqueMinimo !== ""
-                ? Number(estoqueMinimo).toFixed(0)
+                {estoqueMinimo !== ""
+                  ? Number(estoqueMinimo).toFixed(0)
                 : estoqueHint != null
                   ? Number(estoqueHint).toFixed(0)
                   : "–"}

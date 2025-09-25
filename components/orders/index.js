@@ -4,6 +4,7 @@ import { PedidoForm } from "../PedidoForm";
 import { useToast } from "../entities/shared/toast";
 import { deleteOrder as deleteOrderService } from "../pedido/service";
 import { Modal } from "../common/Modal";
+import { formatBRL } from "components/common/format";
 
 // Evita o deslocamento de um dia ao exibir datas vindas do banco em timestamptz
 // Ao invés de criar um Date (que aplica timezone), formatamos o YYYY-MM-DD literalmente
@@ -225,19 +226,13 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                       (Number.isFinite(tl) ? tl : 0) +
                       (Number.isFinite(ft) ? ft : 0);
                     const totalFmt = Number.isFinite(totalComFrete)
-                      ? totalComFrete.toLocaleString(undefined, {
-                          style: "currency",
-                          currency: "BRL",
-                        })
+                      ? formatBRL(Number(totalComFrete))
                       : "-";
                     const pago =
                       p.total_pago != null ? Number(p.total_pago) : 0;
                     const pagoFmt = Number.isFinite(pago)
-                      ? pago.toLocaleString(undefined, {
-                          style: "currency",
-                          currency: "BRL",
-                        })
-                      : "R$ 0,00";
+                      ? formatBRL(Number(pago))
+                      : formatBRL(0);
                     const fullyPaid =
                       Number.isFinite(totalComFrete) && Number.isFinite(pago)
                         ? Math.abs(pago - totalComFrete) < 0.005 ||
@@ -499,10 +494,7 @@ function PromissoriasDots({ pedidoId, count, onChanged }) {
               handleMarkPaid(r.seq);
             }}
             title={(() => {
-              const amountFmt = Number(r.amount).toLocaleString(undefined, {
-                style: "currency",
-                currency: "BRL",
-              });
+              const amountFmt = formatBRL(Number(r.amount));
               if (r.status === "PAGO") {
                 const paidStr = r.paid_at
                   ? formatYMDToBR(String(r.paid_at))

@@ -3,6 +3,7 @@ const LIST_LIMIT = Number(process.env.NEXT_PUBLIC_PRODUCTS_LIMIT) || 500;
 import { Button } from "components/ui/Button";
 import { Modal } from "./Modal";
 import { ProductForm } from "./ProductForm";
+import { formatBRL, formatQtyBR } from "components/common/format";
 // import { ProductDetail } from "./Detail";
 
 function useProducts() {
@@ -157,7 +158,7 @@ export function ProductsManager({ linkSupplierId }) {
         >
           <span className="opacity-70">Compra</span>
           <span>
-            {Number.isFinite(cm) && cm > 0 ? `R$ ${cm.toFixed(2)}` : "-"}
+            {Number.isFinite(cm) && cm > 0 ? formatBRL(cm) : "-"}
           </span>
         </div>
         <div
@@ -166,9 +167,7 @@ export function ProductsManager({ linkSupplierId }) {
         >
           <span className="opacity-70">Venda</span>
           <span>
-            {Number.isFinite(venda) && venda > 0
-              ? `R$ ${venda.toFixed(2)}`
-              : "-"}
+            {Number.isFinite(venda) && venda > 0 ? formatBRL(venda) : "-"}
           </span>
         </div>
       </div>
@@ -213,11 +212,7 @@ export function ProductsManager({ linkSupplierId }) {
     );
   }
 
-  function formatQtyBR(value) {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return String(value ?? "");
-    return n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
-  }
+  // formatQtyBR extraído para utils comuns
 
   // Buscar sugestão de estoque mínimo (30 dias) para produtos sem mínimo cadastrado
   useEffect(() => {
