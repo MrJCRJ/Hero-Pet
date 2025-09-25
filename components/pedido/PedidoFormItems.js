@@ -33,6 +33,41 @@ export function PedidoFormItems({
       return 0;
     }
   }, [itens, computeItemTotal]);
+
+  // Rateio de frete por item (somente COMPRA), proporcional à quantidade
+  const freteShares = React.useMemo(() => {
+    if (tipo !== "COMPRA") return itens.map(() => 0);
+    const totalFrete = Number(freteTotal || 0);
+    if (!Number.isFinite(totalFrete) || totalFrete <= 0)
+      return itens.map(() => 0);
+    const quants = itens.map((it) => {
+      const qtd = Number(it?.quantidade);
+      return Number.isFinite(qtd) && qtd > 0 ? qtd : 0;
+    });
+    const sumQtd = quants.reduce(
+      (acc, q) => acc + (Number.isFinite(q) ? q : 0),
+      0,
+    );
+    if (!Number.isFinite(sumQtd) || sumQtd <= 0) return itens.map(() => 0);
+    const raw = quants.map((q) => (q > 0 ? (totalFrete * q) / sumQtd : 0));
+    const rounded = raw.map((v) => Number(v.toFixed(2)));
+    // Ajuste de arredondamento para bater exatamente com totalFrete quando possível
+    const sumRounded = rounded.reduce((a, b) => a + b, 0);
+    let diff = Number((totalFrete - sumRounded).toFixed(2));
+    if (diff !== 0) {
+      // aplica ajuste no item com maior quantidade
+      let idx = 0;
+      let maxQtd = -Infinity;
+      for (let i = 0; i < quants.length; i++) {
+        if (quants[i] > maxQtd) {
+          maxQtd = quants[i];
+          idx = i;
+        }
+      }
+      rounded[idx] = Number((rounded[idx] + diff).toFixed(2));
+    }
+    return rounded;
+  }, [tipo, freteTotal, itens]);
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-2">
@@ -132,6 +167,11 @@ export function PedidoFormItems({
                 return t != null ? `R$ ${t.toFixed(2)}` : "—";
               })()}
             </div>
+            {tipo === "COMPRA" && Number(freteTotal || 0) > 0 ? (
+              <div className="w-28 text-right text-xs whitespace-nowrap">
+                Frete: R$ {Number(freteShares?.[idx] || 0).toFixed(2)}
+              </div>
+            ) : null}
             <div className="w-10 text-right">
               <Button
                 variant="secondary"
