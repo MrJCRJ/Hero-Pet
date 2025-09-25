@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { formatDateTimeBR } from "components/common/date";
 import { Modal } from "./Modal";
 import { Button } from "components/ui/Button";
 import { formatBRL } from "components/common/format";
@@ -219,7 +220,7 @@ export function ProductDetail({ open, onClose, product }) {
                       className="border-t border-[var(--color-border)]"
                     >
                       <td className="p-2">
-                        {new Date(m.data_movimento).toLocaleString()}
+                        {formatDateTimeBR(m.data_movimento)}
                       </td>
                       <td className="p-2">{m.tipo}</td>
                       <td className="p-2">{m.quantidade}</td>

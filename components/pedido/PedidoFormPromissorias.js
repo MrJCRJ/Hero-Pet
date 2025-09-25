@@ -1,4 +1,5 @@
 import React from "react";
+import { formatYMDToBR } from "components/common/date";
 import { FormField } from "../ui/Form";
 import { formatBRL } from "components/common/format";
 
@@ -308,7 +309,7 @@ export function PedidoFormPromissorias({
                       )}
                   </div>
                   <span className="font-mono">
-                    {new Date(data + "T00:00:00").toLocaleDateString("pt-BR")}
+                    {formatYMDToBR(data)}
                   </span>
                 </div>
               ))}

@@ -5,17 +5,9 @@ import { useToast } from "../entities/shared/toast";
 import { deleteOrder as deleteOrderService } from "../pedido/service";
 import { Modal } from "../common/Modal";
 import { formatBRL } from "components/common/format";
+import { formatYMDToBR } from "components/common/date";
 
-// Evita o deslocamento de um dia ao exibir datas vindas do banco em timestamptz
-// Ao invés de criar um Date (que aplica timezone), formatamos o YYYY-MM-DD literalmente
-function formatYMDToBR(isoLike) {
-  if (!isoLike) return "-";
-  const s = String(isoLike);
-  const ymd = s.slice(0, 10);
-  const [y, m, d] = ymd.split("-");
-  if (!y || !m || !d) return "-";
-  return `${d}/${m}/${y}`;
-}
+// Formatação movida para components/common/date
 
 function FilterBar({ filters, onChange, onReload }) {
   return (

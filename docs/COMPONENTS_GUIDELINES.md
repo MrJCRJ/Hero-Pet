@@ -47,6 +47,11 @@ Este guia documenta padrões adotados durante a refatoração dos components. Us
 - Exibir quantidade: `formatQtyBR(qtd)`
 - Reusar Modal: `import { Modal } from 'components/common/Modal'`
 
+## Datas (evitar drift de timezone)
+- Para datas de banco no formato `YYYY-MM-DD` (ou strings ISO), use `formatYMDToBR` de `components/common/date`.
+- Para data/hora em UI, use `formatDateTimeBR`.
+- Evite criar `new Date('YYYY-MM-DD')` só para exibir — isso aplica timezone e pode deslocar um dia.
+
 ---
 
 Mantenha este guia atualizado conforme novos padrões forem introduzidos.
