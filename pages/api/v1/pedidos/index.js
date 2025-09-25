@@ -176,8 +176,9 @@ async function postPedido(req, res) {
     });
     // Pré-cálculo para rateio de frete em COMPRA
     const freteTotalNumber = Number(b.frete_total || 0);
-    const sumBaseCompra = itensCriados.rows.reduce((acc, it) => {
-      return acc + Number(it.preco_unitario) * Number(it.quantidade);
+    // Rateio de frete por quantidade total
+    const sumQtdCompra = itensCriados.rows.reduce((acc, it) => {
+      return acc + Number(it.quantidade);
     }, 0);
     for (const it of itensCriados.rows) {
       if (tipo === "VENDA") {
@@ -213,20 +214,25 @@ async function postPedido(req, res) {
           ],
         });
       } else if (tipo === "COMPRA") {
-        const base = Number(it.preco_unitario) * Number(it.quantidade);
-        const share =
-          freteTotalNumber > 0 && sumBaseCompra > 0
-            ? (freteTotalNumber * base) / sumBaseCompra
+        const qtd = Number(it.quantidade);
+        const preco = Number(it.preco_unitario);
+        const base = preco * qtd;
+        const shareRaw =
+          freteTotalNumber > 0 && sumQtdCompra > 0
+            ? (freteTotalNumber * qtd) / sumQtdCompra
             : 0;
-        const valorTotal = base + share;
-        const valorUnit = valorTotal / Number(it.quantidade);
+        const share = Number(shareRaw.toFixed(2));
+        const valorTotal = Number((base + share).toFixed(2));
+        const valorUnit = valorTotal / qtd;
         await client.query({
-          text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
-                 VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
+          text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao)
+                 VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6,$7,$8)`,
           values: [
             it.produto_id,
-            it.quantidade,
+            qtd,
             valorUnit,
+            share,
+            0,
             valorTotal,
             docTag,
             `ENTRADA por criação de pedido ${pedido.id} (rateio de frete)`,

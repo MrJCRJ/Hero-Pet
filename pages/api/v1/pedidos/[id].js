@@ -228,19 +228,24 @@ async function putPedido(req, res) {
       const freteTotal = b.frete_total != null ? Number(b.frete_total) : 0;
       // inserir movimentos com rateio de frete para COMPRA
       if (tipoAtual === "COMPRA" && itensForRateio.length) {
-        const sumBase = itensForRateio.reduce((acc, r) => acc + r.base, 0);
+        const sumQtd = itensForRateio.reduce((acc, r) => acc + r.quantidade, 0);
         for (const r of itensForRateio) {
-          const share =
-            freteTotal > 0 && sumBase > 0 ? (freteTotal * r.base) / sumBase : 0;
-          const valorTotal = r.base + share;
+          const shareRaw =
+            freteTotal > 0 && sumQtd > 0
+              ? (freteTotal * r.quantidade) / sumQtd
+              : 0;
+          const share = Number(shareRaw.toFixed(2));
+          const valorTotal = Number((r.base + share).toFixed(2));
           const valorUnit = valorTotal / r.quantidade;
           await client.query({
-            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
-                   VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
+            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao)
+                   VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6,$7,$8)`,
             values: [
               r.produto_id,
               r.quantidade,
               valorUnit,
+              share,
+              0,
               valorTotal,
               docTag,
               `ENTRADA por edição de pedido ${id} (rateio de frete)`,
@@ -375,27 +380,29 @@ async function putPedido(req, res) {
               values: [id],
             });
             const rows = itensAtuais.rows || [];
-            const sumBase = rows.reduce(
-              (acc, it) =>
-                acc + Number(it.preco_unitario) * Number(it.quantidade),
+            const sumQtd = rows.reduce(
+              (acc, it) => acc + Number(it.quantidade),
               0,
             );
             const freteTotal = Number(b.frete_total || 0);
             for (const it of rows) {
               const base = Number(it.preco_unitario) * Number(it.quantidade);
-              const share =
-                freteTotal > 0 && sumBase > 0
-                  ? (freteTotal * base) / sumBase
+              const shareRaw =
+                freteTotal > 0 && sumQtd > 0
+                  ? (freteTotal * Number(it.quantidade)) / sumQtd
                   : 0;
-              const valorTotal = base + share;
+              const share = Number(shareRaw.toFixed(2));
+              const valorTotal = Number((base + share).toFixed(2));
               const valorUnit = valorTotal / Number(it.quantidade);
               await client.query({
-                text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, valor_total, documento, observacao)
-                       VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6)`,
+                text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao)
+                       VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6,$7,$8)`,
                 values: [
                   it.produto_id,
                   it.quantidade,
                   valorUnit,
+                  share,
+                  0,
                   valorTotal,
                   docTag,
                   `ENTRADA por edição de pedido ${id} (rateio de frete)`,
