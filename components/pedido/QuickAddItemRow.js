@@ -1,16 +1,13 @@
 import React from "react";
 import { Button } from "../ui/Button";
 import { SelectionModal } from "../common/SelectionModal";
+// Modal genérico substituído pelo componente PriceSuggestionModal
+import { PriceSuggestionModal } from "./PriceSuggestionModal";
 import { useToast } from "../entities/shared/toast";
 import { formatQty } from "./utils";
+import { fetchLastPurchasePrice } from "./service";
 
-export function QuickAddItemRow({
-  tipo,
-  partnerId,
-  itens,
-  onAppend,
-  fetchProdutos,
-}) {
+export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
   const { push } = useToast();
   const [label, setLabel] = React.useState("");
   const [produtoId, setProdutoId] = React.useState("");
@@ -18,14 +15,24 @@ export function QuickAddItemRow({
   const [preco, setPreco] = React.useState("");
   const [desconto, setDesconto] = React.useState("");
   const [showModal, setShowModal] = React.useState(false);
-  const [markupDefault, setMarkupDefault] = React.useState(null);
-  const [costInfo, setCostInfo] = React.useState({
-    custo_medio: null,
-    ultimo_custo: null,
-  });
   const [saldo, setSaldo] = React.useState(null);
-  const [precoPadrao, setPrecoPadrao] = React.useState("");
-  const [allowAutoPrice, setAllowAutoPrice] = React.useState(true);
+  // Estado unificado para modal de sugestão (COMPRA ou VENDA)
+  const [suggestionModal, setSuggestionModal] = React.useState({
+    open: false,
+    mode: null, // 'COMPRA' | 'VENDA'
+    data: {
+      value: null,
+      base: null,
+      markup: null,
+      sourceLabel: null,
+      loading: false,
+      error: null,
+    },
+  });
+
+  // Cache por produto (não refaz fetch se já buscado nessa sessão)
+  const purchaseCacheRef = React.useRef(new Map()); // produtoId -> { value }
+  const saleCacheRef = React.useRef(new Map()); // produtoId -> { value, base, markup }
 
   const reservedQty = React.useMemo(() => {
     if (!Array.isArray(itens) || !produtoId) return 0;
@@ -49,41 +56,6 @@ export function QuickAddItemRow({
       (Number.isFinite(Number(reservedQty)) ? Number(reservedQty) : 0);
     return rem;
   }, [saldo, reservedQty]);
-
-  const suggestedPrice = React.useMemo(() => {
-    let md = Number(markupDefault);
-    if (!Number.isFinite(md) || md <= 0) md = 30;
-    const cm = Number(costInfo.custo_medio);
-    const uc = Number(costInfo.ultimo_custo);
-    if (!Number.isFinite(md) || md < 0) return null;
-    const base =
-      Number.isFinite(cm) && cm > 0
-        ? cm
-        : Number.isFinite(uc) && uc > 0
-          ? uc
-          : null;
-    if (!Number.isFinite(base) || base == null) return null;
-    const s = base * (1 + md / 100);
-    return Number(s.toFixed(2));
-  }, [markupDefault, costInfo]);
-
-  React.useEffect(() => {
-    if (tipo === "VENDA" && allowAutoPrice && suggestedPrice != null) {
-      setPreco(String(suggestedPrice));
-    }
-  }, [tipo, allowAutoPrice, suggestedPrice]);
-
-  React.useEffect(() => {
-    if (
-      tipo === "VENDA" &&
-      allowAutoPrice &&
-      (suggestedPrice == null || !Number.isFinite(Number(suggestedPrice)))
-    ) {
-      if (preco === "" && precoPadrao !== "") {
-        setPreco(precoPadrao);
-      }
-    }
-  }, [tipo, allowAutoPrice, suggestedPrice, precoPadrao, preco]);
 
   const handleAdd = () => {
     if (!produtoId) return;
@@ -149,7 +121,6 @@ export function QuickAddItemRow({
             className="w-full border rounded px-2 py-1"
             value={preco}
             onChange={(e) => {
-              setAllowAutoPrice(false);
               setPreco(e.target.value);
             }}
           />
@@ -210,39 +181,137 @@ export function QuickAddItemRow({
           onSelect={(it) => {
             setShowModal(false);
             if (it) {
-              const precoDefault = Number.isFinite(Number(it.preco_tabela))
-                ? String(it.preco_tabela)
-                : "";
               setProdutoId(String(it.id));
               setLabel(it.label);
-              setPrecoPadrao(precoDefault);
-              setMarkupDefault(
-                Number.isFinite(Number(it.markup_percent_default))
-                  ? Number(it.markup_percent_default)
-                  : null,
-              );
-              setAllowAutoPrice(true);
               if (!quantidade) setQuantidade("1");
-              if (tipo !== "VENDA" && !preco) setPreco(precoDefault);
-              if (tipo === "VENDA") {
-                fetch(`/api/v1/estoque/saldos?produto_id=${it.id}`, {
-                  cache: "no-store",
-                })
-                  .then((res) =>
-                    res.json().then((data) => ({ ok: res.ok, data })),
-                  )
-                  .then(({ ok, data }) => {
-                    if (!ok) throw new Error(data?.error || "erro saldo");
-                    setCostInfo({
-                      custo_medio: Number(data.custo_medio),
-                      ultimo_custo: Number(data.ultimo_custo),
-                    });
-                    setSaldo(Number(data.saldo));
-                  })
-                  .catch(() => {
-                    setCostInfo({ custo_medio: null, ultimo_custo: null });
-                    setSaldo(null);
+              // COMPRA: usar cache ou buscar último preço
+              if (tipo === "COMPRA") {
+                const cached = purchaseCacheRef.current.get(it.id);
+                if (cached) {
+                  setSuggestionModal({
+                    open: true,
+                    mode: "COMPRA",
+                    data: {
+                      ...cached,
+                      loading: false,
+                      error: null,
+                      sourceLabel: "Último preço de compra",
+                    },
                   });
+                } else {
+                  setSuggestionModal({
+                    open: true,
+                    mode: "COMPRA",
+                    data: {
+                      value: null,
+                      loading: true,
+                      error: null,
+                      sourceLabel: "Último preço de compra",
+                      base: null,
+                      markup: null,
+                    },
+                  });
+                  fetchLastPurchasePrice(it.id)
+                    .then((val) => {
+                      const normalized =
+                        val == null || !Number.isFinite(Number(val))
+                          ? null
+                          : Number(val);
+                      const payload = { value: normalized };
+                      purchaseCacheRef.current.set(it.id, payload);
+                      setSuggestionModal((prev) => ({
+                        ...prev,
+                        data: {
+                          ...prev.data,
+                          value: normalized,
+                          loading: false,
+                        },
+                      }));
+                    })
+                    .catch(() => {
+                      setSuggestionModal((prev) => ({
+                        ...prev,
+                        data: {
+                          ...prev.data,
+                          value: null,
+                          loading: false,
+                          error: "Erro ao buscar último preço",
+                        },
+                      }));
+                    });
+                }
+              }
+              // VENDA: custo + markup
+              if (tipo === "VENDA") {
+                const cached = saleCacheRef.current.get(it.id);
+                if (cached) {
+                  setSuggestionModal({
+                    open: true,
+                    mode: "VENDA",
+                    data: { ...cached, loading: false, error: null },
+                  });
+                } else {
+                  setSuggestionModal({
+                    open: true,
+                    mode: "VENDA",
+                    data: {
+                      value: null,
+                      base: null,
+                      markup: null,
+                      loading: true,
+                      error: null,
+                    },
+                  });
+                  fetch(`/api/v1/estoque/saldos?produto_id=${it.id}`, {
+                    cache: "no-store",
+                  })
+                    .then((res) =>
+                      res.json().then((data) => ({ ok: res.ok, data })),
+                    )
+                    .then(({ ok, data }) => {
+                      if (!ok) throw new Error(data?.error || "erro saldo");
+                      setSaldo(Number(data.saldo));
+                      const custoMedio = Number(data.custo_medio);
+                      const ultimoCusto = Number(data.ultimo_custo);
+                      const base =
+                        Number.isFinite(custoMedio) && custoMedio > 0
+                          ? custoMedio
+                          : Number.isFinite(ultimoCusto) && ultimoCusto > 0
+                            ? ultimoCusto
+                            : null;
+                      const markupDefault =
+                        Number.isFinite(Number(it.markup_percent_default)) &&
+                        Number(it.markup_percent_default) > 0
+                          ? Number(it.markup_percent_default)
+                          : 30;
+                      let suggested = null;
+                      if (base != null) {
+                        suggested = Number(
+                          (base * (1 + markupDefault / 100)).toFixed(2),
+                        );
+                      }
+                      const payload = {
+                        value: suggested,
+                        base,
+                        markup: markupDefault,
+                      };
+                      saleCacheRef.current.set(it.id, payload);
+                      setSuggestionModal((prev) => ({
+                        ...prev,
+                        data: { ...prev.data, ...payload, loading: false },
+                      }));
+                    })
+                    .catch(() => {
+                      setSuggestionModal((prev) => ({
+                        ...prev,
+                        data: {
+                          ...prev.data,
+                          loading: false,
+                          error: "Falha ao calcular preço sugerido",
+                        },
+                      }));
+                    });
+                }
               }
             }
           }}
@@ -252,25 +321,23 @@ export function QuickAddItemRow({
               ? "Este fornecedor não possui produtos relacionados"
               : "Nenhum produto encontrado"
           }
-          footer={
-            tipo === "COMPRA" && Number.isFinite(Number(partnerId)) ? (
-              <button
-                type="button"
-                className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-primary)]"
-                onClick={() => {
-                  const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
-                  try {
-                    window.location.hash = target;
-                  } catch (_) {
-                    /* noop */
-                  }
-                  setShowModal(false);
-                }}
-              >
-                + Vincular produto ao fornecedor
-              </button>
-            ) : null
+        />
+      )}
+      {suggestionModal.open && (
+        <PriceSuggestionModal
+          mode={suggestionModal.mode}
+          suggestion={{
+            value: suggestionModal.data.value,
+            base: suggestionModal.data.base,
+            markup: suggestionModal.data.markup,
+            sourceLabel: suggestionModal.data.sourceLabel,
+            loading: suggestionModal.data.loading,
+            error: suggestionModal.data.error,
+          }}
+          onClose={() =>
+            setSuggestionModal((prev) => ({ ...prev, open: false }))
           }
+          onApply={(v) => setPreco(String(Number(v).toFixed(2)))}
         />
       )}
     </div>

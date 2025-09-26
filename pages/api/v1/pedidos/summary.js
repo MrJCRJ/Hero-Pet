@@ -33,6 +33,35 @@ export default async function handler(req, res) {
     const { startYMD, nextStartYMD, prevStartYMD, label } =
       monthBounds(refDate);
 
+    // Histórico de vendas últimos N meses (incluindo mês atual)
+    const monthsParam = Math.min(
+      24,
+      Math.max(3, Number(req.query.months || 12) || 12),
+    );
+    // Data inicial = primeiro dia do mês referência - (N-1) meses
+    const historyStart = new Date(
+      refDate.getFullYear(),
+      refDate.getMonth() - (monthsParam - 1),
+      1,
+    );
+    const historyStartYMD = `${historyStart.getFullYear()}-${String(historyStart.getMonth() + 1).padStart(2, "0")}-01`;
+    // Consulta agregada usando generate_series para garantir meses com 0
+    const vendasHistoryQ = await database.query({
+      text: `WITH series AS (
+               SELECT generate_series(date_trunc('month',$1::date), date_trunc('month',$2::date), interval '1 month') AS mstart
+             )
+             SELECT to_char(s.mstart, 'YYYY-MM') AS month,
+                    COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS vendas
+             FROM series s
+             LEFT JOIN pedidos p
+               ON p.tipo = 'VENDA'
+              AND p.data_emissao >= s.mstart
+              AND p.data_emissao < (s.mstart + interval '1 month')
+             GROUP BY s.mstart
+             ORDER BY s.mstart`,
+      values: [historyStartYMD, startYMD],
+    });
+
     // Totais do mês (por data_emissao)
     const vendasQ = await database.query({
       text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
@@ -115,6 +144,17 @@ export default async function handler(req, res) {
           )
         : null;
 
+    // Monta growthHistory com crescimento percentual mês a mês
+    const growthHistory = vendasHistoryQ.rows.map((r, idx, arr) => {
+      const vendas = Number(r.vendas || 0);
+      const prev = idx > 0 ? Number(arr[idx - 1].vendas || 0) : null;
+      const crescimento =
+        prev && prev > 0
+          ? Number((((vendas - prev) / prev) * 100).toFixed(2))
+          : null;
+      return { month: r.month, vendas, crescimento };
+    });
+
     return res.status(200).json({
       month: label,
       vendasMes,
@@ -124,6 +164,7 @@ export default async function handler(req, res) {
       cogsReal,
       lucroBrutoMes,
       margemBrutaPerc,
+      growthHistory,
       promissorias: {
         mesAtual: {
           pagos: {

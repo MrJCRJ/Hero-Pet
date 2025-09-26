@@ -72,8 +72,7 @@ describe("PedidoForm Refatoração - Integração", () => {
     ).toBeInTheDocument();
     // Promissórias (título da seção)
     expect(screen.getByText("Sistema de Promissórias")).toBeInTheDocument();
-    // Ações
-    expect(screen.getByText("Limpar")).toBeInTheDocument();
+    // Ações (botão 'Limpar' removido)
     expect(
       screen.getByRole("button", { name: /Criar Pedido|Atualizar Pedido/i }),
     ).toBeInTheDocument();

@@ -11,8 +11,6 @@ export function PedidoFormView(props) {
     // estado geral
     submitting,
     canSubmit,
-    created,
-    clearForm,
     // tipo e parceiro
     tipo,
     handleTipoChange,
@@ -77,6 +75,7 @@ export function PedidoFormView(props) {
     fetchSaldoService,
     freteTotal,
     setFreteTotal,
+    fifoAplicado,
   } = props;
 
   // Handlers estáveis
@@ -118,6 +117,8 @@ export function PedidoFormView(props) {
         onCancelTipoChange={cancelTipoChange}
       />
 
+      {/* Bloco legacy removido: migração agora somente via botão global em Pedidos */}
+
       <PedidoFormItems
         itens={itens}
         onUpdateItem={updateItem}
@@ -157,12 +158,11 @@ export function PedidoFormView(props) {
       />
 
       <PedidoFormActions
-        created={created}
         editingOrder={editingOrder}
         onDelete={handleDelete}
-        onClear={clearForm}
         canSubmit={canSubmit}
         submitting={submitting}
+        fifoAplicado={fifoAplicado}
       />
 
       {Number.isInteger(productModalIndex) && productModalIndex >= 0 && (
@@ -207,25 +207,6 @@ export function PedidoFormView(props) {
             tipo === "COMPRA"
               ? "Este fornecedor não possui produtos relacionados"
               : "Nenhum produto encontrado"
-          }
-          footer={
-            tipo === "COMPRA" && Number.isFinite(Number(partnerId)) ? (
-              <button
-                type="button"
-                className="text-xs px-2 py-1 border rounded hover:bg-[var(--color-bg-secondary)]"
-                onClick={() => {
-                  const target = `#tab=products&linkSupplierId=${Number(partnerId)}`;
-                  try {
-                    window.location.hash = target;
-                  } catch (_) {
-                    /* noop */
-                  }
-                  setProductModalIndex(null);
-                }}
-              >
-                + Vincular produto ao fornecedor
-              </button>
-            ) : null
           }
         />
       )}
