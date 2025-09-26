@@ -95,6 +95,26 @@ export default function OrdersDashboard({ month: monthProp }) {
       </div>
       <div className="flex flex-wrap gap-2">
         <Card
+          title="Crescimento (MoM)"
+          value={
+            m.crescimentoMoMPerc == null
+              ? "—"
+              : `${Number(m.crescimentoMoMPerc).toFixed(2)}%`
+          }
+          subtitle={
+            m.vendasMesAnterior != null
+              ? `Receita anterior: ${formatBRL(m.vendasMesAnterior)}`
+              : undefined
+          }
+          onClick={() => setSelectedCard("crescimento_mom")}
+        />
+        <Card
+          title="Lucro bruto"
+          value={`${formatBRL(m.lucroBrutoMes)} (${m.margemBrutaPerc?.toFixed?.(2) ?? Number(m.margemBrutaPerc || 0).toFixed(2)}%)`}
+          subtitle={`Receita: ${formatBRL(m.vendasMes)} · COGS: ${formatBRL(m.cogsReal)}`}
+          onClick={() => setSelectedCard("lucro_bruto")}
+        />
+        <Card
           title="Vendas do mês"
           value={formatBRL(m.vendasMes)}
           onClick={() => setSelectedCard("vendasMes")}
@@ -220,6 +240,8 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
   const titleMap = {
     vendasMes: "Vendas do mês",
     comprasMes: "Compras do mês",
+    crescimento_mom: "Crescimento (mês vs. anterior)",
+    lucro_bruto: "Lucro bruto",
     promissorias_pagas: "Promissórias pagas (mês)",
     promissorias_pendentes: "Promissórias pendentes (mês)",
     promissorias_atrasadas: "Promissórias atrasadas (mês)",
@@ -259,6 +281,10 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
             onSelect={onSelect}
           />
         );
+      case "lucro_bruto":
+        return <LucroBrutoDetails monthLabel={monthLabel} data={data} />;
+      case "crescimento_mom":
+        return <CrescimentoMoMDetails monthLabel={monthLabel} data={data} />;
       case "promissorias_pagas":
         return (
           <PromissoriasList
@@ -531,6 +557,71 @@ function PedidosListByMonth({ monthLabel, monthStr, tipo, total, onSelect }) {
       </div>
       {error && <div className="text-red-500">Erro: {String(error)}</div>}
       {loading && <div className="opacity-70">Carregando...</div>}
+    </div>
+  );
+}
+
+function LucroBrutoDetails({ monthLabel, data }) {
+  const receita = Number(data.vendasMes || 0);
+  const cogs = Number(data.cogsReal || 0);
+  const lucro = Number(data.lucroBrutoMes || 0);
+  const margem = Number(data.margemBrutaPerc || 0);
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="font-medium">Apuração de {monthLabel}</p>
+      <div className="border rounded divide-y">
+        <Row label="Receita (vendas do mês)" value={formatBRL(receita)} />
+        <Row label="COGS (custo das vendas)" value={formatBRL(cogs)} />
+        <Row label="Lucro bruto" value={formatBRL(lucro)} />
+        <Row label="Margem bruta" value={`${margem.toFixed(2)}%`} />
+      </div>
+      <div className="text-xs opacity-70">
+        Como calculamos: a receita soma total_liquido + frete_total dos pedidos
+        de VENDA no mês. O COGS é a soma do custo total persistido em cada item
+        de venda no momento da emissão (custo médio vigente até a data da
+        venda). Assim, a margem reflete o custo histórico por pedido, sem
+        estimativas.
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }) {
+  return (
+    <div className="flex items-center justify-between px-3 py-2">
+      <div>{label}</div>
+      <div className="font-medium">{value}</div>
+    </div>
+  );
+}
+
+function CrescimentoMoMDetails({ monthLabel, data }) {
+  const receitaAtual = Number(data.vendasMes || 0);
+  const receitaAnterior =
+    data.vendasMesAnterior != null ? Number(data.vendasMesAnterior || 0) : null;
+  const mom =
+    data.crescimentoMoMPerc == null
+      ? null
+      : Number(data.crescimentoMoMPerc || 0);
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="font-medium">Comparativo de {monthLabel}</p>
+      <div className="border rounded divide-y">
+        <Row label="Vendas do mês" value={formatBRL(receitaAtual)} />
+        <Row
+          label="Vendas do mês anterior"
+          value={receitaAnterior == null ? "—" : formatBRL(receitaAnterior)}
+        />
+        <Row
+          label="Crescimento (MoM)"
+          value={mom == null ? "—" : `${mom.toFixed(2)}%`}
+        />
+      </div>
+      <div className="text-xs opacity-70">
+        Como calculamos: comparamos a receita do mês selecionado com a do mês
+        imediatamente anterior, usando a mesma definição de receita
+        (total_liquido + frete_total dos pedidos de VENDA por data de emissão).
+      </div>
     </div>
   );
 }
