@@ -223,16 +223,21 @@ async function postPedido(req, res) {
         if (!registroConsumo) continue; // segurança
         if (registroConsumo.legacy) {
           // Movimento legado sem custos reconhecidos (continua permitindo vendas de estoque pré-FIFO)
+          // A PARTIR DE AGORA (fix produção): ainda que seja consumo legacy (sem lotes),
+          // persistimos custo reconhecido usando a média calculada em processarItensVenda
+          // para permitir apuração de COGS consistente em relatórios.
           await client.query({
-            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo, data_movimento)
-                   VALUES ($1,'SAIDA',$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()))`,
+            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo, data_movimento, custo_unitario_rec, custo_total_rec)
+                   VALUES ($1,'SAIDA',$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()), $7, $8)`,
             values: [
               it.produto_id,
               it.quantidade,
               docTag,
-              `SAÍDA (LEGADO) por criação de pedido ${pedido.id}`,
+              `SAÍDA (LEGACY AVG COST) por criação de pedido ${pedido.id}`,
               "PEDIDO",
               dataEmissaoStr,
+              it.custo_unit_venda, // média calculada
+              it.custo_total_item,
             ],
           });
         } else {

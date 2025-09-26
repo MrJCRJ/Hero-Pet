@@ -196,10 +196,24 @@ export default async function handler(req, res) {
     }
 
     // Fluxo legado (ou FIFO desabilitado / tipos SAIDA|AJUSTE por enquanto)
+    let legacyCostUnit = null;
+    let legacyCostTotal = null;
+    if (tipo === "SAIDA") {
+      // Calcular custo médio histórico para registrar custo reconhecido no modo legacy.
+      // Mantém consistência com processarItensVenda.
+      const custoQ = await database.query({
+        text: `SELECT COALESCE(SUM(valor_total)/NULLIF(SUM(quantidade),0),0) AS custo
+               FROM movimento_estoque
+               WHERE produto_id = $1 AND tipo = 'ENTRADA'`,
+        values: [produtoId],
+      });
+      legacyCostUnit = Number(custoQ.rows?.[0]?.custo || 0);
+      legacyCostTotal = Number((legacyCostUnit * quantidade).toFixed(2));
+    }
     const insert = {
-      text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-             RETURNING id, produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, data_movimento`,
+      text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, custo_unitario_rec, custo_total_rec)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+             RETURNING id, produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, data_movimento, custo_unitario_rec, custo_total_rec`,
       values: [
         produtoId,
         tipo,
@@ -210,6 +224,8 @@ export default async function handler(req, res) {
         valor_total,
         b.documento || null,
         b.observacao || null,
+        legacyCostUnit,
+        legacyCostTotal,
       ],
     };
     const r = await database.query(insert);

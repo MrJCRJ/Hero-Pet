@@ -325,15 +325,18 @@ async function putPedido(req, res) {
           );
           if (!registroConsumo) continue;
           if (registroConsumo.legacy) {
+            // FIX: registrar custo reconhecido mesmo em modo legacy (média histórica) para consolidar COGS
             await client.query({
-              text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo)
-                     VALUES ($1,'SAIDA',$2,$3,$4,$5)`,
+              text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo, custo_unitario_rec, custo_total_rec)
+                     VALUES ($1,'SAIDA',$2,$3,$4,$5,$6,$7)`,
               values: [
                 it.produto_id,
                 it.quantidade,
                 docTag,
-                `SAÍDA por edição de pedido ${id} (LEGACY)`,
+                `SAÍDA (LEGACY AVG COST) por edição de pedido ${id}`,
                 "PEDIDO",
+                it.custo_unit_venda,
+                it.custo_total_item,
               ],
             });
           } else {

@@ -14,8 +14,6 @@ jest.setTimeout(60000);
 let produtoA;
 let fornecedor;
 
-
-
 beforeAll(async () => {
   process.env.FIFO_ENABLED = "1";
   await orchestrator.waitForAllServices();
