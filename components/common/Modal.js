@@ -31,6 +31,7 @@ export function Modal({ title, onClose, children, maxWidth = "max-w-2xl" }) {
         className={`relative w-full ${maxWidth} bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded shadow-lg max-h-[90vh] overflow-hidden`}
         role="dialog"
         aria-modal="true"
+        data-testid="app-modal"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >

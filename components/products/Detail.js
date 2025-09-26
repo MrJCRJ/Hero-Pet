@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { formatDateTimeBR } from "components/common/date";
-import { Modal } from "./Modal";
+import { Modal } from "components/common/Modal";
 import { Button } from "components/ui/Button";
 import { formatBRL } from "components/common/format";
 
@@ -52,7 +52,7 @@ export function ProductDetail({ open, onClose, product }) {
         setMovs((prev) => (offset === 0 ? data : [...prev, ...data]));
         setMovTotal(meta?.total ?? null);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setMovLoading(false));
   }, [open, product?.id, tipo, from, to, limit, offset, reloadKey]);
 
@@ -78,192 +78,192 @@ export function ProductDetail({ open, onClose, product }) {
   // filtros e paginação controlam o offset diretamente
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={product ? `Detalhe: ${product.nome}` : "Detalhe do Produto"}
-    >
-      {!product ? (
-        <div className="p-4">Produto inválido.</div>
-      ) : (
-        <div className="space-y-4">
-          {/* Fornecedores do produto */}
-          <section className="p-3 rounded-md border border-[var(--color-border)]">
-            <div className="text-xs text-[var(--color-text-secondary)] mb-2">
-              Fornecedores
+    open && (
+      <Modal
+        onClose={onClose}
+        title={product ? `Detalhe: ${product.nome}` : "Detalhe do Produto"}
+      >
+        {!product ? (
+          <div className="p-4">Produto inválido.</div>
+        ) : (
+          <div className="space-y-4">
+            {/* Fornecedores do produto */}
+            <section className="p-3 rounded-md border border-[var(--color-border)]">
+              <div className="text-xs text-[var(--color-text-secondary)] mb-2">
+                Fornecedores
+              </div>
+              {Array.isArray(product.supplier_labels) &&
+                product.supplier_labels.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {product.supplier_labels.map((s) => (
+                    <a
+                      key={s.id}
+                      href={`#tab=entities&highlightId=${s.id}`}
+                      className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
+                      title="Abrir cadastro do fornecedor"
+                    >
+                      {s.name || s.label || `#${s.id}`}
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs opacity-70">
+                  Nenhum fornecedor vinculado.
+                </div>
+              )}
+            </section>
+
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3 rounded-md border border-[var(--color-border)]">
+                <div className="text-xs text-[var(--color-text-secondary)]">
+                  Saldo
+                </div>
+                <div className="text-lg font-semibold">
+                  {loadingSaldos ? "…" : (saldos?.saldo ?? "-")}
+                </div>
+              </div>
+              <div className="p-3 rounded-md border border-[var(--color-border)]">
+                <div className="text-xs text-[var(--color-text-secondary)]">
+                  Custo médio
+                </div>
+                <div className="text-lg font-semibold">
+                  {loadingSaldos ? "…" : formatBRL(saldos?.custo_medio)}
+                </div>
+              </div>
+              <div className="p-3 rounded-md border border-[var(--color-border)]">
+                <div className="text-xs text-[var(--color-text-secondary)]">
+                  Último custo
+                </div>
+                <div className="text-lg font-semibold">
+                  {loadingSaldos ? "…" : formatBRL(saldos?.ultimo_custo)}
+                </div>
+              </div>
+            </section>
+
+            <div className="p-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] text-xs">
+              Movimentos de estoque são gerados automaticamente pelos Pedidos.
+              Este painel exibe saldos e histórico (somente leitura).
             </div>
-            {Array.isArray(product.supplier_labels) &&
-            product.supplier_labels.length ? (
-              <div className="flex flex-wrap gap-2">
-                {product.supplier_labels.map((s) => (
-                  <a
-                    key={s.id}
-                    href={`#tab=entities&highlightId=${s.id}`}
-                    className="text-xs px-2 py-0.5 rounded-full border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
-                    title="Abrir cadastro do fornecedor"
+
+            <section className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                <select
+                  className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                  value={tipo}
+                  onChange={(e) => {
+                    setTipo(e.target.value);
+                    setOffset(0);
+                  }}
+                >
+                  <option value="">Tipo: Todos</option>
+                  <option value="ENTRADA">ENTRADA</option>
+                  <option value="SAIDA">SAÍDA</option>
+                  <option value="AJUSTE">AJUSTE</option>
+                </select>
+                <input
+                  type="date"
+                  className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                  value={from}
+                  onChange={(e) => {
+                    setFrom(e.target.value);
+                    setOffset(0);
+                  }}
+                />
+                <input
+                  type="date"
+                  className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                  value={to}
+                  onChange={(e) => {
+                    setTo(e.target.value);
+                    setOffset(0);
+                  }}
+                />
+                <select
+                  className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value) || 10);
+                    setOffset(0);
+                  }}
+                >
+                  <option value={10}>10 por página</option>
+                  <option value={20}>20 por página</option>
+                </select>
+                <div className="flex items-center">
+                  <Button
+                    fullWidth={false}
+                    onClick={() => setOffset(0)}
+                    loading={movLoading}
                   >
-                    {s.name || s.label || `#${s.id}`}
-                  </a>
-                ))}
+                    Recarregar
+                  </Button>
+                </div>
               </div>
-            ) : (
-              <div className="text-xs opacity-70">
-                Nenhum fornecedor vinculado.
-              </div>
-            )}
-          </section>
 
-          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3 rounded-md border border-[var(--color-border)]">
-              <div className="text-xs text-[var(--color-text-secondary)]">
-                Saldo
+              <div className="border border-[var(--color-border)] rounded-md overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-[var(--color-bg-secondary)]">
+                    <tr>
+                      <th className="p-2">Data</th>
+                      <th className="p-2">Tipo</th>
+                      <th className="p-2">Qtd</th>
+                      <th className="p-2">Valor Un.</th>
+                      <th className="p-2">Total</th>
+                      <th className="p-2">Doc</th>
+                      <th className="p-2">Obs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movs.map((m) => (
+                      <tr
+                        key={m.id}
+                        className="border-t border-[var(--color-border)]"
+                      >
+                        <td className="p-2">
+                          {formatDateTimeBR(m.data_movimento)}
+                        </td>
+                        <td className="p-2">{m.tipo}</td>
+                        <td className="p-2">{m.quantidade}</td>
+                        <td className="p-2">
+                          {m.valor_unitario != null
+                            ? formatBRL(m.valor_unitario)
+                            : "-"}
+                        </td>
+                        <td className="p-2">
+                          {m.valor_total != null ? formatBRL(m.valor_total) : "-"}
+                        </td>
+                        <td className="p-2">{m.documento || "-"}</td>
+                        <td className="p-2">{m.observacao || "-"}</td>
+                      </tr>
+                    ))}
+                    {!movs.length && (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="p-4 text-center text-[var(--color-text-secondary)]"
+                        >
+                          {movLoading
+                            ? "Carregando..."
+                            : "Nenhum movimento encontrado."}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-              <div className="text-lg font-semibold">
-                {loadingSaldos ? "…" : (saldos?.saldo ?? "-")}
-              </div>
-            </div>
-            <div className="p-3 rounded-md border border-[var(--color-border)]">
-              <div className="text-xs text-[var(--color-text-secondary)]">
-                Custo médio
-              </div>
-              <div className="text-lg font-semibold">
-                {loadingSaldos ? "…" : formatBRL(saldos?.custo_medio)}
-              </div>
-            </div>
-            <div className="p-3 rounded-md border border-[var(--color-border)]">
-              <div className="text-xs text-[var(--color-text-secondary)]">
-                Último custo
-              </div>
-              <div className="text-lg font-semibold">
-                {loadingSaldos ? "…" : formatBRL(saldos?.ultimo_custo)}
-              </div>
-            </div>
-          </section>
-
-          <div className="p-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] text-xs">
-            Movimentos de estoque são gerados automaticamente pelos Pedidos.
-            Este painel exibe saldos e histórico (somente leitura).
-          </div>
-
-          <section className="space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-              <select
-                className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-                value={tipo}
-                onChange={(e) => {
-                  setTipo(e.target.value);
-                  setOffset(0);
-                }}
-              >
-                <option value="">Tipo: Todos</option>
-                <option value="ENTRADA">ENTRADA</option>
-                <option value="SAIDA">SAÍDA</option>
-                <option value="AJUSTE">AJUSTE</option>
-              </select>
-              <input
-                type="date"
-                className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  setOffset(0);
-                }}
-              />
-              <input
-                type="date"
-                className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-                value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
-                  setOffset(0);
-                }}
-              />
-              <select
-                className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-                value={limit}
-                onChange={(e) => {
-                  setLimit(Number(e.target.value) || 10);
-                  setOffset(0);
-                }}
-              >
-                <option value={10}>10 por página</option>
-                <option value={20}>20 por página</option>
-              </select>
-              <div className="flex items-center">
+              <div className="flex justify-end">
                 <Button
                   fullWidth={false}
-                  onClick={() => setOffset(0)}
+                  onClick={() => setOffset((o) => o + limit)}
+                  disabled={!canLoadMore || movLoading}
                   loading={movLoading}
                 >
-                  Recarregar
+                  Carregar mais
                 </Button>
               </div>
-            </div>
-
-            <div className="border border-[var(--color-border)] rounded-md overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-[var(--color-bg-secondary)]">
-                  <tr>
-                    <th className="p-2">Data</th>
-                    <th className="p-2">Tipo</th>
-                    <th className="p-2">Qtd</th>
-                    <th className="p-2">Valor Un.</th>
-                    <th className="p-2">Total</th>
-                    <th className="p-2">Doc</th>
-                    <th className="p-2">Obs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {movs.map((m) => (
-                    <tr
-                      key={m.id}
-                      className="border-t border-[var(--color-border)]"
-                    >
-                      <td className="p-2">
-                        {formatDateTimeBR(m.data_movimento)}
-                      </td>
-                      <td className="p-2">{m.tipo}</td>
-                      <td className="p-2">{m.quantidade}</td>
-                      <td className="p-2">
-                        {m.valor_unitario != null
-                          ? formatBRL(m.valor_unitario)
-                          : "-"}
-                      </td>
-                      <td className="p-2">
-                        {m.valor_total != null ? formatBRL(m.valor_total) : "-"}
-                      </td>
-                      <td className="p-2">{m.documento || "-"}</td>
-                      <td className="p-2">{m.observacao || "-"}</td>
-                    </tr>
-                  ))}
-                  {!movs.length && (
-                    <tr>
-                      <td
-                        colSpan={7}
-                        className="p-4 text-center text-[var(--color-text-secondary)]"
-                      >
-                        {movLoading
-                          ? "Carregando..."
-                          : "Nenhum movimento encontrado."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex justify-end">
-              <Button
-                fullWidth={false}
-                onClick={() => setOffset((o) => o + limit)}
-                disabled={!canLoadMore || movLoading}
-                loading={movLoading}
-              >
-                Carregar mais
-              </Button>
-            </div>
-          </section>
-        </div>
-      )}
-    </Modal>
+            </section>
+          </div>
+        )}
+      </Modal>)
   );
 }
