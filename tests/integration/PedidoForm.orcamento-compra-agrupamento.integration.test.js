@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from 'contexts/ThemeContext';
 import { ToastProvider } from 'components/entities/shared/toast';
 import { PedidoForm } from 'components/PedidoForm';
@@ -33,7 +34,7 @@ function renderWithProviders(node) {
   );
 }
 
-test('agrupa itens por produto e aplica rateio proporcional de frete ao custo médio', async () => {
+test('agrupa itens, permite preço de venda e calcula lucro líquido descontando comissão vendedor (3%)', async () => {
   // Cenário: 3 itens, dois do produto 10 e um do produto 20
   // Produto 10: item A -> qtd 10 custo 5 => 50; item B -> qtd 20 custo 7 => 140; bruto total produto 10 = 190
   // Produto 20: qtd 5 custo 4 => 20
@@ -73,8 +74,21 @@ test('agrupa itens por produto e aplica rateio proporcional de frete ao custo m�
   expect(screen.getByTestId('orc-cm-20').textContent).toMatch(/R\$\s?4,80/);
   expect(screen.getByTestId('orc-ct-20').textContent).toMatch(/R\$\s?24,00/);
 
-  // Totais
-  expect(screen.getByTestId('orc-total-qtd').textContent).toBe('35');
-  expect(screen.getByTestId('orc-total-ct').textContent).toMatch(/R\$\s?252,00/);
-  expect(screen.getByTestId('orc-total-cm').textContent).toMatch(/R\$\s?7,20/);
+  // Inserir preços de venda (unitários) para calcular lucro:
+  // Produto 10: custo médio 7.60 -> pv 10 => lucro bruto = (10 - 7.60)*30 = 72.00
+  // Comissão (3% sobre preço de venda total): 10 * 30 * 0.03 = 9.00 => lucro líquido = 63.00
+  // Produto 20: custo médio 4.80 -> pv 9 => lucro bruto = (9 - 4.80)*5 = 21.00
+  // Comissão: 9 * 5 * 0.03 = 1.35 => lucro líquido = 19.65
+  // Lucro total = 82.65
+  const user = userEvent.setup();
+  const pv10 = screen.getByTestId('orc-pv-10');
+  const pv20 = screen.getByTestId('orc-pv-20');
+  await user.clear(pv10);
+  await user.type(pv10, '10');
+  await user.clear(pv20);
+  await user.type(pv20, '9');
+
+  expect(screen.getByTestId('orc-lucro-10').textContent).toMatch(/R\$\s?63,00/);
+  expect(screen.getByTestId('orc-lucro-20').textContent).toMatch(/R\$\s?19,65/);
+  expect(screen.getByTestId('orc-total-lucro').textContent).toMatch(/R\$\s?82,65/);
 });

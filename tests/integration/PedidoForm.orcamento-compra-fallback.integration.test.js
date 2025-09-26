@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from 'contexts/ThemeContext';
 import { ToastProvider } from 'components/entities/shared/toast';
 import { PedidoForm } from 'components/PedidoForm';
@@ -32,7 +33,7 @@ function renderWithProviders(node) {
   );
 }
 
-test('fallback utiliza preco - desconto quando custos não existem', async () => {
+test('fallback utiliza preco - desconto e calcula lucro líquido com comissão vendedor 3%', async () => {
   // Produto 1: qtd 10, preço 8, sem desconto -> bruto 80
   // Produto 2: qtd 5, preço 6, desconto 1 -> unit líquido 5 -> bruto 25
   // Total bruto = 105. Frete = 21.
@@ -67,7 +68,19 @@ test('fallback utiliza preco - desconto quando custos não existem', async () =>
   expect(screen.getByTestId('orc-ct-2').textContent).toMatch(/R\$\s?30,00/);
   expect(screen.getByTestId('orc-cm-2').textContent).toMatch(/R\$\s?6,00/);
 
-  expect(screen.getByTestId('orc-total-qtd').textContent).toBe('15');
-  expect(screen.getByTestId('orc-total-ct').textContent).toMatch(/R\$\s?126,00/);
-  expect(screen.getByTestId('orc-total-cm').textContent).toMatch(/R\$\s?8,40/);
+  // Inserir preços de venda:
+  // Produto 1: custo médio 9,60 -> pv 12 => lucro bruto = (12 - 9,60)*10 = 24,00
+  // Comissão: 12 * 10 * 0.03 = 3,60 => lucro líquido = 20,40
+  // Produto 2: custo médio 6,00 -> pv 11 => lucro bruto = (11 - 6,00)*5 = 25,00
+  // Comissão: 11 * 5 * 0.03 = 1,65 => lucro líquido = 23,35
+  // Lucro total = 43,75
+  const user = userEvent.setup();
+  const pv1 = screen.getByTestId('orc-pv-1');
+  const pv2 = screen.getByTestId('orc-pv-2');
+  await user.clear(pv1); await user.type(pv1, '12');
+  await user.clear(pv2); await user.type(pv2, '11');
+
+  expect(screen.getByTestId('orc-lucro-1').textContent).toMatch(/R\$\s?20,40/);
+  expect(screen.getByTestId('orc-lucro-2').textContent).toMatch(/R\$\s?23,35/);
+  expect(screen.getByTestId('orc-total-lucro').textContent).toMatch(/R\$\s?43,75/);
 });
