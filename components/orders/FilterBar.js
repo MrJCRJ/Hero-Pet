@@ -38,7 +38,7 @@ export default function FilterBar({ filters, onChange, onReload }) {
         <label className="block text-xs mb-1">Busca</label>
         <input
           className="w-full border rounded px-2 py-1"
-          placeholder="Parceiro ou documento"
+          placeholder="ID (#123), parceiro ou documento"
           value={filters.q}
           onChange={(e) => onChange({ ...filters, q: e.target.value })}
         />

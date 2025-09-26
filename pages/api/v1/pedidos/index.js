@@ -296,10 +296,24 @@ async function getPedidos(req, res) {
       clauses.push(`status = $${values.length}`);
     }
     if (q) {
-      values.push(`%${q}%`);
-      clauses.push(
-        `(partner_name ILIKE $${values.length} OR partner_document ILIKE $${values.length})`,
-      );
+      // Normaliza e tenta match de ID (#123 ou 123)
+      const m = String(q)
+        .trim()
+        .match(/^#?(\d+)$/);
+      if (m) {
+        const idNum = parseInt(m[1], 10);
+        if (Number.isFinite(idNum)) {
+          values.push(idNum);
+          clauses.push(`p.id = $${values.length}`);
+        }
+      } else {
+        // Busca textual por parceiro/documento
+        values.push(`%${q}%`);
+        const idx = values.length;
+        clauses.push(
+          `(p.partner_name ILIKE $${idx} OR p.partner_document ILIKE $${idx})`,
+        );
+      }
     }
     if (from) {
       values.push(from);
