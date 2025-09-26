@@ -72,6 +72,9 @@ export function PedidoForm(props) {
     editingOrder,
     freteTotal,
     setFreteTotal,
+    fifoAplicado,
+    migrarFifo,
+    setMigrarFifo,
   } = controller;
 
   return (
@@ -145,6 +148,9 @@ export function PedidoForm(props) {
       fetchSaldoService={fetchSaldoService}
       freteTotal={freteTotal}
       setFreteTotal={setFreteTotal}
+      fifoAplicado={fifoAplicado}
+      migrarFifo={migrarFifo}
+      setMigrarFifo={setMigrarFifo}
     />
   );
 }

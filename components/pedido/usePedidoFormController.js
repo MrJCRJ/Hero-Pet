@@ -20,6 +20,16 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   // Flags para controlar interferência do autogerador de cronograma
   // 1) Evita que a primeira execução sobrescreva o cronograma hidratado
   const skipNextAutoGenRef = React.useRef(false);
+  // FIFO legacy / migração
+  const [fifoAplicado, setFifoAplicado] = useState(() => {
+    if (editingOrder) {
+      if (typeof editingOrder.fifo_aplicado === "boolean")
+        return editingOrder.fifo_aplicado;
+      return true;
+    }
+    return true;
+  });
+  const [migrarFifo, setMigrarFifo] = useState(false);
   // 2) Marca que estamos editando e já hidratamos datas, para não sobrepor em execuções subsequentes
   const editingHydratedRef = React.useRef(
     Boolean(editingOrder?.promissorias && editingOrder.promissorias.length),
@@ -155,6 +165,8 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     setItens(itensFinais);
     setOriginalItens(mapped);
     setCreated({ id: editingOrder.id, status: editingOrder.status });
+    setFifoAplicado(Boolean(editingOrder.fifo_aplicado));
+    setMigrarFifo(false);
 
     // Hidratar frete_total ao editar (apenas armazena string; exibição/uso condicionado a tipo === "COMPRA")
     if (Object.prototype.hasOwnProperty.call(editingOrder, "frete_total")) {
@@ -416,6 +428,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
         ...(Object.prototype.hasOwnProperty.call(payloadBase, "frete_total")
           ? { frete_total: payloadBase.frete_total }
           : {}),
+        ...(migrarFifo ? { migrar_fifo: true } : {}),
       };
       return updateOrderService(editingOrder?.id ?? orderId, body);
     },
@@ -431,6 +444,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       numeroPromissorias,
       dataPrimeiraPromissoria,
       editingOrder?.id,
+      migrarFifo,
     ],
   );
 
@@ -613,5 +627,11 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     // Frete agregado apenas para COMPRA
     freteTotal,
     setFreteTotal,
+    // fifo legacy (exposto apenas uma vez)
+    fifoAplicado,
+    migrarFifo,
+    setMigrarFifo,
+    // expor pedido em edição para a view (usado para validar fifo_aplicado e mostrar aviso LEGACY)
+    editingOrder,
   };
 }

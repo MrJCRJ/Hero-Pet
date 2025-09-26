@@ -1,7 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
+import LineAreaChart from "components/common/LineAreaChart";
 import { formatBRL } from "components/common/format";
 import { Modal } from "components/common/Modal";
 import { formatYMDToBR } from "components/common/date";
+
+function truncateName(name, max = 18) {
+  if (!name) return "";
+  const str = String(name);
+  return str.length > max ? str.slice(0, max - 1) + "…" : str;
+}
 
 export default function OrdersDashboard({ month: monthProp }) {
   const [data, setData] = useState(null);
@@ -9,10 +16,34 @@ export default function OrdersDashboard({ month: monthProp }) {
   const [error, setError] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null); // string key
-  const [month, setMonth] = useState(() => monthProp || yyyyMM(new Date()));
+  const [month, setMonth] = useState(() => {
+    // Ordem de precedência: prop > localStorage > current month
+    if (monthProp) return monthProp;
+    if (typeof window !== "undefined") {
+      try {
+        const stored = window.localStorage.getItem("orders:month");
+        if (stored && /^\d{4}-\d{2}$/.test(stored)) return stored;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    return yyyyMM(new Date());
+  });
+
+  // Persiste sempre que mudar manualmente
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (month && /^\d{4}-\d{2}$/.test(month)) {
+        window.localStorage.setItem("orders:month", month);
+      }
+    } catch (_) {
+      /* noop */
+    }
+  }, [month]);
 
   useEffect(() => {
-    if (monthProp) setMonth(monthProp);
+    if (monthProp && /^\d{4}-\d{2}$/.test(monthProp)) setMonth(monthProp);
   }, [monthProp]);
 
   const label = useMemo(() => monthToLabel(month), [month]);
@@ -43,6 +74,32 @@ export default function OrdersDashboard({ month: monthProp }) {
       }
     }
     load();
+    // Dispatch inicial (montagem)
+    try {
+      const { from, to } = boundsFromYYYYMM(month) || {};
+      if (from && to) {
+        window.dispatchEvent(
+          new CustomEvent("orders:set-filters", {
+            detail: { from, to },
+          }),
+        );
+      }
+    } catch (_) {
+      // ignore
+    }
+    // Sincroniza filtros da lista principal com o mês (from/to)
+    try {
+      const { from, to } = boundsFromYYYYMM(month) || {};
+      if (from && to) {
+        window.dispatchEvent(
+          new CustomEvent("orders:set-filters", {
+            detail: { from, to },
+          }),
+        );
+      }
+    } catch (_) {
+      // noop
+    }
     return () => {
       mounted = false;
     };
@@ -103,8 +160,8 @@ export default function OrdersDashboard({ month: monthProp }) {
           }
           subtitle={
             m.vendasMesAnterior != null
-              ? `Receita anterior: ${formatBRL(m.vendasMesAnterior)}`
-              : undefined
+              ? `Receita: ${formatBRL(m.vendasMes)} · Receita anterior: ${formatBRL(m.vendasMesAnterior)}`
+              : `Receita: ${formatBRL(m.vendasMes)}`
           }
           onClick={() => setSelectedCard("crescimento_mom")}
         />
@@ -115,20 +172,9 @@ export default function OrdersDashboard({ month: monthProp }) {
           onClick={() => setSelectedCard("lucro_bruto")}
         />
         <Card
-          title="Vendas do mês"
-          value={formatBRL(m.vendasMes)}
-          onClick={() => setSelectedCard("vendasMes")}
-        />
-        <Card
           title="Compras do mês"
           value={formatBRL(m.comprasMes)}
           onClick={() => setSelectedCard("comprasMes")}
-        />
-        <Card
-          title="Promissórias pagas (mês)"
-          value={`${m.promissorias.mesAtual.pagos.count} itens`}
-          subtitle={formatBRL(m.promissorias.mesAtual.pagos.valor)}
-          onClick={() => setSelectedCard("promissorias_pagas")}
         />
         <Card
           title="Promissórias pendentes (mês)"
@@ -175,11 +221,6 @@ export default function OrdersDashboard({ month: monthProp }) {
               eixos principais: emissão de pedidos e vencimento de promissórias.
             </p>
             <ul className="list-disc pl-5 space-y-1">
-              <li>
-                <strong>Vendas do mês</strong>: soma de total_liquido +
-                frete_total dos pedidos com tipo &quot;VENDA&quot; cuja{" "}
-                <em>data_emissao</em> está dentro do mês selecionado.
-              </li>
               <li>
                 <strong>Compras do mês</strong>: soma de total_liquido +
                 frete_total dos pedidos com tipo &quot;COMPRA&quot; cuja{" "}
@@ -238,11 +279,9 @@ function monthToLabel(yyyyDashMM) {
 
 function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
   const titleMap = {
-    vendasMes: "Vendas do mês",
     comprasMes: "Compras do mês",
     crescimento_mom: "Crescimento (mês vs. anterior)",
     lucro_bruto: "Lucro bruto",
-    promissorias_pagas: "Promissórias pagas (mês)",
     promissorias_pendentes: "Promissórias pendentes (mês)",
     promissorias_atrasadas: "Promissórias atrasadas (mês)",
     proximo_mes: "Vão para o próximo mês",
@@ -261,16 +300,6 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
 
   const content = (() => {
     switch (cardKey) {
-      case "vendasMes":
-        return (
-          <PedidosListByMonth
-            monthLabel={monthLabel}
-            monthStr={monthStr}
-            tipo="VENDA"
-            total={data.vendasMes}
-            onSelect={onSelect}
-          />
-        );
       case "comprasMes":
         return (
           <PedidosListByMonth
@@ -285,18 +314,6 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
         return <LucroBrutoDetails monthLabel={monthLabel} data={data} />;
       case "crescimento_mom":
         return <CrescimentoMoMDetails monthLabel={monthLabel} data={data} />;
-      case "promissorias_pagas":
-        return (
-          <PromissoriasList
-            title="Promissórias pagas"
-            monthLabel={monthLabel}
-            monthStr={monthStr}
-            status="pagas"
-            expectedCount={data.promissorias.mesAtual.pagos.count}
-            expectedAmount={data.promissorias.mesAtual.pagos.valor}
-            onSelect={onSelect}
-          />
-        );
       case "promissorias_pendentes":
         return (
           <PromissoriasList
@@ -411,7 +428,6 @@ function PromissoriasList({
                 <th className="text-left px-2 py-1">Tipo</th>
                 <th className="text-left px-2 py-1">Vencimento</th>
                 <th className="text-right px-2 py-1">Valor</th>
-                <th className="text-left px-2 py-1">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -432,18 +448,19 @@ function PromissoriasList({
                   <td className="px-2 py-1">
                     #{r.pedido_id} — #{r.seq}
                   </td>
-                  <td className="px-2 py-1">{r.partner_name}</td>
+                  <td className="px-2 py-1" title={r.partner_name}>
+                    {truncateName(r.partner_name)}
+                  </td>
                   <td className="px-2 py-1">{r.tipo}</td>
                   <td className="px-2 py-1">{formatYMDToBR(r.due_date)}</td>
                   <td className="px-2 py-1 text-right">
                     {formatBRL(r.amount)}
                   </td>
-                  <td className="px-2 py-1">{r.status}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td className="px-2 py-4 text-center opacity-70" colSpan={6}>
+                  <td className="px-2 py-4 text-center opacity-70" colSpan={5}>
                     Nenhum item encontrado
                   </td>
                 </tr>
@@ -532,7 +549,9 @@ function PedidosListByMonth({ monthLabel, monthStr, tipo, total, onSelect }) {
                 }
               >
                 <td className="px-2 py-1">#{r.id}</td>
-                <td className="px-2 py-1">{r.partner_name}</td>
+                <td className="px-2 py-1" title={r.partner_name}>
+                  {truncateName(r.partner_name)}
+                </td>
                 <td className="px-2 py-1">{formatYMDToBR(r.data_emissao)}</td>
                 <td className="px-2 py-1 text-right">
                   {formatBRL(
@@ -561,66 +580,222 @@ function PedidosListByMonth({ monthLabel, monthStr, tipo, total, onSelect }) {
   );
 }
 
-function LucroBrutoDetails({ monthLabel, data }) {
-  const receita = Number(data.vendasMes || 0);
-  const cogs = Number(data.cogsReal || 0);
-  const lucro = Number(data.lucroBrutoMes || 0);
-  const margem = Number(data.margemBrutaPerc || 0);
-  return (
-    <div className="space-y-3 text-sm">
-      <p className="font-medium">Apuração de {monthLabel}</p>
-      <div className="border rounded divide-y">
-        <Row label="Receita (vendas do mês)" value={formatBRL(receita)} />
-        <Row label="COGS (custo das vendas)" value={formatBRL(cogs)} />
-        <Row label="Lucro bruto" value={formatBRL(lucro)} />
-        <Row label="Margem bruta" value={`${margem.toFixed(2)}%`} />
-      </div>
-      <div className="text-xs opacity-70">
-        Como calculamos: a receita soma total_liquido + frete_total dos pedidos
-        de VENDA no mês. O COGS é a soma do custo total persistido em cada item
-        de venda no momento da emissão (custo médio vigente até a data da
-        venda). Assim, a margem reflete o custo histórico por pedido, sem
-        estimativas.
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value }) {
-  return (
-    <div className="flex items-center justify-between px-3 py-2">
-      <div>{label}</div>
-      <div className="font-medium">{value}</div>
-    </div>
-  );
-}
-
-function CrescimentoMoMDetails({ monthLabel, data }) {
+function LucroBrutoDetails({ data }) {
+  // Usamos growthHistory de receita e derivamos lucro estimado histórico.
+  // Temos somente o COGS consolidado do mês atual no summary, logo para meses anteriores
+  // usamos a margem atual como aproximação (melhor do que nada) — se desejado, backend
+  // pode futuramente retornar lucroHistory/margemHistory real.
   const receitaAtual = Number(data.vendasMes || 0);
-  const receitaAnterior =
-    data.vendasMesAnterior != null ? Number(data.vendasMesAnterior || 0) : null;
-  const mom =
-    data.crescimentoMoMPerc == null
-      ? null
-      : Number(data.crescimentoMoMPerc || 0);
+  const lucroAtual = Number(data.lucroBrutoMes || 0);
+  const margemAtualPerc =
+    receitaAtual > 0 ? (lucroAtual / receitaAtual) * 100 : 0;
+  const history = Array.isArray(data.growthHistory) ? data.growthHistory : [];
+  const chartData = history.map((h) => {
+    const vendas = Number(h.vendas || 0);
+    // lucro estimado para meses históricos (aprox) usando margem atual se não disponível
+    const lucro = vendas * (margemAtualPerc / 100);
+    return { label: h.month, value: Number(lucro.toFixed(2)), receita: vendas };
+  });
+  const [hovered, setHovered] = React.useState(null);
+  const [selected, setSelected] = React.useState(null);
+  const firstVal = chartData.length ? chartData[0].value : 0;
+  const lastPoint = chartData[chartData.length - 1] || null;
+  const active = selected || hovered || lastPoint;
+  const acumuladaPct =
+    active && firstVal !== 0 ? ((active.value - firstVal) / firstVal) * 100 : 0;
+  const prevPoint =
+    active && chartData.length > 1
+      ? (() => {
+          const idx = chartData.findIndex((p) => p.label === active.label);
+          if (idx > 0) return chartData[idx - 1];
+          return null;
+        })()
+      : null;
+  const momPct =
+    prevPoint && prevPoint.value !== 0
+      ? ((active.value - prevPoint.value) / prevPoint.value) * 100
+      : 0;
+  function formatMoney(v) {
+    return Number(v || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+    });
+  }
   return (
-    <div className="space-y-3 text-sm">
-      <p className="font-medium">Comparativo de {monthLabel}</p>
-      <div className="border rounded divide-y">
-        <Row label="Vendas do mês" value={formatBRL(receitaAtual)} />
-        <Row
-          label="Vendas do mês anterior"
-          value={receitaAnterior == null ? "—" : formatBRL(receitaAnterior)}
-        />
-        <Row
-          label="Crescimento (MoM)"
-          value={mom == null ? "—" : `${mom.toFixed(2)}%`}
-        />
+    <div className="flex flex-col gap-4 text-sm">
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex-1 min-w-[360px]">
+          <LineAreaChart
+            data={chartData}
+            showArea
+            disableTooltip
+            enableCrosshair
+            onHover={(pt) => setHovered(pt)}
+            onSelectPoint={(pt) =>
+              setSelected((p) => (p && p.label === pt.label ? null : pt))
+            }
+            selectedLabel={selected?.label}
+          />
+        </div>
+        <div className="w-full md:w-64 flex flex-col gap-3 text-xs border rounded p-3 bg-[var(--color-bg-secondary)]">
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Mês
+            </div>
+            <div className="text-sm font-semibold">{active?.label || "—"}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Lucro Bruto
+            </div>
+            <div className="text-sm font-semibold">
+              {active ? formatMoney(active.value) : "—"}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Receita
+            </div>
+            <div className="text-sm font-semibold">
+              {active ? formatMoney(active.receita) : "—"}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Margem
+            </div>
+            <div className="text-sm font-semibold">
+              {active && active.receita > 0
+                ? `${((active.value / active.receita) * 100).toFixed(1)}%`
+                : "—"}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Var. Mês→Mês
+            </div>
+            <div
+              className={`text-sm font-semibold ${!prevPoint ? "opacity-50" : momPct > 0 ? "text-green-500" : momPct < 0 ? "text-red-400" : ""}`}
+            >
+              {!prevPoint
+                ? "—"
+                : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Var. Acumulada
+            </div>
+            <div
+              className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
+            >
+              {active
+                ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%`
+                : "—"}
+            </div>
+          </div>
+          <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
+            Passe o mouse ou clique para fixar. Série histórica estimada usando
+            a margem atual.
+          </div>
+        </div>
       </div>
       <div className="text-xs opacity-70">
-        Como calculamos: comparamos a receita do mês selecionado com a do mês
-        imediatamente anterior, usando a mesma definição de receita
-        (total_liquido + frete_total dos pedidos de VENDA por data de emissão).
+        Lucro bruto = Receita (total_liquido + frete_total) - COGS reconhecido.
+        Série histórica estimada se não houver custos passados.
+      </div>
+    </div>
+  );
+}
+
+// Row removido após adoção de layout gráfico para lucro bruto
+
+function CrescimentoMoMDetails({ data }) {
+  const history = Array.isArray(data.growthHistory) ? data.growthHistory : [];
+  const chartData = history
+    .filter((h) => h && h.month)
+    .map((h) => ({
+      label: h.month,
+      value: Number(h.vendas || 0),
+      crescimento: h.crescimento,
+    }));
+  const [hovered, setHovered] = React.useState(null);
+  const [selected, setSelected] = React.useState(null);
+  const firstVal = chartData.length ? chartData[0].value : 0;
+  const fallbackPoint = chartData[chartData.length - 1] || null;
+  const active = selected || hovered || fallbackPoint;
+  const acumuladaPct =
+    active && firstVal !== 0 ? ((active.value - firstVal) / firstVal) * 100 : 0;
+  function formatMoney(v) {
+    return Number(v || 0).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  return (
+    <div className="flex flex-col gap-4 text-sm">
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex-1 min-w-[360px]">
+          <LineAreaChart
+            data={chartData}
+            showArea
+            disableTooltip
+            onHover={(pt) => setHovered(pt)}
+            enableCrosshair
+            onSelectPoint={(pt) =>
+              setSelected((p) => (p && p.label === pt.label ? null : pt))
+            }
+            selectedLabel={selected?.label}
+          />
+        </div>
+        <div className="w-full md:w-56 flex flex-col gap-3 text-xs border rounded p-3 bg-[var(--color-bg-secondary)]">
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Mês
+            </div>
+            <div className="text-sm font-semibold">{active?.label || "—"}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Vendas
+            </div>
+            <div className="text-sm font-semibold">
+              {active ? formatMoney(active.value) : "—"}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              MoM
+            </div>
+            <div
+              className={`text-sm font-semibold ${active?.crescimento == null ? "opacity-50" : active.crescimento > 0 ? "text-green-500" : active.crescimento < 0 ? "text-red-400" : ""}`}
+            >
+              {active?.crescimento == null
+                ? "—"
+                : `${active.crescimento > 0 ? "+" : ""}${Number(active.crescimento).toFixed(2)}%`}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Acumulado
+            </div>
+            <div
+              className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
+            >
+              {active
+                ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%`
+                : "—"}
+            </div>
+          </div>
+          <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
+            Passe o mouse ou clique para fixar. Clique novamente para desfazer.
+          </div>
+        </div>
+      </div>
+      <div className="text-xs opacity-70">
+        Crescimento calculado sobre receita mensal (total_liquido + frete_total)
+        de pedidos de VENDA por data de emissão.
       </div>
     </div>
   );

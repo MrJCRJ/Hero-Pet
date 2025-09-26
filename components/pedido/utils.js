@@ -20,12 +20,19 @@ export function mapEditingOrderToItems(editingOrder) {
   if (!editingOrder || !Array.isArray(editingOrder.itens)) return [];
   return editingOrder.itens.map((it) => ({
     produto_id: String(it.produto_id),
-    produto_label: it.produto_nome || "",
+    produto_label: it.produto_nome || it.produto_label || "",
     quantidade: String(it.quantidade),
     preco_unitario: it.preco_unitario != null ? String(it.preco_unitario) : "",
     desconto_unitario:
       it.desconto_unitario != null ? String(it.desconto_unitario) : "",
     produto_saldo: null,
+    // Preserva custos se fornecidos (para testes ou reedição com custos calculados)
+    ...(it.custo_fifo_unitario != null
+      ? { custo_fifo_unitario: it.custo_fifo_unitario }
+      : {}),
+    ...(it.custo_base_unitario != null
+      ? { custo_base_unitario: it.custo_base_unitario }
+      : {}),
   }));
 }
 

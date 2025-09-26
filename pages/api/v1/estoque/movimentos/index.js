@@ -1,6 +1,7 @@
 // pages/api/v1/estoque/movimentos/index.js
 import database from "infra/database";
 import { isConnectionError, isRelationMissing } from "lib/errors";
+import { consumirFIFO, aplicarConsumosFIFO } from "lib/fifo";
 
 export default async function handler(req, res) {
   if (req.method === "GET") return listMovimentos(req, res);
@@ -44,6 +45,157 @@ export default async function handler(req, res) {
       valor_total = quantidade * Number(b.valor_unitario || 0) + frete + outras;
     }
 
+    // Feature flag FIFO: se ativo e for ENTRADA, garante criação de lote correspondente
+    // FIFO flag pode vir do ambiente (deploy) ou override por header/body para facilitar TDD/integração
+    const fifoEnv = String(process.env.FIFO_ENABLED || "").trim() === "1";
+    const fifoHeader =
+      String(req.headers["x-fifo-enabled"] || "").trim() === "1";
+    const fifoBody =
+      b.fifo_enabled === true || b.fifo_enabled === 1 || b.fifo_enabled === "1";
+    const fifoEnabled = fifoEnv || fifoHeader || fifoBody;
+
+    // Caso FIFO habilitado para ENTRADA, precisamos de transação manual para inserir movimento + lote atomicamente
+    if (fifoEnabled && tipo === "ENTRADA") {
+      let client;
+      try {
+        client = await database.getClient();
+        await client.query("BEGIN");
+        const insertMov = await client.query({
+          text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, origem_tipo)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                 RETURNING id, produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, data_movimento`,
+          values: [
+            produtoId,
+            tipo,
+            quantidade,
+            valor_unitario,
+            frete,
+            outras,
+            valor_total,
+            b.documento || null,
+            b.observacao || null,
+            "ENTRADA",
+          ],
+        });
+        const mov = insertMov.rows[0];
+        // custo_unitário do lote deve refletir (valor_total / quantidade)
+        const custoUnitarioLote = quantidade > 0 ? valor_total / quantidade : 0;
+        await client.query({
+          text: `INSERT INTO estoque_lote (produto_id, quantidade_inicial, quantidade_disponivel, custo_unitario, valor_total, origem_tipo, origem_movimento_id, documento, observacao)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          values: [
+            produtoId,
+            quantidade,
+            quantidade,
+            custoUnitarioLote,
+            valor_total,
+            "ENTRADA",
+            mov.id,
+            b.documento || null,
+            b.observacao || null,
+          ],
+        });
+        await client.query("COMMIT");
+        try {
+          await client.end();
+        } catch (_) {
+          /* noop */
+        }
+        return res.status(201).json(mov);
+      } catch (err) {
+        if (err) console.error("FIFO ENTRADA error", err);
+        if (client) {
+          try {
+            await client.query("ROLLBACK");
+          } catch (_) {
+            /* noop */
+          }
+          try {
+            await client.end();
+          } catch (_) {
+            /* noop */
+          }
+        }
+        // fallback para erro genérico (mantendo padrão de tratamento abaixo)
+        throw err;
+      }
+    }
+
+    // FIFO SAIDA: consumir lotes mais antigos (quantidade_disponivel > 0) até satisfazer quantidade
+    if (fifoEnabled && tipo === "SAIDA") {
+      let client;
+      try {
+        client = await database.getClient();
+        await client.query("BEGIN");
+        let consumo;
+        try {
+          consumo = await consumirFIFO({ client, produtoId, quantidade });
+        } catch (err) {
+          if (err.code === "ESTOQUE_INSUFICIENTE") {
+            await client.query("ROLLBACK");
+            try {
+              await client.end();
+            } catch (_) {
+              /* noop */
+            }
+            return res
+              .status(400)
+              .json({ error: "Estoque insuficiente para SAIDA FIFO" });
+          }
+          throw err;
+        }
+        const insertMov = await client.query({
+          text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, origem_tipo, custo_unitario_rec, custo_total_rec)
+                 VALUES ($1,$2,$3,NULL,0,0,NULL,$4,$5,$6,$7,$8)
+                 RETURNING id, produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, data_movimento, custo_unitario_rec, custo_total_rec`,
+          values: [
+            produtoId,
+            tipo,
+            quantidade,
+            b.documento || null,
+            b.observacao || null,
+            "SAIDA",
+            consumo.custo_unitario_medio,
+            consumo.custo_total,
+          ],
+        });
+        const mov = insertMov.rows[0];
+        await aplicarConsumosFIFO({
+          client,
+          movimentoId: mov.id,
+          consumos: consumo.consumos.map((c) => ({
+            lote_id: c.lote_id,
+            quantidade: c.quantidade,
+            custo_unitario: c.custo_unitario,
+            custo_total: c.custo_total,
+          })),
+        });
+        await client.query("COMMIT");
+        try {
+          await client.end();
+        } catch (_) {
+          /* noop */
+        }
+        return res.status(201).json(mov);
+      } catch (err) {
+        if (client) {
+          try {
+            await client.query("ROLLBACK");
+          } catch (_) {
+            /* noop */
+          }
+          try {
+            await client.end();
+          } catch (_) {
+            /* noop */
+          }
+        }
+        console.error("FIFO SAIDA error", err);
+        throw err;
+      }
+    }
+
+    // Fluxo legado (ou FIFO desabilitado / tipos SAIDA|AJUSTE por enquanto)
     const insert = {
       text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)

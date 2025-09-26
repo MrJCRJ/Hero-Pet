@@ -139,22 +139,86 @@ MIT
 
 ## Seed de Demonstração
 
-Para popular dados rapidamente e facilitar a análise da aplicação, há um seed de demo:
+Script: `scripts/seed-demo-data.js` (comando `npm run seed:demo`). Ele cria fornecedores, clientes, produtos, pedidos de COMPRA (gerando lotes FIFO) e pedidos de VENDA (consumindo FIFO) usando SOMENTE a API HTTP (respeita validações e lógica de custo).
 
-1. Inicie o servidor: `npm run dev`
-2. Em outro terminal, rode: `npm run seed:demo`
+### Uso Básico
 
-O seed cria:
+1. Suba o servidor em outro terminal:
 
-- 1 fornecedor (PJ) e 2 clientes (PF)
-- 3 produtos
-- 1 pedido de COMPRA confirmado (abastece estoque)
-- 1 pedido de VENDA confirmado
-- 1 pedido de VENDA em rascunho
+```bash
+npm run dev
+```
 
-Configuração opcional:
+2. Execute o seed (valores default razoáveis):
 
-- `SEED_BASE_URL`: URL base da API (padrão `http://localhost:3000`). Ex.: `SEED_BASE_URL=http://127.0.0.1:3000 npm run seed:demo`
+```bash
+npm run seed:demo
+```
+
+### Parâmetros (CLI)
+
+Todos opcionais; padrão entre parênteses.
+
+```
+--clientes N        (15)
+--fornecedores N    (5)
+--produtos N        (25)
+--compras N         (20)  # pedidos tipo COMPRA
+--vendas N          (40)  # pedidos tipo VENDA
+--host URL          (http://localhost:3000) ou env SEED_BASE_URL
+--seed NUM          (torna pseudo-determinístico)
+--no-wait           (não aguarda readiness /api/v1/status)
+--months N          (distribui data_emissao de compras/vendas ao longo dos últimos N meses)
+```
+
+Exemplo customizado enxuto:
+
+```bash
+node scripts/seed-demo-data.js --clientes 4 --fornecedores 2 --produtos 8 --compras 5 --vendas 10 --seed 42
+```
+
+Ou via npm script (aceita flags após `--`):
+
+```bash
+npm run seed:demo -- --produtos 10 --compras 5 --vendas 12
+```
+
+### Variáveis de Ambiente
+
+- `SEED_BASE_URL` substitui `--host` se definido.
+
+### Estratégia Interna
+
+Ordem: Fornecedores (PJ) -> Clientes (PF) -> Produtos -> Pedidos COMPRA -> Pedidos VENDA.
+
+Quando `--months N` (N > 1):
+
+- Cada pedido recebe `data_emissao` retroativa distribuída linearmente do mês atual até N-1 meses atrás.
+- Dia dentro do mês escolhido aleatoriamente (1..28) para evitar meses curtos.
+- Permite gerar histórico para endpoint `/api/v1/produtos/:id/custos_historicos` mostrar linha de custo em múltiplos meses.
+
+Cada compra seleciona 1–3 produtos com quantidades e custos aleatórios (gera lotes FIFO). Vendas consomem quantidades moderadas (1–8) para evitar estoque negativo.
+
+### Readiness
+
+O script aguarda `/api/v1/status` responder antes de iniciar (timeout ~30s). Use `--no-wait` para pular (útil se já tem certeza que o servidor está pronto ou em ambientes especiais).
+
+### Reprodutibilidade
+
+Passe `--seed 123` para repetir a mesma sequência pseudo-randômica (útil em debugging/perf tuning).
+
+### Logs e Warnings
+
+- `[WARN]`: status inesperado em POST (segue sem abortar aquele recurso).
+- `[ERRO]`: falha de rede/fetch (pode indicar servidor indisponível ou CORS se host remoto incorreto).
+
+### Próximas Ideias (não implementado ainda)
+
+- Flag `--dry-run` para apenas simular.
+- Export JSON com IDs criados.
+- Geração de pedidos parcelados e NF falsa para testar relatórios futuros.
+
+Pull requests são bem-vindos se quiser expandir.
 
 ## Migrações: Auto-apply e Runbook
 

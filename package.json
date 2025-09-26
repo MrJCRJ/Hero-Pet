@@ -23,7 +23,7 @@
     "migration:up": "node-pg-migrate -m infra/migrations --envPath .env.development up",
     "wait-for-postgres": "node infra/scripts/wait-for-postgres.js",
     "import:orders": "node scripts/import-orders.js",
-    "seed:demo": "node scripts/seed-demo.js"
+    "seed:demo": "node scripts/seed-demo-data.js"
   },
   "author": "",
   "license": "MIT",

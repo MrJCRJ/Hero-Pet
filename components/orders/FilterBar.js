@@ -16,24 +16,6 @@ export default function FilterBar({ filters, onChange, onReload }) {
           <option value="COMPRA">COMPRA</option>
         </select>
       </div>
-      <div>
-        <label className="block text-xs mb-1">Emissão (De)</label>
-        <input
-          type="date"
-          className="border rounded px-2 py-1"
-          value={filters.from || ""}
-          onChange={(e) => onChange({ ...filters, from: e.target.value })}
-        />
-      </div>
-      <div>
-        <label className="block text-xs mb-1">Emissão (Até)</label>
-        <input
-          type="date"
-          className="border rounded px-2 py-1"
-          value={filters.to || ""}
-          onChange={(e) => onChange({ ...filters, to: e.target.value })}
-        />
-      </div>
       <div className="flex-1 min-w-[200px]">
         <label className="block text-xs mb-1">Busca</label>
         <input
