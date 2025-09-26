@@ -55,3 +55,15 @@ export function computeItemTotal(it) {
   const total = (preco - desc) * qtd;
   return Number.isFinite(total) ? total : null;
 }
+
+/**
+ * Formata quantidade em pt-BR com até 3 casas decimais, sem zeros desnecessários
+ * Mantém string vazia quando input também é vazio/indefinido, e retorna o valor original
+ * quando não é número válido.
+ */
+export function formatQty(value) {
+  if (value === "" || value == null) return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value ?? "");
+  return n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+}

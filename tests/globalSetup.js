@@ -1,33 +1,78 @@
 const axios = require("axios");
 const next = require("next");
 const http = require("http");
+const net = require("net");
 
 module.exports = async () => {
   const statusUrl = "http://localhost:3000/api/v1/status";
   const migrateUrl = "http://localhost:3000/api/v1/migrations";
-  try {
-    await axios.get(statusUrl, { timeout: 1200 });
-    console.log(
-      "[globalSetup] Reutilizando servidor Next existente na porta 3000",
-    );
-    // Garante que as migrações estejam aplicadas mesmo reutilizando servidor
+
+  // 1) Probe: se a porta 3000 estiver ocupada, tentamos reutilizar
+  const portInUse = await new Promise((resolve) => {
+    const tester = net
+      .createServer()
+      .once("error", (err) => {
+        if (err && (err.code === "EADDRINUSE" || err.code === "EACCES")) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      })
+      .once("listening", () => {
+        tester.close(() => resolve(false));
+      })
+      .listen(3000);
+  });
+
+  if (portInUse) {
     try {
-      const res = await axios.post(migrateUrl, {}, { timeout: 8000 });
+      await axios.get(statusUrl, { timeout: 1500 });
       console.log(
-        "[globalSetup] Migrações aplicadas (reutilizado)",
-        res.status,
+        "[globalSetup] Porta 3000 em uso — reutilizando servidor Next existente",
       );
-    } catch (e) {
+      try {
+        const res = await axios.post(migrateUrl, {}, { timeout: 8000 });
+        console.log(
+          "[globalSetup] Migrações aplicadas (reutilizado)",
+          res.status,
+        );
+      } catch (e) {
+        console.log(
+          "[globalSetup] Aviso: falha ao aplicar migrações (reutilizado):",
+          e?.response?.status || e.message,
+        );
+      }
+      return;
+    } catch (_) {
       console.log(
-        "[globalSetup] Aviso: falha ao aplicar migrações (reutilizado):",
-        e?.response?.status || e.message,
+        "[globalSetup] Porta 3000 ocupada mas /status indisponível — seguindo para iniciar Next",
       );
     }
-    return;
-  } catch (err) {
-    console.log(
-      "[globalSetup] Nenhum servidor detectado; iniciando instância de teste...",
-    );
+  } else {
+    // Checagem http direta pode ser mais rápida quando servidor já está pronto
+    try {
+      await axios.get(statusUrl, { timeout: 1200 });
+      console.log(
+        "[globalSetup] Reutilizando servidor Next existente na porta 3000",
+      );
+      try {
+        const res = await axios.post(migrateUrl, {}, { timeout: 8000 });
+        console.log(
+          "[globalSetup] Migrações aplicadas (reutilizado)",
+          res.status,
+        );
+      } catch (e) {
+        console.log(
+          "[globalSetup] Aviso: falha ao aplicar migrações (reutilizado):",
+          e?.response?.status || e.message,
+        );
+      }
+      return;
+    } catch (_) {
+      console.log(
+        "[globalSetup] Nenhum servidor detectado; iniciando instância de teste...",
+      );
+    }
   }
 
   const dev = true;
@@ -36,7 +81,19 @@ module.exports = async () => {
   const handle = app.getRequestHandler();
 
   const server = http.createServer((req, res) => handle(req, res));
-  await new Promise((resolve) => server.listen(3000, resolve));
+  await new Promise((resolve, reject) => {
+    server.on("error", (err) => {
+      if (err && err.code === "EADDRINUSE") {
+        console.log(
+          "[globalSetup] Detected EADDRINUSE during listen — assumindo servidor externo e reutilizando",
+        );
+        resolve();
+      } else {
+        reject(err);
+      }
+    });
+    server.listen(3000, resolve);
+  });
 
   global.__NEXT_TEST_SERVER__ = server;
   global.__NEXT_TEST_APP__ = app; // para fechar watchers no teardown

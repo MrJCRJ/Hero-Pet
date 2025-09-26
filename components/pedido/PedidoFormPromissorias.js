@@ -1,5 +1,7 @@
 import React from "react";
+import { formatYMDToBR } from "components/common/date";
 import { FormField } from "../ui/Form";
+import { formatBRL } from "components/common/format";
 
 export function PedidoFormPromissorias({
   numeroPromissorias,
@@ -197,7 +199,7 @@ export function PedidoFormPromissorias({
           <div className="text-sm">
             <span className="font-medium">Valor por Promissória: </span>
             <span className="text-green-600 font-semibold">
-              R$ {valorPorPromissoria.toFixed(2)}
+              {formatBRL(Number(valorPorPromissoria))}
             </span>
           </div>
         )}
@@ -306,9 +308,7 @@ export function PedidoFormPromissorias({
                         </span>
                       )}
                   </div>
-                  <span className="font-mono">
-                    {new Date(data + "T00:00:00").toLocaleDateString("pt-BR")}
-                  </span>
+                  <span className="font-mono">{formatYMDToBR(data)}</span>
                 </div>
               ))}
             </div>

@@ -180,6 +180,20 @@
       ],
       "isBackground": false,
       "group": "test"
+    },
+    {
+      "label": "Run UI integration test for Products",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test",
+        "--",
+        "tests/integration/Products.smoke.integration.test.js",
+        "--runInBand",
+        "--verbose"
+      ],
+      "isBackground": false,
+      "group": "test"
     }
   ]
 }

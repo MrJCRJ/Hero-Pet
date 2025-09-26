@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { formatBRL } from "components/common/format";
 import { Button } from "components/ui/Button";
 import { SelectionModal } from "components/common/SelectionModal";
 
@@ -142,10 +143,10 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
               title="Exibimos o Preço Tabela cadastrado; se ausente, usamos custo médio/último custo × markup (fallback 30%). Os custos já incluem frete quando existente."
             >
               {precoTabela !== "" ? (
-                `R$ ${Number(precoTabela).toFixed(2)}`
+                formatBRL(Number(precoTabela))
               ) : suggestedPreco != null ? (
                 <span>
-                  {`R$ ${Number(suggestedPreco).toFixed(2)}`}
+                  {formatBRL(Number(suggestedPreco))}
                   {suggestedOrigin && (
                     <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                       (
