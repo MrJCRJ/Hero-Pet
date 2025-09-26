@@ -36,12 +36,9 @@ export default async function handler(req, res) {
     ]);
     const kind = typeof status === "string" ? status.toLowerCase() : "";
     if (!allowed.has(kind)) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "status inválido (use: pagas|pendentes|atrasadas|proximo|carry)",
-        });
+      return res.status(400).json({
+        error: "status inválido (use: pagas|pendentes|atrasadas|proximo|carry)",
+      });
     }
 
     const clauses = [];
