@@ -13,9 +13,21 @@ export function PedidoFormOrcamentoCompra({ itens, freteTotal }) {
       if (!Number.isFinite(pid)) continue;
       const qtd = Number(it.quantidade || 0);
       if (!(qtd > 0)) continue;
-      const custoUnit = Number(
-        it.custo_fifo_unitario != null ? it.custo_fifo_unitario : it.custo_base_unitario,
-      );
+      // Prioridade de custo:
+      // 1) custo_fifo_unitario
+      // 2) custo_base_unitario
+      // 3) preco_unitario - desconto_unitario (fallback quando ainda não há custos carregados)
+      let custoUnit = null;
+      if (it.custo_fifo_unitario != null && Number(it.custo_fifo_unitario) > 0) {
+        custoUnit = Number(it.custo_fifo_unitario);
+      } else if (it.custo_base_unitario != null && Number(it.custo_base_unitario) > 0) {
+        custoUnit = Number(it.custo_base_unitario);
+      } else {
+        const preco = Number(it.preco_unitario || 0);
+        const desc = Number(it.desconto_unitario || 0);
+        const fallback = preco - desc;
+        if (Number.isFinite(fallback) && fallback > 0) custoUnit = fallback;
+      }
       if (!(Number.isFinite(custoUnit) && custoUnit > 0)) continue;
       const prev = map.get(pid) || { produto_id: pid, label: it.produto_label || `#${pid}`, qtd: 0, custoBruto: 0 };
       prev.qtd += qtd;
