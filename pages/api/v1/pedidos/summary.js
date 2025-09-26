@@ -30,7 +30,8 @@ export default async function handler(req, res) {
       const [y, m] = month.split("-").map(Number);
       refDate = new Date(y, m - 1, 1);
     }
-    const { startYMD, nextStartYMD, label } = monthBounds(refDate);
+    const { startYMD, nextStartYMD, prevStartYMD, label } =
+      monthBounds(refDate);
 
     // Totais do mês (por data_emissao)
     const vendasQ = await database.query({
@@ -43,6 +44,23 @@ export default async function handler(req, res) {
       text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
              FROM pedidos
              WHERE tipo = 'COMPRA' AND data_emissao >= $1 AND data_emissao < $2`,
+      values: [startYMD, nextStartYMD],
+    });
+
+    // Vendas do mês anterior (para Crescimento MoM)
+    const vendasPrevQ = await database.query({
+      text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+             FROM pedidos
+             WHERE tipo = 'VENDA' AND data_emissao >= $1 AND data_emissao < $2`,
+      values: [prevStartYMD, startYMD],
+    });
+
+    // COGS real do mês: soma dos custos totalizados por item de venda dentro do período
+    const cogsQ = await database.query({
+      text: `SELECT COALESCE(SUM(i.custo_total_item),0)::numeric(14,2) AS cogs
+             FROM pedido_itens i
+             JOIN pedidos p ON p.id = i.pedido_id
+             WHERE p.tipo = 'VENDA' AND p.data_emissao >= $1 AND p.data_emissao < $2`,
       values: [startYMD, nextStartYMD],
     });
 
@@ -78,10 +96,34 @@ export default async function handler(req, res) {
       values: [startYMD],
     });
 
+    const vendasMes = Number(vendasQ.rows[0]?.total || 0);
+    const comprasMes = Number(comprasQ.rows[0]?.total || 0);
+    const vendasMesAnterior = Number(vendasPrevQ.rows[0]?.total || 0);
+    const cogsReal = Number(cogsQ.rows[0]?.cogs || 0);
+    const lucroBrutoMes = Number((vendasMes - cogsReal).toFixed(2));
+    const margemBrutaPerc =
+      vendasMes > 0
+        ? Number((((vendasMes - cogsReal) / vendasMes) * 100).toFixed(2))
+        : 0;
+    const crescimentoMoMPerc =
+      vendasMesAnterior > 0
+        ? Number(
+            (
+              ((vendasMes - vendasMesAnterior) / vendasMesAnterior) *
+              100
+            ).toFixed(2),
+          )
+        : null;
+
     return res.status(200).json({
       month: label,
-      vendasMes: Number(vendasQ.rows[0]?.total || 0),
-      comprasMes: Number(comprasQ.rows[0]?.total || 0),
+      vendasMes,
+      vendasMesAnterior,
+      crescimentoMoMPerc,
+      comprasMes,
+      cogsReal,
+      lucroBrutoMes,
+      margemBrutaPerc,
       promissorias: {
         mesAtual: {
           pagos: {
@@ -115,7 +157,8 @@ export default async function handler(req, res) {
     console.error("GET /pedidos/summary error", e);
     if (isRelationMissing(e))
       return res.status(503).json({
-        error: "Schema not migrated (pedidos|pedido_promissorias missing)",
+        error:
+          "Schema not migrated (pedidos|pedido_itens|pedido_promissorias missing)",
         dependency: "database",
         code: e.code,
         action: "Run migrations",

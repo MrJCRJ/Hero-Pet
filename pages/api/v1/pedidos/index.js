@@ -104,10 +104,34 @@ async function postPedido(req, res) {
       totalBruto += preco * qtd;
       descontoTotal += desconto * qtd;
       totalLiquido += totalItem;
+      // custo unitário vigente para VENDA = média das ENTRADAS até a data de emissão
+      let custoUnitVenda = null;
+      if (tipo === "VENDA") {
+        const custoQ = await client.query({
+          text: `SELECT COALESCE(SUM(valor_total)/NULLIF(SUM(quantidade),0),0) AS custo
+                 FROM movimento_estoque
+                 WHERE produto_id = $1 AND tipo = 'ENTRADA' AND data_movimento <= COALESCE($2::timestamptz, NOW())`,
+          values: [it.produto_id, parseDateYMD(b.data_emissao) || null],
+        });
+        custoUnitVenda = Number(custoQ.rows?.[0]?.custo ?? 0);
+      }
+      const custoTotalItem =
+        tipo === "VENDA" && Number.isFinite(custoUnitVenda)
+          ? Number((custoUnitVenda * qtd).toFixed(2))
+          : null;
       await client.query({
-        text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, total_item)
-               VALUES ($1,$2,$3,$4,$5,$6)`,
-        values: [pedido.id, it.produto_id, qtd, preco, desconto, totalItem],
+        text: `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, desconto_unitario, total_item, custo_unit_venda, custo_total_item)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        values: [
+          pedido.id,
+          it.produto_id,
+          qtd,
+          preco,
+          desconto,
+          totalItem,
+          custoUnitVenda != null ? Number(custoUnitVenda.toFixed(2)) : null,
+          custoTotalItem,
+        ],
       });
     }
     const freteTotal = b.frete_total != null ? Number(b.frete_total) : 0;
