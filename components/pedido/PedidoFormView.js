@@ -63,7 +63,7 @@ export function PedidoFormView(props) {
     promissoriasMeta,
     // helpers
     computeItemTotal,
-  computeOrderTotalEstimate,
+    computeOrderTotalEstimate,
     // fetchers
     fetchEntities,
     fetchProdutos,
@@ -76,7 +76,7 @@ export function PedidoFormView(props) {
     fetchSaldoService,
     freteTotal,
     setFreteTotal,
-  fifoAplicado,
+    fifoAplicado,
   } = props;
 
   // Handlers estáveis
@@ -140,7 +140,7 @@ export function PedidoFormView(props) {
         setFreteTotal={setFreteTotal}
       />
 
-      {tipo === 'COMPRA' && (
+      {tipo === "COMPRA" && (
         <PedidoFormOrcamentoCompra itens={itens} freteTotal={freteTotal} />
       )}
 

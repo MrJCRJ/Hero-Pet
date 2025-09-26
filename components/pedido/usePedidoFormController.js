@@ -276,19 +276,32 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
 
   // Lucro bruto estimado (somente VENDA): soma((preco - desconto - custo)*qtd)
   const computeLucroBruto = useCallback(() => {
-    if (tipo !== 'VENDA') return 0;
+    if (tipo !== "VENDA") return 0;
     try {
-      return Number(itens.reduce((acc, it) => {
-        const qtd = Number(it.quantidade || 0);
-        const preco = Number(it.preco_unitario || 0) - Number(it.desconto_unitario || 0);
-        const custoRaw = Number(
-          it.custo_fifo_unitario != null ? it.custo_fifo_unitario : it.custo_base_unitario,
-        );
-        if (qtd > 0 && preco > 0 && Number.isFinite(custoRaw) && custoRaw > 0) {
-          return acc + (preco - custoRaw) * qtd;
-        }
-        return acc;
-      }, 0).toFixed(2));
+      return Number(
+        itens
+          .reduce((acc, it) => {
+            const qtd = Number(it.quantidade || 0);
+            const preco =
+              Number(it.preco_unitario || 0) -
+              Number(it.desconto_unitario || 0);
+            const custoRaw = Number(
+              it.custo_fifo_unitario != null
+                ? it.custo_fifo_unitario
+                : it.custo_base_unitario,
+            );
+            if (
+              qtd > 0 &&
+              preco > 0 &&
+              Number.isFinite(custoRaw) &&
+              custoRaw > 0
+            ) {
+              return acc + (preco - custoRaw) * qtd;
+            }
+            return acc;
+          }, 0)
+          .toFixed(2),
+      );
     } catch {
       return 0;
     }
@@ -305,7 +318,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     itens,
     numeroPromissorias,
     computeOrderTotalEstimate,
-  computeLucroBruto,
+    computeLucroBruto,
     valorPorPromissoria,
   ]);
 
@@ -648,7 +661,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     // Frete agregado apenas para COMPRA
     freteTotal,
     setFreteTotal,
-  computeLucroBruto,
+    computeLucroBruto,
     // fifo legacy (exposto apenas uma vez)
     fifoAplicado,
     migrarFifo,
