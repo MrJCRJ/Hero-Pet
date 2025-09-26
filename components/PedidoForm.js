@@ -63,6 +63,7 @@ export function PedidoForm(props) {
     // helpers
     computeItemTotal,
     computeOrderTotalEstimate,
+  computeLucroBruto,
     // fetchers
     fetchEntities,
     fetchProdutos,
@@ -136,6 +137,7 @@ export function PedidoForm(props) {
       // helpers
       computeItemTotal={computeItemTotal}
       computeOrderTotalEstimate={computeOrderTotalEstimate}
+  computeLucroBruto={computeLucroBruto}
       // fetchers
       fetchEntities={fetchEntities}
       fetchProdutos={fetchProdutos}
