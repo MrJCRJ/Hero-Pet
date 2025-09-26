@@ -3,6 +3,7 @@ import { FormContainer } from "../ui/Form";
 import { SelectionModal } from "../common/SelectionModal";
 import { PedidoFormHeader } from "./PedidoFormHeader";
 import { PedidoFormItems } from "./PedidoFormItems";
+import { PedidoFormOrcamentoCompra } from "./PedidoFormOrcamentoCompra";
 import { PedidoFormActions } from "./PedidoFormActions";
 import { PedidoFormPromissorias } from "./PedidoFormPromissorias";
 
@@ -138,6 +139,10 @@ export function PedidoFormView(props) {
         freteTotal={freteTotal}
         setFreteTotal={setFreteTotal}
       />
+
+      {tipo === "COMPRA" && (
+        <PedidoFormOrcamentoCompra itens={itens} freteTotal={freteTotal} />
+      )}
 
       <PedidoFormPromissorias
         parcelado={parcelado}
