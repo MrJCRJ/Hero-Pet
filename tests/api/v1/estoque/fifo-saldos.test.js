@@ -14,15 +14,7 @@ jest.setTimeout(60000);
 let produtoA;
 let fornecedor;
 
-async function criaProduto(nome) {
-  const p = await fetch("http://localhost:3000/api/v1/produtos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nome, categoria: "TESTE" }),
-  });
-  if (![200, 201].includes(p.status)) throw new Error("Falha criar produto");
-  return p.json();
-}
+
 
 beforeAll(async () => {
   process.env.FIFO_ENABLED = "1";
