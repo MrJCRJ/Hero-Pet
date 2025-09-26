@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "../ui/Button";
 import { PedidoForm } from "../PedidoForm";
 import { useToast } from "../entities/shared/toast";
@@ -7,6 +7,7 @@ import FilterBar from "./FilterBar";
 import { usePedidos } from "./hooks";
 import OrdersRow from "./OrdersRow";
 import OrdersHeader from "./OrdersHeader";
+import OrdersDashboard from "./OrdersDashboard";
 
 // Formatação movida para components/common/date
 
@@ -23,6 +24,28 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
+
+  // Permite que o Dashboard/Modais ajustem os filtros da lista
+  const externalReloadPending = useRef(false);
+  useEffect(() => {
+    const onSetFilters = (e) => {
+      const detail = e?.detail || {};
+      externalReloadPending.current = true;
+      setFilters((prev) => ({ ...prev, ...detail }));
+    };
+    window.addEventListener("orders:set-filters", onSetFilters);
+    return () => window.removeEventListener("orders:set-filters", onSetFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Após filtros mudarem via evento externo, dispara reload automaticamente 1x
+  useEffect(() => {
+    if (externalReloadPending.current) {
+      externalReloadPending.current = false;
+      reload();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   const handleDelete = async (p, e) => {
     e?.stopPropagation?.();
@@ -109,6 +132,8 @@ export function OrdersManager({ limit = 20 }) {
             Adicionar
           </Button>
         </div>
+        {/* Dashboard resumido acima da lista */}
+        <OrdersDashboard />
         <OrdersBrowser
           limit={limit}
           refreshTick={refreshKey}
