@@ -6,7 +6,9 @@ export default function useProductCosts(rows) {
 
   // Busca saldos/custos para produtos visíveis
   useEffect(() => {
-    const ids = rows.map((r) => r.id).filter((id) => Number.isFinite(Number(id)));
+    const ids = rows
+      .map((r) => r.id)
+      .filter((id) => Number.isFinite(Number(id)));
     const missing = ids.filter((id) => !(id in costMap));
     if (!missing.length) return;
     (async () => {
@@ -54,7 +56,10 @@ export default function useProductCosts(rows) {
       .filter(
         (p) =>
           p.estoque_minimo == null &&
-          !(costMap[p.id] && Object.prototype.hasOwnProperty.call(costMap[p.id], "min_hint")),
+          !(
+            costMap[p.id] &&
+            Object.prototype.hasOwnProperty.call(costMap[p.id], "min_hint")
+          ),
       )
       .map((p) => p.id);
     if (!missing.length) return;
@@ -67,12 +72,21 @@ export default function useProductCosts(rows) {
             const data = await res.json();
             let hint = null;
             if (res.ok && Array.isArray(data)) {
-              const totalSaida = data.reduce((acc, mv) => acc + (Number(mv.quantidade) || 0), 0);
+              const totalSaida = data.reduce(
+                (acc, mv) => acc + (Number(mv.quantidade) || 0),
+                0,
+              );
               hint = Math.max(0, Math.ceil(totalSaida));
             }
-            setCostMap((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), min_hint: hint } }));
+            setCostMap((prev) => ({
+              ...prev,
+              [id]: { ...(prev[id] || {}), min_hint: hint },
+            }));
           } catch (_) {
-            setCostMap((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), min_hint: null } }));
+            setCostMap((prev) => ({
+              ...prev,
+              [id]: { ...(prev[id] || {}), min_hint: null },
+            }));
           }
         }),
       );

@@ -52,7 +52,7 @@ export function ProductDetail({ open, onClose, product }) {
         setMovs((prev) => (offset === 0 ? data : [...prev, ...data]));
         setMovTotal(meta?.total ?? null);
       })
-      .catch(() => { })
+      .catch(() => {})
       .finally(() => setMovLoading(false));
   }, [open, product?.id, tipo, from, to, limit, offset, reloadKey]);
 
@@ -93,7 +93,7 @@ export function ProductDetail({ open, onClose, product }) {
                 Fornecedores
               </div>
               {Array.isArray(product.supplier_labels) &&
-                product.supplier_labels.length ? (
+              product.supplier_labels.length ? (
                 <div className="flex flex-wrap gap-2">
                   {product.supplier_labels.map((s) => (
                     <a
@@ -230,7 +230,9 @@ export function ProductDetail({ open, onClose, product }) {
                             : "-"}
                         </td>
                         <td className="p-2">
-                          {m.valor_total != null ? formatBRL(m.valor_total) : "-"}
+                          {m.valor_total != null
+                            ? formatBRL(m.valor_total)
+                            : "-"}
                         </td>
                         <td className="p-2">{m.documento || "-"}</td>
                         <td className="p-2">{m.observacao || "-"}</td>
@@ -264,6 +266,7 @@ export function ProductDetail({ open, onClose, product }) {
             </section>
           </div>
         )}
-      </Modal>)
+      </Modal>
+    )
   );
 }

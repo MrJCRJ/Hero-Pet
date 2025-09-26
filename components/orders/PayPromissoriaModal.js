@@ -45,7 +45,11 @@ export default function PayPromissoriaModal({
   };
 
   return (
-    <Modal title={`Marcar Pago • Parcela #${seq}`} onClose={onClose} maxWidth="max-w-md">
+    <Modal
+      title={`Marcar Pago • Parcela #${seq}`}
+      onClose={onClose}
+      maxWidth="max-w-md"
+    >
       <div className="space-y-3">
         <div className="text-sm">
           <div className="mb-1 text-xs text-gray-500">Vencimento</div>
@@ -56,7 +60,9 @@ export default function PayPromissoriaModal({
           </div>
         </div>
         <div>
-          <label htmlFor="paid_date" className="block text-xs mb-1">Data do Pagamento</label>
+          <label htmlFor="paid_date" className="block text-xs mb-1">
+            Data do Pagamento
+          </label>
           <input
             id="paid_date"
             type="date"
@@ -69,7 +75,12 @@ export default function PayPromissoriaModal({
           <Button variant="outline" fullWidth={false} onClick={onClose}>
             Cancelar
           </Button>
-          <Button variant="primary" fullWidth={false} onClick={save} loading={submitting}>
+          <Button
+            variant="primary"
+            fullWidth={false}
+            onClick={save}
+            loading={submitting}
+          >
             Confirmar
           </Button>
         </div>

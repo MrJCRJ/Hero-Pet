@@ -42,19 +42,23 @@ describe("PayPromissoriaModal", () => {
           onClose={onClose}
           onSuccess={onSuccess}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // Título e informações básicas
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/Marcar Pago • Parcela #2/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/Marcar Pago • Parcela #2/),
+    ).toBeInTheDocument();
     expect(within(dialog).getByText("15/10/2025")).toBeInTheDocument();
 
     // Botões e input de data
     const inputData = within(dialog).getByLabelText(/Data do Pagamento/i);
     expect(inputData).toHaveValue("2025-10-16");
 
-    const confirmar = within(dialog).getByRole("button", { name: /Confirmar/i });
+    const confirmar = within(dialog).getByRole("button", {
+      name: /Confirmar/i,
+    });
     fireEvent.click(confirmar);
 
     // onSuccess e onClose devem ser chamados após sucesso
@@ -63,7 +67,7 @@ describe("PayPromissoriaModal", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       "/api/v1/pedidos/123/promissorias/2?action=pay",
-      expect.objectContaining({ method: "POST" })
+      expect.objectContaining({ method: "POST" }),
     );
     expect(onSuccess).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
@@ -81,7 +85,7 @@ describe("PayPromissoriaModal", () => {
           defaultPaidDate={"2025-10-01"}
           onClose={onClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     const dialog = screen.getByRole("dialog");

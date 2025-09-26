@@ -29,15 +29,14 @@ describe("Orders UI - Smoke", () => {
   let consoleErrorSpy;
   beforeAll(() => {
     originalConsoleError = console.error;
-    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation((msg, ...args) => {
-      if (
-        typeof msg === "string" &&
-        msg.includes("not wrapped in act(")
-      ) {
-        return; // ignorar apenas este aviso
-      }
-      originalConsoleError(msg, ...args);
-    });
+    consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation((msg, ...args) => {
+        if (typeof msg === "string" && msg.includes("not wrapped in act(")) {
+          return; // ignorar apenas este aviso
+        }
+        originalConsoleError(msg, ...args);
+      });
   });
   afterAll(() => {
     if (consoleErrorSpy && typeof consoleErrorSpy.mockRestore === "function") {
@@ -73,7 +72,10 @@ describe("Orders UI - Smoke", () => {
 
       // Lista de pedidos
       if (url.includes("/api/v1/pedidos?") || url.endsWith("/api/v1/pedidos")) {
-        return Promise.resolve({ ok: true, json: async () => ({ data: fakeOrders }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: fakeOrders }),
+        });
       }
 
       // Detalhe de pedido
@@ -85,7 +87,10 @@ describe("Orders UI - Smoke", () => {
 
       // Promissórias do pedido
       if (/\/api\/v1\/pedidos\/\d+\/promissorias/.test(url)) {
-        return Promise.resolve({ ok: true, json: async () => fakePromissorias });
+        return Promise.resolve({
+          ok: true,
+          json: async () => fakePromissorias,
+        });
       }
 
       // Marcar promissória como paga
@@ -115,12 +120,14 @@ describe("Orders UI - Smoke", () => {
     render(
       <Wrapper>
         <OrdersManager limit={10} />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // Deve aparecer o título e botão Adicionar
     expect(await screen.findByText("Pedidos")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Adicionar/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Adicionar/i }),
+    ).toBeInTheDocument();
 
     // Deve listar pelo menos uma linha com dados principais (escopado à tabela)
     const table = await screen.findByRole("table");
@@ -130,7 +137,9 @@ describe("Orders UI - Smoke", () => {
     expect(within(row).getByText("25/09/2025")).toBeInTheDocument();
 
     // Deve existir o botão de duplicadas (📝) para VENDA com promissórias dentro da linha
-    expect(within(row).getByTitle("Baixar Duplicadas (PDF)")).toBeInTheDocument();
+    expect(
+      within(row).getByTitle("Baixar Duplicadas (PDF)"),
+    ).toBeInTheDocument();
 
     // Verifica os dots das promissórias; primeiro aguarda os dots já carregados
     // (EVITA warnings de act() por atualizações assíncronas de state)
@@ -139,7 +148,7 @@ describe("Orders UI - Smoke", () => {
       dots = await within(row).findAllByTitle(
         /EM_ABERTO|ATRASADO|PAGO/i,
         {},
-        { timeout: 2000 }
+        { timeout: 2000 },
       );
     } catch {
       // Fallback: se por algum motivo os títulos não vierem carregados,

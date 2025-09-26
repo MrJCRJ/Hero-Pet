@@ -42,12 +42,16 @@ export function PedidoFormItems(props) {
   const freteShares = React.useMemo(() => {
     if (tipo !== "COMPRA") return itens.map(() => 0);
     const totalFrete = Number(freteTotal || 0);
-    if (!Number.isFinite(totalFrete) || totalFrete <= 0) return itens.map(() => 0);
+    if (!Number.isFinite(totalFrete) || totalFrete <= 0)
+      return itens.map(() => 0);
     const quants = itens.map((it) => {
       const qtd = Number(it?.quantidade);
       return Number.isFinite(qtd) && qtd > 0 ? qtd : 0;
     });
-    const sumQtd = quants.reduce((acc, q) => acc + (Number.isFinite(q) ? q : 0), 0);
+    const sumQtd = quants.reduce(
+      (acc, q) => acc + (Number.isFinite(q) ? q : 0),
+      0,
+    );
     if (!Number.isFinite(sumQtd) || sumQtd <= 0) return itens.map(() => 0);
     const raw = quants.map((q) => (q > 0 ? (totalFrete * q) / sumQtd : 0));
     const rounded = raw.map((v) => Number(v.toFixed(2)));
@@ -99,29 +103,39 @@ export function PedidoFormItems(props) {
         fetchProdutos={fetchProdutos}
       />
 
-      {editingOrder && originalItens.length > 0 && (() => {
-        const changes = getItemChanges();
-        return (
-          changes.removed.length > 0 && (
-            <div className="mb-4 p-3 border border-red-500 bg-red-50 dark:bg-red-900/20 rounded-md">
-              <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
-                Itens removidos ({changes.removed.length}):
-              </h4>
-              {changes.removed.map((removedItem, idx) => (
-                <div key={idx} className="text-sm text-red-700 dark:text-red-300">
-                  •{" "}
-                  {removedItem.produto_label || `Produto ID: ${removedItem.produto_id}`}
-                  - Qtd: {removedItem.quantidade}- Preço: {formatBRL(Number(removedItem.preco_unitario || 0))}
-                </div>
-              ))}
-            </div>
-          )
-        );
-      })()}
+      {editingOrder &&
+        originalItens.length > 0 &&
+        (() => {
+          const changes = getItemChanges();
+          return (
+            changes.removed.length > 0 && (
+              <div className="mb-4 p-3 border border-red-500 bg-red-50 dark:bg-red-900/20 rounded-md">
+                <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                  Itens removidos ({changes.removed.length}):
+                </h4>
+                {changes.removed.map((removedItem, idx) => (
+                  <div
+                    key={idx}
+                    className="text-sm text-red-700 dark:text-red-300"
+                  >
+                    •{" "}
+                    {removedItem.produto_label ||
+                      `Produto ID: ${removedItem.produto_id}`}
+                    - Qtd: {removedItem.quantidade}- Preço:{" "}
+                    {formatBRL(Number(removedItem.preco_unitario || 0))}
+                  </div>
+                ))}
+              </div>
+            )
+          );
+        })()}
 
       <div className="divide-y border rounded-md">
         {itens.map((it, idx) => (
-          <div key={idx} className={`flex items-center gap-2 p-2 ${getItemDiffClass(it) || ""}`}>
+          <div
+            key={idx}
+            className={`flex items-center gap-2 p-2 ${getItemDiffClass(it) || ""}`}
+          >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium truncate">
@@ -130,12 +144,20 @@ export function PedidoFormItems(props) {
                 {getItemDiffIcon(it)}
               </div>
             </div>
-            <div className="w-24 text-right text-sm">Qtd: {formatQty(it.quantidade)}</div>
-            <div className="w-28 text-right text-sm">
-              Preço: {it.preco_unitario !== "" ? formatBRL(Number(it.preco_unitario)) : "—"}
+            <div className="w-24 text-right text-sm">
+              Qtd: {formatQty(it.quantidade)}
             </div>
             <div className="w-28 text-right text-sm">
-              Desc.: {it.desconto_unitario !== "" ? formatBRL(Number(it.desconto_unitario)) : "—"}
+              Preço:{" "}
+              {it.preco_unitario !== ""
+                ? formatBRL(Number(it.preco_unitario))
+                : "—"}
+            </div>
+            <div className="w-28 text-right text-sm">
+              Desc.:{" "}
+              {it.desconto_unitario !== ""
+                ? formatBRL(Number(it.desconto_unitario))
+                : "—"}
             </div>
             <div className="w-28 text-right font-semibold">
               {(() => {
@@ -158,8 +180,19 @@ export function PedidoFormItems(props) {
                 className="px-2 py-1 text-white"
                 title="Remover item"
                 icon={(props) => (
-                  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12m-9 4v6m6-6v6M9 7l1-2h4l1 2m-9 0h12l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7z" />
+                  <svg
+                    {...props}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 7h12m-9 4v6m6-6v6M9 7l1-2h4l1 2m-9 0h12l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7z"
+                    />
                   </svg>
                 )}
               />
@@ -171,9 +204,13 @@ export function PedidoFormItems(props) {
       {tipo === "COMPRA" && (
         <div className="flex justify-end mt-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Frete</span>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+              Frete
+            </span>
             <div className="relative">
-              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">R$</span>
+              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
+                R$
+              </span>
               <input
                 type="number"
                 inputMode="decimal"
@@ -197,7 +234,9 @@ export function PedidoFormItems(props) {
         <div className="text-right text-sm font-semibold">
           {(() => {
             const freteVal = tipo === "COMPRA" ? Number(freteTotal || 0) : 0;
-            const total = Number(totalItens || 0) + (Number.isFinite(freteVal) ? freteVal : 0);
+            const total =
+              Number(totalItens || 0) +
+              (Number.isFinite(freteVal) ? freteVal : 0);
             return `Total: ${formatBRL(total)}`;
           })()}
         </div>
@@ -229,7 +268,11 @@ export function PedidoFormItems(props) {
             }
           }}
           onClose={() => onSetProductModalIndex(null)}
-          emptyMessage={tipo === "COMPRA" ? "Este fornecedor não possui produtos relacionados" : "Nenhum produto encontrado"}
+          emptyMessage={
+            tipo === "COMPRA"
+              ? "Este fornecedor não possui produtos relacionados"
+              : "Nenhum produto encontrado"
+          }
           footer={
             tipo === "COMPRA" && Number.isFinite(Number(partnerId)) ? (
               <button

@@ -32,11 +32,7 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
             onClick={(e) => {
               e.stopPropagation();
 
-              window.open(
-                `/api/v1/pedidos/${p.id}/nf`,
-                "_blank",
-                "noopener",
-              );
+              window.open(`/api/v1/pedidos/${p.id}/nf`, "_blank", "noopener");
             }}
             title="Baixar NF (PDF)"
           >
@@ -74,13 +70,19 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
         {(() => {
           const tl = p.total_liquido != null ? Number(p.total_liquido) : NaN;
           const ft = p.frete_total != null ? Number(p.frete_total) : 0;
-          const totalComFrete = (Number.isFinite(tl) ? tl : 0) + (Number.isFinite(ft) ? ft : 0);
-          const totalFmt = Number.isFinite(totalComFrete) ? formatBRL(Number(totalComFrete)) : "-";
+          const totalComFrete =
+            (Number.isFinite(tl) ? tl : 0) + (Number.isFinite(ft) ? ft : 0);
+          const totalFmt = Number.isFinite(totalComFrete)
+            ? formatBRL(Number(totalComFrete))
+            : "-";
           const pago = p.total_pago != null ? Number(p.total_pago) : 0;
-          const pagoFmt = Number.isFinite(pago) ? formatBRL(Number(pago)) : formatBRL(0);
-          const fullyPaid = Number.isFinite(totalComFrete) && Number.isFinite(pago)
-            ? Math.abs(pago - totalComFrete) < 0.005 || pago > totalComFrete
-            : false;
+          const pagoFmt = Number.isFinite(pago)
+            ? formatBRL(Number(pago))
+            : formatBRL(0);
+          const fullyPaid =
+            Number.isFinite(totalComFrete) && Number.isFinite(pago)
+              ? Math.abs(pago - totalComFrete) < 0.005 || pago > totalComFrete
+              : false;
           return (
             <div className="text-right">
               <div>{totalFmt}</div>
@@ -94,7 +96,11 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
         })()}
       </td>
       <td className="px-3 py-2 text-center">
-        <PromissoriasDots pedidoId={p.id} count={p.numero_promissorias} onChanged={reload} />
+        <PromissoriasDots
+          pedidoId={p.id}
+          count={p.numero_promissorias}
+          onChanged={reload}
+        />
       </td>
       <td className="px-3 py-2 text-center">
         <Button

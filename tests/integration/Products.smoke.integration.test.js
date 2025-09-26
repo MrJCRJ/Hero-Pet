@@ -35,7 +35,11 @@ describe("Products UI - Smoke", () => {
         preco_tabela: "30.00",
         estoque_minimo: 5,
         suppliers: [1],
-        supplier_labels: [{ id: 1, name: "FORN 1" }, { id: 2, name: "FORN 2" }, { id: 3, name: "FORN 3" }],
+        supplier_labels: [
+          { id: 1, name: "FORN 1" },
+          { id: 2, name: "FORN 2" },
+          { id: 3, name: "FORN 3" },
+        ],
         ativo: true,
         markup_percent_default: 30,
       },
@@ -46,10 +50,20 @@ describe("Products UI - Smoke", () => {
       if (!url) return Promise.resolve({ ok: true, json: async () => ({}) });
 
       if (url.includes("/api/v1/produtos?")) {
-        return Promise.resolve({ ok: true, json: async () => ({ data: fakeProducts, meta: { total: 1 } }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: fakeProducts, meta: { total: 1 } }),
+        });
       }
       if (url.includes("/api/v1/estoque/saldos")) {
-        return Promise.resolve({ ok: true, json: async () => ({ saldo: 3, custo_medio: 12.5, ultimo_custo: 13.0 }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            saldo: 3,
+            custo_medio: 12.5,
+            ultimo_custo: 13.0,
+          }),
+        });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -59,7 +73,7 @@ describe("Products UI - Smoke", () => {
     render(
       <Wrapper>
         <ProductsManager />
-      </Wrapper>
+      </Wrapper>,
     );
 
     const table = await screen.findByRole("table");
@@ -83,6 +97,8 @@ describe("Products UI - Smoke", () => {
     expect(within(row).getByText("Mínimo")).toBeInTheDocument();
 
     // Botão de inativar deve existir
-    expect(within(row).getByRole("button", { name: /Inativar|Reativar/i })).toBeInTheDocument();
+    expect(
+      within(row).getByRole("button", { name: /Inativar|Reativar/i }),
+    ).toBeInTheDocument();
   });
 });

@@ -31,9 +31,9 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
   const [supplierLabels, setSupplierLabels] = useState(
     Array.isArray(initial.supplier_labels)
       ? initial.supplier_labels.map((s) => ({
-        id: s.id,
-        label: s.name || s.label || String(s.id),
-      }))
+          id: s.id,
+          label: s.name || s.label || String(s.id),
+        }))
       : [],
   );
   const [showSupplierModal, setShowSupplierModal] = useState(false);
@@ -58,7 +58,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
         const uc = Number(data.ultimo_custo);
         setCostInfo({ custo_medio: cm, ultimo_custo: uc });
       })
-      .catch(() => { });
+      .catch(() => {});
   }, [initial?.id]);
 
   // Calcular sugestão de preço: custo × markup (fallback 30%)
@@ -96,7 +96,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
         );
         setEstoqueHint(Math.max(0, Math.ceil(totalSaida)));
       })
-      .catch(() => { });
+      .catch(() => {});
   }, [initial?.id]);
 
   function handleSubmit(e) {

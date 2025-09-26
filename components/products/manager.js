@@ -48,20 +48,18 @@ export function ProductsManager({ linkSupplierId }) {
   const { costMap } = useProductCosts(rows);
 
   // Linhas visíveis considerando filtro "Abaixo do mínimo"
-  const visibleRows = (onlyBelowMin
+  const visibleRows = onlyBelowMin
     ? rows.filter((p) => {
-      const saldo = costMap[p.id]?.saldo;
-      const minConfigured =
-        p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
-      const minHint = costMap[p.id]?.min_hint ?? null;
-      const minimo = minConfigured != null ? minConfigured : minHint;
-      return (
-        Number.isFinite(saldo) &&
-        Number.isFinite(minimo) &&
-        saldo < minimo
-      );
-    })
-    : rows);
+        const saldo = costMap[p.id]?.saldo;
+        const minConfigured =
+          p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
+        const minHint = costMap[p.id]?.min_hint ?? null;
+        const minimo = minConfigured != null ? minConfigured : minHint;
+        return (
+          Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo
+        );
+      })
+    : rows;
 
   // formatQtyBR extraído para utils comuns
 

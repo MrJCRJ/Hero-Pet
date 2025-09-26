@@ -308,9 +308,7 @@ export function PedidoFormPromissorias({
                         </span>
                       )}
                   </div>
-                  <span className="font-mono">
-                    {formatYMDToBR(data)}
-                  </span>
+                  <span className="font-mono">{formatYMDToBR(data)}</span>
                 </div>
               ))}
             </div>

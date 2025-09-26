@@ -4,7 +4,13 @@ import { SelectionModal } from "../common/SelectionModal";
 import { useToast } from "../entities/shared/toast";
 import { formatQty } from "./utils";
 
-export function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProdutos }) {
+export function QuickAddItemRow({
+  tipo,
+  partnerId,
+  itens,
+  onAppend,
+  fetchProdutos,
+}) {
   const { push } = useToast();
   const [label, setLabel] = React.useState("");
   const [produtoId, setProdutoId] = React.useState("");
@@ -38,7 +44,9 @@ export function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProduto
 
   const displaySaldo = React.useMemo(() => {
     if (saldo == null || !Number.isFinite(Number(saldo))) return null;
-    const rem = Number(saldo) - (Number.isFinite(Number(reservedQty)) ? Number(reservedQty) : 0);
+    const rem =
+      Number(saldo) -
+      (Number.isFinite(Number(reservedQty)) ? Number(reservedQty) : 0);
     return rem;
   }, [saldo, reservedQty]);
 
@@ -48,7 +56,12 @@ export function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProduto
     const cm = Number(costInfo.custo_medio);
     const uc = Number(costInfo.ultimo_custo);
     if (!Number.isFinite(md) || md < 0) return null;
-    const base = Number.isFinite(cm) && cm > 0 ? cm : Number.isFinite(uc) && uc > 0 ? uc : null;
+    const base =
+      Number.isFinite(cm) && cm > 0
+        ? cm
+        : Number.isFinite(uc) && uc > 0
+          ? uc
+          : null;
     if (!Number.isFinite(base) || base == null) return null;
     const s = base * (1 + md / 100);
     return Number(s.toFixed(2));
@@ -61,7 +74,11 @@ export function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProduto
   }, [tipo, allowAutoPrice, suggestedPrice]);
 
   React.useEffect(() => {
-    if (tipo === "VENDA" && allowAutoPrice && (suggestedPrice == null || !Number.isFinite(Number(suggestedPrice)))) {
+    if (
+      tipo === "VENDA" &&
+      allowAutoPrice &&
+      (suggestedPrice == null || !Number.isFinite(Number(suggestedPrice)))
+    ) {
       if (preco === "" && precoPadrao !== "") {
         setPreco(precoPadrao);
       }
@@ -157,9 +174,9 @@ export function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProduto
             aria-label="Adicionar item"
             title={
               tipo === "VENDA" &&
-                displaySaldo != null &&
-                Number.isFinite(Number(quantidade)) &&
-                Number(quantidade) > Number(displaySaldo)
+              displaySaldo != null &&
+              Number.isFinite(Number(quantidade)) &&
+              Number(quantidade) > Number(displaySaldo)
                 ? "Estoque insuficiente"
                 : "Adicionar item"
             }
@@ -173,7 +190,12 @@ export function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProduto
               Number(quantidade) <= 0
             }
             icon={(props) => (
-              <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <svg
+                {...props}
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
                 <path d="M12 5a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H6a1 1 0 110-2h5V6a1 1 0 011-1z" />
               </svg>
             )}
@@ -188,7 +210,9 @@ export function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProduto
           onSelect={(it) => {
             setShowModal(false);
             if (it) {
-              const precoDefault = Number.isFinite(Number(it.preco_tabela)) ? String(it.preco_tabela) : "";
+              const precoDefault = Number.isFinite(Number(it.preco_tabela))
+                ? String(it.preco_tabela)
+                : "";
               setProdutoId(String(it.id));
               setLabel(it.label);
               setPrecoPadrao(precoDefault);
@@ -201,11 +225,18 @@ export function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProduto
               if (!quantidade) setQuantidade("1");
               if (tipo !== "VENDA" && !preco) setPreco(precoDefault);
               if (tipo === "VENDA") {
-                fetch(`/api/v1/estoque/saldos?produto_id=${it.id}`, { cache: "no-store" })
-                  .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+                fetch(`/api/v1/estoque/saldos?produto_id=${it.id}`, {
+                  cache: "no-store",
+                })
+                  .then((res) =>
+                    res.json().then((data) => ({ ok: res.ok, data })),
+                  )
                   .then(({ ok, data }) => {
                     if (!ok) throw new Error(data?.error || "erro saldo");
-                    setCostInfo({ custo_medio: Number(data.custo_medio), ultimo_custo: Number(data.ultimo_custo) });
+                    setCostInfo({
+                      custo_medio: Number(data.custo_medio),
+                      ultimo_custo: Number(data.ultimo_custo),
+                    });
                     setSaldo(Number(data.saldo));
                   })
                   .catch(() => {
@@ -216,7 +247,11 @@ export function QuickAddItemRow({ tipo, partnerId, itens, onAppend, fetchProduto
             }
           }}
           onClose={() => setShowModal(false)}
-          emptyMessage={tipo === "COMPRA" ? "Este fornecedor não possui produtos relacionados" : "Nenhum produto encontrado"}
+          emptyMessage={
+            tipo === "COMPRA"
+              ? "Este fornecedor não possui produtos relacionados"
+              : "Nenhum produto encontrado"
+          }
           footer={
             tipo === "COMPRA" && Number.isFinite(Number(partnerId)) ? (
               <button
