@@ -4,9 +4,12 @@ import { isConnectionError, isRelationMissing } from "lib/errors";
 
 export default async function handler(req, res) {
   if (req.method !== "GET")
-    return res.status(405).json({ error: `Method "${req.method}" not allowed` });
+    return res
+      .status(405)
+      .json({ error: `Method "${req.method}" not allowed` });
   const id = Number(req.query.id);
-  if (!Number.isFinite(id)) return res.status(400).json({ error: "invalid id" });
+  if (!Number.isFinite(id))
+    return res.status(400).json({ error: "invalid id" });
   try {
     const head = await database.query({
       text: `SELECT * FROM pedidos WHERE id = $1`,
@@ -36,7 +39,9 @@ export default async function handler(req, res) {
 
     // Reaplicar mesma lógica de fifo_aplicado (atual) + estado elegível
     const anySaida = movimentos.rows.length > 0;
-    const anySaidaSemPivot = movimentos.rows.some((m) => Number(m.pivots) === 0);
+    const anySaidaSemPivot = movimentos.rows.some(
+      (m) => Number(m.pivots) === 0,
+    );
     const todasSaidasComCusto = movimentos.rows.every(
       (m) => m.custo_total_rec != null && Number(m.custo_total_rec) > 0,
     );
@@ -50,7 +55,12 @@ export default async function handler(req, res) {
 
     // Elegível: VENDA, não aplicado, tem SAIDAS legacy (sem pivots) e cada item possui lotes suficientes
     let eligible = false;
-    if (!fifo_aplicado && pedido.tipo === "VENDA" && anySaida && anySaidaSemPivot) {
+    if (
+      !fifo_aplicado &&
+      pedido.tipo === "VENDA" &&
+      anySaida &&
+      anySaidaSemPivot
+    ) {
       eligible = itens.rows.every(
         (it) => Number(it.disponivel_lotes) >= Number(it.quantidade),
       );

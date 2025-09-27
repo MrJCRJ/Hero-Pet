@@ -7,15 +7,48 @@ import { migrateOrderToFIFO } from "components/pedido/service";
 
 export default function OrdersRow({ p, onEdit, onDelete, reload }) {
   const [migrating, setMigrating] = useState(false);
-  const showMigrate = p.tipo === 'VENDA' && p.fifo_state === 'eligible';
+  const showMigrate = p.tipo === "VENDA" && p.fifo_state === "eligible";
   const fifoBadge = (() => {
-    if (p.tipo === 'COMPRA') return null;
+    if (p.tipo === "COMPRA") return null;
     const st = p.fifo_state;
     if (!st) return null;
-    const base = 'inline-block px-2 py-[2px] rounded text-[10px] font-medium tracking-wide border';
-    if (st === 'fifo') return <span className={base + ' bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700'} title="FIFO aplicado">FIFO</span>;
-    if (st === 'eligible') return <span className={base + ' bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700'} title="Lotes suficientes. Migrar para FIFO recomendado.">ELIGIBLE</span>;
-    return <span className={base + ' bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'} title="Consumo médio (legacy)">LEGACY</span>;
+    const base =
+      "inline-block px-2 py-[2px] rounded text-[10px] font-medium tracking-wide border";
+    if (st === "fifo")
+      return (
+        <span
+          className={
+            base +
+            " bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700"
+          }
+          title="FIFO aplicado"
+        >
+          FIFO
+        </span>
+      );
+    if (st === "eligible")
+      return (
+        <span
+          className={
+            base +
+            " bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700"
+          }
+          title="Lotes suficientes. Migrar para FIFO recomendado."
+        >
+          ELIGIBLE
+        </span>
+      );
+    return (
+      <span
+        className={
+          base +
+          " bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
+        }
+        title="Consumo médio (legacy)"
+      >
+        LEGACY
+      </span>
+    );
   })();
   const handleMigrate = async (e) => {
     e.stopPropagation();
@@ -25,8 +58,10 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
       await migrateOrderToFIFO(p.id);
       reload && reload();
     } catch (err) {
-      console.error('Falha ao migrar FIFO', err);
-      alert('Falha ao migrar para FIFO: ' + (err.message || 'erro desconhecido'));
+      console.error("Falha ao migrar FIFO", err);
+      alert(
+        "Falha ao migrar para FIFO: " + (err.message || "erro desconhecido"),
+      );
     } finally {
       setMigrating(false);
     }
@@ -56,7 +91,7 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
                 onClick={handleMigrate}
                 title="Migrar para FIFO (reprocessa consumos com lotes)"
               >
-                {migrating ? '...' : 'Migrar FIFO'}
+                {migrating ? "..." : "Migrar FIFO"}
               </Button>
             )}
           </div>

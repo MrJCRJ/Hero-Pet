@@ -177,8 +177,8 @@ async function postPedido(req, res) {
       const amount = Number((baseParcelamento / numeroPromissorias).toFixed(2));
       const datas = Array.isArray(b.promissoria_datas)
         ? b.promissoria_datas.filter((s) =>
-          /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
-        )
+            /^(\d{4})-(\d{2})-(\d{2})$/.test(String(s)),
+          )
         : [];
       if (datas.length >= numeroPromissorias) {
         for (let i = 0; i < numeroPromissorias; i++) {

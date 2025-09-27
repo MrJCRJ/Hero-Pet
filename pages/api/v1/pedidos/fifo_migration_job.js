@@ -7,7 +7,9 @@ export const config = { api: { bodyParser: { sizeLimit: "1mb" } } };
 
 export default async function handler(req, res) {
   if (req.method !== "POST")
-    return res.status(405).json({ error: `Method "${req.method}" not allowed` });
+    return res
+      .status(405)
+      .json({ error: `Method "${req.method}" not allowed` });
   const limit = Math.min(Number(req.body?.limit) || 20, 100);
   try {
     const candidates = await database.query({
@@ -39,11 +41,14 @@ export default async function handler(req, res) {
       // Chama internamente o próprio endpoint PUT para reutilizar lógica central.
       // Suporte: usamos fetch relativo (assumindo HOST local). Em execução serverless pode precisar URL absoluta.
       try {
-        const resp = await fetch(`http://localhost:3000/api/v1/pedidos/${row.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ migrar_fifo: true }),
-        });
+        const resp = await fetch(
+          `http://localhost:3000/api/v1/pedidos/${row.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ migrar_fifo: true }),
+          },
+        );
         if (resp.ok) {
           updated.push({ id: row.id, ok: true });
         } else {
@@ -54,7 +59,9 @@ export default async function handler(req, res) {
         updated.push({ id: row.id, ok: false, error: e.message });
       }
     }
-    return res.status(200).json({ processed: updated.length, results: updated });
+    return res
+      .status(200)
+      .json({ processed: updated.length, results: updated });
   } catch (e) {
     console.error("POST /pedidos/fifo_migration_job error", e);
     if (isRelationMissing(e))
