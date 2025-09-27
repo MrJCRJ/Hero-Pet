@@ -253,3 +253,42 @@ classifyDocument(digits, isPending) -> 'pending' | 'provisional' | 'valid'
 ---
 
 Se manter estes princípios, o código permanece previsível, testável e fácil de evoluir. Bons commits!
+
+## FIFO (Extensão Set/2025)
+
+### Estados e Novos Endpoints
+
+- Campo derivado avançado: `fifo_state` em listagem e GET de pedidos (`legacy` | `eligible` | `fifo`).
+- `GET /api/v1/pedidos/:id/fifo_debug`: diagnóstico detalhado com movimentos SAIDA, pivots, disponibilidade de lotes e cálculo dos predicados de elegibilidade.
+- `POST /api/v1/pedidos/fifo_migration_job` `{ limit?: number }`: tenta migrar em lote pedidos `eligible` aplicando reprocessamento FIFO via PUT interno (`{ migrar_fifo: true }`).
+
+### Regras
+
+| Estado   | Condições Principais                                                                                                    |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| legacy   | VENDA sem pivots (consumo médio) e/ou itens ainda não totalmente cobertos por lotes                                     |
+| eligible | VENDA sem pivots, mas todos os itens têm cobertura total (somatório `estoque_lote.quantidade_disponivel >= quantidade`) |
+| fifo     | COMPRA sempre, ou VENDA onde cada SAIDA tem custo reconhecido e pelo menos um pivot (`movimento_consumo_lote`)          |
+
+`fifo_aplicado` (boolean) continua existindo para retrocompatibilidade e é true somente quando `fifo_state = 'fifo'`.
+
+### Fluxo de Migração
+
+1. Pedido VENDA criado antes dos lotes: fica `legacy` (custos médios reconhecidos para COGS).
+2. Entradas (COMPRA) geram lotes suficientes → estado passa a `eligible`.
+3. Job ou PUT manual com `{ migrar_fifo: true }` reprocessa itens, gera movimentos SAIDA com pivots e atualiza para `fifo`.
+
+### Teste de Referência
+
+`tests/api/v1/pedidos/fifo-debug-and-migration.test.js` cobre: legacy → eligible → fifo usando entrada legacy (saldo agregado), criação de lote e job de migração.
+
+### Uso na UI
+
+- Mostrar badge/tooltip para `eligible` sugerindo ação "Migrar para FIFO".
+- Em auditoria, usar `/fifo_debug` para entender motivos de não migração (ex.: item faltando lote).
+
+### Próximos Melhoramentos Possíveis
+
+- Paginação no job de migração (cursor / since_id).
+- Métricas: tempo médio entre `eligible` e `fifo`.
+- Hardening: lock otimista antes de reprocessar para evitar corrida com edição manual simultânea.
