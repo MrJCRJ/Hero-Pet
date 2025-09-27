@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "../ui/Button";
 
-export default function FilterBar({ filters, onChange, onReload }) {
+export default function FilterBar({ filters, onChange, onReload, onClear }) {
   return (
     <div className="flex flex-wrap gap-2 items-end mb-3">
       <div>
@@ -25,9 +25,19 @@ export default function FilterBar({ filters, onChange, onReload }) {
           onChange={(e) => onChange({ ...filters, q: e.target.value })}
         />
       </div>
-      <Button fullWidth={false} onClick={onReload}>
-        Atualizar
-      </Button>
+      <div className="flex gap-2">
+        <Button fullWidth={false} onClick={onReload}>
+          Atualizar
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          fullWidth={false}
+          onClick={onClear}
+        >
+          Limpar
+        </Button>
+      </div>
     </div>
   );
 }

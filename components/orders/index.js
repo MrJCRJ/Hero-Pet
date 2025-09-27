@@ -15,8 +15,11 @@ import OrdersDashboard from "./OrdersDashboard";
 
 // usePedidos extraído para ./hooks
 
+const ORDERS_FILTERS_STORAGE_KEY = "orders.filters.v1";
+const DEFAULT_ORDER_FILTERS = { tipo: "", q: "", from: "", to: "" };
+
 export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
-  const [filters, setFilters] = useState({ tipo: "", q: "", from: "", to: "" });
+  const [filters, setFilters] = useState(DEFAULT_ORDER_FILTERS);
   const { loading, data, reload } = usePedidos(filters, limit);
   const { push } = useToast();
   useEffect(() => {
@@ -24,6 +27,52 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
+
+  // Carregar filtros persistidos (1x após mount)
+  const loadedFiltersRef = useRef(false);
+  useEffect(() => {
+    if (loadedFiltersRef.current) return;
+    loadedFiltersRef.current = true;
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(ORDERS_FILTERS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          // Merge preservando chaves desconhecidas? Mantemos apenas conhecidas.
+          setFilters((prev) => ({ ...prev, ...DEFAULT_ORDER_FILTERS, ...parsed }));
+        }
+      }
+    } catch (e) {
+      // silencioso
+      console.warn("Falha ao carregar filtros persistidos", e);
+    }
+  }, []);
+
+  // Persistir filtros a cada alteração
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        ORDERS_FILTERS_STORAGE_KEY,
+        JSON.stringify(filters),
+      );
+    } catch (e) {
+      // silencioso - armazenamento pode estar indisponível
+    }
+    // Atualizar querystring (replaceState para não poluir histórico)
+    try {
+      const url = new URL(window.location.href);
+      // Limpar chaves existentes
+      ["tipo", "q", "from", "to"].forEach((k) => url.searchParams.delete(k));
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v) url.searchParams.set(k, v);
+      });
+      window.history.replaceState({}, "", url.toString());
+    } catch (e) {
+      // ignore
+    }
+  }, [filters]);
 
   // Permite que o Dashboard/Modais ajustem os filtros da lista
   const externalReloadPending = useRef(false);
@@ -43,7 +92,12 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     if (externalReloadPending.current) {
       externalReloadPending.current = false;
       reload();
+      return;
     }
+    // Caso filtros tenham sido carregados do localStorage e diferem do DEFAULT,
+    // podemos acionar reload (mas somente se não for o primeiro mount já tratado pelo hook usePedidos).
+    // O hook usePedidos já observa params e recarrega, então não precisamos duplicar.
+    // Mantemos vazio para evitar fetch duplo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
@@ -64,7 +118,27 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
 
   return (
     <div className="text-sm">
-      <FilterBar filters={filters} onChange={setFilters} onReload={reload} />
+      <FilterBar
+        filters={filters}
+        onChange={setFilters}
+        onReload={reload}
+        onClear={() => {
+          setFilters(DEFAULT_ORDER_FILTERS);
+          if (typeof window !== "undefined") {
+            try {
+              window.localStorage.removeItem(ORDERS_FILTERS_STORAGE_KEY);
+              const url = new URL(window.location.href);
+              ["tipo", "q", "from", "to"].forEach((k) =>
+                url.searchParams.delete(k),
+              );
+              window.history.replaceState({}, "", url.toString());
+            } catch (e) {
+              // ignore
+            }
+          }
+          reload();
+        }}
+      />
       <div className="overflow-auto border rounded">
         <table className="min-w-full">
           <OrdersHeader />
