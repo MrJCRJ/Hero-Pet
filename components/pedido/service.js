@@ -124,6 +124,18 @@ export async function deleteOrder(orderId) {
   return data;
 }
 
+// Migra pedido legacy/eligible para FIFO sem reenviar itens
+export async function migrateOrderToFIFO(orderId) {
+  const res = await fetch(`/api/v1/pedidos/${orderId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ migrar_fifo: true }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Falha ao migrar para FIFO");
+  return data;
+}
+
 export async function fetchLastPurchasePrice(produtoId) {
   try {
     const res = await fetch(

@@ -23,7 +23,7 @@ async function getPedido(req, res) {
     if (!Number.isFinite(id))
       return res.status(400).json({ error: "invalid id" });
     const head = await database.query({
-      text: `SELECT *,
+      text: `SELECT pedidos.*,
         CASE
           WHEN tipo = 'COMPRA' THEN true
           WHEN EXISTS (
@@ -41,7 +41,39 @@ async function getPedido(req, res) {
           )
           THEN true
           ELSE false
-        END AS fifo_aplicado
+        END AS fifo_aplicado,
+        CASE
+          WHEN tipo='COMPRA' THEN 'fifo'
+          WHEN (
+            EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento=('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA')
+            AND NOT EXISTS (
+              SELECT 1 FROM movimento_estoque m
+              WHERE m.documento=('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA' AND (m.custo_total_rec IS NULL OR m.custo_total_rec = 0)
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM movimento_estoque m
+              LEFT JOIN movimento_consumo_lote mc ON mc.movimento_id = m.id
+              WHERE m.documento=('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA' AND mc.id IS NULL
+            )
+          ) THEN 'fifo'
+          WHEN tipo='VENDA'
+            AND EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento=('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA')
+            AND EXISTS (
+              SELECT 1 FROM movimento_estoque m
+              LEFT JOIN movimento_consumo_lote mc ON mc.movimento_id = m.id
+              WHERE m.documento=('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA' AND mc.id IS NULL
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM pedido_itens i
+              LEFT JOIN LATERAL (
+                SELECT COALESCE(SUM(l.quantidade_disponivel),0) AS disponivel
+                FROM estoque_lote l WHERE l.produto_id = i.produto_id
+              ) ld ON true
+              WHERE i.pedido_id = pedidos.id AND ld.disponivel < i.quantidade
+            )
+          THEN 'eligible'
+          ELSE 'legacy'
+        END AS fifo_state
         FROM pedidos WHERE id = $1`,
       values: [id],
     });

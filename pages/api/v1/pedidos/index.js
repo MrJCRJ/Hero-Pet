@@ -434,7 +434,44 @@ async function getPedidos(req, res) {
                       )
                       THEN true
                       ELSE false
-                    END AS fifo_aplicado
+                    END AS fifo_aplicado,
+                    /* Novo estado textual: fifo_state -> 'fifo' | 'eligible' | 'legacy'
+                       eligible = VENDA com SAIDAS legacy (sem pivots) E todos itens já cobertos por lotes suficientes */
+                    CASE
+                      WHEN p.tipo = 'COMPRA' THEN 'fifo'
+                      WHEN (
+                        /* condição fifo_aplicado repetida */
+                        (
+                          EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento=('PEDIDO:'||p.id) AND m.tipo='SAIDA')
+                          AND NOT EXISTS (
+                            SELECT 1 FROM movimento_estoque m
+                            WHERE m.documento=('PEDIDO:'||p.id) AND m.tipo='SAIDA' AND (m.custo_total_rec IS NULL OR m.custo_total_rec = 0)
+                          )
+                          AND NOT EXISTS (
+                            SELECT 1 FROM movimento_estoque m
+                            LEFT JOIN movimento_consumo_lote mc ON mc.movimento_id = m.id
+                            WHERE m.documento=('PEDIDO:'||p.id) AND m.tipo='SAIDA' AND mc.id IS NULL
+                          )
+                        )
+                      ) THEN 'fifo'
+                      WHEN p.tipo='VENDA'
+                        AND EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento=('PEDIDO:'||p.id) AND m.tipo='SAIDA') /* anySaida */
+                        AND EXISTS (
+                          SELECT 1 FROM movimento_estoque m
+                          LEFT JOIN movimento_consumo_lote mc ON mc.movimento_id = m.id
+                          WHERE m.documento=('PEDIDO:'||p.id) AND m.tipo='SAIDA' AND mc.id IS NULL
+                        ) /* anySaidaSemPivot */
+                        AND NOT EXISTS (
+                          SELECT 1 FROM pedido_itens i
+                          LEFT JOIN LATERAL (
+                            SELECT COALESCE(SUM(l.quantidade_disponivel),0) AS disponivel
+                            FROM estoque_lote l WHERE l.produto_id = i.produto_id
+                          ) ld ON true
+                          WHERE i.pedido_id = p.id AND ld.disponivel < i.quantidade
+                        )
+                      THEN 'eligible'
+                      ELSE 'legacy'
+                    END AS fifo_state
         FROM pedidos p
              LEFT JOIN entities e ON e.id = p.partner_entity_id
              LEFT JOIN pedido_promissorias pp ON pp.pedido_id = p.id
