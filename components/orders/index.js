@@ -104,48 +104,7 @@ export function OrdersManager({ limit = 20 }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [editing, setEditing] = useState(null); // pedido completo quando editando
   const bump = useCallback(() => setRefreshKey((k) => k + 1), []);
-  const [legacyCount, setLegacyCount] = useState(0);
-  const [loadingLegacy, setLoadingLegacy] = useState(false);
-  const [migrating, setMigrating] = useState(false);
-
-  const loadLegacyCount = useCallback(async () => {
-    try {
-      setLoadingLegacy(true);
-      const r = await fetch("/api/v1/pedidos/legacy_count");
-      if (!r.ok) return;
-      const j = await r.json();
-      if (typeof j.legacy_count === "number") setLegacyCount(j.legacy_count);
-    } finally {
-      setLoadingLegacy(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!showForm) loadLegacyCount();
-  }, [showForm, loadLegacyCount, refreshKey]);
-
-  async function handleMigrateAll() {
-    if (!legacyCount) return;
-    const ok = window.confirm(
-      `Migrar ${legacyCount} pedido(s) legacy para FIFO agora?`,
-    );
-    if (!ok) return;
-    try {
-      setMigrating(true);
-      const resp = await fetch("/api/v1/pedidos/migrate_fifo_all", {
-        method: "POST",
-      });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.error || "Falha ao migrar");
-      await loadLegacyCount();
-      bump();
-      alert(`Migrados: ${json.migrated}. ${json.remaining_hint || ""}`);
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setMigrating(false);
-    }
-  }
+  // Removido: lógica de migrar pedidos FIFO em lote (legacyCount)
 
   const handleEdit = async (row) => {
     try {
@@ -167,21 +126,6 @@ export function OrdersManager({ limit = 20 }) {
         <div className="flex justify-between items-center gap-4 flex-wrap">
           <h2 className="text-lg font-semibold flex items-center gap-3">
             Pedidos
-            {loadingLegacy && (
-              <span className="text-xs opacity-60 animate-pulse">
-                verificando legacy…
-              </span>
-            )}
-            {!loadingLegacy && legacyCount > 0 && (
-              <button
-                onClick={handleMigrateAll}
-                disabled={migrating}
-                className="text-xs px-2 py-1 rounded bg-amber-600/20 text-amber-500 border border-amber-600/40 hover:bg-amber-600/30 disabled:opacity-50"
-                title="Existem pedidos de venda antigos sem custos FIFO aplicados"
-              >
-                {migrating ? "Migrando..." : `Migrar FIFO (${legacyCount})`}
-              </button>
-            )}
           </h2>
           <Button
             onClick={() => setShowForm(true)}
