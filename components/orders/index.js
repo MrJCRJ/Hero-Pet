@@ -28,50 +28,66 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
 
-  // Carregar filtros persistidos (1x após mount)
+  // Carregar filtros iniciais (1x): PRIORIDADE URL -> depois localStorage
   const loadedFiltersRef = useRef(false);
   useEffect(() => {
     if (loadedFiltersRef.current) return;
     loadedFiltersRef.current = true;
     if (typeof window === "undefined") return;
     try {
+      const url = new URL(window.location.href);
+      const fromUrl = {};
+      ["tipo", "q", "from", "to"].forEach((k) => {
+        const val = url.searchParams.get(k);
+        if (val) fromUrl[k] = val;
+      });
+      let fromStorage = {};
       const raw = window.localStorage.getItem(ORDERS_FILTERS_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === "object") {
-          // Merge preservando chaves desconhecidas? Mantemos apenas conhecidas.
-          setFilters((prev) => ({ ...prev, ...DEFAULT_ORDER_FILTERS, ...parsed }));
-        }
+        if (parsed && typeof parsed === "object") fromStorage = parsed;
       }
+      // URL tem prioridade: merge ordem -> defaults -> storage -> url
+      const initial = {
+        ...DEFAULT_ORDER_FILTERS,
+        ...fromStorage,
+        ...fromUrl,
+      };
+      setFilters(initial);
     } catch (e) {
       // silencioso
       console.warn("Falha ao carregar filtros persistidos", e);
     }
   }, []);
 
-  // Persistir filtros a cada alteração
+  // Persistir filtros (debounced) e atualizar URL
+  const debounceRef = useRef();
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(
-        ORDERS_FILTERS_STORAGE_KEY,
-        JSON.stringify(filters),
-      );
-    } catch (e) {
-      // silencioso - armazenamento pode estar indisponível
-    }
-    // Atualizar querystring (replaceState para não poluir histórico)
-    try {
-      const url = new URL(window.location.href);
-      // Limpar chaves existentes
-      ["tipo", "q", "from", "to"].forEach((k) => url.searchParams.delete(k));
-      Object.entries(filters).forEach(([k, v]) => {
-        if (v) url.searchParams.set(k, v);
-      });
-      window.history.replaceState({}, "", url.toString());
-    } catch (e) {
-      // ignore
-    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      try {
+        window.localStorage.setItem(
+          ORDERS_FILTERS_STORAGE_KEY,
+          JSON.stringify(filters),
+        );
+      } catch (e) {
+        // silencioso
+      }
+      try {
+        const url = new URL(window.location.href);
+        ["tipo", "q", "from", "to"].forEach((k) => url.searchParams.delete(k));
+        Object.entries(filters).forEach(([k, v]) => {
+          if (v) url.searchParams.set(k, v);
+        });
+        window.history.replaceState({}, "", url.toString());
+      } catch (e) {
+        // ignore
+      }
+    }, 300); // 300ms debounce
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [filters]);
 
   // Permite que o Dashboard/Modais ajustem os filtros da lista
