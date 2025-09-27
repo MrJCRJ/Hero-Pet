@@ -24,11 +24,22 @@ async function getPedido(req, res) {
       return res.status(400).json({ error: "invalid id" });
     const head = await database.query({
       text: `SELECT *,
-        CASE 
+        CASE
           WHEN tipo = 'COMPRA' THEN true
-          WHEN EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA')
-               AND NOT EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA' AND (m.custo_total_rec IS NULL OR m.custo_total_rec = 0))
-            THEN true
+          WHEN EXISTS (
+            SELECT 1 FROM movimento_estoque m
+             WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA'
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM movimento_estoque m
+             WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA' AND (m.custo_total_rec IS NULL OR m.custo_total_rec = 0)
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM movimento_estoque m
+            LEFT JOIN movimento_consumo_lote mc ON mc.movimento_id = m.id
+             WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA' AND mc.id IS NULL
+          )
+          THEN true
           ELSE false
         END AS fifo_aplicado
         FROM pedidos WHERE id = $1`,
