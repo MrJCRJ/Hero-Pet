@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../ui/Button";
 import { formatBRL } from "components/common/format";
 import { formatYMDToBR } from "components/common/date";
@@ -7,10 +7,15 @@ import { migrateOrderToFIFO } from "components/pedido/service";
 
 export default function OrdersRow({ p, onEdit, onDelete, reload }) {
   const [migrating, setMigrating] = useState(false);
-  const showMigrate = p.tipo === "VENDA" && p.fifo_state === "eligible";
+  const [localState, setLocalState] = useState(p.fifo_state); // estado otimista pós migração
+  // Sincroniza quando prop mudar (ex.: reload da lista atualiza fifo_state no backend)
+  useEffect(() => {
+    setLocalState(p.fifo_state);
+  }, [p.fifo_state]);
+  const showMigrate = p.tipo === "VENDA" && localState === "eligible";
   const fifoBadge = (() => {
     if (p.tipo === "COMPRA") return null;
-    const st = p.fifo_state;
+    const st = localState;
     if (!st) return null;
     const base =
       "inline-block px-2 py-[2px] rounded text-[10px] font-medium tracking-wide border";
@@ -56,6 +61,8 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
     try {
       setMigrating(true);
       await migrateOrderToFIFO(p.id);
+      // Atualiza otimista para "fifo"; backend listagem refletirá em reload subsequente
+      setLocalState("fifo");
       reload && reload();
     } catch (err) {
       console.error("Falha ao migrar FIFO", err);
