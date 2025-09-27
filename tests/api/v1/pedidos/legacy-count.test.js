@@ -11,8 +11,8 @@
 
 async function post(path, body) {
   const r = await fetch(`http://localhost:3000${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const json = await r.json().catch(() => ({}));
@@ -28,26 +28,26 @@ async function get(path) {
 
 // Helpers mínimos
 async function createEntityPF(nome) {
-  return post('/api/v1/entities', {
+  return post("/api/v1/entities", {
     name: nome,
-    entity_type: 'PF',
-    document_digits: '',
+    entity_type: "PF",
+    document_digits: "",
     document_pending: true,
-    document_status: 'pending',
+    document_status: "pending",
     ativo: true,
   });
 }
 async function createProduto(nome) {
   // criar fornecedor PJ
-  const fornecedor = await post('/api/v1/entities', {
-    name: 'Fornecedor LC',
-    entity_type: 'PJ',
-    document_digits: '',
+  const fornecedor = await post("/api/v1/entities", {
+    name: "Fornecedor LC",
+    entity_type: "PJ",
+    document_digits: "",
     document_pending: true,
-    document_status: 'pending',
+    document_status: "pending",
     ativo: true,
   });
-  const r = await post('/api/v1/produtos', {
+  const r = await post("/api/v1/produtos", {
     nome,
     preco_tabela: 100,
     markup_percent_default: 30,
@@ -58,9 +58,9 @@ async function createProduto(nome) {
 }
 
 async function createCompra(produtoId, qtd = 10, preco = 50) {
-  const ent = await createEntityPF('Fornecedor TEMP');
-  return post('/api/v1/pedidos', {
-    tipo: 'COMPRA',
+  const ent = await createEntityPF("Fornecedor TEMP");
+  return post("/api/v1/pedidos", {
+    tipo: "COMPRA",
     partner_entity_id: ent.id,
     itens: [
       {
@@ -73,9 +73,9 @@ async function createCompra(produtoId, qtd = 10, preco = 50) {
 }
 
 async function createVenda(produtoId, qtd = 2, preco = 120) {
-  const cli = await createEntityPF('Cliente TEMP');
-  return post('/api/v1/pedidos', {
-    tipo: 'VENDA',
+  const cli = await createEntityPF("Cliente TEMP");
+  return post("/api/v1/pedidos", {
+    tipo: "VENDA",
     partner_entity_id: cli.id,
     itens: [
       {
@@ -87,18 +87,18 @@ async function createVenda(produtoId, qtd = 2, preco = 120) {
   });
 }
 
-describe('GET /api/v1/pedidos/legacy_count', () => {
-  test('retorna campo legacy_count numérico >= 0 após criar pedidos', async () => {
-    const prod = await createProduto('Produto FIFO LC');
+describe("GET /api/v1/pedidos/legacy_count", () => {
+  test("retorna campo legacy_count numérico >= 0 após criar pedidos", async () => {
+    const prod = await createProduto("Produto FIFO LC");
     // Criar estoque inicial
     await createCompra(prod.id, 20, 40);
     // Criar duas vendas (devem aparecer no count legacy antes de qualquer migração)
     await createVenda(prod.id, 3, 120);
     await createVenda(prod.id, 4, 120);
 
-    const result = await get('/api/v1/pedidos/legacy_count');
-    expect(result).toHaveProperty('legacy_count');
-    expect(typeof result.legacy_count).toBe('number');
+    const result = await get("/api/v1/pedidos/legacy_count");
+    expect(result).toHaveProperty("legacy_count");
+    expect(typeof result.legacy_count).toBe("number");
     // Não assumimos mais quantidade mínima específica, apenas que é número >=0
     expect(result.legacy_count).toBeGreaterThanOrEqual(0);
   });
