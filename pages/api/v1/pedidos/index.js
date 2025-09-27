@@ -223,16 +223,21 @@ async function postPedido(req, res) {
         if (!registroConsumo) continue; // segurança
         if (registroConsumo.legacy) {
           // Movimento legado sem custos reconhecidos (continua permitindo vendas de estoque pré-FIFO)
+          // A PARTIR DE AGORA (fix produção): ainda que seja consumo legacy (sem lotes),
+          // persistimos custo reconhecido usando a média calculada em processarItensVenda
+          // para permitir apuração de COGS consistente em relatórios.
           await client.query({
-            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo, data_movimento)
-                   VALUES ($1,'SAIDA',$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()))`,
+            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo, data_movimento, custo_unitario_rec, custo_total_rec)
+                   VALUES ($1,'SAIDA',$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()), $7, $8)`,
             values: [
               it.produto_id,
               it.quantidade,
               docTag,
-              `SAÍDA (LEGADO) por criação de pedido ${pedido.id}`,
+              `SAÍDA (LEGACY AVG COST) por criação de pedido ${pedido.id}`,
               "PEDIDO",
               dataEmissaoStr,
+              it.custo_unit_venda, // média calculada
+              it.custo_total_item,
             ],
           });
         } else {
@@ -279,16 +284,16 @@ async function postPedido(req, res) {
                  VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6,$7,$8,$9, COALESCE($10::timestamptz, NOW()))
                  RETURNING id`,
           values: [
-            it.produto_id,
-            qtd,
-            valorUnit,
-            share,
-            0,
-            valorTotal,
-            docTag,
-            `ENTRADA por criação de pedido ${pedido.id} (rateio de frete)`,
-            "PEDIDO",
-            dataEmissaoStr,
+            it.produto_id, // $1
+            qtd, // $2
+            valorUnit, // $3 valor_unitario
+            share > 0 ? share : 0, // $4 frete (NOT NULL)
+            0, // $5 outras_despesas (NOT NULL)
+            valorTotal, // $6 valor_total
+            docTag, // $7 documento
+            `ENTRADA por criação de pedido ${pedido.id}`, // $8 observacao
+            "PEDIDO", // $9 origem_tipo
+            dataEmissaoStr, // $10 data_movimento (override opcional)
           ],
         });
         // Criar lote FIFO correspondente para permitir consumo futuro
@@ -405,18 +410,29 @@ async function getPedidos(req, res) {
                     p.numero_promissorias, to_char(p.data_primeira_promissoria, 'YYYY-MM-DD') AS data_primeira_promissoria, p.valor_por_promissoria, p.created_at,
                     COALESCE(SUM(CASE WHEN pp.paid_at IS NOT NULL THEN pp.amount ELSE 0 END), 0)::numeric(14,2) AS total_pago,
                     p.frete_total,
-                    /* fifo_aplicado: true se todos movimentos SAIDA do pedido possuem custo_total_rec > 0
-                       - Pedido VENDA sem movimentos SAIDA (caso incomum) => false
-                       - Pedidos COMPRA sempre true (não se aplica custo de venda) */
-                    CASE 
+                    /* fifo_aplicado (v2):
+                       - COMPRA: sempre true
+                       - VENDA: true somente se TODAS as SAIDAS tiverem custos reconhecidos E cada movimento SAIDA tiver pelo menos
+                                 um registro em movimento_consumo_lote (indicando consumo real de lote FIFO).
+                         -> Venda legacy (sem lotes) agora grava custo reconhecido médio, mas NÃO terá pivots => continua false.
+                    */
+                    CASE
                       WHEN p.tipo = 'COMPRA' THEN true
                       WHEN EXISTS (
                         SELECT 1 FROM movimento_estoque m
-                         WHERE m.documento = ('PEDIDO:'||p.id) AND m.tipo='SAIDA'
-                      ) AND NOT EXISTS (
+                        WHERE m.documento = ('PEDIDO:'||p.id) AND m.tipo='SAIDA'
+                      )
+                      AND NOT EXISTS (
                         SELECT 1 FROM movimento_estoque m
-                         WHERE m.documento = ('PEDIDO:'||p.id) AND m.tipo='SAIDA' AND (m.custo_total_rec IS NULL OR m.custo_total_rec = 0)
-                      ) THEN true
+                        WHERE m.documento = ('PEDIDO:'||p.id) AND m.tipo='SAIDA'
+                          AND (m.custo_total_rec IS NULL OR m.custo_total_rec = 0)
+                      )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM movimento_estoque m
+                        LEFT JOIN movimento_consumo_lote mc ON mc.movimento_id = m.id
+                        WHERE m.documento = ('PEDIDO:'||p.id) AND m.tipo='SAIDA' AND mc.id IS NULL
+                      )
+                      THEN true
                       ELSE false
                     END AS fifo_aplicado
         FROM pedidos p

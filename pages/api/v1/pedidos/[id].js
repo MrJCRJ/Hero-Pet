@@ -24,11 +24,22 @@ async function getPedido(req, res) {
       return res.status(400).json({ error: "invalid id" });
     const head = await database.query({
       text: `SELECT *,
-        CASE 
+        CASE
           WHEN tipo = 'COMPRA' THEN true
-          WHEN EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA')
-               AND NOT EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA' AND (m.custo_total_rec IS NULL OR m.custo_total_rec = 0))
-            THEN true
+          WHEN EXISTS (
+            SELECT 1 FROM movimento_estoque m
+             WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA'
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM movimento_estoque m
+             WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA' AND (m.custo_total_rec IS NULL OR m.custo_total_rec = 0)
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM movimento_estoque m
+            LEFT JOIN movimento_consumo_lote mc ON mc.movimento_id = m.id
+             WHERE m.documento = ('PEDIDO:'||pedidos.id) AND m.tipo='SAIDA' AND mc.id IS NULL
+          )
+          THEN true
           ELSE false
         END AS fifo_aplicado
         FROM pedidos WHERE id = $1`,
@@ -325,15 +336,18 @@ async function putPedido(req, res) {
           );
           if (!registroConsumo) continue;
           if (registroConsumo.legacy) {
+            // FIX: registrar custo reconhecido mesmo em modo legacy (média histórica) para consolidar COGS
             await client.query({
-              text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo)
-                     VALUES ($1,'SAIDA',$2,$3,$4,$5)`,
+              text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo, custo_unitario_rec, custo_total_rec)
+                     VALUES ($1,'SAIDA',$2,$3,$4,$5,$6,$7)`,
               values: [
                 it.produto_id,
                 it.quantidade,
                 docTag,
-                `SAÍDA por edição de pedido ${id} (LEGACY)`,
+                `SAÍDA (LEGACY AVG COST) por edição de pedido ${id}`,
                 "PEDIDO",
+                it.custo_unit_venda,
+                it.custo_total_item,
               ],
             });
           } else {
