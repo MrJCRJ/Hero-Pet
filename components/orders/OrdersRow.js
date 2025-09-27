@@ -1,21 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Button } from "../ui/Button";
 import { formatBRL } from "components/common/format";
 import { formatYMDToBR } from "components/common/date";
 import PromissoriasDots from "./PromissoriasDots";
-import { migrateOrderToFIFO } from "components/pedido/service";
+// Removido migrateOrderToFIFO (botão de migração FIFO)
 
 export default function OrdersRow({ p, onEdit, onDelete, reload }) {
-  const [migrating, setMigrating] = useState(false);
-  const [localState, setLocalState] = useState(p.fifo_state); // estado otimista pós migração
-  // Sincroniza quando prop mudar (ex.: reload da lista atualiza fifo_state no backend)
-  useEffect(() => {
-    setLocalState(p.fifo_state);
-  }, [p.fifo_state]);
-  const showMigrate = p.tipo === "VENDA" && localState === "eligible";
   const fifoBadge = (() => {
     if (p.tipo === "COMPRA") return null;
-    const st = localState;
+    const st = p.fifo_state;
     if (!st) return null;
     const base =
       "inline-block px-2 py-[2px] rounded text-[10px] font-medium tracking-wide border";
@@ -31,18 +24,7 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
           FIFO
         </span>
       );
-    if (st === "eligible")
-      return (
-        <span
-          className={
-            base +
-            " bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700"
-          }
-          title="Lotes suficientes. Migrar para FIFO recomendado."
-        >
-          ELIGIBLE
-        </span>
-      );
+    if (st === "eligible") return null; // Badge de elegibilidade removida
     return (
       <span
         className={
@@ -55,24 +37,6 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
       </span>
     );
   })();
-  const handleMigrate = async (e) => {
-    e.stopPropagation();
-    if (migrating) return;
-    try {
-      setMigrating(true);
-      await migrateOrderToFIFO(p.id);
-      // Atualiza otimista para "fifo"; backend listagem refletirá em reload subsequente
-      setLocalState("fifo");
-      reload && reload();
-    } catch (err) {
-      console.error("Falha ao migrar FIFO", err);
-      alert(
-        "Falha ao migrar para FIFO: " + (err.message || "erro desconhecido"),
-      );
-    } finally {
-      setMigrating(false);
-    }
-  };
   return (
     <tr
       className="border-t hover:bg-[var(--color-bg-secondary)] cursor-pointer"
@@ -87,21 +51,7 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
           {p.partner_name || "-"}
         </div>
         {fifoBadge && (
-          <div className="mt-1 flex items-center gap-2">
-            {fifoBadge}
-            {showMigrate && (
-              <Button
-                size="xs"
-                variant="outline"
-                className="!px-2 !py-[2px] text-[10px] border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-300"
-                disabled={migrating}
-                onClick={handleMigrate}
-                title="Migrar para FIFO (reprocessa consumos com lotes)"
-              >
-                {migrating ? "..." : "Migrar FIFO"}
-              </Button>
-            )}
-          </div>
+          <div className="mt-1 flex items-center gap-2">{fifoBadge}</div>
         )}
       </td>
       <td className="px-3 py-2">

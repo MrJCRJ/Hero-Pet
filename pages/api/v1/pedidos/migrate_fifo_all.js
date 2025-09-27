@@ -12,12 +12,32 @@ export default async function handler(req, res) {
   const limitBatch = Math.min(Number(req.query.limit) || 50, 200); // evita explodir transação gigante
   try {
     // Seleciona IDs de pedidos legado
+    // Seleciona pedidos considerados "legacy" para migração.
+    // Critério atualizado: VENDA com SAIDAS e (alguma SAIDA sem custo reconhecido OU alguma SAIDA sem pivot de consumo_lote).
+    // Isto alinha a seleção com a lógica de legacy_count e evita que pedidos antigos (que já receberam custo médio, mas não pivots) fiquem presos.
     const legacy = await database.query({
       text: `SELECT p.id
              FROM pedidos p
              WHERE p.tipo='VENDA'
-               AND EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento=('PEDIDO:'||p.id) AND m.tipo='SAIDA')
-               AND EXISTS (SELECT 1 FROM movimento_estoque m WHERE m.documento=('PEDIDO:'||p.id) AND m.tipo='SAIDA' AND (m.custo_total_rec IS NULL OR m.custo_total_rec=0))
+               AND EXISTS (
+                 SELECT 1 FROM movimento_estoque m
+                  WHERE m.documento=('PEDIDO:'||p.id) AND m.tipo='SAIDA'
+               )
+               AND (
+                 EXISTS (
+                   SELECT 1 FROM movimento_estoque m
+                    WHERE m.documento=('PEDIDO:'||p.id)
+                      AND m.tipo='SAIDA'
+                      AND (m.custo_total_rec IS NULL OR m.custo_total_rec=0)
+                 )
+                 OR EXISTS (
+                   SELECT 1 FROM movimento_estoque m
+                   LEFT JOIN movimento_consumo_lote mc ON mc.movimento_id = m.id
+                    WHERE m.documento=('PEDIDO:'||p.id)
+                      AND m.tipo='SAIDA'
+                      AND mc.id IS NULL
+                 )
+               )
              ORDER BY p.id
              LIMIT $1`,
       values: [limitBatch],
@@ -78,7 +98,49 @@ export default async function handler(req, res) {
           text: "DELETE FROM movimento_estoque WHERE documento=$1 AND tipo='SAIDA'",
           values: [docTag],
         });
-        // Reprocessa FIFO
+        // Backfill de lotes ausentes para produtos legados:
+        for (const it of itensPayload) {
+          // Verifica se já existem lotes para o produto
+          const lotesExist = await client.query({
+            text: "SELECT 1 FROM estoque_lote WHERE produto_id=$1 LIMIT 1",
+            values: [it.produto_id],
+          });
+          if (!lotesExist.rows.length) {
+            // Calcula saldo agregado e custo médio de todas as ENTRADAS
+            const saldoECusto = await client.query({
+              text: `SELECT 
+                         COALESCE(SUM(CASE WHEN tipo='ENTRADA' THEN quantidade WHEN tipo='SAIDA' THEN -quantidade ELSE 0 END),0) AS saldo,
+                         COALESCE(SUM(CASE WHEN tipo='ENTRADA' THEN valor_total ELSE 0 END) / NULLIF(SUM(CASE WHEN tipo='ENTRADA' THEN quantidade ELSE 0 END),0),0) AS custo_medio
+                       FROM movimento_estoque WHERE produto_id=$1`,
+              values: [it.produto_id],
+            });
+            const saldo = Number(saldoECusto.rows?.[0]?.saldo || 0);
+            const custoMedio = Number(saldoECusto.rows?.[0]?.custo_medio || 0);
+            if (saldo > 0 && custoMedio > 0) {
+              // Determina data de entrada mais antiga para ordenação FIFO previsível
+              const firstEntrada = await client.query({
+                text: `SELECT MIN(data_movimento) AS first FROM movimento_estoque WHERE produto_id=$1 AND tipo='ENTRADA'`,
+                values: [it.produto_id],
+              });
+              const dataEntrada = firstEntrada.rows?.[0]?.first || null;
+              await client.query({
+                text: `INSERT INTO estoque_lote (produto_id, quantidade_inicial, quantidade_disponivel, custo_unitario, valor_total, origem_tipo, origem_movimento_id, data_entrada, documento, observacao)
+                         VALUES ($1,$2,$2,$3,$4,'BACKFILL',NULL, COALESCE($5::timestamptz, NOW()), $6, $7)`,
+                values: [
+                  it.produto_id,
+                  saldo,
+                  custoMedio,
+                  Number((saldo * custoMedio).toFixed(4)),
+                  dataEntrada,
+                  "BACKFILL AUTO",
+                  "Lote sintético criado para permitir migração FIFO de pedidos legados",
+                ],
+              });
+            }
+          }
+        }
+
+        // Reprocessa FIFO (agora possivelmente com lotes backfill criados)
         const { itens, consumosPorItem } = await processarItensVenda({
           client,
           itens: itensPayload,

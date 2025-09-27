@@ -180,14 +180,80 @@ async function deleteProduto(req, res) {
     const id = parseInt(req.query.id, 10);
     if (!Number.isFinite(id))
       return res.status(400).json({ error: "invalid id" });
-    const q = {
-      text: `UPDATE produtos SET ativo = false, updated_at = NOW() WHERE id = $1
-             RETURNING id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,
-      values: [id],
-    };
-    const r = await database.query(q);
-    if (!r.rows.length) return res.status(404).json({ error: "Not found" });
-    return res.status(200).json(r.rows[0]);
+    const hard = String(req.query.hard) === "true";
+    if (hard) {
+      const password = req.query.password || (req.body && req.body.password);
+      if (password !== "98034183") {
+        return res.status(403).json({ error: "invalid password" });
+      }
+      // Hard delete completo: apaga todos os artefatos associados ao produto
+      const client = await database.getClient();
+      try {
+        await client.query("BEGIN");
+        // Verifica existência
+        const exists = await client.query({
+          text: `SELECT id FROM produtos WHERE id = $1 FOR UPDATE`,
+          values: [id],
+        });
+        if (!exists.rows.length) {
+          await client.query("ROLLBACK");
+          return res.status(404).json({ error: "Not found" });
+        }
+        // Ordem de deleção ajustada para satisfazer FKs:
+        // 1. Consumos -> 2. Lotes -> 3. Itens de pedido -> 4. Movimentos -> 5. Relações -> 6. Produto
+        await client.query({
+          text: `DELETE FROM movimento_consumo_lote
+                 WHERE movimento_id IN (
+                   SELECT id FROM movimento_estoque WHERE produto_id = $1
+                 )`,
+          values: [id],
+        });
+        await client.query({
+          text: `DELETE FROM estoque_lote WHERE produto_id = $1`,
+          values: [id],
+        });
+        await client.query({
+          text: `DELETE FROM pedido_itens WHERE produto_id = $1`,
+          values: [id],
+        });
+        await client.query({
+          text: `DELETE FROM movimento_estoque WHERE produto_id = $1 OR ref_movimento_id IN (
+                   SELECT id FROM movimento_estoque WHERE produto_id = $1
+                 )`,
+          values: [id],
+        });
+        await client.query({
+          text: `DELETE FROM produto_fornecedores WHERE produto_id = $1`,
+          values: [id],
+        });
+        await client.query({
+          text: `DELETE FROM produtos WHERE id = $1`,
+          values: [id],
+        });
+        await client.query("COMMIT");
+        return res.status(200).json({ id, deleted: true, cascaded: true });
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Hard delete produto falhou", err);
+        return res.status(500).json({ error: "hard delete failed" });
+      } finally {
+        try {
+          await client.end();
+        } catch (_) {
+          /* ignore end */
+        }
+      }
+    } else {
+      // Soft delete (inativar)
+      const q = {
+        text: `UPDATE produtos SET ativo = false, updated_at = NOW() WHERE id = $1
+               RETURNING id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,
+        values: [id],
+      };
+      const r = await database.query(q);
+      if (!r.rows.length) return res.status(404).json({ error: "Not found" });
+      return res.status(200).json(r.rows[0]);
+    }
   } catch (e) {
     console.error("DELETE /produtos/:id error", e);
     if (isRelationMissing(e)) {

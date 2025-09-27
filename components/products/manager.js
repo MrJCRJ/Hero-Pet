@@ -26,6 +26,9 @@ export function ProductsManager({ linkSupplierId }) {
   const [costHistory, setCostHistory] = useState([]); // [{month: '2025-09', avg_cost: 10.5}]
   const [submitting, setSubmitting] = useState(false);
   const [onlyBelowMin, setOnlyBelowMin] = useState(false);
+  const [hardDeleteTarget, setHardDeleteTarget] = useState(null);
+  const [hardDeletePwd, setHardDeletePwd] = useState("");
+  const [hardDeleting, setHardDeleting] = useState(false);
 
   useEffect(() => {
     // debounce simples
@@ -189,6 +192,44 @@ export function ProductsManager({ linkSupplierId }) {
     refresh();
   }
 
+  async function handleHardDelete(p) {
+    if (!p?.id) return;
+    setHardDeleteTarget(p);
+    setHardDeletePwd("");
+  }
+
+  async function confirmHardDelete() {
+    if (!hardDeleteTarget) return;
+    if (hardDeletePwd !== "98034183") {
+      alert("Senha inválida");
+      return;
+    }
+    try {
+      setHardDeleting(true);
+      const resp = await fetch(
+        `/api/v1/produtos/${hardDeleteTarget.id}?hard=true&password=${encodeURIComponent(hardDeletePwd)}`,
+        { method: "DELETE" },
+      );
+      if (!resp.ok) {
+        const txt = await resp.text();
+        alert(`Falha ao excluir definitivamente: ${resp.status} ${txt}`);
+        return;
+      }
+      setHardDeleteTarget(null);
+      setHardDeletePwd("");
+      refresh();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setHardDeleting(false);
+    }
+  }
+
+  function cancelHardDelete() {
+    setHardDeleteTarget(null);
+    setHardDeletePwd("");
+  }
+
   return (
     <div className="space-y-3">
       <ProductsFilterBar
@@ -216,6 +257,7 @@ export function ProductsManager({ linkSupplierId }) {
                 onEdit={openActions}
                 onInactivate={handleInactivate}
                 onReactivate={handleReactivate}
+                onHardDelete={handleHardDelete}
               />
             ))}
             {!rows.length && (
@@ -278,6 +320,48 @@ export function ProductsManager({ linkSupplierId }) {
           title={`Histórico de Custos • ${detailTarget.nome}`}
         >
           <ProductCostHistoryChart loading={detailLoading} data={costHistory} />
+        </Modal>
+      )}
+      {hardDeleteTarget && (
+        <Modal
+          onClose={hardDeleting ? undefined : cancelHardDelete}
+          title={`Excluir DEFINITIVO • ${hardDeleteTarget.nome}`}
+        >
+          <div className="space-y-4 text-sm">
+            <p>
+              Esta ação irá remover TODOS os registros relacionados ao produto
+              (movimentos, lotes, itens de pedidos, fornecedores). Digite a
+              senha para confirmar.
+            </p>
+            <input
+              type="password"
+              className="w-full rounded border px-3 py-2 bg-[var(--color-bg-secondary)]"
+              placeholder="Senha"
+              value={hardDeletePwd}
+              onChange={(e) => setHardDeletePwd(e.target.value)}
+              disabled={hardDeleting}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-3 py-1.5 text-xs rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
+                onClick={cancelHardDelete}
+                disabled={hardDeleting}
+              >
+                Cancelar
+              </button>
+              <button
+                className="px-3 py-1.5 text-xs rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                onClick={confirmHardDelete}
+                disabled={hardDeleting || !hardDeletePwd}
+              >
+                {hardDeleting ? "Excluindo..." : "Confirmar Exclusão"}
+              </button>
+            </div>
+            <div className="text-[11px] opacity-60 leading-snug">
+              Esta operação não pode ser desfeita.
+            </div>
+          </div>
         </Modal>
       )}
     </div>

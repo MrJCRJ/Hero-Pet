@@ -82,6 +82,7 @@ export default function ProductRow({
   onEdit,
   onInactivate,
   onReactivate,
+  onHardDelete,
 }) {
   return (
     <tr
@@ -183,6 +184,31 @@ export default function ProductRow({
               </svg>
             </button>
           )}
+          {/* Botão de exclusão definitiva */}
+          <button
+            className="h-7 w-7 flex items-center justify-center rounded border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-600 dark:text-red-400 hover:ring-2 hover:ring-red-400/40 transition"
+            title="Excluir definitivamente"
+            aria-label="Excluir definitivamente"
+            onClick={(e) => {
+              e.stopPropagation();
+              onHardDelete && onHardDelete(p);
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.6}
+              className="h-4 w-4"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 3h6m-9 4h12m-10 3v7m4-7v7M5 7l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12"
+              />
+            </svg>
+          </button>
         </div>
       </td>
     </tr>
