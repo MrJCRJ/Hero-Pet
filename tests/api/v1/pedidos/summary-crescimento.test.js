@@ -132,14 +132,14 @@ describe("Summary Crescimento MoM", () => {
     expect([200, 201]).toContain(vendaCur.status);
 
     const sumPrev = await fetch(
-      `http://localhost:3000/api/v1/pedidos/summary?month=${prevMonth}`,
+      `http://localhost:3000/api/v1/pedidos/summary?month=${prevMonth}&nocache=1`,
     );
     expect(sumPrev.status).toBe(200);
     const jsPrev = await sumPrev.json();
     expect(Number(jsPrev.vendasMes)).toBe(200);
 
     const sumCur = await fetch(
-      `http://localhost:3000/api/v1/pedidos/summary?month=${curMonth}`,
+      `http://localhost:3000/api/v1/pedidos/summary?month=${curMonth}&nocache=1`,
     );
     expect(sumCur.status).toBe(200);
     const jsCur = await sumCur.json();

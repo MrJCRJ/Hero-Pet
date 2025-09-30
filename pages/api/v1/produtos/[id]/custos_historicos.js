@@ -88,7 +88,7 @@ export default async function handler(req, res) {
   } finally {
     if (client) {
       try {
-        await client.end();
+        client.release();
       } catch (_) {
         /* noop */
       }

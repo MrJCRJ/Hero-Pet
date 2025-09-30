@@ -71,7 +71,7 @@ async function markPaid(req, res) {
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     try {
-      await client.end();
+      client.release();
     } catch (_) {
       /* noop */
     }
@@ -130,7 +130,7 @@ async function updateDueDate(req, res) {
     return res.status(400).json({ error: e.message || "Invalid payload" });
   } finally {
     try {
-      await client.end();
+      client.release();
     } catch (_) {
       /* noop */
     }

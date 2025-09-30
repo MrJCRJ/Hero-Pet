@@ -67,7 +67,13 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   const [parcelado, setParcelado] = useState(() =>
     editingOrder?.parcelado != null ? Boolean(editingOrder.parcelado) : true,
   );
-  const [itens, setItens] = useState([defaultEmptyItem()]);
+  const [itens, setItens] = useState(() => {
+    if (editingOrder) {
+      const mapped = mapEditingOrderToItems(editingOrder);
+      if (mapped.length) return mapped;
+    }
+    return [defaultEmptyItem()];
+  });
   const [freteTotal, setFreteTotal] = useState("");
   const [originalItens, setOriginalItens] = useState([]);
   const [created, setCreated] = useState(null);
@@ -341,6 +347,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     if (frequenciaPromissorias === "manual") return; // manter manual
     if (
       !dataPrimeiraPromissoria ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(dataPrimeiraPromissoria) ||
       !numeroPromissorias ||
       numeroPromissorias < 2
     ) {
@@ -349,6 +356,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       return;
     }
     const base = new Date(dataPrimeiraPromissoria);
+    if (isNaN(base.getTime())) return; // data inválida em digitação parcial
     const datas = [];
     for (let i = 0; i < numeroPromissorias; i++) {
       const d = new Date(base);
@@ -362,8 +370,12 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
         const n = Number(intervaloDiasPromissorias) || 30;
         d.setDate(d.getDate() + i * n);
       }
-      const iso = d.toISOString().slice(0, 10);
-      datas.push(iso);
+      try {
+        const iso = d.toISOString().slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) datas.push(iso);
+      } catch (_) {
+        // ignora datas inválidas geradas por overflow raro
+      }
     }
     const isSame =
       Array.isArray(promissoriaDatas) &&

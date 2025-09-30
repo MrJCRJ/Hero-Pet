@@ -33,6 +33,19 @@ export function mapEditingOrderToItems(editingOrder) {
     ...(it.custo_base_unitario != null
       ? { custo_base_unitario: it.custo_base_unitario }
       : {}),
+    // Backfill forma numérica padrão se vierem como string
+    ...(it.custo_fifo_unitario == null && it.custo_base_unitario == null
+      ? {}
+      : {
+          custo_fifo_unitario:
+            it.custo_fifo_unitario != null
+              ? Number(it.custo_fifo_unitario)
+              : it.custo_fifo_unitario,
+          custo_base_unitario:
+            it.custo_base_unitario != null
+              ? Number(it.custo_base_unitario)
+              : it.custo_base_unitario,
+        }),
   }));
 }
 

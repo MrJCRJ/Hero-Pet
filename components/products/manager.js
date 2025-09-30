@@ -7,6 +7,7 @@ import ProductsHeader from "./ProductsHeader";
 import ProductRow from "./ProductRow";
 import ProductsFilterBar from "./ProductsFilterBar";
 import useProductCosts from "./useProductCosts";
+import { TopProdutosRanking } from "./TopProdutosRanking";
 // import { ProductDetail } from "./Detail";
 
 // useProducts extraído para ./hooks
@@ -29,12 +30,70 @@ export function ProductsManager({ linkSupplierId }) {
   const [hardDeleteTarget, setHardDeleteTarget] = useState(null);
   const [hardDeletePwd, setHardDeletePwd] = useState("");
   const [hardDeleting, setHardDeleting] = useState(false);
+  // Ranking de produtos (top lucro)
+  const [topData, setTopData] = useState(null);
+  const [topLoading, setTopLoading] = useState(false);
+  const [showTopModal, setShowTopModal] = useState(false);
+  const TOP_DEFAULT_MONTHS = 6;
+
+  async function fetchTopProdutos(params = {}) {
+    const month = new Date();
+    const yyyyMM = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
+    const qs = new URLSearchParams();
+    qs.set("month", params.month || yyyyMM);
+    qs.set("topN", String(params.topN || 10));
+    qs.set("productMonths", String(params.productMonths || TOP_DEFAULT_MONTHS));
+    setTopLoading(true);
+    try {
+      const resp = await fetch(`/api/v1/produtos/top?${qs.toString()}`, {
+        cache: "no-store",
+      });
+      if (!resp.ok) throw new Error("Falha ranking produtos");
+      const json = await resp.json();
+      setTopData(json);
+    } catch (e) {
+      console.warn("Erro carregando top produtos", e);
+      setTopData(null);
+    } finally {
+      setTopLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    // Pré-carrega silenciosamente (lazy). Poderíamos adiar até abrir modal.
+    fetchTopProdutos();
+  }, []);
 
   useEffect(() => {
     // debounce simples
     const id = setTimeout(() => refresh(), 250);
     return () => clearTimeout(id);
   }, [query.q, query.categoria, query.ativo, refresh]);
+
+  // Listener para navegação cross-dashboard (ex: clique em TopProdutosLucro)
+  // Evento: navigate:produtos { detail: { q: '#<ID>' }}
+  // Efeito: aplica filtro q, foca input e rola ao topo.
+  const searchInputRef = React.useRef(null);
+  useEffect(() => {
+    function onNavigateProdutos(ev) {
+      try {
+        const q = ev?.detail?.q;
+        if (typeof q === "string" && q.startsWith("#")) {
+          setQ(q);
+          // pequeno delay para garantir re-render antes do focus
+          setTimeout(() => {
+            searchInputRef.current?.focus();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }, 30);
+        }
+      } catch (_) {
+        /* noop */
+      }
+    }
+    window.addEventListener("navigate:produtos", onNavigateProdutos);
+    return () =>
+      window.removeEventListener("navigate:produtos", onNavigateProdutos);
+  }, [setQ]);
 
   // Refresh inteligente ao receber evento de inventário dos pedidos
   useEffect(() => {
@@ -242,7 +301,25 @@ export function ProductsManager({ linkSupplierId }) {
         linkSupplierId={linkSupplierId}
         openNew={openNew}
         refresh={refresh}
+        searchInputRef={searchInputRef}
       />
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (!topData && !topLoading) fetchTopProdutos();
+            setShowTopModal(true);
+          }}
+          className="text-left flex-1 min-w-[200px] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-3 hover:bg-[var(--color-bg-primary)] transition-colors"
+        >
+          <div className="text-xs opacity-70">Insights</div>
+          <div className="text-sm font-semibold">Top produtos por lucro</div>
+          <div className="text-[11px] opacity-60 mt-1">
+            Clique para ver ranking
+          </div>
+        </button>
+      </div>
 
       <div className="border border-[var(--color-border)] rounded-md overflow-hidden">
         <table className="w-full text-left">
@@ -362,6 +439,31 @@ export function ProductsManager({ linkSupplierId }) {
               Esta operação não pode ser desfeita.
             </div>
           </div>
+        </Modal>
+      )}
+      {showTopModal && (
+        <Modal
+          onClose={() => setShowTopModal(false)}
+          title="Ranking de Produtos por Lucro"
+        >
+          {topLoading && (
+            <div className="text-sm opacity-70">Carregando ranking...</div>
+          )}
+          {!topLoading && topData && (
+            <TopProdutosRanking
+              data={topData}
+              onNavigate={(id) => {
+                setShowTopModal(false);
+                setQ(`#${id}`);
+                setTimeout(() => searchInputRef.current?.focus(), 30);
+              }}
+            />
+          )}
+          {!topLoading && !topData && (
+            <div className="text-sm text-red-500">
+              Falha ao carregar ranking.
+            </div>
+          )}
         </Modal>
       )}
     </div>
