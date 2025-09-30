@@ -343,7 +343,7 @@ async function postPedido(req, res) {
   } finally {
     if (client) {
       try {
-        await client.end();
+        client.release();
       } catch (_) {
         /* noop */
       }

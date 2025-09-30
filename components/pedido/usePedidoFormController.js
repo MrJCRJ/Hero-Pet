@@ -67,7 +67,13 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   const [parcelado, setParcelado] = useState(() =>
     editingOrder?.parcelado != null ? Boolean(editingOrder.parcelado) : true,
   );
-  const [itens, setItens] = useState([defaultEmptyItem()]);
+  const [itens, setItens] = useState(() => {
+    if (editingOrder) {
+      const mapped = mapEditingOrderToItems(editingOrder);
+      if (mapped.length) return mapped;
+    }
+    return [defaultEmptyItem()];
+  });
   const [freteTotal, setFreteTotal] = useState("");
   const [originalItens, setOriginalItens] = useState([]);
   const [created, setCreated] = useState(null);

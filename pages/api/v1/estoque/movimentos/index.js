@@ -97,7 +97,7 @@ export default async function handler(req, res) {
         });
         await client.query("COMMIT");
         try {
-          await client.end();
+          client.release();
         } catch (_) {
           /* noop */
         }
@@ -111,7 +111,7 @@ export default async function handler(req, res) {
             /* noop */
           }
           try {
-            await client.end();
+            client.release();
           } catch (_) {
             /* noop */
           }
@@ -134,7 +134,7 @@ export default async function handler(req, res) {
           if (err.code === "ESTOQUE_INSUFICIENTE") {
             await client.query("ROLLBACK");
             try {
-              await client.end();
+              client.release();
             } catch (_) {
               /* noop */
             }
@@ -172,7 +172,7 @@ export default async function handler(req, res) {
         });
         await client.query("COMMIT");
         try {
-          await client.end();
+          client.release();
         } catch (_) {
           /* noop */
         }
@@ -185,7 +185,7 @@ export default async function handler(req, res) {
             /* noop */
           }
           try {
-            await client.end();
+            client.release();
           } catch (_) {
             /* noop */
           }

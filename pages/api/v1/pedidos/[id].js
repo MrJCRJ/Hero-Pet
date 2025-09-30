@@ -637,7 +637,7 @@ async function putPedido(req, res) {
   } finally {
     if (client) {
       try {
-        await client.end();
+        client.release();
       } catch (_) {
         /* noop */
       }
@@ -695,7 +695,7 @@ async function deletePedido(req, res) {
   } finally {
     if (client) {
       try {
-        await client.end();
+        client.release();
       } catch (_) {
         /* noop */
       }

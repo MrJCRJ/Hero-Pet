@@ -185,7 +185,7 @@ export default async function handler(req, res) {
         await database.safeRollback(client);
       } finally {
         try {
-          await client.end();
+          client.release();
         } catch (_) {
           /* ignore end error */
         }

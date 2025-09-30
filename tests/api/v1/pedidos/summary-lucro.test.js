@@ -119,8 +119,10 @@ describe("Resumo com COGS real (pedido_itens.custo_total_item)", () => {
 
     // Summary do mês corrente
     const month = yyyyMM(new Date());
+    // Adiciona nocache=1 para evitar reutilizar payload de cache in-memory
+    // de execuções anteriores da suíte (cache persiste entre testes apesar do DROP SCHEMA).
     const sum = await fetch(
-      `http://localhost:3000/api/v1/pedidos/summary?month=${month}`,
+      `http://localhost:3000/api/v1/pedidos/summary?month=${month}&nocache=1`,
     );
     expect(sum.status).toBe(200);
     const json = await sum.json();

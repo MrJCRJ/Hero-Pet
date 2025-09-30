@@ -238,7 +238,7 @@ async function deleteProduto(req, res) {
         return res.status(500).json({ error: "hard delete failed" });
       } finally {
         try {
-          await client.end();
+          client.release();
         } catch (_) {
           /* ignore end */
         }

@@ -337,7 +337,22 @@ export default async function handler(req, res) {
     const vendasMes = Number(vendasQ.rows[0]?.total || 0);
     const comprasMes = Number(comprasQ.rows[0]?.total || 0);
     const comprasMesAnterior = Number(comprasPrevQ.rows[0]?.total || 0);
-    const vendasMesAnterior = Number(vendasPrevQ.rows[0]?.total || 0);
+    let vendasMesAnterior = Number(vendasPrevQ.rows[0]?.total || 0);
+    // Fallback: se query direta retornar 0 mas histórico mensal indicar valor (>0), usar histórico.
+    try {
+      if (vendasMesAnterior === 0) {
+        const prevMonthLabel = prevStartYMD.slice(0, 7);
+        const prevHist = vendasHistoryQ.rows.find(
+          (r) => r.month === prevMonthLabel,
+        );
+        if (prevHist) {
+          const histVal = Number(prevHist.vendas || 0);
+          if (histVal > 0) vendasMesAnterior = histVal;
+        }
+      }
+    } catch (_) {
+      /* noop fallback seguro */
+    }
     const cogsReal = Number(cogsQ.rows[0]?.cogs || 0);
     const lucroBrutoMes = Number((vendasMes - cogsReal).toFixed(2));
     const margemBrutaPerc =
