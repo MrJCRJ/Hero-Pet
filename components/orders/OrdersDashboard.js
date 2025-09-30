@@ -777,3 +777,4 @@ function boundsFromYYYYMM(yyyyMM) {
   const toDate = new Date(next.getTime() - 24 * 60 * 60 * 1000);
   return { from: ymd(start), to: ymd(toDate) };
 }
+

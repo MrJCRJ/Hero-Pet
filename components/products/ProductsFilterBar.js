@@ -11,11 +11,13 @@ export default function ProductsFilterBar({
   linkSupplierId,
   openNew,
   refresh,
+  searchInputRef,
 }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
         <input
+          ref={searchInputRef}
           className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
           placeholder="Buscar por nome (q)"
           value={query.q}
