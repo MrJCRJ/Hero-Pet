@@ -94,9 +94,16 @@ async function getClient() {
       await connectWithRetry(temp);
       await ensureMigrationsIfEnabledOnce(temp);
     } catch (err) {
-      console.warn("Falha migrations via pool init (continuando):", err.message);
+      console.warn(
+        "Falha migrations via pool init (continuando):",
+        err.message,
+      );
     } finally {
-      try { await temp.end(); } catch (_) { /* noop */ }
+      try {
+        await temp.end();
+      } catch (_) {
+        /* noop */
+      }
     }
   }
   const client = await p.connect();
@@ -176,7 +183,9 @@ async function connectWithRetry(client) {
         `Falha conexão Postgres (tentativa ${attempt}/${max}): ${err.code || err.message} - aguardando ${delay}ms`,
       );
       if (isLast) {
-        console.error("Excedido número máximo de tentativas de conexão Postgres");
+        console.error(
+          "Excedido número máximo de tentativas de conexão Postgres",
+        );
         throw err;
       }
       await new Promise((r) => setTimeout(r, delay));

@@ -97,7 +97,7 @@ export function PedidoFormItems(props) {
           .then(([det, fifo]) => {
             const custoFifo =
               Number.isFinite(fifo.custo_medio_fifo) &&
-                fifo.custo_medio_fifo > 0
+              fifo.custo_medio_fifo > 0
                 ? fifo.custo_medio_fifo
                 : null;
             const baseLegacy = (() => {
@@ -164,7 +164,7 @@ export function PedidoFormItems(props) {
               .then(([det, fifo]) => {
                 const custoFifo =
                   Number.isFinite(fifo.custo_medio_fifo) &&
-                    fifo.custo_medio_fifo > 0
+                  fifo.custo_medio_fifo > 0
                     ? fifo.custo_medio_fifo
                     : null;
                 const baseLegacy = (() => {
@@ -377,102 +377,132 @@ export function PedidoFormItems(props) {
       )}
 
       <div className="flex justify-end mt-3 gap-6 items-start flex-wrap">
-        {tipo === "VENDA" && (() => {
-          // Cálculos de lucro total base
-          let totalLucro = 0;
-          try {
-            totalLucro = itens.reduce((acc, it) => {
-              const qtd = Number(it.quantidade || 0);
-              const preco =
-                Number(it.preco_unitario || 0) -
-                Number(it.desconto_unitario || 0);
-              const custoRaw = Number(
-                it.custo_fifo_unitario != null
-                  ? it.custo_fifo_unitario
-                  : it.custo_base_unitario,
-              );
-              if (
-                qtd > 0 &&
-                preco > 0 &&
-                Number.isFinite(custoRaw) &&
-                custoRaw > 0
-              ) {
-                return acc + (preco - custoRaw) * qtd;
-              }
-              return acc;
-            }, 0);
-          } catch (_) {
-            totalLucro = 0;
-          }
-          // Margens fixas solicitadas: 3% e 5% sobre LSM (lucro sem margem)
-          const margem3Val = Number((totalLucro * 3) / 100);
-          const margem5Val = Number((totalLucro * 5) / 100);
-          const lucroComMargem3 = totalLucro - margem3Val;
-          const lucroComMargem5 = totalLucro - margem5Val;
-          const lucroCls =
-            totalLucro > 0
-              ? "text-emerald-600 dark:text-emerald-400"
-              : totalLucro < 0
-                ? "text-red-600 dark:text-red-400"
-                : "opacity-70";
-          const lucroFinal3Cls =
-            lucroComMargem3 > 0
-              ? "text-emerald-600 dark:text-emerald-400"
-              : lucroComMargem3 < 0
-                ? "text-red-600 dark:text-red-400"
-                : "opacity-70";
-          const lucroFinal5Cls =
-            lucroComMargem5 > 0
-              ? "text-emerald-600 dark:text-emerald-400"
-              : lucroComMargem5 < 0
-                ? "text-red-600 dark:text-red-400"
-                : "opacity-70";
-          return (
-            <div className="flex flex-col items-end gap-1 text-xs">
-              <div className="flex items-center gap-3 flex-wrap justify-end">
-                <span className="font-medium">Total:</span>
-                <span className="font-semibold">
-                  {formatBRL(Number(totalItens || 0))}
-                </span>
-                <span className="font-medium">LSM:</span>
-                <span className={`font-semibold ${lucroCls}`}>
-                  {formatBRL(totalLucro)}
-                </span>
-                <span className="font-medium" title="Comissão fixa de 3% sobre LSM">Comissão 3%:</span>
-                <span
-                  className={`font-semibold ${margem3Val > 0
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'opacity-70'
+        {tipo === "VENDA" &&
+          (() => {
+            // Cálculos de lucro total base
+            let totalLucro = 0;
+            try {
+              totalLucro = itens.reduce((acc, it) => {
+                const qtd = Number(it.quantidade || 0);
+                const preco =
+                  Number(it.preco_unitario || 0) -
+                  Number(it.desconto_unitario || 0);
+                const custoRaw = Number(
+                  it.custo_fifo_unitario != null
+                    ? it.custo_fifo_unitario
+                    : it.custo_base_unitario,
+                );
+                if (
+                  qtd > 0 &&
+                  preco > 0 &&
+                  Number.isFinite(custoRaw) &&
+                  custoRaw > 0
+                ) {
+                  return acc + (preco - custoRaw) * qtd;
+                }
+                return acc;
+              }, 0);
+            } catch (_) {
+              totalLucro = 0;
+            }
+            // Margens fixas solicitadas: 3% e 5% sobre LSM (lucro sem margem)
+            const margem3Val = Number((totalLucro * 3) / 100);
+            const margem5Val = Number((totalLucro * 5) / 100);
+            const lucroComMargem3 = totalLucro - margem3Val;
+            const lucroComMargem5 = totalLucro - margem5Val;
+            const lucroCls =
+              totalLucro > 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : totalLucro < 0
+                  ? "text-red-600 dark:text-red-400"
+                  : "opacity-70";
+            const lucroFinal3Cls =
+              lucroComMargem3 > 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : lucroComMargem3 < 0
+                  ? "text-red-600 dark:text-red-400"
+                  : "opacity-70";
+            const lucroFinal5Cls =
+              lucroComMargem5 > 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : lucroComMargem5 < 0
+                  ? "text-red-600 dark:text-red-400"
+                  : "opacity-70";
+            return (
+              <div className="flex flex-col items-end gap-1 text-xs">
+                <div className="flex items-center gap-3 flex-wrap justify-end">
+                  <span className="font-medium">Total:</span>
+                  <span className="font-semibold">
+                    {formatBRL(Number(totalItens || 0))}
+                  </span>
+                  <span className="font-medium">LSM:</span>
+                  <span className={`font-semibold ${lucroCls}`}>
+                    {formatBRL(totalLucro)}
+                  </span>
+                  <span
+                    className="font-medium"
+                    title="Comissão fixa de 3% sobre LSM"
+                  >
+                    Comissão 3%:
+                  </span>
+                  <span
+                    className={`font-semibold ${
+                      margem3Val > 0
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "opacity-70"
                     }`}
-                  title="Valor da comissão de 3%"
-                >
-                  {formatBRL(margem3Val)}
-                </span>
-                <span className="font-medium" title="Lucro com comissão 3% deduzida">LCM 3%:</span>
-                <span className={`font-semibold ${lucroFinal3Cls}`} title="Lucro final após 3%">
-                  {formatBRL(lucroComMargem3)}
-                </span>
-                <span className="font-medium" title="Comissão fixa de 5% sobre LSM">Comissão 5%:</span>
-                <span
-                  className={`font-semibold ${margem5Val > 0
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'opacity-70'
+                    title="Valor da comissão de 3%"
+                  >
+                    {formatBRL(margem3Val)}
+                  </span>
+                  <span
+                    className="font-medium"
+                    title="Lucro com comissão 3% deduzida"
+                  >
+                    LCM 3%:
+                  </span>
+                  <span
+                    className={`font-semibold ${lucroFinal3Cls}`}
+                    title="Lucro final após 3%"
+                  >
+                    {formatBRL(lucroComMargem3)}
+                  </span>
+                  <span
+                    className="font-medium"
+                    title="Comissão fixa de 5% sobre LSM"
+                  >
+                    Comissão 5%:
+                  </span>
+                  <span
+                    className={`font-semibold ${
+                      margem5Val > 0
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "opacity-70"
                     }`}
-                  title="Valor da comissão de 5%"
-                >
-                  {formatBRL(margem5Val)}
-                </span>
-                <span className="font-medium" title="Lucro com comissão 5% deduzida">LCM 5%:</span>
-                <span className={`font-semibold ${lucroFinal5Cls}`} title="Lucro final após 5%">
-                  {formatBRL(lucroComMargem5)}
-                </span>
+                    title="Valor da comissão de 5%"
+                  >
+                    {formatBRL(margem5Val)}
+                  </span>
+                  <span
+                    className="font-medium"
+                    title="Lucro com comissão 5% deduzida"
+                  >
+                    LCM 5%:
+                  </span>
+                  <span
+                    className={`font-semibold ${lucroFinal5Cls}`}
+                    title="Lucro final após 5%"
+                  >
+                    {formatBRL(lucroComMargem5)}
+                  </span>
+                </div>
+                <div className="opacity-60 text-[10px] leading-snug max-w-[560px] text-right">
+                  LSM = Lucro sem margem · Comissão X% = LSM * X% · LCM X% = LSM
+                  - Comissão X% (mostrando versões para 3% e 5%)
+                </div>
               </div>
-              <div className="opacity-60 text-[10px] leading-snug max-w-[560px] text-right">
-                LSM = Lucro sem margem · Comissão X% = LSM * X% · LCM X% = LSM - Comissão X% (mostrando versões para 3% e 5%)
-              </div>
-            </div>
-          );
-        })()}
+            );
+          })()}
         <div className="text-right text-sm font-semibold">
           {(() => {
             const freteVal = tipo === "COMPRA" ? Number(freteTotal || 0) : 0;
@@ -509,7 +539,7 @@ export function PedidoFormItems(props) {
                     const saldo = det.saldo;
                     const custoFifo =
                       Number.isFinite(fifo.custo_medio_fifo) &&
-                        fifo.custo_medio_fifo > 0
+                      fifo.custo_medio_fifo > 0
                         ? fifo.custo_medio_fifo
                         : null;
                     const baseLegacy = (() => {

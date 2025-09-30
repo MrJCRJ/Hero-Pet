@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
 import LineAreaChart from "components/common/LineAreaChart";
 import { formatBRL } from "components/common/format";
 import { Modal } from "components/common/Modal";
@@ -338,7 +344,8 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
               </div>
               {typeof data.crescimentoComprasMoMPerc === "number" && (
                 <div className="text-xs opacity-70 mt-0.5">
-                  Vs mês anterior: {data.crescimentoComprasMoMPerc}% (Anterior: {formatBRL(data.comprasMesAnterior)})
+                  Vs mês anterior: {data.crescimentoComprasMoMPerc}% (Anterior:{" "}
+                  {formatBRL(data.comprasMesAnterior)})
                 </div>
               )}
               <ComprasHistoryChart comprasHistory={data.comprasHistory} />
@@ -346,7 +353,11 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
             <div className="pt-2 border-t border-[var(--color-border)]">
               <button
                 onClick={() =>
-                  onSelect({ tipo: "COMPRA", from: boundsFromYYYYMM(monthStr).from, to: boundsFromYYYYMM(monthStr).to })
+                  onSelect({
+                    tipo: "COMPRA",
+                    from: boundsFromYYYYMM(monthStr).from,
+                    to: boundsFromYYYYMM(monthStr).to,
+                  })
                 }
                 className="px-3 py-1.5 text-xs rounded bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-primary)]"
               >
@@ -391,7 +402,9 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
             monthStr={monthStr}
             status="next"
             expectedCount={data.promissorias?.proximoMes?.pendentes?.count ?? 0}
-            expectedAmount={data.promissorias?.proximoMes?.pendentes?.valor ?? 0}
+            expectedAmount={
+              data.promissorias?.proximoMes?.pendentes?.valor ?? 0
+            }
             onSelect={onSelect}
           />
         );
@@ -402,8 +415,12 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
             monthLabel={monthLabel}
             monthStr={monthStr}
             status="carry"
-            expectedCount={data.promissorias?.deMesesAnteriores?.emAberto?.count ?? 0}
-            expectedAmount={data.promissorias?.deMesesAnteriores?.emAberto?.valor ?? 0}
+            expectedCount={
+              data.promissorias?.deMesesAnteriores?.emAberto?.count ?? 0
+            }
+            expectedAmount={
+              data.promissorias?.deMesesAnteriores?.emAberto?.valor ?? 0
+            }
             onSelect={onSelect}
           />
         );
@@ -424,7 +441,10 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
 // Espera um array: [{ month: 'YYYY-MM', compras: number, crescimento: number|null }]
 function ComprasHistoryChart({ comprasHistory }) {
   if (!comprasHistory?.length) return null;
-  const data = comprasHistory.map((r) => ({ label: r.month, value: r.compras }));
+  const data = comprasHistory.map((r) => ({
+    label: r.month,
+    value: r.compras,
+  }));
   return (
     <div className="mt-4">
       <h4 className="font-semibold mb-2">Histórico de Compras (12 meses)</h4>
@@ -444,11 +464,18 @@ function ComprasHistoryChart({ comprasHistory }) {
         const prev = i > 0 ? comprasHistory[i - 1].compras : null;
         const delta = prev != null ? r.compras - prev : null;
         return (
-          <div key={r.month} className="grid grid-cols-12 text-xs py-0.5 border-b border-gray-100 dark:border-gray-800 last:border-none">
+          <div
+            key={r.month}
+            className="grid grid-cols-12 text-xs py-0.5 border-b border-gray-100 dark:border-gray-800 last:border-none"
+          >
             <div className="col-span-3">{r.month}</div>
             <div className="col-span-3 text-right">{formatBRL(r.compras)}</div>
-            <div className="col-span-3 text-right">{r.crescimento != null ? `${r.crescimento}%` : '-'}</div>
-            <div className="col-span-3 text-right">{delta != null ? formatBRL(delta) : '-'}</div>
+            <div className="col-span-3 text-right">
+              {r.crescimento != null ? `${r.crescimento}%` : "-"}
+            </div>
+            <div className="col-span-3 text-right">
+              {delta != null ? formatBRL(delta) : "-"}
+            </div>
           </div>
         );
       })}
@@ -591,9 +618,9 @@ function LucroBrutoDetails({ data }) {
     active && firstVal !== 0 ? ((active.value - firstVal) / firstVal) * 100 : 0;
   const prevPoint = active
     ? (() => {
-      const idx = chartData.findIndex((p) => p.label === active.label);
-      return idx > 0 ? chartData[idx - 1] : null;
-    })()
+        const idx = chartData.findIndex((p) => p.label === active.label);
+        return idx > 0 ? chartData[idx - 1] : null;
+      })()
     : null;
   const momPct =
     prevPoint && prevPoint.value !== 0
@@ -624,41 +651,65 @@ function LucroBrutoDetails({ data }) {
         </div>
         <div className="w-full md:w-64 flex flex-col gap-3 text-xs border rounded p-3 bg-[var(--color-bg-secondary)]">
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">Mês</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Mês
+            </div>
             <div className="text-sm font-semibold">{active?.label || "—"}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">Lucro Bruto</div>
-            <div className="text-sm font-semibold">{active ? fmtMoney(active.value) : "—"}</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Lucro Bruto
+            </div>
+            <div className="text-sm font-semibold">
+              {active ? fmtMoney(active.value) : "—"}
+            </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">Receita</div>
-            <div className="text-sm font-semibold">{active ? fmtMoney(active.receita) : "—"}</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Receita
+            </div>
+            <div className="text-sm font-semibold">
+              {active ? fmtMoney(active.receita) : "—"}
+            </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">COGS</div>
-            <div className="text-sm font-semibold">{active ? fmtMoney(active.cogs) : "—"}</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              COGS
+            </div>
+            <div className="text-sm font-semibold">
+              {active ? fmtMoney(active.cogs) : "—"}
+            </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">Margem</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Margem
+            </div>
             <div className="text-sm font-semibold">
               {active ? `${active.margem.toFixed(1)}%` : "—"}
             </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">Var. Mês→Mês</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Var. Mês→Mês
+            </div>
             <div
               className={`text-sm font-semibold ${!prevPoint ? "opacity-50" : momPct > 0 ? "text-green-500" : momPct < 0 ? "text-red-400" : ""}`}
             >
-              {!prevPoint ? "—" : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
+              {!prevPoint
+                ? "—"
+                : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
             </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">Var. Acumulada</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Var. Acumulada
+            </div>
             <div
               className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
             >
-              {active ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%` : "—"}
+              {active
+                ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%`
+                : "—"}
             </div>
           </div>
           <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
@@ -668,12 +719,12 @@ function LucroBrutoDetails({ data }) {
         </div>
       </div>
       <div className="text-xs opacity-70">
-        A série utiliza os mesmos meses de growthHistory. Margem calculada on-the-fly.
+        A série utiliza os mesmos meses de growthHistory. Margem calculada
+        on-the-fly.
       </div>
     </div>
   );
 }
-
 
 // Novo painel overlay Vendas vs Compras com MoM de ambos
 // VendasComprasOverlayDetails
@@ -681,35 +732,64 @@ function LucroBrutoDetails({ data }) {
 // Inclui: MoM de cada série, diferença V-C, ratio (Compras/Vendas) e interação hover/select.
 function VendasComprasOverlayDetails({ data }) {
   const historyV = Array.isArray(data.growthHistory) ? data.growthHistory : [];
-  const historyC = Array.isArray(data.comprasHistory) ? data.comprasHistory : [];
+  const historyC = Array.isArray(data.comprasHistory)
+    ? data.comprasHistory
+    : [];
   const seriesV = {
     label: "Vendas",
     color: "var(--color-accent)",
-    data: historyV.map(h => ({ label: h.month, value: Number(h.vendas || 0), crescimento: h.crescimento }))
+    data: historyV.map((h) => ({
+      label: h.month,
+      value: Number(h.vendas || 0),
+      crescimento: h.crescimento,
+    })),
   };
   const seriesC = {
     label: "Compras",
     color: "#f59e0b",
-    data: historyC.map(h => ({ label: h.month, value: Number(h.compras || 0), crescimento: h.crescimento }))
+    data: historyC.map((h) => ({
+      label: h.month,
+      value: Number(h.compras || 0),
+      crescimento: h.crescimento,
+    })),
   };
   const [hovered, setHovered] = React.useState(null);
   const [selected, setSelected] = React.useState(null);
   const composite = selected || hovered;
   function fmt(v) {
-    return Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return Number(v || 0).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   }
-  const diff = composite ? (Number(composite.a?.value || 0) - Number(composite.b?.value || 0)) : 0;
-  const ratio = composite && Number(composite.a?.value) > 0 ? (Number(composite.b?.value || 0) / Number(composite.a?.value || 1)) * 100 : null;
+  const diff = composite
+    ? Number(composite.a?.value || 0) - Number(composite.b?.value || 0)
+    : 0;
+  const ratio =
+    composite && Number(composite.a?.value) > 0
+      ? (Number(composite.b?.value || 0) / Number(composite.a?.value || 1)) *
+        100
+      : null;
   const prevLabel = (() => {
     if (!composite) return null;
-    const idx = seriesV.data.findIndex(p => p.label === composite.label);
+    const idx = seriesV.data.findIndex((p) => p.label === composite.label);
     if (idx > 0) return seriesV.data[idx - 1].label;
     return null;
   })();
-  const prevV = prevLabel ? seriesV.data.find(p => p.label === prevLabel) : null;
-  const prevC = prevLabel ? seriesC.data.find(p => p.label === prevLabel) : null;
-  const momV = composite && prevV && prevV.value !== 0 ? ((composite.a?.value - prevV.value) / prevV.value) * 100 : null;
-  const momC = composite && prevC && prevC.value !== 0 ? ((composite.b?.value - prevC.value) / prevC.value) * 100 : null;
+  const prevV = prevLabel
+    ? seriesV.data.find((p) => p.label === prevLabel)
+    : null;
+  const prevC = prevLabel
+    ? seriesC.data.find((p) => p.label === prevLabel)
+    : null;
+  const momV =
+    composite && prevV && prevV.value !== 0
+      ? ((composite.a?.value - prevV.value) / prevV.value) * 100
+      : null;
+  const momC =
+    composite && prevC && prevC.value !== 0
+      ? ((composite.b?.value - prevC.value) / prevC.value) * 100
+      : null;
   return (
     <div className="flex flex-col gap-4 text-sm">
       <div className="flex flex-col md:flex-row gap-6">
@@ -717,50 +797,94 @@ function VendasComprasOverlayDetails({ data }) {
           <DualLineChart
             seriesA={seriesV}
             seriesB={seriesC}
-            onHoverPoint={pt => setHovered(pt)}
-            onSelectPoint={pt => setSelected(p => (p && p.label === pt.label ? null : pt))}
+            onHoverPoint={(pt) => setHovered(pt)}
+            onSelectPoint={(pt) =>
+              setSelected((p) => (p && p.label === pt.label ? null : pt))
+            }
             selectedLabel={selected?.label}
           />
         </div>
         <div className="w-full md:w-72 flex flex-col gap-3 text-xs border rounded p-3 bg-[var(--color-bg-secondary)]">
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">Mês</div>
-            <div className="text-sm font-semibold">{composite?.label || "—"}</div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-[10px] uppercase opacity-60 tracking-wide">Vendas</div>
-              <div className="text-sm font-semibold">{composite ? fmt(composite.a?.value) : "—"}</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Mês
             </div>
-            <div>
-              <div className="text-[10px] uppercase opacity-60 tracking-wide">Compras</div>
-              <div className="text-sm font-semibold">{composite ? fmt(composite.b?.value) : "—"}</div>
+            <div className="text-sm font-semibold">
+              {composite?.label || "—"}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="text-[10px] uppercase opacity-60 tracking-wide">MoM Vendas</div>
-              <div className={`text-sm font-semibold ${momV == null ? 'opacity-50' : momV > 0 ? 'text-green-500' : momV < 0 ? 'text-red-400' : ''}`}>{momV == null ? '—' : `${momV > 0 ? '+' : ''}${momV.toFixed(1)}%`}</div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">
+                Vendas
+              </div>
+              <div className="text-sm font-semibold">
+                {composite ? fmt(composite.a?.value) : "—"}
+              </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase opacity-60 tracking-wide">MoM Compras</div>
-              <div className={`text-sm font-semibold ${momC == null ? 'opacity-50' : momC > 0 ? 'text-green-500' : momC < 0 ? 'text-red-400' : ''}`}>{momC == null ? '—' : `${momC > 0 ? '+' : ''}${momC.toFixed(1)}%`}</div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">
+                Compras
+              </div>
+              <div className="text-sm font-semibold">
+                {composite ? fmt(composite.b?.value) : "—"}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">
+                MoM Vendas
+              </div>
+              <div
+                className={`text-sm font-semibold ${momV == null ? "opacity-50" : momV > 0 ? "text-green-500" : momV < 0 ? "text-red-400" : ""}`}
+              >
+                {momV == null
+                  ? "—"
+                  : `${momV > 0 ? "+" : ""}${momV.toFixed(1)}%`}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">
+                MoM Compras
+              </div>
+              <div
+                className={`text-sm font-semibold ${momC == null ? "opacity-50" : momC > 0 ? "text-green-500" : momC < 0 ? "text-red-400" : ""}`}
+              >
+                {momC == null
+                  ? "—"
+                  : `${momC > 0 ? "+" : ""}${momC.toFixed(1)}%`}
+              </div>
             </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">Diferença (V - C)</div>
-            <div className={`text-sm font-semibold ${diff > 0 ? 'text-green-500' : diff < 0 ? 'text-red-400' : ''}`}>{composite ? fmt(diff) : '—'}</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Diferença (V - C)
+            </div>
+            <div
+              className={`text-sm font-semibold ${diff > 0 ? "text-green-500" : diff < 0 ? "text-red-400" : ""}`}
+            >
+              {composite ? fmt(diff) : "—"}
+            </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">Compras / Vendas</div>
-            <div className="text-sm font-semibold">{ratio == null ? '—' : `${ratio.toFixed(1)}%`}</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">
+              Compras / Vendas
+            </div>
+            <div className="text-sm font-semibold">
+              {ratio == null ? "—" : `${ratio.toFixed(1)}%`}
+            </div>
           </div>
           <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
-            Sobrepõe séries mensais de receita (vendas) e compras. MoM calculado contra mês anterior.
+            Sobrepõe séries mensais de receita (vendas) e compras. MoM calculado
+            contra mês anterior.
           </div>
         </div>
       </div>
-      <div className="text-xs opacity-70">Valores baseados em total_liquido + frete_total (vendas) e somatório equivalente para compras.</div>
+      <div className="text-xs opacity-70">
+        Valores baseados em total_liquido + frete_total (vendas) e somatório
+        equivalente para compras.
+      </div>
     </div>
   );
 }
@@ -777,4 +901,3 @@ function boundsFromYYYYMM(yyyyMM) {
   const toDate = new Date(next.getTime() - 24 * 60 * 60 * 1000);
   return { from: ymd(start), to: ymd(toDate) };
 }
-

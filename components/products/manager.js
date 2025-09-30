@@ -38,19 +38,21 @@ export function ProductsManager({ linkSupplierId }) {
 
   async function fetchTopProdutos(params = {}) {
     const month = new Date();
-    const yyyyMM = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+    const yyyyMM = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
     const qs = new URLSearchParams();
-    qs.set('month', params.month || yyyyMM);
-    qs.set('topN', String(params.topN || 10));
-    qs.set('productMonths', String(params.productMonths || TOP_DEFAULT_MONTHS));
+    qs.set("month", params.month || yyyyMM);
+    qs.set("topN", String(params.topN || 10));
+    qs.set("productMonths", String(params.productMonths || TOP_DEFAULT_MONTHS));
     setTopLoading(true);
     try {
-      const resp = await fetch(`/api/v1/produtos/top?${qs.toString()}`, { cache: 'no-store' });
-      if (!resp.ok) throw new Error('Falha ranking produtos');
+      const resp = await fetch(`/api/v1/produtos/top?${qs.toString()}`, {
+        cache: "no-store",
+      });
+      if (!resp.ok) throw new Error("Falha ranking produtos");
       const json = await resp.json();
       setTopData(json);
     } catch (e) {
-      console.warn('Erro carregando top produtos', e);
+      console.warn("Erro carregando top produtos", e);
       setTopData(null);
     } finally {
       setTopLoading(false);
@@ -76,18 +78,21 @@ export function ProductsManager({ linkSupplierId }) {
     function onNavigateProdutos(ev) {
       try {
         const q = ev?.detail?.q;
-        if (typeof q === 'string' && q.startsWith('#')) {
+        if (typeof q === "string" && q.startsWith("#")) {
           setQ(q);
           // pequeno delay para garantir re-render antes do focus
           setTimeout(() => {
             searchInputRef.current?.focus();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: "smooth" });
           }, 30);
         }
-      } catch (_) { /* noop */ }
+      } catch (_) {
+        /* noop */
+      }
     }
-    window.addEventListener('navigate:produtos', onNavigateProdutos);
-    return () => window.removeEventListener('navigate:produtos', onNavigateProdutos);
+    window.addEventListener("navigate:produtos", onNavigateProdutos);
+    return () =>
+      window.removeEventListener("navigate:produtos", onNavigateProdutos);
   }, [setQ]);
 
   // Refresh inteligente ao receber evento de inventário dos pedidos
@@ -116,15 +121,15 @@ export function ProductsManager({ linkSupplierId }) {
   // Linhas visíveis considerando filtro "Abaixo do mínimo"
   const visibleRows = onlyBelowMin
     ? rows.filter((p) => {
-      const saldo = costMap[p.id]?.saldo;
-      const minConfigured =
-        p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
-      const minHint = costMap[p.id]?.min_hint ?? null;
-      const minimo = minConfigured != null ? minConfigured : minHint;
-      return (
-        Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo
-      );
-    })
+        const saldo = costMap[p.id]?.saldo;
+        const minConfigured =
+          p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
+        const minHint = costMap[p.id]?.min_hint ?? null;
+        const minimo = minConfigured != null ? minConfigured : minHint;
+        return (
+          Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo
+        );
+      })
     : rows;
 
   // formatQtyBR extraído para utils comuns
@@ -302,12 +307,17 @@ export function ProductsManager({ linkSupplierId }) {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => { if (!topData && !topLoading) fetchTopProdutos(); setShowTopModal(true); }}
+          onClick={() => {
+            if (!topData && !topLoading) fetchTopProdutos();
+            setShowTopModal(true);
+          }}
           className="text-left flex-1 min-w-[200px] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-3 hover:bg-[var(--color-bg-primary)] transition-colors"
         >
           <div className="text-xs opacity-70">Insights</div>
           <div className="text-sm font-semibold">Top produtos por lucro</div>
-          <div className="text-[11px] opacity-60 mt-1">Clique para ver ranking</div>
+          <div className="text-[11px] opacity-60 mt-1">
+            Clique para ver ranking
+          </div>
         </button>
       </div>
 
@@ -432,8 +442,13 @@ export function ProductsManager({ linkSupplierId }) {
         </Modal>
       )}
       {showTopModal && (
-        <Modal onClose={() => setShowTopModal(false)} title="Ranking de Produtos por Lucro">
-          {topLoading && <div className="text-sm opacity-70">Carregando ranking...</div>}
+        <Modal
+          onClose={() => setShowTopModal(false)}
+          title="Ranking de Produtos por Lucro"
+        >
+          {topLoading && (
+            <div className="text-sm opacity-70">Carregando ranking...</div>
+          )}
           {!topLoading && topData && (
             <TopProdutosRanking
               data={topData}
@@ -444,7 +459,11 @@ export function ProductsManager({ linkSupplierId }) {
               }}
             />
           )}
-          {!topLoading && !topData && <div className="text-sm text-red-500">Falha ao carregar ranking.</div>}
+          {!topLoading && !topData && (
+            <div className="text-sm text-red-500">
+              Falha ao carregar ranking.
+            </div>
+          )}
         </Modal>
       )}
     </div>
@@ -455,8 +474,8 @@ export function ProductsManager({ linkSupplierId }) {
 function ProductCostHistoryChart({ data, loading }) {
   const parsed = Array.isArray(data)
     ? data
-      .filter((d) => d && d.month && Number.isFinite(Number(d.avg_cost)))
-      .map((d) => ({ label: d.month, value: Number(d.avg_cost) }))
+        .filter((d) => d && d.month && Number.isFinite(Number(d.avg_cost)))
+        .map((d) => ({ label: d.month, value: Number(d.avg_cost) }))
     : [];
   const [focused, setFocused] = React.useState(null);
   const firstVal = parsed.length ? parsed[0].value : 0;
@@ -467,10 +486,10 @@ function ProductCostHistoryChart({ data, loading }) {
   const prevPoint =
     active && parsed.length > 1
       ? (() => {
-        const idx = parsed.findIndex((p) => p.label === active.label);
-        if (idx > 0) return parsed[idx - 1];
-        return null;
-      })()
+          const idx = parsed.findIndex((p) => p.label === active.label);
+          if (idx > 0) return parsed[idx - 1];
+          return null;
+        })()
       : null;
   const momPct =
     prevPoint && prevPoint.value !== 0

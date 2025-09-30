@@ -21,17 +21,25 @@ import { isConnectionError, isRelationMissing } from "lib/errors";
 function monthBounds(d = new Date()) {
   const start = new Date(d.getFullYear(), d.getMonth(), 1);
   const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-  const ymd = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
-  return { startYMD: ymd(start), nextStartYMD: ymd(next), label: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}` };
+  const ymd = (x) =>
+    `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+  return {
+    startYMD: ymd(start),
+    nextStartYMD: ymd(next),
+    label: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`,
+  };
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: `Method "${req.method}" not allowed` });
+  if (req.method !== "GET")
+    return res
+      .status(405)
+      .json({ error: `Method "${req.method}" not allowed` });
   try {
     const { month } = req.query;
     let refDate = new Date();
-    if (typeof month === 'string' && /^\d{4}-\d{2}$/.test(month)) {
-      const [y, m] = month.split('-').map(Number);
+    if (typeof month === "string" && /^\d{4}-\d{2}$/.test(month)) {
+      const [y, m] = month.split("-").map(Number);
       refDate = new Date(y, m - 1, 1);
     }
     const { startYMD, nextStartYMD, label } = monthBounds(refDate);
@@ -39,7 +47,10 @@ export default async function handler(req, res) {
     const topNRaw = Number(req.query.topN || 5); // maior flexibilidade (cap 50)
     const topN = Math.min(50, Math.max(1, isNaN(topNRaw) ? 5 : topNRaw));
     const productMonthsRaw = Number(req.query.productMonths || 6);
-    const productMonths = Math.min(24, Math.max(2, isNaN(productMonthsRaw) ? 6 : productMonthsRaw));
+    const productMonths = Math.min(
+      24,
+      Math.max(2, isNaN(productMonthsRaw) ? 6 : productMonthsRaw),
+    );
 
     // Ranking principal
     let topRows = [];
@@ -60,11 +71,12 @@ export default async function handler(req, res) {
                LIMIT ${topN}`,
         values: [startYMD, nextStartYMD],
       });
-      topRows = q.rows.map(r => {
+      topRows = q.rows.map((r) => {
         const receita = Number(r.receita || 0);
         const cogs = Number(r.cogs || 0);
         const lucro = Number(r.lucro || 0);
-        const margem = receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
+        const margem =
+          receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
         return {
           produto_id: r.produto_id,
           nome: r.nome,
@@ -73,20 +85,28 @@ export default async function handler(req, res) {
           lucro,
           margem,
           quantidade: Number(r.quantidade || 0),
-          lucro_unitario: Number((lucro / (Number(r.quantidade) || 1)).toFixed(2)),
+          lucro_unitario: Number(
+            (lucro / (Number(r.quantidade) || 1)).toFixed(2),
+          ),
         };
       });
     } catch (errRank) {
-      console.warn('Falha ranking produtos/top:', errRank.message);
+      console.warn("Falha ranking produtos/top:", errRank.message);
     }
 
     // Histórico
     let history = [];
     if (topRows.length) {
       try {
-        const historyStart = new Date(refDate.getFullYear(), refDate.getMonth() - (productMonths - 1), 1);
-        const historyStartYMD = `${historyStart.getFullYear()}-${String(historyStart.getMonth() + 1).padStart(2, '0')}-01`;
-        const ids = topRows.map(r => Number(r.produto_id)).filter(x => !Number.isNaN(x));
+        const historyStart = new Date(
+          refDate.getFullYear(),
+          refDate.getMonth() - (productMonths - 1),
+          1,
+        );
+        const historyStartYMD = `${historyStart.getFullYear()}-${String(historyStart.getMonth() + 1).padStart(2, "0")}-01`;
+        const ids = topRows
+          .map((r) => Number(r.produto_id))
+          .filter((x) => !Number.isNaN(x));
         if (ids.length) {
           const hq = await database.query({
             text: `WITH series AS (
@@ -101,7 +121,7 @@ export default async function handler(req, res) {
                    LEFT JOIN pedido_itens i ON i.pedido_id = pd.id AND i.produto_id = ANY($3)
                    GROUP BY s.mstart, i.produto_id
                    ORDER BY s.mstart ASC`,
-            values: [historyStartYMD, startYMD, ids]
+            values: [historyStartYMD, startYMD, ids],
           });
           const map = new Map();
           for (const r of hq.rows) {
@@ -109,14 +129,18 @@ export default async function handler(req, res) {
             if (!map.has(pid)) map.set(pid, []);
             const receita = Number(r.receita || 0);
             const cogs = Number(r.cogs || 0);
-            const lucro = Number(r.lucro || (receita - cogs));
-            const margem = receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
+            const lucro = Number(r.lucro || receita - cogs);
+            const margem =
+              receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
             map.get(pid).push({ month: r.month, receita, cogs, lucro, margem });
           }
-          history = topRows.map(r => ({ produto_id: r.produto_id, history: map.get(r.produto_id) || [] }));
+          history = topRows.map((r) => ({
+            produto_id: r.produto_id,
+            history: map.get(r.produto_id) || [],
+          }));
         }
       } catch (errHist) {
-        console.warn('Falha history produtos/top:', errHist.message);
+        console.warn("Falha history produtos/top:", errHist.message);
       }
     }
 
@@ -134,11 +158,17 @@ export default async function handler(req, res) {
       },
     });
   } catch (e) {
-    console.error('GET /produtos/top error', e);
+    console.error("GET /produtos/top error", e);
     if (isRelationMissing(e))
-      return res.status(503).json({ error: 'Schema not migrated (produtos|pedido_itens|pedidos missing)', action: 'Run migrations', code: e.code });
+      return res.status(503).json({
+        error: "Schema not migrated (produtos|pedido_itens|pedidos missing)",
+        action: "Run migrations",
+        code: e.code,
+      });
     if (isConnectionError(e))
-      return res.status(503).json({ error: 'Database unreachable', code: e.code });
-    return res.status(500).json({ error: 'Internal error' });
+      return res
+        .status(503)
+        .json({ error: "Database unreachable", code: e.code });
+    return res.status(500).json({ error: "Internal error" });
   }
 }

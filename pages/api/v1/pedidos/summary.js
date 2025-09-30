@@ -55,11 +55,17 @@ export default async function handler(req, res) {
       Math.max(3, Number(req.query.months || 12) || 12),
     );
 
-    const cacheKey = JSON.stringify({ month: req.query.month || null, monthsParam });
+    const cacheKey = JSON.stringify({
+      month: req.query.month || null,
+      monthsParam,
+    });
     if (!nocache) {
       const cached = cache.get(cacheKey);
       if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-        return res.status(200).json({ ...cached.data, _cache: { hit: true, ttl_ms: CACHE_TTL_MS } });
+        return res.status(200).json({
+          ...cached.data,
+          _cache: { hit: true, ttl_ms: CACHE_TTL_MS },
+        });
       }
     }
     // Data inicial = primeiro dia do mês referência - (N-1) meses
@@ -208,11 +214,12 @@ export default async function handler(req, res) {
                LIMIT ${topN}`,
         values: [startYMD, nextStartYMD],
       });
-      topProdutosRows = topProdutosQ.rows.map(r => {
+      topProdutosRows = topProdutosQ.rows.map((r) => {
         const receita = Number(r.receita || 0);
         const cogs = Number(r.cogs || 0);
         const lucro = Number(r.lucro || 0);
-        const margem = receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
+        const margem =
+          receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
         return {
           produto_id: r.produto_id,
           nome: r.nome,
@@ -221,25 +228,36 @@ export default async function handler(req, res) {
           lucro,
           margem,
           quantidade: Number(r.quantidade || 0),
-          lucro_unitario: Number((lucro / (Number(r.quantidade) || 1)).toFixed(2)),
+          lucro_unitario: Number(
+            (lucro / (Number(r.quantidade) || 1)).toFixed(2),
+          ),
         };
       });
     } catch (errTop) {
       // Não falha o endpoint inteiro se a agregação de produtos quebrar (ex.: coluna ausente em deploy parcial)
-      console.warn('Falha agregação top produtos lucro:', errTop.message);
+      console.warn("Falha agregação top produtos lucro:", errTop.message);
     }
 
     // Histórico mensal (lucro/receita/cogs) para cada produto do ranking
     // Parametrização: ?productMonths= (default 6, cap 24, min 2)
     const productMonthsRaw = Number(req.query.productMonths || 6);
-    const productMonths = Math.min(24, Math.max(2, isNaN(productMonthsRaw) ? 6 : productMonthsRaw));
+    const productMonths = Math.min(
+      24,
+      Math.max(2, isNaN(productMonthsRaw) ? 6 : productMonthsRaw),
+    );
     let topProdutosHistory = [];
     if (topProdutosRows.length) {
       try {
         // Geramos série de meses retroativos terminando no mês de referência para JOIN
-        const historyStartProd = new Date(refDate.getFullYear(), refDate.getMonth() - (productMonths - 1), 1);
-        const historyStartProdYMD = `${historyStartProd.getFullYear()}-${String(historyStartProd.getMonth() + 1).padStart(2, '0')}-01`;
-        const idsList = topProdutosRows.map(r => Number(r.produto_id)).filter(x => !Number.isNaN(x));
+        const historyStartProd = new Date(
+          refDate.getFullYear(),
+          refDate.getMonth() - (productMonths - 1),
+          1,
+        );
+        const historyStartProdYMD = `${historyStartProd.getFullYear()}-${String(historyStartProd.getMonth() + 1).padStart(2, "0")}-01`;
+        const idsList = topProdutosRows
+          .map((r) => Number(r.produto_id))
+          .filter((x) => !Number.isNaN(x));
         if (idsList.length) {
           const prodHistQ = await database.query({
             text: `WITH series AS (
@@ -254,7 +272,7 @@ export default async function handler(req, res) {
                    LEFT JOIN pedidos p ON p.tipo='VENDA' AND p.data_emissao >= s.mstart AND p.data_emissao < (s.mstart + interval '1 month')
                    LEFT JOIN pedido_itens i ON i.pedido_id = p.id AND i.produto_id = ANY($3)
                    GROUP BY s.mstart, i.produto_id
-                   ORDER BY s.mstart ASC` ,
+                   ORDER BY s.mstart ASC`,
             values: [historyStartProdYMD, startYMD, idsList],
           });
           // Organiza em estrutura: { produto_id, history: [{month, receita, cogs, lucro, margem}] }
@@ -264,17 +282,23 @@ export default async function handler(req, res) {
             if (!byProd.has(pid)) byProd.set(pid, []);
             const receita = Number(r.receita || 0);
             const cogs = Number(r.cogs || 0);
-            const lucro = Number(r.lucro || (receita - cogs));
-            const margem = receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
-            byProd.get(pid).push({ month: r.month, receita, cogs, lucro, margem });
+            const lucro = Number(r.lucro || receita - cogs);
+            const margem =
+              receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
+            byProd
+              .get(pid)
+              .push({ month: r.month, receita, cogs, lucro, margem });
           }
-          topProdutosHistory = topProdutosRows.map(prod => ({
+          topProdutosHistory = topProdutosRows.map((prod) => ({
             produto_id: prod.produto_id,
-            history: byProd.get(prod.produto_id) || []
+            history: byProd.get(prod.produto_id) || [],
           }));
         }
       } catch (errHist) {
-        console.warn('Falha agregação histórico top produtos:', errHist.message);
+        console.warn(
+          "Falha agregação histórico top produtos:",
+          errHist.message,
+        );
       }
     }
 
@@ -323,21 +347,21 @@ export default async function handler(req, res) {
     const crescimentoMoMPerc =
       vendasMesAnterior > 0
         ? Number(
-          (
-            ((vendasMes - vendasMesAnterior) / vendasMesAnterior) *
-            100
-          ).toFixed(2),
-        )
+            (
+              ((vendasMes - vendasMesAnterior) / vendasMesAnterior) *
+              100
+            ).toFixed(2),
+          )
         : null;
 
     const crescimentoComprasMoMPerc =
       comprasMesAnterior > 0
         ? Number(
-          (
-            ((comprasMes - comprasMesAnterior) / comprasMesAnterior) *
-            100
-          ).toFixed(2),
-        )
+            (
+              ((comprasMes - comprasMesAnterior) / comprasMesAnterior) *
+              100
+            ).toFixed(2),
+          )
         : null;
 
     // Monta growthHistory com crescimento percentual mês a mês
@@ -355,13 +379,23 @@ export default async function handler(req, res) {
         prev && prev > 0
           ? Number((((vendas - prev) / prev) * 100).toFixed(2))
           : null;
-      return { month: r.month, vendas, cogs: cogsHist, lucro, margem, crescimento };
+      return {
+        month: r.month,
+        vendas,
+        cogs: cogsHist,
+        lucro,
+        margem,
+        crescimento,
+      };
     });
 
     const comprasHistory = comprasHistoryQ.rows.map((r, idx, arr) => {
       const compras = Number(r.compras || 0);
       const prev = idx > 0 ? Number(arr[idx - 1].compras || 0) : null;
-      const crescimento = prev && prev > 0 ? Number((((compras - prev) / prev) * 100).toFixed(2)) : null;
+      const crescimento =
+        prev && prev > 0
+          ? Number((((compras - prev) / prev) * 100).toFixed(2))
+          : null;
       return { month: r.month, compras, crescimento };
     });
 
@@ -408,14 +442,25 @@ export default async function handler(req, res) {
       },
       topProdutoLucro: topProdutosRows[0] || null,
       topProdutosLucro: topProdutosRows,
-      _topProdutosMeta: { topNRequested: topNRaw || 5, topNUsed: topN, cap: 20 },
+      _topProdutosMeta: {
+        topNRequested: topNRaw || 5,
+        topNUsed: topN,
+        cap: 20,
+      },
       topProdutosHistory,
-      _topProdutosHistoryMeta: { productMonthsRequested: productMonthsRaw || 6, productMonthsUsed: productMonths, cap: 24 },
+      _topProdutosHistoryMeta: {
+        productMonthsRequested: productMonthsRaw || 6,
+        productMonthsUsed: productMonths,
+        cap: 24,
+      },
     };
 
     // Grava no cache (mesmo se nocache=1 para facilitar warm-up manual) mas só marca hit se servido do cache.
     cache.set(cacheKey, { ts: Date.now(), data: responsePayload });
-    return res.status(200).json({ ...responsePayload, _cache: { hit: false, ttl_ms: CACHE_TTL_MS } });
+    return res.status(200).json({
+      ...responsePayload,
+      _cache: { hit: false, ttl_ms: CACHE_TTL_MS },
+    });
   } catch (e) {
     console.error("GET /pedidos/summary error", e);
     if (isRelationMissing(e))
