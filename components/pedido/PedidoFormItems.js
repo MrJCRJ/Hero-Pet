@@ -1,7 +1,11 @@
 import React from "react";
 import { Button } from "../ui/Button";
 import { SelectionModal } from "../common/SelectionModal";
-import { formatQty } from "./utils";
+import {
+  formatQty,
+  computeComissoes,
+  computeMargensPosComissao,
+} from "./utils";
 import { QuickAddItemRow } from "./QuickAddItemRow";
 import {
   fetchLastPurchasePrice,
@@ -42,6 +46,16 @@ export function PedidoFormItems(props) {
     }
   }, [itens, computeItemTotal]);
 
+  // Percentuais configuráveis para referência de comissão (default 3 e 5)
+  const [percRefInput, setPercRefInput] = React.useState("3,5");
+  const percentuaisRefParsed = React.useMemo(() => {
+    return percRefInput
+      .split(/[,;\s]+/)
+      .map((p) => Number(p.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0)
+      .slice(0, 4);
+  }, [percRefInput]);
+
   const freteShares = React.useMemo(() => {
     if (tipo !== "COMPRA") return itens.map(() => 0);
     const totalFrete = Number(freteTotal || 0);
@@ -74,53 +88,6 @@ export function PedidoFormItems(props) {
     return rounded;
   }, [tipo, freteTotal, itens]);
 
-  // Auto-carrega custos para itens de uma VENDA já existentes (ex: pedido em edição) que ainda não possuem custos.
-  React.useEffect(() => {
-    if (tipo !== "VENDA") return;
-    (itens || []).forEach((it, idx) => {
-      if (!it) return;
-      const hasProduto = !!it.produto_id;
-      const temCustos =
-        (it.custo_fifo_unitario != null && it.custo_fifo_unitario > 0) ||
-        (it.custo_base_unitario != null && it.custo_base_unitario > 0);
-      const jaTentou = it.custo_fetch_tentado;
-      if (hasProduto && !temCustos && !jaTentou) {
-        // Marca tentativa para evitar loop e mostra spinner
-        onUpdateItem(idx, {
-          custo_carregando: true,
-          custo_fetch_tentado: true,
-        });
-        Promise.all([
-          fetchSaldoDetalhado(it.produto_id),
-          fetchSaldoFifoDetalhado(it.produto_id),
-        ])
-          .then(([det, fifo]) => {
-            const custoFifo =
-              Number.isFinite(fifo.custo_medio_fifo) &&
-              fifo.custo_medio_fifo > 0
-                ? fifo.custo_medio_fifo
-                : null;
-            const baseLegacy = (() => {
-              const cm = Number(det.custo_medio);
-              const ult = Number(det.ultimo_custo);
-              if (Number.isFinite(cm) && cm > 0) return cm;
-              if (Number.isFinite(ult) && ult > 0) return ult;
-              return null;
-            })();
-            onUpdateItem(idx, {
-              custo_fifo_unitario: custoFifo,
-              custo_base_unitario: baseLegacy,
-              produto_saldo: det.saldo ?? it.produto_saldo ?? null,
-              custo_carregando: false,
-            });
-          })
-          .catch(() => {
-            onUpdateItem(idx, { custo_carregando: false });
-          });
-      }
-    });
-  }, [itens, tipo, onUpdateItem]);
-
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-2">
@@ -128,68 +95,9 @@ export function PedidoFormItems(props) {
       </div>
       <QuickAddItemRow
         tipo={tipo}
-        itens={itens}
-        onUpdateItem={onUpdateItem}
         onAddItem={onAddItem}
-        onAppend={(row) => {
-          const baseRow = {
-            produto_id: String(row.produto_id || ""),
-            produto_label: row.produto_label || "",
-            quantidade: String(row.quantidade || ""),
-            preco_unitario: String(row.preco_unitario ?? ""),
-            desconto_unitario: String(row.desconto_unitario ?? ""),
-            produto_saldo: null,
-            custo_fifo_unitario: null,
-            custo_base_unitario: null,
-            custo_carregando: false,
-          };
-          const emptyIdx = itens.findIndex((r) => !r.produto_id);
-          let targetIndex;
-          if (emptyIdx >= 0) {
-            targetIndex = emptyIdx;
-            onUpdateItem(emptyIdx, baseRow);
-          } else {
-            targetIndex = itens.length;
-            onAddItem();
-            setTimeout(() => onUpdateItem(targetIndex, baseRow), 0);
-          }
-          // Se for VENDA, buscar custos assim que adiciona para calcular lucro; evita depender exclusivamente do modal de seleção
-          if (tipo === "VENDA" && row.produto_id) {
-            // Marca item como carregando custos para exibir indicador na coluna Lucro
-            onUpdateItem(targetIndex, { custo_carregando: true });
-            Promise.all([
-              fetchSaldoDetalhado(row.produto_id),
-              fetchSaldoFifoDetalhado(row.produto_id),
-            ])
-              .then(([det, fifo]) => {
-                const custoFifo =
-                  Number.isFinite(fifo.custo_medio_fifo) &&
-                  fifo.custo_medio_fifo > 0
-                    ? fifo.custo_medio_fifo
-                    : null;
-                const baseLegacy = (() => {
-                  const cm = Number(det.custo_medio);
-                  const ult = Number(det.ultimo_custo);
-                  if (Number.isFinite(cm) && cm > 0) return cm;
-                  if (Number.isFinite(ult) && ult > 0) return ult;
-                  return null;
-                })();
-                onUpdateItem(targetIndex, {
-                  custo_fifo_unitario: custoFifo,
-                  custo_base_unitario: baseLegacy,
-                  produto_saldo: det.saldo ?? null,
-                  custo_carregando: false,
-                });
-              })
-              .catch(() => {
-                onUpdateItem(targetIndex, {
-                  custo_fifo_unitario: null,
-                  custo_base_unitario: null,
-                  custo_carregando: false,
-                });
-              });
-          }
-        }}
+        onUpdateItem={onUpdateItem}
+        itens={itens}
         fetchProdutos={fetchProdutos}
       />
 
@@ -210,7 +118,7 @@ export function PedidoFormItems(props) {
                   >
                     •{" "}
                     {removedItem.produto_label ||
-                      `Produto ID: ${removedItem.produto_id}`}
+                      `Produto ID: ${removedItem.produto_id}`}{" "}
                     - Qtd: {removedItem.quantidade}- Preço:{" "}
                     {formatBRL(Number(removedItem.preco_unitario || 0))}
                   </div>
@@ -220,7 +128,7 @@ export function PedidoFormItems(props) {
           );
         })()}
 
-      <div className="border rounded-md overflow-x-auto">
+      <div className="border rounded-md overflow-x-auto mt-4">
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-bg-secondary)] text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">
             <tr>
@@ -400,27 +308,21 @@ export function PedidoFormItems(props) {
             } catch (_) {
               totalLucro = 0;
             }
-            // Margens fixas solicitadas: 3% e 5% sobre LSM (lucro sem margem)
-            const margem3Val = Number((totalLucro * 3) / 100);
-            const margem5Val = Number((totalLucro * 5) / 100);
-            const lucroComMargem3 = totalLucro - margem3Val;
-            const lucroComMargem5 = totalLucro - margem5Val;
+            // Percentuais dinâmicos de referência (padrão 3% e 5%) calculados sobre total da venda
+            const percentuaisRef = percentuaisRefParsed.length
+              ? percentuaisRefParsed
+              : [3, 5];
+            const comissoesRef = computeComissoes(totalItens, percentuaisRef);
+            const lucroPos = comissoesRef.map((c) => totalLucro - c);
+            const margensPos = computeMargensPosComissao(
+              totalLucro,
+              totalItens,
+              comissoesRef,
+            );
             const lucroCls =
               totalLucro > 0
                 ? "text-emerald-600 dark:text-emerald-400"
                 : totalLucro < 0
-                  ? "text-red-600 dark:text-red-400"
-                  : "opacity-70";
-            const lucroFinal3Cls =
-              lucroComMargem3 > 0
-                ? "text-emerald-600 dark:text-emerald-400"
-                : lucroComMargem3 < 0
-                  ? "text-red-600 dark:text-red-400"
-                  : "opacity-70";
-            const lucroFinal5Cls =
-              lucroComMargem5 > 0
-                ? "text-emerald-600 dark:text-emerald-400"
-                : lucroComMargem5 < 0
                   ? "text-red-600 dark:text-red-400"
                   : "opacity-70";
             return (
@@ -430,72 +332,73 @@ export function PedidoFormItems(props) {
                   <span className="font-semibold">
                     {formatBRL(Number(totalItens || 0))}
                   </span>
-                  <span className="font-medium">LSM:</span>
+                  <span className="font-medium">Lucro:</span>
                   <span className={`font-semibold ${lucroCls}`}>
                     {formatBRL(totalLucro)}
                   </span>
-                  <span
-                    className="font-medium"
-                    title="Comissão fixa de 3% sobre LSM"
-                  >
-                    Comissão 3%:
-                  </span>
-                  <span
-                    className={`font-semibold ${
-                      margem3Val > 0
-                        ? "text-amber-600 dark:text-amber-400"
-                        : "opacity-70"
-                    }`}
-                    title="Valor da comissão de 3%"
-                  >
-                    {formatBRL(margem3Val)}
-                  </span>
-                  <span
-                    className="font-medium"
-                    title="Lucro com comissão 3% deduzida"
-                  >
-                    LCM 3%:
-                  </span>
-                  <span
-                    className={`font-semibold ${lucroFinal3Cls}`}
-                    title="Lucro final após 3%"
-                  >
-                    {formatBRL(lucroComMargem3)}
-                  </span>
-                  <span
-                    className="font-medium"
-                    title="Comissão fixa de 5% sobre LSM"
-                  >
-                    Comissão 5%:
-                  </span>
-                  <span
-                    className={`font-semibold ${
-                      margem5Val > 0
-                        ? "text-amber-600 dark:text-amber-400"
-                        : "opacity-70"
-                    }`}
-                    title="Valor da comissão de 5%"
-                  >
-                    {formatBRL(margem5Val)}
-                  </span>
-                  <span
-                    className="font-medium"
-                    title="Lucro com comissão 5% deduzida"
-                  >
-                    LCM 5%:
-                  </span>
-                  <span
-                    className={`font-semibold ${lucroFinal5Cls}`}
-                    title="Lucro final após 5%"
-                  >
-                    {formatBRL(lucroComMargem5)}
-                  </span>
+                  <label className="flex items-center gap-1 text-[10px] opacity-70">
+                    <span>Ref %:</span>
+                    <input
+                      type="text"
+                      value={percRefInput}
+                      onChange={(e) => setPercRefInput(e.target.value)}
+                      className="px-1 py-0.5 border rounded w-24 bg-[var(--color-bg-primary)] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      title="Digite percentuais separados por vírgula. Ex: 3,5 ou 2,4,6"
+                    />
+                  </label>
+                  {percentuaisRef.map((p, idx) => {
+                    const comVal = comissoesRef[idx];
+                    const lp = lucroPos[idx];
+                    const marg = margensPos[idx];
+                    const lucroPosCls =
+                      lp > 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : lp < 0
+                          ? "text-red-600 dark:text-red-400"
+                          : "opacity-70";
+                    return (
+                      <React.Fragment key={p}>
+                        <span
+                          className="font-medium"
+                          title={`Comissão de ${p}% sobre o total da venda`}
+                        >
+                          Comissão {p}%:
+                        </span>
+                        <span
+                          className={`font-semibold ${comVal > 0 ? "text-amber-600 dark:text-amber-400" : "opacity-70"}`}
+                          title={`Valor da comissão de ${p}%`}
+                        >
+                          {formatBRL(comVal)}
+                        </span>
+                        <span
+                          className="font-medium"
+                          title={`Lucro após deduzir ${p}% do total da venda`}
+                        >
+                          Lucro - {p}%:
+                        </span>
+                        <span
+                          className={`font-semibold ${lucroPosCls}`}
+                          title={`Lucro final após deduzir ${p}%`}
+                        >
+                          {formatBRL(lp)}
+                        </span>
+                        {marg != null && (
+                          <span
+                            className="text-[10px] opacity-70"
+                            title={`Margem % após comissão ${p}%`}
+                          >
+                            ({marg}% marg.)
+                          </span>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
                 <div className="opacity-60 text-[10px] leading-snug max-w-[560px] text-right">
-                  LSM = Lucro sem margem · Comissão X% = LSM * X% · LCM X% = LSM
-                  - Comissão X% (mostrando versões para 3% e 5%)
+                  Comissão X% calculada sobre o TOTAL da venda. Edite a lista de
+                  percentuais em &quot;Ref %&quot; (máx 4). Lucro - X% = Lucro
+                  total - Comissão X%.
                 </div>
-                {/* Linha adicional para retrocompatibilidade com testes que buscam 'Lucro Total:' */}
                 <div className={`text-[11px] mt-1 font-medium ${lucroCls}`}>
                   {`Lucro Total: ${formatBRL(totalLucro)}`}
                 </div>

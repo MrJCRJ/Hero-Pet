@@ -87,3 +87,78 @@ export function formatQty(value) {
   if (!Number.isFinite(n)) return String(value ?? "");
   return n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 }
+
+/**
+ * Soma total (itens) do pedido usando computeItemTotal. Retorna 0 em falhas.
+ */
+export function computeTotalItens(itens) {
+  try {
+    return (itens || []).reduce((acc, it) => {
+      const t = computeItemTotal(it);
+      return acc + (Number.isFinite(t) ? Number(t) : 0);
+    }, 0);
+  } catch (_) {
+    return 0;
+  }
+}
+
+/**
+ * Calcula lucro bruto aproximado por item (usa custo_fifo_unitario preferencialmente, fallback custo_base_unitario)
+ * Retorna objeto { totalLucro, detalhes } para possíveis diagnósticos futuros.
+ */
+export function computeLucroBruto(itens) {
+  let totalLucro = 0;
+  const detalhes = [];
+  (itens || []).forEach((it) => {
+    try {
+      const totalItem = computeItemTotal(it);
+      if (!Number.isFinite(totalItem)) return;
+      const custoUnit = Number.isFinite(it.custo_fifo_unitario)
+        ? Number(it.custo_fifo_unitario)
+        : Number.isFinite(it.custo_base_unitario)
+          ? Number(it.custo_base_unitario)
+          : null;
+      if (!Number.isFinite(custoUnit) || custoUnit < 0) return;
+      const qtd = Number(it.quantidade);
+      if (!Number.isFinite(qtd) || qtd <= 0) return;
+      const custoTotal = custoUnit * qtd;
+      const lucro = totalItem - custoTotal;
+      totalLucro += lucro;
+      detalhes.push({
+        produto_id: it.produto_id,
+        lucro,
+        totalItem,
+        custoTotal,
+      });
+    } catch (_) {
+      /* ignore item */
+    }
+  });
+  return { totalLucro: Number(totalLucro), detalhes };
+}
+
+/**
+ * Dado um array de percentuais e base (ex: total da venda), retorna valores calculados.
+ */
+export function computeComissoes(base, percentuais) {
+  const b = Number(base) || 0;
+  return (percentuais || []).map((p) => {
+    const pn = Number(p);
+    if (!Number.isFinite(pn) || pn <= 0) return 0;
+    return Number(((b * pn) / 100).toFixed(2));
+  });
+}
+
+/**
+ * Calcula margens pós comissão: (lucroBruto - comissao) / totalVenda * 100.
+ * Retorna array de números (percentuais) com mesma ordem dos percentuais.
+ */
+export function computeMargensPosComissao(lucroBruto, totalVenda, comissoes) {
+  const tv = Number(totalVenda);
+  if (!Number.isFinite(tv) || tv <= 0) return comissoes.map(() => null);
+  return comissoes.map((c) => {
+    const ln = Number(lucroBruto) - Number(c || 0);
+    if (!Number.isFinite(ln)) return null;
+    return Number(((ln / tv) * 100).toFixed(2));
+  });
+}
