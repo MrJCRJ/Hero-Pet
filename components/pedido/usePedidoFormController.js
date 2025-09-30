@@ -314,13 +314,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       const next = Number((total / numeroPromissorias).toFixed(2));
       if (valorPorPromissoria !== next) setValorPorPromissoria(next);
     }
-  }, [
-    itens,
-    numeroPromissorias,
-    computeOrderTotalEstimate,
-    computeLucroBruto,
-    valorPorPromissoria,
-  ]);
+  }, [itens, numeroPromissorias, computeOrderTotalEstimate, computeLucroBruto, valorPorPromissoria]);
 
   // Gerar cronograma quando não está no modo manual
   React.useEffect(() => {
