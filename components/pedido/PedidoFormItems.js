@@ -5,6 +5,7 @@ import {
   formatQty,
   computeComissoes,
   computeMargensPosComissao,
+  computeLucroBruto,
 } from "./utils";
 import { QuickAddItemRow } from "./QuickAddItemRow";
 import {
@@ -56,6 +57,52 @@ export function PedidoFormItems(props) {
       .slice(0, 4);
   }, [percRefInput]);
 
+  // Auto-carrega custos para itens de uma VENDA que ainda não possuem custos (custo FIFO ou base)
+  React.useEffect(() => {
+    if (tipo !== "VENDA") return;
+    (itens || []).forEach((it, idx) => {
+      if (!it) return;
+      const hasProduto = !!it.produto_id;
+      const temCustos =
+        (it.custo_fifo_unitario != null && it.custo_fifo_unitario > 0) ||
+        (it.custo_base_unitario != null && it.custo_base_unitario > 0);
+      const jaTentou = it.custo_fetch_tentado;
+      if (hasProduto && !temCustos && !jaTentou) {
+        onUpdateItem(idx, {
+          custo_carregando: true,
+          custo_fetch_tentado: true,
+        });
+        Promise.all([
+          fetchSaldoDetalhado(it.produto_id),
+          fetchSaldoFifoDetalhado(it.produto_id),
+        ])
+          .then(([det, fifo]) => {
+            const custoFifo =
+              Number.isFinite(fifo.custo_medio_fifo) &&
+              fifo.custo_medio_fifo > 0
+                ? fifo.custo_medio_fifo
+                : null;
+            const baseLegacy = (() => {
+              const cm = Number(det.custo_medio);
+              const ult = Number(det.ultimo_custo);
+              if (Number.isFinite(cm) && cm > 0) return cm;
+              if (Number.isFinite(ult) && ult > 0) return ult;
+              return null;
+            })();
+            onUpdateItem(idx, {
+              custo_fifo_unitario: custoFifo,
+              custo_base_unitario: baseLegacy,
+              produto_saldo: det.saldo ?? it.produto_saldo ?? null,
+              custo_carregando: false,
+            });
+          })
+          .catch(() => {
+            onUpdateItem(idx, { custo_carregando: false });
+          });
+      }
+    });
+  }, [tipo, itens, onUpdateItem]);
+
   const freteShares = React.useMemo(() => {
     if (tipo !== "COMPRA") return itens.map(() => 0);
     const totalFrete = Number(freteTotal || 0);
@@ -95,8 +142,7 @@ export function PedidoFormItems(props) {
       </div>
       <QuickAddItemRow
         tipo={tipo}
-        onAddItem={onAddItem}
-        onUpdateItem={onUpdateItem}
+        onAppend={onAddItem}
         itens={itens}
         fetchProdutos={fetchProdutos}
       />
@@ -287,27 +333,8 @@ export function PedidoFormItems(props) {
       <div className="flex justify-end mt-3 gap-6 items-start flex-wrap">
         {tipo === "VENDA" &&
           (() => {
-            // Cálculos de lucro total base
-            let totalLucro = 0;
-            try {
-              totalLucro = itens.reduce((acc, it) => {
-                const qtd = Number(it.quantidade || 0);
-                const preco =
-                  Number(it.preco_unitario || 0) -
-                  Number(it.desconto_unitario || 0);
-                const custoRaw = Number(
-                  it.custo_fifo_unitario != null
-                    ? it.custo_fifo_unitario
-                    : it.custo_base_unitario,
-                );
-                if (qtd > 0 && preco > 0 && Number.isFinite(custoRaw)) {
-                  return acc + (preco - custoRaw) * qtd;
-                }
-                return acc;
-              }, 0);
-            } catch (_) {
-              totalLucro = 0;
-            }
+            const { totalLucro } = computeLucroBruto(itens);
+            const algumCarregando = itens.some((it) => it?.custo_carregando);
             // Percentuais dinâmicos de referência (padrão 3% e 5%) calculados sobre total da venda
             const percentuaisRef = percentuaisRefParsed.length
               ? percentuaisRefParsed
@@ -334,7 +361,9 @@ export function PedidoFormItems(props) {
                   </span>
                   <span className="font-medium">Lucro:</span>
                   <span className={`font-semibold ${lucroCls}`}>
-                    {formatBRL(totalLucro)}
+                    {algumCarregando && totalLucro === 0
+                      ? "…"
+                      : formatBRL(totalLucro)}
                   </span>
                   <label className="flex items-center gap-1 text-[10px] opacity-70">
                     <span>Ref %:</span>

@@ -236,8 +236,15 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
     );
   }, []);
-  const addItem = useCallback(() => {
-    setItens((prev) => [...prev, defaultEmptyItem()]);
+  // Agora aceita payload opcional (ex: QuickAddItemRow) para criar item já preenchido
+  const addItem = useCallback((patch) => {
+    setItens((prev) => [
+      ...prev,
+      {
+        ...defaultEmptyItem(),
+        ...(patch && typeof patch === "object" ? patch : {}),
+      },
+    ]);
   }, []);
   const removeItem = useCallback((idx) => {
     setItens((prev) => prev.filter((_, i) => i !== idx));
