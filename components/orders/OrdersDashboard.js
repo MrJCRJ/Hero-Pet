@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import LineAreaChart from "components/common/LineAreaChart";
 import { formatBRL } from "components/common/format";
 import { Modal } from "components/common/Modal";
@@ -119,6 +119,30 @@ export default function OrdersDashboard({ month: monthProp }) {
     </button>
   );
 
+  const monthInputRef = useRef(null);
+  const openMonthPicker = useCallback(() => {
+    const el = monthInputRef.current;
+    if (!el) return;
+    try {
+      if (typeof el.showPicker === "function") {
+        el.showPicker();
+      } else {
+        el.focus();
+      }
+    } catch (_) {
+      el.focus();
+    }
+  }, []);
+  const onMonthKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openMonthPicker();
+      }
+    },
+    [openMonthPicker],
+  );
+
   if (loading && !data) {
     return <div className="mb-3 text-sm opacity-70">Carregando resumo...</div>;
   }
@@ -137,10 +161,14 @@ export default function OrdersDashboard({ month: monthProp }) {
         <div className="text-xs opacity-70">Resumo de {label}</div>
         <div className="flex items-center gap-2">
           <input
+            ref={monthInputRef}
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            className="text-sm px-2 py-1 border rounded bg-[var(--color-bg-primary)] border-[var(--color-border)]"
+            onClick={openMonthPicker}
+            onKeyDown={onMonthKeyDown}
+            aria-label="Selecionar mês do resumo"
+            className="text-sm px-2 py-1 border rounded bg-[var(--color-bg-primary)] border-[var(--color-border)] calendar-icon-white fallback-icon cursor-pointer"
           />
           <button
             className="text-xs underline opacity-80 hover:opacity-100"
@@ -606,10 +634,10 @@ function LucroBrutoDetails({ data }) {
   const prevPoint =
     active && chartData.length > 1
       ? (() => {
-          const idx = chartData.findIndex((p) => p.label === active.label);
-          if (idx > 0) return chartData[idx - 1];
-          return null;
-        })()
+        const idx = chartData.findIndex((p) => p.label === active.label);
+        if (idx > 0) return chartData[idx - 1];
+        return null;
+      })()
       : null;
   const momPct =
     prevPoint && prevPoint.value !== 0
