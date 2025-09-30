@@ -86,6 +86,23 @@ export default async function handler(req, res) {
       values: [historyStartYMD, startYMD],
     });
 
+    // Histórico de compras (para gráfico similar ao crescimento de vendas)
+    const comprasHistoryQ = await database.query({
+      text: `WITH series AS (
+               SELECT generate_series(date_trunc('month',$1::date), date_trunc('month',$2::date), interval '1 month') AS mstart
+             )
+             SELECT to_char(s.mstart, 'YYYY-MM') AS month,
+                    COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS compras
+             FROM series s
+             LEFT JOIN pedidos p
+               ON p.tipo = 'COMPRA'
+              AND p.data_emissao >= s.mstart
+              AND p.data_emissao < (s.mstart + interval '1 month')
+             GROUP BY s.mstart
+             ORDER BY s.mstart`,
+      values: [historyStartYMD, startYMD],
+    });
+
     // Histórico de COGS por mês (itens de venda dentro do mês)
     const cogsHistoryQ = await database.query({
       text: `WITH series AS (
@@ -116,6 +133,14 @@ export default async function handler(req, res) {
              FROM pedidos
              WHERE tipo = 'COMPRA' AND data_emissao >= $1 AND data_emissao < $2`,
       values: [startYMD, nextStartYMD],
+    });
+
+    // Compras do mês anterior (para crescimento de compras)
+    const comprasPrevQ = await database.query({
+      text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+             FROM pedidos
+             WHERE tipo = 'COMPRA' AND data_emissao >= $1 AND data_emissao < $2`,
+      values: [prevStartYMD, startYMD],
     });
 
     // Vendas do mês anterior (para Crescimento MoM)
@@ -169,6 +194,7 @@ export default async function handler(req, res) {
 
     const vendasMes = Number(vendasQ.rows[0]?.total || 0);
     const comprasMes = Number(comprasQ.rows[0]?.total || 0);
+    const comprasMesAnterior = Number(comprasPrevQ.rows[0]?.total || 0);
     const vendasMesAnterior = Number(vendasPrevQ.rows[0]?.total || 0);
     const cogsReal = Number(cogsQ.rows[0]?.cogs || 0);
     const lucroBrutoMes = Number((vendasMes - cogsReal).toFixed(2));
@@ -181,6 +207,16 @@ export default async function handler(req, res) {
         ? Number(
           (
             ((vendasMes - vendasMesAnterior) / vendasMesAnterior) *
+            100
+          ).toFixed(2),
+        )
+        : null;
+
+    const crescimentoComprasMoMPerc =
+      comprasMesAnterior > 0
+        ? Number(
+          (
+            ((comprasMes - comprasMesAnterior) / comprasMesAnterior) *
             100
           ).toFixed(2),
         )
@@ -204,16 +240,26 @@ export default async function handler(req, res) {
       return { month: r.month, vendas, cogs: cogsHist, lucro, margem, crescimento };
     });
 
+    const comprasHistory = comprasHistoryQ.rows.map((r, idx, arr) => {
+      const compras = Number(r.compras || 0);
+      const prev = idx > 0 ? Number(arr[idx - 1].compras || 0) : null;
+      const crescimento = prev && prev > 0 ? Number((((compras - prev) / prev) * 100).toFixed(2)) : null;
+      return { month: r.month, compras, crescimento };
+    });
+
     const responsePayload = {
       month: label,
       vendasMes,
       vendasMesAnterior,
       crescimentoMoMPerc,
       comprasMes,
+      comprasMesAnterior,
+      crescimentoComprasMoMPerc,
       cogsReal,
       lucroBrutoMes,
       margemBrutaPerc,
       growthHistory,
+      comprasHistory,
       promissorias: {
         mesAtual: {
           pagos: {

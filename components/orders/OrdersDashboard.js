@@ -3,6 +3,7 @@ import LineAreaChart from "components/common/LineAreaChart";
 import { formatBRL } from "components/common/format";
 import { Modal } from "components/common/Modal";
 import { formatYMDToBR } from "components/common/date";
+import DualLineChart from "components/common/DualLineChart";
 
 function truncateName(name, max = 18) {
   if (!name) return "";
@@ -330,27 +331,43 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
     switch (cardKey) {
       case "comprasMes":
         return (
-          <PedidosListByMonth
-            monthLabel={monthLabel}
-            monthStr={monthStr}
-            tipo="COMPRA"
-            total={data.comprasMes}
-            onSelect={onSelect}
-          />
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm font-medium">
+                Total de Compras — {monthLabel}: {formatBRL(data.comprasMes)}
+              </div>
+              {typeof data.crescimentoComprasMoMPerc === "number" && (
+                <div className="text-xs opacity-70 mt-0.5">
+                  Vs mês anterior: {data.crescimentoComprasMoMPerc}% (Anterior: {formatBRL(data.comprasMesAnterior)})
+                </div>
+              )}
+              <ComprasHistoryChart comprasHistory={data.comprasHistory} />
+            </div>
+            <div className="pt-2 border-t border-[var(--color-border)]">
+              <button
+                onClick={() =>
+                  onSelect({ tipo: "COMPRA", from: boundsFromYYYYMM(monthStr).from, to: boundsFromYYYYMM(monthStr).to })
+                }
+                className="px-3 py-1.5 text-xs rounded bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-primary)]"
+              >
+                Ver compras do mês na lista
+              </button>
+            </div>
+          </div>
         );
       case "lucro_bruto":
-        return <LucroBrutoDetails monthLabel={monthLabel} data={data} />;
+        return <LucroBrutoDetails data={data} />;
       case "crescimento_mom":
-        return <CrescimentoMoMDetails monthLabel={monthLabel} data={data} />;
+        return <VendasComprasOverlayDetails data={data} />;
       case "promissorias_pendentes":
         return (
           <PromissoriasList
             title="Promissórias pendentes"
             monthLabel={monthLabel}
             monthStr={monthStr}
-            status="pendentes"
-            expectedCount={data.promissorias.mesAtual.pendentes.count}
-            expectedAmount={data.promissorias.mesAtual.pendentes.valor}
+            status="pending"
+            expectedCount={data.promissorias.mesAtual.emAberto.count}
+            expectedAmount={data.promissorias.mesAtual.emAberto.valor}
             onSelect={onSelect}
           />
         );
@@ -360,19 +377,19 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
             title="Promissórias atrasadas"
             monthLabel={monthLabel}
             monthStr={monthStr}
-            status="atrasadas"
-            expectedCount={data.promissorias.mesAtual.atrasados.count}
-            expectedAmount={data.promissorias.mesAtual.atrasados.valor}
+            status="late"
+            expectedCount={data.promissorias.mesAtual.atrasadas.count}
+            expectedAmount={data.promissorias.mesAtual.atrasadas.valor}
             onSelect={onSelect}
           />
         );
       case "proximo_mes":
         return (
           <PromissoriasList
-            title="Vão para o próximo mês"
+            title="Promissórias que irão para o próximo mês"
             monthLabel={monthLabel}
             monthStr={monthStr}
-            status="proximo"
+            status="next"
             expectedCount={data.promissorias.proximoMes.pendentes.count}
             expectedAmount={data.promissorias.proximoMes.pendentes.valor}
             onSelect={onSelect}
@@ -381,7 +398,7 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
       case "carry_over":
         return (
           <PromissoriasList
-            title="Vieram de meses anteriores"
+            title="Promissórias vindas de meses anteriores"
             monthLabel={monthLabel}
             monthStr={monthStr}
             status="carry"
@@ -399,6 +416,40 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
     <Modal title={t} onClose={onClose}>
       {content}
     </Modal>
+  );
+}
+
+function ComprasHistoryChart({ comprasHistory }) {
+  if (!comprasHistory?.length) return null;
+  const data = comprasHistory.map((r) => ({ label: r.month, value: r.compras }));
+  return (
+    <div className="mt-4">
+      <h4 className="font-semibold mb-2">Histórico de Compras (12 meses)</h4>
+      <LineAreaChart
+        data={data}
+        color="var(--color-warning)"
+        height={180}
+        formatValue={(v) => formatBRL(v)}
+      />
+      <div className="grid grid-cols-12 text-xs mt-2 font-medium text-gray-500 dark:text-gray-400">
+        <div className="col-span-3">Mês</div>
+        <div className="col-span-3 text-right">Compras</div>
+        <div className="col-span-3 text-right">MoM %</div>
+        <div className="col-span-3 text-right">Δ Absoluto</div>
+      </div>
+      {comprasHistory.map((r, i) => {
+        const prev = i > 0 ? comprasHistory[i - 1].compras : null;
+        const delta = prev != null ? r.compras - prev : null;
+        return (
+          <div key={r.month} className="grid grid-cols-12 text-xs py-0.5 border-b border-gray-100 dark:border-gray-800 last:border-none">
+            <div className="col-span-3">{r.month}</div>
+            <div className="col-span-3 text-right">{formatBRL(r.compras)}</div>
+            <div className="col-span-3 text-right">{r.crescimento != null ? `${r.crescimento}%` : '-'}</div>
+            <div className="col-span-3 text-right">{delta != null ? formatBRL(delta) : '-'}</div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -505,145 +556,45 @@ function PromissoriasList({
   );
 }
 
-function PedidosListByMonth({ monthLabel, monthStr, tipo, total, onSelect }) {
-  const [rows, setRows] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState(null);
-  const bounds = React.useMemo(() => boundsFromYYYYMM(monthStr), [monthStr]);
+// (Função PedidosListByMonth removida por não ser utilizada após refatoração)
 
-  React.useEffect(() => {
-    let alive = true;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const qs = new URLSearchParams();
-        qs.set("tipo", tipo);
-        if (bounds.from) qs.set("from", bounds.from);
-        if (bounds.to) qs.set("to", bounds.to);
-        qs.set("limit", "500");
-        const res = await fetch(`/api/v1/pedidos?${qs.toString()}`, {
-          cache: "no-store",
-        });
-        const json = await res.json();
-        if (!res.ok)
-          throw new Error(json?.error || "Falha ao carregar pedidos");
-        const arr = Array.isArray(json?.data)
-          ? json.data
-          : Array.isArray(json)
-            ? json
-            : [];
-        if (alive) setRows(arr);
-      } catch (e) {
-        if (alive) setError(e.message || String(e));
-      } finally {
-        if (alive) setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      alive = false;
-    };
-  }, [tipo, bounds.from, bounds.to]);
+// Row removido após adoção de layout gráfico para lucro bruto
 
-  const sumTotal = rows.reduce(
-    (acc, r) => acc + Number(r.total_liquido || 0) + Number(r.frete_total || 0),
-    0,
-  );
-
-  return (
-    <div className="space-y-3 text-sm">
-      <p>
-        Período: <strong>{monthLabel}</strong>
-      </p>
-      <div className="border rounded">
-        <table className="w-full text-sm">
-          <thead className="bg-[var(--color-bg-secondary)]">
-            <tr>
-              <th className="text-left px-2 py-1">Pedido</th>
-              <th className="text-left px-2 py-1">Parceiro</th>
-              <th className="text-left px-2 py-1">Emissão</th>
-              <th className="text-right px-2 py-1">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr
-                key={r.id}
-                className="border-t hover:bg-[var(--color-bg-secondary)] cursor-pointer"
-                title="Filtrar lista pelo ID do pedido"
-                onClick={() =>
-                  onSelect?.({ q: `#${r.id}`, tipo: "", from: "", to: "" })
-                }
-              >
-                <td className="px-2 py-1">#{r.id}</td>
-                <td className="px-2 py-1" title={r.partner_name}>
-                  {truncateName(r.partner_name)}
-                </td>
-                <td className="px-2 py-1">{formatYMDToBR(r.data_emissao)}</td>
-                <td className="px-2 py-1 text-right">
-                  {formatBRL(
-                    Number(r.total_liquido || 0) + Number(r.frete_total || 0),
-                  )}
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td className="px-2 py-4 text-center opacity-70" colSpan={4}>
-                  Nenhum pedido encontrado
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className="text-xs opacity-70">
-        Total esperado pelo resumo: {formatBRL(total)} — Total listado:{" "}
-        {formatBRL(sumTotal)}
-      </div>
-      {error && <div className="text-red-500">Erro: {String(error)}</div>}
-      {loading && <div className="opacity-70">Carregando...</div>}
-    </div>
-  );
-}
-
+// LucroBrutoDetails: mostra série histórica de lucro bruto, receita, margem e variações
 function LucroBrutoDetails({ data }) {
-  // Agora growthHistory inclui cogs, lucro e margem reais por mês.
   const history = Array.isArray(data.growthHistory) ? data.growthHistory : [];
+  // Monta pontos com lucro bruto (vendas - cogs) e margem
   const chartData = history.map((h) => {
     const vendas = Number(h.vendas || 0);
-    const lucro = Number(h.lucro != null ? h.lucro : (vendas - Number(h.cogs || 0))).toFixed
-      ? Number(Number(h.lucro != null ? h.lucro : vendas - Number(h.cogs || 0)).toFixed(2))
-      : Number(h.lucro || 0);
+    const cogs = Number(h.cogs || 0);
+    const lucro = vendas - cogs;
     return {
       label: h.month,
       value: lucro,
       receita: vendas,
-      margem: h.margem,
+      cogs,
+      margem: vendas > 0 ? (lucro / vendas) * 100 : 0,
     };
   });
   const [hovered, setHovered] = React.useState(null);
   const [selected, setSelected] = React.useState(null);
   const firstVal = chartData.length ? chartData[0].value : 0;
-  const lastPoint = chartData[chartData.length - 1] || null;
-  const active = selected || hovered || lastPoint;
+  const fallbackPoint = chartData[chartData.length - 1] || null;
+  const active = selected || hovered || fallbackPoint;
   const acumuladaPct =
     active && firstVal !== 0 ? ((active.value - firstVal) / firstVal) * 100 : 0;
-  const prevPoint =
-    active && chartData.length > 1
-      ? (() => {
-        const idx = chartData.findIndex((p) => p.label === active.label);
-        if (idx > 0) return chartData[idx - 1];
-        return null;
-      })()
-      : null;
+  const prevPoint = active
+    ? (() => {
+      const idx = chartData.findIndex((p) => p.label === active.label);
+      return idx > 0 ? chartData[idx - 1] : null;
+    })()
+    : null;
   const momPct =
     prevPoint && prevPoint.value !== 0
       ? ((active.value - prevPoint.value) / prevPoint.value) * 100
       : 0;
-  function formatMoney(v) {
-    return Number(v || 0).toLocaleString("pt-BR", {
+  function fmtMoney(n) {
+    return Number(n || 0).toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
       minimumFractionDigits: 2,
@@ -667,163 +618,140 @@ function LucroBrutoDetails({ data }) {
         </div>
         <div className="w-full md:w-64 flex flex-col gap-3 text-xs border rounded p-3 bg-[var(--color-bg-secondary)]">
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Mês
-            </div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">Mês</div>
             <div className="text-sm font-semibold">{active?.label || "—"}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Lucro Bruto
-            </div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">Lucro Bruto</div>
+            <div className="text-sm font-semibold">{active ? fmtMoney(active.value) : "—"}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">Receita</div>
+            <div className="text-sm font-semibold">{active ? fmtMoney(active.receita) : "—"}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">COGS</div>
+            <div className="text-sm font-semibold">{active ? fmtMoney(active.cogs) : "—"}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">Margem</div>
             <div className="text-sm font-semibold">
-              {active ? formatMoney(active.value) : "—"}
+              {active ? `${active.margem.toFixed(1)}%` : "—"}
             </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Receita
-            </div>
-            <div className="text-sm font-semibold">
-              {active ? formatMoney(active.receita) : "—"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Margem
-            </div>
-            <div className="text-sm font-semibold">
-              {active && active.receita > 0
-                ? `${(active.margem != null ? active.margem : (active.value / active.receita) * 100).toFixed(1)}%`
-                : "—"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Var. Mês→Mês
-            </div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">Var. Mês→Mês</div>
             <div
               className={`text-sm font-semibold ${!prevPoint ? "opacity-50" : momPct > 0 ? "text-green-500" : momPct < 0 ? "text-red-400" : ""}`}
             >
-              {!prevPoint
-                ? "—"
-                : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
+              {!prevPoint ? "—" : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
             </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Var. Acumulada
-            </div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">Var. Acumulada</div>
             <div
               className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
             >
-              {active
-                ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%`
-                : "—"}
+              {active ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%` : "—"}
             </div>
           </div>
           <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
-            Passe o mouse ou clique para fixar. Série histórica utiliza COGS
-            real por mês (quando disponível).
+            Lucro bruto = Receita - COGS (baseado em COGS reconhecido por mês).
+            Clique para fixar um mês; clique novamente para soltar.
           </div>
         </div>
       </div>
       <div className="text-xs opacity-70">
-        Lucro bruto = Receita (total_liquido + frete_total) - COGS reconhecido
-        do período.
+        A série utiliza os mesmos meses de growthHistory. Margem calculada on-the-fly.
       </div>
     </div>
   );
 }
 
-// Row removido após adoção de layout gráfico para lucro bruto
 
-function CrescimentoMoMDetails({ data }) {
-  const history = Array.isArray(data.growthHistory) ? data.growthHistory : [];
-  const chartData = history
-    .filter((h) => h && h.month)
-    .map((h) => ({
-      label: h.month,
-      value: Number(h.vendas || 0),
-      crescimento: h.crescimento,
-    }));
+// Novo painel overlay Vendas vs Compras com MoM de ambos
+function VendasComprasOverlayDetails({ data }) {
+  const historyV = Array.isArray(data.growthHistory) ? data.growthHistory : [];
+  const historyC = Array.isArray(data.comprasHistory) ? data.comprasHistory : [];
+  const seriesV = {
+    label: "Vendas",
+    color: "var(--color-accent)",
+    data: historyV.map(h => ({ label: h.month, value: Number(h.vendas || 0), crescimento: h.crescimento }))
+  };
+  const seriesC = {
+    label: "Compras",
+    color: "#f59e0b",
+    data: historyC.map(h => ({ label: h.month, value: Number(h.compras || 0), crescimento: h.crescimento }))
+  };
   const [hovered, setHovered] = React.useState(null);
   const [selected, setSelected] = React.useState(null);
-  const firstVal = chartData.length ? chartData[0].value : 0;
-  const fallbackPoint = chartData[chartData.length - 1] || null;
-  const active = selected || hovered || fallbackPoint;
-  const acumuladaPct =
-    active && firstVal !== 0 ? ((active.value - firstVal) / firstVal) * 100 : 0;
-  function formatMoney(v) {
-    return Number(v || 0).toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const composite = selected || hovered;
+  function fmt(v) {
+    return Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+  const diff = composite ? (Number(composite.a?.value || 0) - Number(composite.b?.value || 0)) : 0;
+  const ratio = composite && Number(composite.a?.value) > 0 ? (Number(composite.b?.value || 0) / Number(composite.a?.value || 1)) * 100 : null;
+  const prevLabel = (() => {
+    if (!composite) return null;
+    const idx = seriesV.data.findIndex(p => p.label === composite.label);
+    if (idx > 0) return seriesV.data[idx - 1].label;
+    return null;
+  })();
+  const prevV = prevLabel ? seriesV.data.find(p => p.label === prevLabel) : null;
+  const prevC = prevLabel ? seriesC.data.find(p => p.label === prevLabel) : null;
+  const momV = composite && prevV && prevV.value !== 0 ? ((composite.a?.value - prevV.value) / prevV.value) * 100 : null;
+  const momC = composite && prevC && prevC.value !== 0 ? ((composite.b?.value - prevC.value) / prevC.value) * 100 : null;
   return (
     <div className="flex flex-col gap-4 text-sm">
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1 min-w-[360px]">
-          <LineAreaChart
-            data={chartData}
-            showArea
-            disableTooltip
-            onHover={(pt) => setHovered(pt)}
-            enableCrosshair
-            onSelectPoint={(pt) =>
-              setSelected((p) => (p && p.label === pt.label ? null : pt))
-            }
+          <DualLineChart
+            seriesA={seriesV}
+            seriesB={seriesC}
+            onHoverPoint={pt => setHovered(pt)}
+            onSelectPoint={pt => setSelected(p => (p && p.label === pt.label ? null : pt))}
             selectedLabel={selected?.label}
           />
         </div>
-        <div className="w-full md:w-56 flex flex-col gap-3 text-xs border rounded p-3 bg-[var(--color-bg-secondary)]">
+        <div className="w-full md:w-72 flex flex-col gap-3 text-xs border rounded p-3 bg-[var(--color-bg-secondary)]">
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Mês
-            </div>
-            <div className="text-sm font-semibold">{active?.label || "—"}</div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">Mês</div>
+            <div className="text-sm font-semibold">{composite?.label || "—"}</div>
           </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Vendas
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">Vendas</div>
+              <div className="text-sm font-semibold">{composite ? fmt(composite.a?.value) : "—"}</div>
             </div>
-            <div className="text-sm font-semibold">
-              {active ? formatMoney(active.value) : "—"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              MoM
-            </div>
-            <div
-              className={`text-sm font-semibold ${active?.crescimento == null ? "opacity-50" : active.crescimento > 0 ? "text-green-500" : active.crescimento < 0 ? "text-red-400" : ""}`}
-            >
-              {active?.crescimento == null
-                ? "—"
-                : `${active.crescimento > 0 ? "+" : ""}${Number(active.crescimento).toFixed(2)}%`}
+            <div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">Compras</div>
+              <div className="text-sm font-semibold">{composite ? fmt(composite.b?.value) : "—"}</div>
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">MoM Vendas</div>
+              <div className={`text-sm font-semibold ${momV == null ? 'opacity-50' : momV > 0 ? 'text-green-500' : momV < 0 ? 'text-red-400' : ''}`}>{momV == null ? '—' : `${momV > 0 ? '+' : ''}${momV.toFixed(1)}%`}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">MoM Compras</div>
+              <div className={`text-sm font-semibold ${momC == null ? 'opacity-50' : momC > 0 ? 'text-green-500' : momC < 0 ? 'text-red-400' : ''}`}>{momC == null ? '—' : `${momC > 0 ? '+' : ''}${momC.toFixed(1)}%`}</div>
+            </div>
+          </div>
           <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Acumulado
-            </div>
-            <div
-              className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
-            >
-              {active
-                ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%`
-                : "—"}
-            </div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">Diferença (V - C)</div>
+            <div className={`text-sm font-semibold ${diff > 0 ? 'text-green-500' : diff < 0 ? 'text-red-400' : ''}`}>{composite ? fmt(diff) : '—'}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase opacity-60 tracking-wide">Compras / Vendas</div>
+            <div className="text-sm font-semibold">{ratio == null ? '—' : `${ratio.toFixed(1)}%`}</div>
           </div>
           <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
-            Passe o mouse ou clique para fixar. Clique novamente para desfazer.
+            Sobrepõe séries mensais de receita (vendas) e compras. MoM calculado contra mês anterior.
           </div>
         </div>
       </div>
-      <div className="text-xs opacity-70">
-        Crescimento calculado sobre receita mensal (total_liquido + frete_total)
-        de pedidos de VENDA por data de emissão.
-      </div>
+      <div className="text-xs opacity-70">Valores baseados em total_liquido + frete_total (vendas) e somatório equivalente para compras.</div>
     </div>
   );
 }
