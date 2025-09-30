@@ -90,7 +90,11 @@ export function PedidoFormPromissorias({
   const datasVencimento = React.useMemo(() => {
     if (promissoriaDatas && promissoriaDatas.length) return promissoriaDatas;
     if (!dataPrimeiraPromissoria || numeroPromissorias < 1) return [];
+    // Validar formato parcial para evitar RangeError ao chamar toISOString em Date inválida
+    // Aceitamos progresso de digitação: só gera quando YYYY-MM-DD completo
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataPrimeiraPromissoria)) return [];
     const base = new Date(dataPrimeiraPromissoria + "T00:00:00");
+    if (isNaN(base.getTime())) return [];
     const result = [];
     const count = Math.max(1, numeroPromissorias);
 
@@ -124,7 +128,12 @@ export function PedidoFormPromissorias({
           d = new Date(base);
           d.setMonth(d.getMonth() + i);
       }
-      result.push(d.toISOString().slice(0, 10));
+      try {
+        const iso = d.toISOString().slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) result.push(iso);
+      } catch (_) {
+        // Ignorar caso raro de data inválida pós-manipulação
+      }
     }
     return result;
   }, [

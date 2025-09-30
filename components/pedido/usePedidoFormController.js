@@ -96,7 +96,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     useState(30);
   const [promissoriaDatas, setPromissoriaDatas] = useState(() =>
     Array.isArray(editingOrder?.promissorias) &&
-    editingOrder.promissorias.length
+      editingOrder.promissorias.length
       ? editingOrder.promissorias.map((p) => p.due_date).filter(Boolean)
       : [],
   );
@@ -115,7 +115,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             !p.paid_at &&
             p.due_date &&
             new Date(p.due_date + "T00:00:00") <
-              new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+            new Date(today.getFullYear(), today.getMonth(), today.getDate()),
         )
         .map((p) => p.seq);
       return { anyPaid: paidSeqs.length > 0, paidSeqs, overdueSeqs };
@@ -201,7 +201,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             !p.paid_at &&
             p.due_date &&
             new Date(p.due_date + "T00:00:00") <
-              new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+            new Date(today.getFullYear(), today.getMonth(), today.getDate()),
         )
         .map((p) => p.seq);
       setPromissoriasMeta({
@@ -341,6 +341,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     if (frequenciaPromissorias === "manual") return; // manter manual
     if (
       !dataPrimeiraPromissoria ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(dataPrimeiraPromissoria) ||
       !numeroPromissorias ||
       numeroPromissorias < 2
     ) {
@@ -349,6 +350,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       return;
     }
     const base = new Date(dataPrimeiraPromissoria);
+    if (isNaN(base.getTime())) return; // data inválida em digitação parcial
     const datas = [];
     for (let i = 0; i < numeroPromissorias; i++) {
       const d = new Date(base);
@@ -362,8 +364,12 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
         const n = Number(intervaloDiasPromissorias) || 30;
         d.setDate(d.getDate() + i * n);
       }
-      const iso = d.toISOString().slice(0, 10);
-      datas.push(iso);
+      try {
+        const iso = d.toISOString().slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) datas.push(iso);
+      } catch (_) {
+        // ignora datas inválidas geradas por overflow raro
+      }
     }
     const isSame =
       Array.isArray(promissoriaDatas) &&
@@ -400,10 +406,10 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       // Enviar cronograma explícito quando existir (manual ou gerado)
       promissoria_datas: Array.isArray(promissoriaDatas)
         ? promissoriaDatas
-            .filter(
-              (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s),
-            )
-            .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
+          .filter(
+            (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s),
+          )
+          .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
         : [],
       itens: itens
         .filter(
@@ -421,8 +427,8 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             : {}),
         })),
       ...(tipo === "COMPRA" &&
-      numOrNull(freteTotal) != null &&
-      freteTotal !== ""
+        numOrNull(freteTotal) != null &&
+        freteTotal !== ""
         ? { frete_total: numOrNull(freteTotal) }
         : {}),
     }),
