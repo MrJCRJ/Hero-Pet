@@ -154,9 +154,9 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
             aria-label="Adicionar item"
             title={
               tipo === "VENDA" &&
-                displaySaldo != null &&
-                Number.isFinite(Number(quantidade)) &&
-                Number(quantidade) > Number(displaySaldo)
+              displaySaldo != null &&
+              Number.isFinite(Number(quantidade)) &&
+              Number(quantidade) > Number(displaySaldo)
                 ? "Estoque insuficiente"
                 : "Adicionar item"
             }
@@ -290,7 +290,7 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
                             : null;
                       const markupDefault =
                         Number.isFinite(Number(it.markup_percent_default)) &&
-                          Number(it.markup_percent_default) > 0
+                        Number(it.markup_percent_default) > 0
                           ? Number(it.markup_percent_default)
                           : 30;
                       let suggested = null;
