@@ -1,4 +1,4 @@
-import { Client } from "pg";
+import { Client, Pool } from "pg";
 // IMPORTANTE: "node-pg-migrate" em ambiente ESM (Node 20) pode retornar um objeto cujo
 // runner real está em .default. O import default puro acaba produzindo um objeto
 // (com chaves PgLiteral, Migration, PgType, default) e não a função diretamente,
@@ -7,26 +7,38 @@ import { Client } from "pg";
 import pgMigrate from "node-pg-migrate";
 import { join } from "node:path";
 
-async function query(queryObject) {
-  let client;
+// --- Pool singleton ---
+let pool;
+function getOrInitPool() {
+  if (!pool) {
+    pool = new Pool({
+      host: process.env.POSTGRES_HOST || "localhost",
+      port: Number(process.env.POSTGRES_PORT) || 5432,
+      user: process.env.POSTGRES_USER || "postgres",
+      database: process.env.POSTGRES_DB || "hero_pet",
+      password: process.env.POSTGRES_PASSWORD || "postgres",
+      ssl: getSSLValues(),
+      max: Number(process.env.PG_POOL_MAX || 10),
+      idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT || 30000),
+      connectionTimeoutMillis: Number(process.env.PG_CONN_TIMEOUT || 5000),
+    });
+    pool.on("error", (err) => {
+      console.error("Postgres pool error (idle client):", err.message);
+    });
+  }
+  return pool;
+}
 
+async function query(queryObject) {
+  const client = await getClient();
   try {
-    client = await getNewClient();
-    const result = await client.query(queryObject);
-    return result;
+    const res = await client.query(queryObject);
+    return res;
   } catch (error) {
-    console.error("Error connecting to the database:", error);
+    console.error("Error querying database:", error);
     throw error;
   } finally {
-    // Só encerra se a conexão foi estabelecida
-    if (client) {
-      try {
-        await client.end();
-      } catch (endErr) {
-        // log silencioso para não mascarar erro original
-        console.warn("Falha ao encerrar conexão PG:", endErr.message);
-      }
-    }
+    client.release();
   }
 }
 
@@ -40,16 +52,16 @@ const database = {
 export default database;
 
 async function getNewClient() {
+  // Mantido para compatibilidade (casos específicos que precisem de client isolado)
   const client = new Client({
-    host: process.env.POSTGRES_HOST,
-    port: process.env.POSTGRES_PORT,
-    user: process.env.POSTGRES_USER,
-    database: process.env.POSTGRES_DB,
-    password: process.env.POSTGRES_PASSWORD,
+    host: process.env.POSTGRES_HOST || "localhost",
+    port: Number(process.env.POSTGRES_PORT) || 5432,
+    user: process.env.POSTGRES_USER || "postgres",
+    database: process.env.POSTGRES_DB || "hero_pet",
+    password: process.env.POSTGRES_PASSWORD || "postgres",
     ssl: getSSLValues(),
   });
-
-  await client.connect();
+  await connectWithRetry(client);
   await ensureMigrationsIfEnabledOnce(client);
   return client;
 }
@@ -64,9 +76,31 @@ function getSSLValues() {
   return process.env.NODE_ENV === "production" ? true : false;
 }
 
-// retorna um client conectado para transações manuais (BEGIN/COMMIT/ROLLBACK)
+// retorna client do pool (para transações) já conectado
 async function getClient() {
-  return await getNewClient();
+  const p = getOrInitPool();
+  // Realiza migrações na primeira vez que alguém pegar client do pool
+  if (!MIGRATIONS_ENSURED) {
+    // Cria client temporário para migrations (evita segurar slot do pool se demorar)
+    const temp = new Client({
+      host: process.env.POSTGRES_HOST || "localhost",
+      port: Number(process.env.POSTGRES_PORT) || 5432,
+      user: process.env.POSTGRES_USER || "postgres",
+      database: process.env.POSTGRES_DB || "hero_pet",
+      password: process.env.POSTGRES_PASSWORD || "postgres",
+      ssl: getSSLValues(),
+    });
+    try {
+      await connectWithRetry(temp);
+      await ensureMigrationsIfEnabledOnce(temp);
+    } catch (err) {
+      console.warn("Falha migrations via pool init (continuando):", err.message);
+    } finally {
+      try { await temp.end(); } catch (_) { /* noop */ }
+    }
+  }
+  const client = await p.connect();
+  return client;
 }
 
 async function safeRollback(client) {
@@ -122,5 +156,30 @@ async function ensureMigrationsIfEnabledOnce(client) {
     await MIGRATIONS_ENSURING;
   } catch (_) {
     // noop
+  }
+}
+
+// --- Retry helper ---
+async function connectWithRetry(client) {
+  const max = Number(process.env.PG_CONN_RETRY_MAX || 5);
+  for (let attempt = 1; attempt <= max; attempt++) {
+    try {
+      await client.connect();
+      if (attempt > 1) {
+        console.info(`Postgres connect OK após retry #${attempt}`);
+      }
+      return;
+    } catch (err) {
+      const isLast = attempt === max;
+      const delay = 200 * 2 ** (attempt - 1); // exponencial simples
+      console.warn(
+        `Falha conexão Postgres (tentativa ${attempt}/${max}): ${err.code || err.message} - aguardando ${delay}ms`,
+      );
+      if (isLast) {
+        console.error("Excedido número máximo de tentativas de conexão Postgres");
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, delay));
+    }
   }
 }
