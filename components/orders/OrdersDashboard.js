@@ -207,14 +207,14 @@ export default function OrdersDashboard({ month: monthProp }) {
         />
         <Card
           title="Promissórias pendentes (mês)"
-          value={`${m.promissorias.mesAtual.pendentes.count} itens`}
-          subtitle={formatBRL(m.promissorias.mesAtual.pendentes.valor)}
+          value={`${m.promissorias?.mesAtual?.pendentes?.count ?? 0} itens`}
+          subtitle={formatBRL(m.promissorias?.mesAtual?.pendentes?.valor ?? 0)}
           onClick={() => setSelectedCard("promissorias_pendentes")}
         />
         <Card
           title="Promissórias atrasadas (mês)"
-          value={`${m.promissorias.mesAtual.atrasados.count} itens`}
-          subtitle={formatBRL(m.promissorias.mesAtual.atrasados.valor)}
+          value={`${m.promissorias?.mesAtual?.atrasados?.count ?? 0} itens`}
+          subtitle={formatBRL(m.promissorias?.mesAtual?.atrasados?.valor ?? 0)}
           onClick={() => setSelectedCard("promissorias_atrasadas")}
         />
         <Card
@@ -366,8 +366,8 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
             monthLabel={monthLabel}
             monthStr={monthStr}
             status="pending"
-            expectedCount={data.promissorias.mesAtual.emAberto.count}
-            expectedAmount={data.promissorias.mesAtual.emAberto.valor}
+            expectedCount={data.promissorias?.mesAtual?.pendentes?.count ?? 0}
+            expectedAmount={data.promissorias?.mesAtual?.pendentes?.valor ?? 0}
             onSelect={onSelect}
           />
         );
@@ -378,8 +378,8 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
             monthLabel={monthLabel}
             monthStr={monthStr}
             status="late"
-            expectedCount={data.promissorias.mesAtual.atrasadas.count}
-            expectedAmount={data.promissorias.mesAtual.atrasadas.valor}
+            expectedCount={data.promissorias?.mesAtual?.atrasados?.count ?? 0}
+            expectedAmount={data.promissorias?.mesAtual?.atrasados?.valor ?? 0}
             onSelect={onSelect}
           />
         );
@@ -390,8 +390,8 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
             monthLabel={monthLabel}
             monthStr={monthStr}
             status="next"
-            expectedCount={data.promissorias.proximoMes.pendentes.count}
-            expectedAmount={data.promissorias.proximoMes.pendentes.valor}
+            expectedCount={data.promissorias?.proximoMes?.pendentes?.count ?? 0}
+            expectedAmount={data.promissorias?.proximoMes?.pendentes?.valor ?? 0}
             onSelect={onSelect}
           />
         );
@@ -402,8 +402,8 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
             monthLabel={monthLabel}
             monthStr={monthStr}
             status="carry"
-            expectedCount={data.promissorias.deMesesAnteriores.emAberto.count}
-            expectedAmount={data.promissorias.deMesesAnteriores.emAberto.valor}
+            expectedCount={data.promissorias?.deMesesAnteriores?.emAberto?.count ?? 0}
+            expectedAmount={data.promissorias?.deMesesAnteriores?.emAberto?.valor ?? 0}
             onSelect={onSelect}
           />
         );
@@ -419,6 +419,9 @@ function InfoModal({ cardKey, data, monthLabel, monthStr, onClose }) {
   );
 }
 
+// ComprasHistoryChart
+// Exibe série única de compras (valor mensal agregado) + tabela com MoM e delta absoluto.
+// Espera um array: [{ month: 'YYYY-MM', compras: number, crescimento: number|null }]
 function ComprasHistoryChart({ comprasHistory }) {
   if (!comprasHistory?.length) return null;
   const data = comprasHistory.map((r) => ({ label: r.month, value: r.compras }));
@@ -561,6 +564,9 @@ function PromissoriasList({
 // Row removido após adoção de layout gráfico para lucro bruto
 
 // LucroBrutoDetails: mostra série histórica de lucro bruto, receita, margem e variações
+// LucroBrutoDetails
+// Deriva lucro bruto histórico a partir de growthHistory (vendas, cogs) já retornado pela API.
+// Cada ponto: { label: 'YYYY-MM', value: lucroBruto, receita, cogs, margem }
 function LucroBrutoDetails({ data }) {
   const history = Array.isArray(data.growthHistory) ? data.growthHistory : [];
   // Monta pontos com lucro bruto (vendas - cogs) e margem
@@ -670,6 +676,9 @@ function LucroBrutoDetails({ data }) {
 
 
 // Novo painel overlay Vendas vs Compras com MoM de ambos
+// VendasComprasOverlayDetails
+// Painel consolidado comparando séries de Vendas (growthHistory) e Compras (comprasHistory)
+// Inclui: MoM de cada série, diferença V-C, ratio (Compras/Vendas) e interação hover/select.
 function VendasComprasOverlayDetails({ data }) {
   const historyV = Array.isArray(data.growthHistory) ? data.growthHistory : [];
   const historyC = Array.isArray(data.comprasHistory) ? data.comprasHistory : [];

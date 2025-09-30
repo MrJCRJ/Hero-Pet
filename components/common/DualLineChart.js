@@ -1,17 +1,24 @@
 import React from 'react';
 
-/*
-  DualLineChart
-  Props:
-    seriesA: { label: string, color?: string, data: Array<{ label: string, value: number }> }
-    seriesB: mesmo formato
-    height?: number
-    onHoverPoint?: (pointWithSeries) => void
-    onSelectPoint?: (pointWithSeries) => void
-    selectedLabel?: string
-    formatValue?: (number) => string
-  Renderiza duas linhas sobre o mesmo eixo Y. Usa o componente LineAreaChart internamente duas vezes (sem área) sobre SVG compartilhado.
-*/
+/**
+ * DualLineChart
+ * Renderiza duas séries (A e B) sobre o mesmo eixo Y em um único SVG simples.
+ * Foco em baixo custo de render e interação básica (hover + select) via callbacks.
+ * Não utiliza o LineAreaChart diretamente para manter controle de sobreposição e símbolos.
+ *
+ * Props:
+ *  - seriesA / seriesB:
+ *      { label: string, color?: string, data: [{ label: 'YYYY-MM', value: number, ...extra }] }
+ *  - height: altura do SVG
+ *  - onHoverPoint({ label, a, b }): disparado ao passar o mouse por um rótulo (mês)
+ *  - onSelectPoint({ label, a, b }): disparado ao clicar (toggle de seleção externo)
+ *  - selectedLabel: controla destaque visual do ponto selecionado
+ *
+ * Convenções:
+ *  - Baseline Y inicia em 0 (min fixo) para facilitar leitura de diferença absoluta.
+ *  - Ponto de Vendas (A) = círculo, Compras (B) = quadrado para distinção rápida.
+ *  - Labels mensais desenhados na base; overflow horizontal permitido (container scrollable).
+ */
 export default function DualLineChart({
   seriesA,
   seriesB,
