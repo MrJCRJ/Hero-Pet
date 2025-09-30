@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { PedidoFormView } from "components/pedido/PedidoFormView";
 import { usePedidoFormController } from "components/pedido/usePedidoFormController";
 import { ToastProvider } from "components/entities/shared/toast";
@@ -12,7 +12,7 @@ function InnerPedidoForm() {
     <PedidoFormView
       {...controller}
       handleSubmit={(e) => e.preventDefault()}
-      handleDelete={() => {}}
+      handleDelete={() => { }}
       fetchEntities={async () => ({ results: [] })}
       // SelectionModal espera um array simples
       fetchProdutos={async () => [{ id: 1, label: "Ração Premium" }]}
@@ -73,8 +73,15 @@ describe("QuickAddItemRow integração básica", () => {
 
     // Espera aparecer na tabela o total calculado (2 * 10 = 20)
     await waitFor(() => {
-      expect(screen.getAllByText(/R\$\s*10/).length).toBeGreaterThan(0); // preço unit
-      expect(screen.getByText(/R\$\s*20/)).toBeInTheDocument(); // total
+      // Localiza linha contendo o nome do produto
+      const row = screen.getAllByRole("row").find((r) =>
+        /ração premium/i.test(r.textContent || ""),
+      );
+      expect(row).toBeTruthy();
+      const utils = within(row);
+      // Confere preço unit (10) e total (20) dentro da linha específica
+      expect(utils.getAllByText(/R\$\s*10/).length).toBeGreaterThan(0);
+      expect(utils.getAllByText(/R\$\s*20/).length).toBeGreaterThan(0);
     });
   });
 });

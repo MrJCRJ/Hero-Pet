@@ -104,8 +104,11 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
           </button>
         </div>
         <div>
-          <label className="block text-xs mb-1">Quantidade</label>
+          <label htmlFor="qa_quantidade" className="block text-xs mb-1">
+            Quantidade
+          </label>
           <input
+            id="qa_quantidade"
             type="number"
             step="1"
             className="w-full border rounded px-2 py-1"
@@ -114,8 +117,11 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
           />
         </div>
         <div>
-          <label className="block text-xs mb-1">Preço Unitário</label>
+          <label htmlFor="qa_preco" className="block text-xs mb-1">
+            Preço Unitário
+          </label>
           <input
+            id="qa_preco"
             type="number"
             step="0.01"
             className="w-full border rounded px-2 py-1"
@@ -126,8 +132,11 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
           />
         </div>
         <div>
-          <label className="block text-xs mb-1">Desconto Unitário</label>
+          <label htmlFor="qa_desconto" className="block text-xs mb-1">
+            Desconto Unitário
+          </label>
           <input
+            id="qa_desconto"
             type="number"
             step="0.01"
             className="w-full border rounded px-2 py-1"
@@ -145,9 +154,9 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
             aria-label="Adicionar item"
             title={
               tipo === "VENDA" &&
-              displaySaldo != null &&
-              Number.isFinite(Number(quantidade)) &&
-              Number(quantidade) > Number(displaySaldo)
+                displaySaldo != null &&
+                Number.isFinite(Number(quantidade)) &&
+                Number(quantidade) > Number(displaySaldo)
                 ? "Estoque insuficiente"
                 : "Adicionar item"
             }
@@ -281,7 +290,7 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
                             : null;
                       const markupDefault =
                         Number.isFinite(Number(it.markup_percent_default)) &&
-                        Number(it.markup_percent_default) > 0
+                          Number(it.markup_percent_default) > 0
                           ? Number(it.markup_percent_default)
                           : 30;
                       let suggested = null;
