@@ -142,8 +142,7 @@ export function PedidoFormItems(props) {
       </div>
       <QuickAddItemRow
         tipo={tipo}
-        onAddItem={onAddItem}
-        onUpdateItem={onUpdateItem}
+        onAppend={onAddItem}
         itens={itens}
         fetchProdutos={fetchProdutos}
       />
