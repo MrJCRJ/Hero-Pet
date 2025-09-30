@@ -22,6 +22,22 @@ export default async function handler(req, res) {
       .status(405)
       .json({ error: `Method "${req.method}" not allowed` });
 
+  // =============================
+  // Cache em memória (escopo processo)
+  // =============================
+  // Estrutura: key -> { ts: epoch_ms, data }
+  // Chave inclui: month, monthsParam. (Outros filtros podem ser adicionados futuramente)
+  // TTL padrão: 60 segundos (reduz queries em navegação entre telas sem introduzir staleness longo).
+  // Bypass: adicionar ?nocache=1 à URL.
+  // OBS: Em ambiente serverless (Vercel) a utilidade é limitada ao ciclo de vida da lambda/quente.
+  // Para cache cross-instance considerar Redis ou layer HTTP (etag/s-maxage).
+  const CACHE_TTL_MS = 60 * 1000;
+  if (!global.__PEDIDOS_SUMMARY_CACHE__) {
+    global.__PEDIDOS_SUMMARY_CACHE__ = new Map();
+  }
+  const cache = global.__PEDIDOS_SUMMARY_CACHE__;
+  const nocache = String(req.query.nocache || "") === "1";
+
   try {
     // Opcional: permitir query month=YYYY-MM
     const { month } = req.query;
@@ -38,6 +54,14 @@ export default async function handler(req, res) {
       24,
       Math.max(3, Number(req.query.months || 12) || 12),
     );
+
+    const cacheKey = JSON.stringify({ month: req.query.month || null, monthsParam });
+    if (!nocache) {
+      const cached = cache.get(cacheKey);
+      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+        return res.status(200).json({ ...cached.data, _cache: { hit: true, ttl_ms: CACHE_TTL_MS } });
+      }
+    }
     // Data inicial = primeiro dia do mês referência - (N-1) meses
     const historyStart = new Date(
       refDate.getFullYear(),
@@ -57,6 +81,24 @@ export default async function handler(req, res) {
                ON p.tipo = 'VENDA'
               AND p.data_emissao >= s.mstart
               AND p.data_emissao < (s.mstart + interval '1 month')
+             GROUP BY s.mstart
+             ORDER BY s.mstart`,
+      values: [historyStartYMD, startYMD],
+    });
+
+    // Histórico de COGS por mês (itens de venda dentro do mês)
+    const cogsHistoryQ = await database.query({
+      text: `WITH series AS (
+               SELECT generate_series(date_trunc('month',$1::date), date_trunc('month',$2::date), interval '1 month') AS mstart
+             )
+             SELECT to_char(s.mstart, 'YYYY-MM') AS month,
+                    COALESCE(SUM(i.custo_total_item),0)::numeric(14,2) AS cogs
+             FROM series s
+             LEFT JOIN pedidos p
+               ON p.tipo = 'VENDA'
+              AND p.data_emissao >= s.mstart
+              AND p.data_emissao < (s.mstart + interval '1 month')
+             LEFT JOIN pedido_itens i ON i.pedido_id = p.id
              GROUP BY s.mstart
              ORDER BY s.mstart`,
       values: [historyStartYMD, startYMD],
@@ -137,25 +179,32 @@ export default async function handler(req, res) {
     const crescimentoMoMPerc =
       vendasMesAnterior > 0
         ? Number(
-            (
-              ((vendasMes - vendasMesAnterior) / vendasMesAnterior) *
-              100
-            ).toFixed(2),
-          )
+          (
+            ((vendasMes - vendasMesAnterior) / vendasMesAnterior) *
+            100
+          ).toFixed(2),
+        )
         : null;
 
     // Monta growthHistory com crescimento percentual mês a mês
+    const cogsByMonth = new Map(
+      cogsHistoryQ.rows.map((r) => [r.month, Number(r.cogs || 0)]),
+    );
     const growthHistory = vendasHistoryQ.rows.map((r, idx, arr) => {
       const vendas = Number(r.vendas || 0);
+      const cogsHist = cogsByMonth.get(r.month) || 0;
+      const lucro = Number((vendas - cogsHist).toFixed(2));
+      const margem =
+        vendas > 0 ? Number(((lucro / vendas) * 100).toFixed(2)) : 0;
       const prev = idx > 0 ? Number(arr[idx - 1].vendas || 0) : null;
       const crescimento =
         prev && prev > 0
           ? Number((((vendas - prev) / prev) * 100).toFixed(2))
           : null;
-      return { month: r.month, vendas, crescimento };
+      return { month: r.month, vendas, cogs: cogsHist, lucro, margem, crescimento };
     });
 
-    return res.status(200).json({
+    const responsePayload = {
       month: label,
       vendasMes,
       vendasMesAnterior,
@@ -193,7 +242,11 @@ export default async function handler(req, res) {
           },
         },
       },
-    });
+    };
+
+    // Grava no cache (mesmo se nocache=1 para facilitar warm-up manual) mas só marca hit se servido do cache.
+    cache.set(cacheKey, { ts: Date.now(), data: responsePayload });
+    return res.status(200).json({ ...responsePayload, _cache: { hit: false, ttl_ms: CACHE_TTL_MS } });
   } catch (e) {
     console.error("GET /pedidos/summary error", e);
     if (isRelationMissing(e))

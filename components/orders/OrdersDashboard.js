@@ -609,20 +609,19 @@ function PedidosListByMonth({ monthLabel, monthStr, tipo, total, onSelect }) {
 }
 
 function LucroBrutoDetails({ data }) {
-  // Usamos growthHistory de receita e derivamos lucro estimado histórico.
-  // Temos somente o COGS consolidado do mês atual no summary, logo para meses anteriores
-  // usamos a margem atual como aproximação (melhor do que nada) — se desejado, backend
-  // pode futuramente retornar lucroHistory/margemHistory real.
-  const receitaAtual = Number(data.vendasMes || 0);
-  const lucroAtual = Number(data.lucroBrutoMes || 0);
-  const margemAtualPerc =
-    receitaAtual > 0 ? (lucroAtual / receitaAtual) * 100 : 0;
+  // Agora growthHistory inclui cogs, lucro e margem reais por mês.
   const history = Array.isArray(data.growthHistory) ? data.growthHistory : [];
   const chartData = history.map((h) => {
     const vendas = Number(h.vendas || 0);
-    // lucro estimado para meses históricos (aprox) usando margem atual se não disponível
-    const lucro = vendas * (margemAtualPerc / 100);
-    return { label: h.month, value: Number(lucro.toFixed(2)), receita: vendas };
+    const lucro = Number(h.lucro != null ? h.lucro : (vendas - Number(h.cogs || 0))).toFixed
+      ? Number(Number(h.lucro != null ? h.lucro : vendas - Number(h.cogs || 0)).toFixed(2))
+      : Number(h.lucro || 0);
+    return {
+      label: h.month,
+      value: lucro,
+      receita: vendas,
+      margem: h.margem,
+    };
   });
   const [hovered, setHovered] = React.useState(null);
   const [selected, setSelected] = React.useState(null);
@@ -695,7 +694,7 @@ function LucroBrutoDetails({ data }) {
             </div>
             <div className="text-sm font-semibold">
               {active && active.receita > 0
-                ? `${((active.value / active.receita) * 100).toFixed(1)}%`
+                ? `${(active.margem != null ? active.margem : (active.value / active.receita) * 100).toFixed(1)}%`
                 : "—"}
             </div>
           </div>
@@ -724,14 +723,14 @@ function LucroBrutoDetails({ data }) {
             </div>
           </div>
           <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
-            Passe o mouse ou clique para fixar. Série histórica estimada usando
-            a margem atual.
+            Passe o mouse ou clique para fixar. Série histórica utiliza COGS
+            real por mês (quando disponível).
           </div>
         </div>
       </div>
       <div className="text-xs opacity-70">
-        Lucro bruto = Receita (total_liquido + frete_total) - COGS reconhecido.
-        Série histórica estimada se não houver custos passados.
+        Lucro bruto = Receita (total_liquido + frete_total) - COGS reconhecido
+        do período.
       </div>
     </div>
   );
