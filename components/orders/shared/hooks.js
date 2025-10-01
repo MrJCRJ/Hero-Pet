@@ -109,6 +109,8 @@ export function useDashboardData(month) {
  * @returns {Object} Estado dos pedidos
  */
 export function usePedidos(filters, limit = 20) {
+  // LEGACY: será substituído por usePaginatedPedidos (hooks/usePaginatedPedidos.js)
+  // Mantido temporariamente para garantir estabilidade durante migração incremental.
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
   const [page, setPage] = useState(0); // zero-based

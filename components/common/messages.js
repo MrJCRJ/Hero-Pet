@@ -17,6 +17,14 @@ export const MSG = {
   PEDIDO_UPDATED: 'Pedido atualizado',
   PEDIDO_DELETED: 'Pedido excluído',
   PEDIDO_DELETE_ERROR: 'Erro ao excluir pedido',
+  PEDIDO_LOAD_ERROR: 'Erro ao carregar pedido',
+  PEDIDOS_LOAD_ERROR: 'Erro ao carregar pedidos',
+  PEDIDOS_EMPTY: 'Nenhum pedido encontrado',
+  LOADING_GENERIC: 'Carregando...',
+  // Templates dinâmicos
+  ORDER_DELETED_SUCCESS: (id) => `Pedido #${id} excluído.`,
+  ORDER_DELETE_CONFIRM_TITLE: (id) => `Excluir Pedido #${id}`,
+  ORDER_DELETE_CONFIRM_MESSAGE: (id) => `Tem certeza que deseja excluir o pedido #${id}?\n\nEsta ação também remove itens, movimentos de estoque e parcelas associadas. Não pode ser desfeita.`,
 
   // Promissórias
   PROMISSORIA_DATE_PAID_WARN: 'Parcela já paga – alteração não será aplicada.',

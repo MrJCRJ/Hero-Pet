@@ -5,7 +5,9 @@ import { useToast } from "../entities/shared/toast";
 import { deleteOrder as deleteOrderService } from "../pedido/service";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import FilterBar from "./FilterBar";
-import { usePedidos } from "./shared/hooks";
+// import { usePedidos } from "./shared/hooks"; // legacy (remoção futura) - não usado após migração
+import { usePaginatedPedidos } from "hooks/usePaginatedPedidos";
+import { MSG } from "components/common/messages";
 import OrdersRow from "./OrdersRow";
 import OrdersHeader from "./OrdersHeader";
 import OrdersDashboard from "./dashboard/OrdersDashboard";
@@ -29,7 +31,8 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     } catch (_) { /* ignore */ }
     return { tipo: "", q: "", from: "", to: "" };
   });
-  const { loading, data, reload, page, hasMore, nextPage, prevPage, total, limit: effLimit } = usePedidos(filters, limit);
+  // Novo hook paginado (mantém fallback antigo se resposta não vier com meta)
+  const { rows, loading, reload, page, hasMore, nextPage, prevPage, total, limit: effLimit, error } = usePaginatedPedidos(filters, limit);
   const tableContainerRef = useRef(null);
 
   // Scroll para topo quando página mudar
@@ -37,7 +40,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     if (tableContainerRef.current) {
       tableContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [page, data]);
+  }, [page, rows]);
   const { push } = useToast();
   useEffect(() => {
     // quando refreshTick muda, recarrega
@@ -80,11 +83,11 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     try {
       setDeleting(true);
       await deleteOrderService(confirmingOrder.id);
-      push(`Pedido #${confirmingOrder.id} excluído.`, { type: "success" });
+      push(MSG.ORDER_DELETED_SUCCESS(confirmingOrder.id), { type: "success" });
       setConfirmingOrder(null);
       await reload();
     } catch (err) {
-      push(err.message || "Falha ao excluir pedido", { type: "error" });
+      push(err.message || MSG.PEDIDO_DELETE_ERROR, { type: "error" });
     } finally {
       setDeleting(false);
     }
@@ -97,7 +100,7 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
         <table className="min-w-full text-xs">
           <OrdersHeader />
           <tbody>
-            {data.map((p) => (
+            {rows.map((p) => (
               <OrdersRow
                 key={p.id}
                 p={p}
@@ -106,17 +109,24 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
                 onDelete={(e) => requestDelete(p, e)}
               />
             ))}
-            {!loading && data.length === 0 && (
+            {!loading && rows.length === 0 && (
               <tr>
                 <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
-                  Nenhum pedido encontrado
+                  {MSG.PEDIDOS_EMPTY}
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
                 <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
-                  Carregando...
+                  {MSG.LOADING_GENERIC}
+                </td>
+              </tr>
+            )}
+            {!loading && error && (
+              <tr>
+                <td className="px-3 py-6 text-center text-red-600 dark:text-red-400" colSpan={8}>
+                  {error}
                 </td>
               </tr>
             )}
@@ -153,8 +163,8 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
       </div>
       {confirmingOrder && (
         <ConfirmDialog
-          title={`Excluir Pedido #${confirmingOrder.id}`}
-          message={`Tem certeza que deseja excluir o pedido #${confirmingOrder.id}?\n\nEsta ação também remove itens, movimentos de estoque e parcelas associadas. Não pode ser desfeita.`}
+          title={MSG.ORDER_DELETE_CONFIRM_TITLE(confirmingOrder.id)}
+          message={MSG.ORDER_DELETE_CONFIRM_MESSAGE(confirmingOrder.id)}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
           danger
