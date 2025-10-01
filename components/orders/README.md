@@ -200,4 +200,33 @@ import OrdersDashboard from "components/orders/dashboard/OrdersDashboard";
 3. **Storybook**: Documentação visual dos componentes
 4. **Performance**: Lazy loading de componentes pesados
 
+## 🧩 Padronização de Confirmações (ConfirmDialog)
+
+O fluxo de confirmação de ações destrutivas e sensíveis foi padronizado com o componente `ConfirmDialog` (ver `components/common/ConfirmDialog.js`).
+
+Aplicações atuais:
+
+- Pedidos: exclusão de pedido na lista principal.
+- Produtos: exclusão definitiva (hard delete) e agora também inativar / reativar.
+- Entidades: exclusão de registros migrada do modal específico anterior.
+
+Benefícios:
+
+- UX consistente (mesma hierarquia visual, botões alinhados, foco inicial correto).
+- Acessibilidade: foco automático no botão primário + Escape suportado via `Modal` base.
+- Extensibilidade: mensagens podem ser JSX, facilitando inclusão de inputs (ex.: campo de senha em hard delete de produto).
+
+Boas práticas ao usar:
+
+- Manter mensagens concisas e evitar múltiplos parágrafos densos (preferir listas quando necessário).
+- Usar `danger` somente para ações irreversíveis.
+- Definir labels explícitas (`confirmLabel`, `cancelLabel`) para evitar ambiguidade.
+- Encadear callbacks assíncronos com estado `loading` para prevenir cliques duplicados.
+
+Próximos aprimoramentos sugeridos:
+
+- Suporte a ícone semântico (ex.: alerta / aviso) opcional.
+- Animação de entrada/saída suave (scale+fade) incorporada ao próprio `ConfirmDialog`.
+- Variante com campo de texto de confirmação (digitar nome ou "DELETAR").
+
 Esta arquitetura estabelece uma base sólida para o crescimento e manutenção sustentável dos componentes de pedidos! 🎉

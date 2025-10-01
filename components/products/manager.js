@@ -31,6 +31,7 @@ export function ProductsManager({ linkSupplierId }) {
   const [hardDeleteTarget, setHardDeleteTarget] = useState(null);
   const [hardDeletePwd, setHardDeletePwd] = useState("");
   const [hardDeleting, setHardDeleting] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState(null); // { action: 'inactivate'|'reactivate', product }
   // Ranking de produtos (top lucro)
   const [topData, setTopData] = useState(null);
   const [topLoading, setTopLoading] = useState(false);
@@ -220,36 +221,12 @@ export function ProductsManager({ linkSupplierId }) {
 
   async function handleInactivate(p) {
     if (!p?.id) return;
-    const ok = window.confirm(`Inativar produto "${p.nome}"?`);
-    if (!ok) return;
-    const resp = await fetch(`/api/v1/produtos/${p.id}`, { method: "DELETE" });
-    if (!resp.ok) {
-      const txt = await resp.text();
-      alert(`Falha ao inativar: ${resp.status} ${txt}`);
-      return;
-    }
-    refresh();
+    setPendingToggle({ action: 'inactivate', product: p });
   }
 
   async function handleReactivate(p) {
     if (!p?.id) return;
-    const ok = window.confirm(`Reativar produto "${p.nome}"?`);
-    if (!ok) return;
-    const resp = await fetch(`/api/v1/produtos/${p.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nome: p.nome,
-        categoria: p.categoria || null,
-        ativo: true,
-      }),
-    });
-    if (!resp.ok) {
-      const txt = await resp.text();
-      alert(`Falha ao reativar: ${resp.status} ${txt}`);
-      return;
-    }
-    refresh();
+    setPendingToggle({ action: 'reactivate', product: p });
   }
 
   async function handleHardDelete(p) {
@@ -432,6 +409,40 @@ export function ProductsManager({ linkSupplierId }) {
           onConfirm={() => {
             if (!hardDeletePwd || hardDeleting) return;
             confirmHardDelete();
+          }}
+        />
+      )}
+      {pendingToggle && (
+        <ConfirmDialog
+          title={pendingToggle.action === 'inactivate' ? 'Inativar produto' : 'Reativar produto'}
+          message={
+            <p className="text-sm">
+              {pendingToggle.action === 'inactivate' ? 'Tem certeza que deseja inativar' : 'Confirmar reativação de'} {" "}
+              <strong>{pendingToggle.product.nome}</strong>?
+            </p>
+          }
+          confirmLabel={pendingToggle.action === 'inactivate' ? 'Inativar' : 'Reativar'}
+          cancelLabel="Cancelar"
+          onCancel={() => setPendingToggle(null)}
+          onConfirm={async () => {
+            const p = pendingToggle.product;
+            try {
+              if (pendingToggle.action === 'inactivate') {
+                const resp = await fetch(`/api/v1/produtos/${p.id}`, { method: 'DELETE' });
+                if (!resp.ok) throw new Error(await resp.text());
+              } else {
+                const resp = await fetch(`/api/v1/produtos/${p.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ nome: p.nome, categoria: p.categoria || null, ativo: true }),
+                });
+                if (!resp.ok) throw new Error(await resp.text());
+              }
+              setPendingToggle(null);
+              refresh();
+            } catch (e) {
+              alert(e.message || 'Falha na operação');
+            }
           }}
         />
       )}
