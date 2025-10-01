@@ -4,7 +4,7 @@
 
 import React from "react";
 import { render, screen, within, fireEvent } from "@testing-library/react";
-import PayPromissoriaModal from "components/orders/PayPromissoriaModal";
+import PayPromissoriaModal from "components/orders/modals/PayPromissoriaModal";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 

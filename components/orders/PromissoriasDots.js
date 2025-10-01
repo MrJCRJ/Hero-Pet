@@ -1,7 +1,7 @@
 import React from "react";
 import { formatBRL } from "components/common/format";
 import { formatYMDToBR } from "components/common/date";
-import PayPromissoriaModal from "./PayPromissoriaModal";
+import PayPromissoriaModal from "./modals/PayPromissoriaModal";
 
 export default function PromissoriasDots({ pedidoId, count, onChanged }) {
   const [rows, setRows] = React.useState(null);

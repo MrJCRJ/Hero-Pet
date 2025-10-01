@@ -4,10 +4,10 @@ import { PedidoForm } from "../PedidoForm";
 import { useToast } from "../entities/shared/toast";
 import { deleteOrder as deleteOrderService } from "../pedido/service";
 import FilterBar from "./FilterBar";
-import { usePedidos } from "./hooks";
+import { usePedidos } from "./shared/hooks";
 import OrdersRow from "./OrdersRow";
 import OrdersHeader from "./OrdersHeader";
-import OrdersDashboard from "./OrdersDashboard";
+import OrdersDashboard from "./dashboard/OrdersDashboard";
 
 // Formatação movida para components/common/date
 
