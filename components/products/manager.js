@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useToast } from "components/entities/shared";
+import { toastError } from "components/entities/shared/toast";
 import LineAreaChart from "components/common/LineAreaChart";
 import { Modal } from "components/common/Modal";
 import { ConfirmDialog } from "components/common/ConfirmDialog";
@@ -16,6 +18,7 @@ import { TopProdutosRanking } from "./TopProdutosRanking";
 export function ProductsManager({ linkSupplierId }) {
   const { rows, loading, query, setQ, setCategoria, setAtivo, refresh } =
     useProducts();
+  const { push } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   // Modal de ações (Editar | Detalhes)
@@ -213,7 +216,7 @@ export function ProductsManager({ linkSupplierId }) {
       setEditing(null);
       await refresh();
     } catch (e) {
-      alert(e.message);
+      toastError(push, e, "Erro ao salvar produto");
     } finally {
       setSubmitting(false);
     }
@@ -238,7 +241,7 @@ export function ProductsManager({ linkSupplierId }) {
   async function confirmHardDelete() {
     if (!hardDeleteTarget) return;
     if (hardDeletePwd !== "98034183") {
-      alert("Senha inválida");
+      push("Senha inválida", { type: "error" }); // validação simples sem toastError
       return;
     }
     try {
@@ -249,14 +252,15 @@ export function ProductsManager({ linkSupplierId }) {
       );
       if (!resp.ok) {
         const txt = await resp.text();
-        alert(`Falha ao excluir definitivamente: ${resp.status} ${txt}`);
+        push(`Falha ao excluir definitivamente: ${resp.status} ${txt}`.trim(), { type: "error" });
         return;
       }
       setHardDeleteTarget(null);
       setHardDeletePwd("");
       refresh();
+      push("Produto excluído definitivamente", { type: "success" });
     } catch (e) {
-      alert(e.message);
+      toastError(push, e, "Erro ao excluir definitivamente");
     } finally {
       setHardDeleting(false);
     }
@@ -440,8 +444,16 @@ export function ProductsManager({ linkSupplierId }) {
               }
               setPendingToggle(null);
               refresh();
+              push(
+                pendingToggle.action === 'inactivate'
+                  ? 'Produto inativado'
+                  : 'Produto reativado',
+                { type: 'success' }
+              );
             } catch (e) {
-              alert(e.message || 'Falha na operação');
+              toastError(push, e, 'Falha na operação');
+              // Fecha o dialog também em erro para permitir repetir a ação a partir do estado limpo.
+              setPendingToggle(null);
             }
           }}
         />
