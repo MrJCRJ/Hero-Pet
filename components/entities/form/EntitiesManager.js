@@ -2,31 +2,36 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useToast } from "components/entities/shared/toast";
 import { Button } from "components/ui/Button";
 import { EntitiesBrowser } from "../list/EntitiesBrowser";
-import {
-  EntityTypeSelector,
-  DocumentSection,
-  AddressSection,
-  ContactSection,
-  StatusToggle,
-  applyChange,
-  applyDocumentBlur,
-  computeDerived,
-  createInitialEntityForm,
-} from "./index";
+import { EntityTypeSelector, DocumentSection, AddressSection, ContactSection, StatusToggle } from "./index";
 import { FormContainer } from "components/ui/Form";
+import { useEntityFormController } from "./useEntityFormController";
+import { useEntitySubmit } from "./useEntitySubmit";
 
 export function EntitiesManager({
   browserLimit = 20,
   highlightId: externalHighlightId,
 }) {
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(() => createInitialEntityForm());
-  const [editingId, setEditingId] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const { push } = useToast();
+  const {
+    form,
+    editingId,
+    isEditing,
+    handleChange,
+    handleBlurDocumento,
+    initNew,
+    loadForEdit,
+    reset,
+    derived: { isClient, documentIsCnpj, formatted },
+  } = useEntityFormController();
+  const { submit, submitting, error } = useEntitySubmit({ push });
   const [refreshKey, setRefreshKey] = useState(0);
   const [lastEditedId, setLastEditedId] = useState(null);
-  const { push } = useToast();
+  // push já obtido acima
+  const handleEditRow = useCallback((row) => {
+    loadForEdit(row);
+    setShowForm(true);
+  }, [loadForEdit]);
   // Quando highlightId externo for informado, abrir o formulário no modo edição
   useEffect(() => {
     async function openIfRequested() {
@@ -42,73 +47,24 @@ export function EntitiesManager({
     }
     openIfRequested();
     // executar quando highlight id mudar
-  }, [externalHighlightId]);
+  }, [externalHighlightId, handleEditRow]);
 
   const toggleMode = () => {
     setShowForm((v) => {
       const next = !v;
-      if (next) {
-        // Abrindo form para novo cadastro: garantir reset se não estiver editando
-        if (!editingId) {
-          setForm(createInitialEntityForm());
-        }
+      if (next && !isEditing) {
+        initNew();
       }
       return next;
     });
   };
-  const handleChange = (e) => setForm((prev) => applyChange(prev, e.target));
-  const handleBlurDocumento = () => setForm((prev) => applyDocumentBlur(prev));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const payload = {
-        name: form.nome.trim(),
-        entity_type: form.entityType === "client" ? "PF" : "PJ",
-        document_digits: form.documento,
-        document_pending: form.documento_pendente,
-        cep: form.cep || undefined,
-        telefone: form.telefone || undefined,
-        email: form.email || undefined,
-        numero: form.numero || undefined,
-        complemento: form.complemento || undefined,
-        ativo: form.ativo,
-      };
-      let url = editingId
-        ? `/api/v1/entities/${editingId}`
-        : "/api/v1/entities";
-      if (typeof window === "undefined") {
-        // ambiente de teste server-side (precaução) - usar localhost
-        if (url.startsWith("/")) url = `http://localhost:3000${url}`;
-      } else if (url.startsWith("/")) {
-        // jsdom fetch wrapper já ajusta, mas garantimos
-        url = `${url}`;
-      }
-      const method = editingId ? "PUT" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (res.status === 409) {
-          throw new Error(
-            data.error || "Já existe uma entidade com este documento.",
-          );
-        }
-        throw new Error(
-          data.error ||
-            `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
-        );
-      }
-      // Sucesso: registrar highlight antes de limpar editingId
+    const result = await submit({ form, editingId });
+    if (result.ok) {
       if (editingId) setLastEditedId(editingId);
-      setEditingId(null);
-      setForm(createInitialEntityForm());
+      reset();
       setShowForm(false);
       setRefreshKey((k) => k + 1);
       push(
@@ -116,33 +72,9 @@ export function EntitiesManager({
           ? "Registro atualizado com sucesso!"
           : "Registro salvo com sucesso!",
       );
-    } catch (err) {
-      setError(err.message);
-      push(err.message, { type: "error", timeout: 5000 });
-    } finally {
-      setSubmitting(false);
     }
   };
-  const { isClient, documentIsCnpj, formatted } = computeDerived(form);
 
-  function handleEditRow(row) {
-    // Preenche estado do formulário a partir da linha da tabela
-    setForm({
-      entityType: row.entity_type === "PF" ? "client" : "supplier",
-      nome: row.name || "",
-      documento: row.document_digits || "",
-      documento_pendente: row.document_pending,
-      document_status: row.document_status || "pending",
-      cep: row.cep || "",
-      telefone: row.telefone || "",
-      email: row.email || "",
-      complemento: row.complemento || "",
-      numero: row.numero || "",
-      ativo: row.ativo !== false, // default true
-    });
-    setEditingId(row.id);
-    setShowForm(true);
-  }
 
   // ESC para cancelar edição
   const escHandler = useCallback(
@@ -150,10 +82,10 @@ export function EntitiesManager({
       if (e.key === "Escape" && showForm) {
         e.preventDefault();
         setShowForm(false);
-        setEditingId(null);
+        reset();
       }
     },
-    [showForm],
+    [showForm, reset],
   );
   useEffect(() => {
     window.addEventListener("keydown", escHandler);
