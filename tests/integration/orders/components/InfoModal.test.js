@@ -20,6 +20,12 @@ describe("InfoModal Component", () => {
   const mockData = {
     comprasMes: 800,
     vendasMes: 1000,
+    comprasHistory: [
+      { month: "2024-01", valor: 500 },
+      { month: "2024-02", valor: 600 },
+      { month: "2024-03", valor: 700 },
+      { month: "2024-04", valor: 800 }
+    ],
     promissorias: {
       mesAtual: {
         pendentes: { count: 2, valor: 150 },
@@ -284,8 +290,8 @@ describe("InfoModal Component", () => {
     );
 
     expect(screen.getByText("Compras do mês")).toBeInTheDocument();
-    expect(screen.getByText("Total de Compras — outubro/2025: R$ 800,00")).toBeInTheDocument();
-    expect(screen.getByText("Ver compras do mês na lista")).toBeInTheDocument();
+    expect(screen.getByText("💰 Histórico de Compras (12 meses)")).toBeInTheDocument();
+    expect(screen.getByText("💡 Glossário:")).toBeInTheDocument();
   });
 
   test("renderiza modal de lucro bruto", () => {

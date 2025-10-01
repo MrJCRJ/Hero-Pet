@@ -1,9 +1,10 @@
 import React from "react";
 import LineAreaChart from "../../common/LineAreaChart";
+import ActivePointPanel from "./ActivePointPanel";
+import TimeSeriesTable from "./TimeSeriesTable";
+import { useTimeSeriesActivePoint } from "./hooks/useTimeSeriesActivePoint";
+import { formatMoney, formatPercent } from "./shared/formatters";
 
-/**
- * Componente que exibe detalhes do lucro bruto com gráfico interativo
- */
 export default function LucroBrutoDetails({ data }) {
   const history = Array.isArray(data.growthHistory) ? data.growthHistory : [];
 
@@ -21,124 +22,68 @@ export default function LucroBrutoDetails({ data }) {
     };
   });
 
-  const [hovered, setHovered] = React.useState(null);
-  const [selected, setSelected] = React.useState(null);
-
-  const firstVal = chartData.length ? chartData[0].value : 0;
-  const fallbackPoint = chartData[chartData.length - 1] || null;
-  const active = selected || hovered || fallbackPoint;
-
-  const acumuladaPct =
-    active && firstVal !== 0 ? ((active.value - firstVal) / firstVal) * 100 : 0;
-
-  const prevPoint = active
-    ? (() => {
-        const idx = chartData.findIndex((p) => p.label === active.label);
-        return idx > 0 ? chartData[idx - 1] : null;
-      })()
-    : null;
-
-  const momPct =
-    prevPoint && prevPoint.value !== 0
-      ? ((active.value - prevPoint.value) / prevPoint.value) * 100
-      : 0;
-
-  function fmtMoney(n) {
-    return Number(n || 0).toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      minimumFractionDigits: 2,
-    });
-  }
+  const {
+    activePoint,
+    prevPoint,
+    momPct,
+    acumuladaPct,
+    setHovered,
+    toggleSelect,
+    selected,
+  } = useTimeSeriesActivePoint(chartData);
 
   return (
-    <div className="flex flex-col gap-4 text-sm">
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="flex-1 min-w-[360px]">
-          <LineAreaChart
-            data={chartData}
-            showArea
-            disableTooltip
-            enableCrosshair
-            onHover={(pt) => setHovered(pt)}
-            onSelectPoint={(pt) =>
-              setSelected((p) => (p && p.label === pt.label ? null : pt))
-            }
-            selectedLabel={selected?.label}
-          />
+    <div className="mt-4">
+      <h4 className="font-semibold mb-2">Histórico de Lucro Bruto (12 meses)</h4>
+      <LineAreaChart
+        data={chartData}
+        color="var(--color-success)"
+        height={180}
+        formatValue={(v) => formatMoney(v)}
+        onHover={setHovered}
+        onSelectPoint={toggleSelect}
+        selectedLabel={selected?.label}
+      />
+
+      {activePoint && (
+        <ActivePointPanel
+          point={activePoint}
+          prevPoint={prevPoint}
+          momPct={momPct}
+          acumuladaPct={acumuladaPct}
+          rows={[{ label: 'Lucro Bruto', value: activePoint.value, type: 'money' }]}
+          icons={{ mom: '📊', acumulado: '📈' }}
+          percentFormatter={(n) => formatPercent(n, { withSign: true })}
+        />
+      )}
+      <TimeSeriesTable
+        data={chartData.map((p, i) => {
+          const prev = i > 0 ? chartData[i - 1] : null;
+          return {
+            ...p,
+            momLocal: prev && prev.value !== 0 ? ((p.value - prev.value) / prev.value) * 100 : null,
+          };
+        })}
+        activeLabel={activePoint?.label}
+        onRowClick={toggleSelect}
+        columns={[
+          { key: 'label', header: 'Mês', colSpan: 'col-span-2' },
+          { key: 'value', header: 'Lucro', colSpan: 'col-span-2', align: 'right', render: (row, { formatMoney }) => formatMoney(row.value) },
+          { key: 'receita', header: 'Receita', colSpan: 'col-span-2', align: 'right', render: (row, { formatMoney }) => formatMoney(row.receita) },
+          { key: 'cogs', header: 'COGS 💰', colSpan: 'col-span-2', align: 'right', render: (row, { formatMoney }) => formatMoney(row.cogs) },
+          { key: 'margem', header: 'Margem % 📊', colSpan: 'col-span-2', align: 'right', render: (row, { formatPercent }) => formatPercent(row.margem, { withSign: false }) },
+          { key: 'momLocal', header: 'MoM % 📊', colSpan: 'col-span-2', align: 'right', render: (row, { formatPercent }) => row.momLocal != null ? formatPercent(row.momLocal, { withSign: true }) : '—' },
+        ]}
+      />
+
+      {/* Glossário */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">💡 Glossário:</h4>
+        <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1">
+          <div><strong>COGS:</strong> Custo dos Produtos Vendidos</div>
+          <div><strong>Margem:</strong> Porcentagem de lucro sobre as vendas</div>
+          <div><strong>MoM %:</strong> Crescimento/decréscimo percentual em relação ao mês anterior</div>
         </div>
-        <div className="w-full md:w-64 flex flex-col gap-3 text-xs border rounded p-3 bg-[var(--color-bg-secondary)]">
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Mês
-            </div>
-            <div className="text-sm font-semibold">{active?.label || "—"}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Lucro Bruto
-            </div>
-            <div className="text-sm font-semibold">
-              {active ? fmtMoney(active.value) : "—"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Receita
-            </div>
-            <div className="text-sm font-semibold">
-              {active ? fmtMoney(active.receita) : "—"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              COGS
-            </div>
-            <div className="text-sm font-semibold">
-              {active ? fmtMoney(active.cogs) : "—"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Margem
-            </div>
-            <div className="text-sm font-semibold">
-              {active ? `${active.margem.toFixed(1)}%` : "—"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Var. Mês→Mês
-            </div>
-            <div
-              className={`text-sm font-semibold ${!prevPoint ? "opacity-50" : momPct > 0 ? "text-green-500" : momPct < 0 ? "text-red-400" : ""}`}
-            >
-              {!prevPoint
-                ? "—"
-                : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase opacity-60 tracking-wide">
-              Var. Acumulada
-            </div>
-            <div
-              className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
-            >
-              {active
-                ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%`
-                : "—"}
-            </div>
-          </div>
-          <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
-            Lucro bruto = Receita - COGS (baseado em COGS reconhecido por mês).
-            Clique para fixar um mês; clique novamente para soltar.
-          </div>
-        </div>
-      </div>
-      <div className="text-xs opacity-70">
-        A série utiliza os mesmos meses de growthHistory. Margem calculada
-        on-the-fly.
       </div>
     </div>
   );

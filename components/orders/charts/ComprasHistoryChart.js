@@ -1,52 +1,82 @@
 import React from "react";
 import LineAreaChart from "../../common/LineAreaChart";
-import { formatBRL } from "../shared/utils";
+import ActivePointPanel from "./ActivePointPanel";
+import TimeSeriesTable from "./TimeSeriesTable";
+import { useTimeSeriesActivePoint } from "./hooks/useTimeSeriesActivePoint";
+import { formatMoney, formatPercent } from "./shared/formatters";
 
-/**
- * Componente que exibe o histórico de compras em gráfico e tabela
- */
 export default function ComprasHistoryChart({ comprasHistory }) {
-  if (!comprasHistory?.length) return null;
-
-  const data = comprasHistory.map((r) => ({
-    label: r.month,
-    value: r.compras,
+  const safeHistory = Array.isArray(comprasHistory) ? comprasHistory : [];
+  const chartData = safeHistory.map(item => ({
+    label: item.month,
+    value: Number(item.compras || 0),
   }));
+
+  const {
+    activePoint,
+    prevPoint,
+    momPct,
+    acumuladaPct,
+    setHovered,
+    toggleSelect,
+    selected,
+  } = useTimeSeriesActivePoint(chartData);
+
+  if (!chartData.length) {
+    return <div className="text-xs opacity-70 mt-2">Sem histórico de compras.</div>;
+  }
 
   return (
     <div className="mt-4">
       <h4 className="font-semibold mb-2">Histórico de Compras (12 meses)</h4>
       <LineAreaChart
-        data={data}
+        data={chartData}
         color="var(--color-warning)"
         height={180}
-        formatValue={(v) => formatBRL(v)}
+        formatValue={(v) => formatMoney(v)}
+        onHover={setHovered}
+        onSelectPoint={toggleSelect}
+        selectedLabel={selected?.label}
       />
-      <div className="grid grid-cols-12 text-xs mt-2 font-medium text-gray-500 dark:text-gray-400">
-        <div className="col-span-3">Mês</div>
-        <div className="col-span-3 text-right">Compras</div>
-        <div className="col-span-3 text-right">MoM %</div>
-        <div className="col-span-3 text-right">Δ Absoluto</div>
+
+      {activePoint && (
+        <ActivePointPanel
+          point={activePoint}
+          prevPoint={prevPoint}
+          momPct={momPct}
+          acumuladaPct={acumuladaPct}
+          rows={[{ label: 'Compras', value: activePoint.value, type: 'money' }]}
+          icons={{ mom: '📊', acumulado: '📈' }}
+          percentFormatter={(n) => formatPercent(n, { withSign: true })}
+        />
+      )}
+      <TimeSeriesTable
+        data={chartData.map((p, i) => {
+          const prev = i > 0 ? chartData[i - 1].value : null;
+          return {
+            ...p,
+            delta: prev != null ? p.value - prev : null,
+            momLocal: prev && prev !== 0 ? ((p.value - prev) / prev) * 100 : null,
+          };
+        })}
+        activeLabel={activePoint?.label}
+        onRowClick={toggleSelect}
+        columns={[
+          { key: 'label', header: 'Mês', colSpan: 'col-span-3' },
+          { key: 'value', header: 'Compras', colSpan: 'col-span-3', align: 'right', render: (row, { formatMoney }) => formatMoney(row.value) },
+          { key: 'momLocal', header: 'MoM % 📊', colSpan: 'col-span-3', align: 'right', render: (row, { formatPercent }) => row.momLocal != null ? formatPercent(row.momLocal, { withSign: true }) : '—' },
+          { key: 'delta', header: 'Δ Absoluto 📈', colSpan: 'col-span-3', align: 'right', render: (row, { formatMoney }) => row.delta != null ? formatMoney(row.delta) : '—' },
+        ]}
+      />
+
+      {/* Glossário */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">💡 Glossário:</h4>
+        <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1">
+          <div><strong>MoM %:</strong> Crescimento/decréscimo percentual em relação ao mês anterior</div>
+          <div><strong>Δ Absoluto:</strong> Diferença em valores monetários entre meses consecutivos</div>
+        </div>
       </div>
-      {comprasHistory.map((r, i) => {
-        const prev = i > 0 ? comprasHistory[i - 1].compras : null;
-        const delta = prev != null ? r.compras - prev : null;
-        return (
-          <div
-            key={r.month}
-            className="grid grid-cols-12 text-xs py-0.5 border-b border-gray-100 dark:border-gray-800 last:border-none"
-          >
-            <div className="col-span-3">{r.month}</div>
-            <div className="col-span-3 text-right">{formatBRL(r.compras)}</div>
-            <div className="col-span-3 text-right">
-              {r.crescimento != null ? `${r.crescimento}%` : "-"}
-            </div>
-            <div className="col-span-3 text-right">
-              {delta != null ? formatBRL(delta) : "-"}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

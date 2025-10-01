@@ -2,8 +2,6 @@ import React from "react";
 import { Modal } from "../../common/Modal";
 import { CARD_TITLES } from "../shared/constants";
 import {
-  boundsFromYYYYMM,
-  formatBRL,
   dispatchOrdersFilter,
 } from "../shared/utils";
 import ComprasHistoryChart from "../charts/ComprasHistoryChart";
@@ -31,36 +29,7 @@ export default function InfoModal({
   const renderContent = () => {
     switch (cardKey) {
       case "comprasMes":
-        return (
-          <div className="space-y-4">
-            <div>
-              <div className="text-sm font-medium">
-                Total de Compras — {monthLabel}: {formatBRL(data.comprasMes)}
-              </div>
-              {typeof data.crescimentoComprasMoMPerc === "number" && (
-                <div className="text-xs opacity-70 mt-0.5">
-                  Vs mês anterior: {data.crescimentoComprasMoMPerc}% (Anterior:{" "}
-                  {formatBRL(data.comprasMesAnterior)})
-                </div>
-              )}
-              <ComprasHistoryChart comprasHistory={data.comprasHistory} />
-            </div>
-            <div className="pt-2 border-t border-[var(--color-border)]">
-              <button
-                onClick={() =>
-                  onSelect({
-                    tipo: "COMPRA",
-                    from: boundsFromYYYYMM(monthStr).from,
-                    to: boundsFromYYYYMM(monthStr).to,
-                  })
-                }
-                className="px-3 py-1.5 text-xs rounded bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-primary)]"
-              >
-                Ver compras do mês na lista
-              </button>
-            </div>
-          </div>
-        );
+        return <ComprasHistoryChart comprasHistory={data.comprasHistory} />;
 
       case "lucro_bruto":
         return <LucroBrutoDetails data={data} />;
