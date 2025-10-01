@@ -3,21 +3,26 @@ import { ConfirmDialog } from 'components/common/ConfirmDialog';
 import { useToast } from 'components/entities/shared/toast';
 import { deleteOrder as deleteOrderService } from 'components/pedido/service';
 import FilterBar from 'components/orders/FilterBar';
-import { usePedidos } from 'components/orders/shared/hooks';
+// import { usePedidos } from 'components/orders/shared/hooks'; // legacy
+import { usePaginatedPedidos } from 'hooks/usePaginatedPedidos';
+import { MSG } from 'components/common/messages';
 import PedidoListRow from './PedidoListRow';
 import PedidoListHeader from './PedidoListHeader';
 
 export function PedidoListBrowser({ limit = 20, refreshTick = 0, onEdit }) {
   const [filters, setFilters] = React.useState({ tipo: '', q: '', from: '', to: '' });
-  const { loading, data, reload, page, hasMore, nextPage, prevPage, total, limit: effLimit } = usePedidos(filters, limit);
+  const { rows, loading, reload, page, hasMore, nextPage, prevPage, total, limit: effLimit, error } = usePaginatedPedidos(filters, limit);
   const tableContainerRef = React.useRef(null);
   const { push } = useToast();
 
   React.useEffect(() => { reload(); }, [refreshTick, reload]);
 
   React.useEffect(() => {
-    if (tableContainerRef.current) tableContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [page, data]);
+    const el = tableContainerRef.current;
+    if (el && typeof el.scrollTo === 'function') {
+      try { el.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { /* noop */ }
+    }
+  }, [page, rows]);
 
   const [confirmingOrder, setConfirmingOrder] = React.useState(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -46,14 +51,17 @@ export function PedidoListBrowser({ limit = 20, refreshTick = 0, onEdit }) {
         <table className="min-w-full text-xs">
           <PedidoListHeader />
           <tbody>
-            {data.map(p => (
+            {rows.map(p => (
               <PedidoListRow key={p.id} p={p} onEdit={onEdit} reload={reload} onDelete={(e) => requestDelete(p, e)} />
             ))}
-            {!loading && data.length === 0 && (
-              <tr><td className="px-3 py-6 text-center opacity-70" colSpan={8}>Nenhum pedido encontrado</td></tr>
+            {!loading && rows.length === 0 && !error && (
+              <tr><td className="px-3 py-6 text-center opacity-70" colSpan={8}>{MSG.PEDIDOS_EMPTY}</td></tr>
             )}
             {loading && (
-              <tr><td className="px-3 py-6 text-center opacity-70" colSpan={8}>Carregando...</td></tr>
+              <tr><td className="px-3 py-6 text-center opacity-70" colSpan={8}>{MSG.LOADING_GENERIC}</td></tr>
+            )}
+            {!loading && error && (
+              <tr><td className="px-3 py-6 text-center text-red-600 dark:text-red-400" colSpan={8}>{error}</td></tr>
             )}
           </tbody>
         </table>

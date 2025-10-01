@@ -50,6 +50,41 @@ toastError(push, errorLike, fallbackMsg?)
 4. Adicionar casos de acessibilidade (aria-live para container de toasts, opcional).
 5. Avaliar paginação server-side se a lista crescer além de 500 produtos.
 
+## Edição Direta via `?highlight=` (Novo)
+
+`ProductsManager` agora suporta abrir diretamente o modal de edição quando a URL contém `?highlight=<id>`, usando o hook genérico `useHighlightEntityLoad`.
+
+Fluxo:
+
+1. Lê param da query.
+2. Faz fetch de `/api/v1/produtos/:id` sem interferir na lista.
+3. Ao sucesso, abre modal de edição pré-preenchido.
+
+Estados de UI exibidos:
+
+- `Carregando produto #<id>…` enquanto busca.
+- Mensagem de erro em vermelho se falhar (sem quebrar a lista principal).
+
+Motivação:
+
+- Permitir deep-link de notificações ou dashboards para um produto específico.
+- Alinhar comportamento com Pedidos e Entidades (padrão consistente).
+
+Snippet do hook:
+
+```js
+const { highlighted, loadingHighlight, errorHighlight } =
+  useHighlightEntityLoad({
+    highlightId,
+    fetcher: async (id) => {
+      const res = await fetch(`/api/v1/produtos/${id}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Falha");
+      return json;
+    },
+  });
+```
+
 ## Integração com Outros Módulos
 
 Events de inventário (`inventory-changed`) disparam refresh automático se IDs impactados estiverem visíveis. Mensagens de toast não devem bloquear esse fluxo.

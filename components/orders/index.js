@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useHighlightEntityLoad } from "hooks/useHighlightEntityLoad";
 import { Button } from "../ui/Button";
 import { PedidoForm } from "../PedidoForm";
 import { useToast } from "../entities/shared/toast";
@@ -222,6 +223,34 @@ export function OrdersManager({ limit = 20 }) {
   const bump = useCallback(() => setRefreshKey((k) => k + 1), []);
   // Removido: lógica de migrar pedidos FIFO em lote (legacyCount)
 
+  // Highlight via query param ?highlight=ID
+  const highlightId = (() => {
+    if (typeof window === 'undefined') return null;
+    const sp = new URLSearchParams(window.location.search);
+    const h = sp.get('highlight');
+    return h ? h : null;
+  })();
+
+  const { highlighted, loadingHighlight, clearHighlight } = useHighlightEntityLoad({
+    highlightId,
+    fetcher: async (id) => {
+      const res = await fetch(`/api/v1/pedidos/${id}`, { cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Falha ao carregar pedido');
+      return json;
+    },
+  });
+
+  // Quando carregar highlight com sucesso, abre formulário em modo edição
+  useEffect(() => {
+    if (highlighted) {
+      setEditing(highlighted);
+      setShowForm(true);
+    }
+  }, [highlighted]);
+
+  // Se highlight em loading e usuário já abriu manualmente o form sem highlight, não interfere.
+
   const handleEdit = async (row) => {
     try {
       const res = await fetch(`/api/v1/pedidos/${row.id}`, {
@@ -259,6 +288,9 @@ export function OrdersManager({ limit = 20 }) {
           onConfirm={bump}
           onEdit={handleEdit}
         />
+        {loadingHighlight && highlightId && (
+          <div className="text-xs opacity-70">Carregando pedido #{highlightId}…</div>
+        )}
       </div>
     );
   }
@@ -275,11 +307,13 @@ export function OrdersManager({ limit = 20 }) {
             onCreated={() => {
               setShowForm(false);
               setEditing(null);
+              clearHighlight();
               bump();
             }}
             onSaved={() => {
               setShowForm(false);
               setEditing(null);
+              clearHighlight();
               bump();
             }}
           />

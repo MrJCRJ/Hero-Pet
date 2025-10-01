@@ -200,6 +200,51 @@ import OrdersDashboard from "components/orders/dashboard/OrdersDashboard";
 3. **Storybook**: Documentação visual dos componentes
 4. **Performance**: Lazy loading de componentes pesados
 
+## 🚀 Novidades Pós-Refatoração (Adições Recentes)
+
+### Paginação Unificada com `usePaginatedPedidos`
+
+Substituímos o hook legado `usePedidos` por `usePaginatedPedidos`, que:
+
+- Aceita filtros `{ tipo, q, from, to }` e controla página (zero-based) internamente.
+- Sempre solicita `meta=1` e suporta gracefully respostas antigas (array simples sem `meta`).
+- Retorna: `{ rows, loading, error, page, total, hasMore, nextPage, prevPage, gotoPage, reload, limit }`.
+- Evita duplicação de cálculos de `offset` e montagem de query strings.
+
+Uso básico:
+
+```js
+const { rows, loading, page, total, nextPage } = usePaginatedPedidos(
+  { tipo: "VENDA" },
+  20,
+);
+```
+
+### Edição Direta via Query Param `?highlight=`
+
+O componente `OrdersManager` agora detecta `?highlight=<id>` na URL e:
+
+1. Carrega o pedido via `useHighlightEntityLoad` (fetch isolado, sem poluir a lista).
+2. Abre automaticamente o formulário em modo edição ao concluir o fetch.
+3. Exibe estado de carregamento: `Carregando pedido #<id>…`.
+
+Benefícios:
+
+- Deep-link para edição (ex.: compartilhar URL de um pedido específico).
+- Integração futura com notificações ou dashboards que apontem para registros específicos.
+
+Hook genérico (`hooks/useHighlightEntityLoad.js`):
+
+```js
+const { highlighted, loadingHighlight, errorHighlight } =
+  useHighlightEntityLoad({
+    highlightId: "123",
+    fetcher: (id) => fetch(`/api/v1/pedidos/${id}`).then((r) => r.json()),
+  });
+```
+
+Padrão aplicado também a Entidades e Produtos para consistência cross-domain.
+
 ## 🧩 Padronização de Confirmações (ConfirmDialog)
 
 O fluxo de confirmação de ações destrutivas e sensíveis foi padronizado com o componente `ConfirmDialog` (ver `components/common/ConfirmDialog.js`).

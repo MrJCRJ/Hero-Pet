@@ -6,6 +6,7 @@ import { EntitiesBrowser } from "../list/EntitiesBrowser";
 import { EntityFormShell } from "./EntityFormShell";
 import { useEntityFormController } from "./useEntityFormController";
 import { useEntitySubmit } from "./useEntitySubmit";
+import { useHighlightEntityLoad } from "hooks/useHighlightEntityLoad";
 
 export function EntitiesManager({
   browserLimit = 20,
@@ -32,22 +33,27 @@ export function EntitiesManager({
     loadForEdit(row);
     setShowForm(true);
   }, [loadForEdit]);
-  // Quando highlightId externo for informado, abrir o formulário no modo edição
-  useEffect(() => {
-    async function openIfRequested() {
-      if (!externalHighlightId) return;
-      try {
-        const res = await fetch(`/api/v1/entities/${externalHighlightId}`);
-        if (!res.ok) return; // se não encontrar, ignora silenciosamente
-        const row = await res.json();
-        handleEditRow(row);
-      } catch (_) {
-        /* noop */
+
+  // Novo: uso de hook genérico de highlight
+  const { highlighted, loadingHighlight, errorHighlight } = useHighlightEntityLoad({
+    highlightId: externalHighlightId,
+    fetcher: async (id) => {
+      const res = await fetch(`/api/v1/entities/${id}`);
+      if (!res.ok) {
+        let msg = MSG.GENERIC_ERROR;
+        try { const j = await res.json(); msg = j?.error || msg; } catch (_) { /* noop */ }
+        throw new Error(msg);
       }
+      return res.json();
+    },
+  });
+
+  // Ao carregar highlight com sucesso, abrir formulário em modo edição
+  useEffect(() => {
+    if (highlighted) {
+      handleEditRow(highlighted);
     }
-    openIfRequested();
-    // executar quando highlight id mudar
-  }, [externalHighlightId, handleEditRow]);
+  }, [highlighted, handleEditRow]);
 
   const toggleMode = () => {
     setShowForm((v) => {
@@ -109,6 +115,12 @@ export function EntitiesManager({
           onEdit={handleEditRow}
           highlightId={externalHighlightId ?? lastEditedId}
         />
+        {loadingHighlight && externalHighlightId && (
+          <div className="text-xs opacity-70">Carregando entidade #{externalHighlightId}…</div>
+        )}
+        {errorHighlight && externalHighlightId && (
+          <div className="text-xs text-red-600">{errorHighlight}</div>
+        )}
       </div>
     );
   }

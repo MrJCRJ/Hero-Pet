@@ -18,6 +18,7 @@ import { useProductToggle } from "./useProductToggle";
 import { ProductActionsModal } from "./ProductActionsModal";
 import { ProductDetailModal } from "./ProductDetailModal";
 import { ProductHardDeleteDialog } from "./ProductHardDeleteDialog";
+import { useHighlightEntityLoad } from "hooks/useHighlightEntityLoad";
 // import { ProductDetail } from "./Detail";
 
 // useProducts extraído para ./hooks
@@ -124,6 +125,25 @@ export function ProductsManager({ linkSupplierId }) {
     setEditing(item);
     setShowModal(true);
   }
+
+  // Suporte a ?highlight=<id> para abrir modal de edição diretamente
+  const highlightId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('highlight') : null;
+  const { highlighted, loadingHighlight, errorHighlight } = useHighlightEntityLoad({
+    highlightId,
+    fetcher: async (id) => {
+      const res = await fetch(`/api/v1/produtos/${id}`, { cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.error || MSG.GENERIC_ERROR);
+      return json;
+    },
+  });
+
+  useEffect(() => {
+    if (highlighted) {
+      setEditing(highlighted);
+      setShowModal(true);
+    }
+  }, [highlighted]);
 
   function openActions(item) {
     setActionTarget(item);
@@ -257,6 +277,12 @@ export function ProductsManager({ linkSupplierId }) {
           </tbody>
         </table>
       </div>
+      {loadingHighlight && highlightId && (
+        <div className="text-xs opacity-70">Carregando produto #{highlightId}…</div>
+      )}
+      {errorHighlight && highlightId && (
+        <div className="text-xs text-red-600">{errorHighlight}</div>
+      )}
       {showModal && (
         <Modal
           onClose={() => setShowModal(false)}

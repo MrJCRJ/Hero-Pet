@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { ThemeProvider } from 'contexts/ThemeContext';
 import { ToastProvider } from 'components/entities/shared/toast';
 import { OrdersManager } from 'components/orders';
@@ -22,36 +22,14 @@ function Wrapper({ children }) {
 }
 
 describe('Orders UI - Browser basic', () => {
-  beforeEach(() => {
-    fetch.resetMocks?.();
-    global.fetch = jest.fn((input, init) => {
+  test('lista vazia exibe mensagem', async () => {
+    global.fetch = jest.fn((input) => {
       const url = typeof input === 'string' ? input : input?.url;
-      if (!url) return Promise.resolve({ ok: true, json: async () => ({}) });
-
-      // GET list
-      if (url.startsWith('/api/v1/pedidos?')) {
-        // primeira chamada lista vazia, segunda chamada (após deleção simulate) também vazia
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: [], meta: { total: 0 } }),
-        });
+      if (url?.startsWith('/api/v1/pedidos?')) {
+        return Promise.resolve({ ok: true, json: async () => ({ data: [], meta: { total: 0 } }) });
       }
-
-      // DELETE pedido
-      if (/\/api\/v1\/pedidos\/(\d+)$/.test(url) && init?.method === 'DELETE') {
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      }
-
-      // GET single for edit (não usado aqui)
-      if (/\/api\/v1\/pedidos\/(\d+)$/.test(url) && (!init || init.method === 'GET')) {
-        return Promise.resolve({ ok: true, json: async () => ({ id: 123 }) });
-      }
-
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
-  });
-
-  test('lista vazia exibe mensagem', async () => {
     render(
       <Wrapper>
         <OrdersManager />
@@ -62,5 +40,56 @@ describe('Orders UI - Browser basic', () => {
     expect(await screen.findByText('Pedidos')).toBeInTheDocument();
     const table = await screen.findByRole('table');
     expect(within(table).getByText(MSG.PEDIDOS_EMPTY)).toBeInTheDocument();
+  });
+
+  test('deleção remove linha e mostra toast', async () => {
+    const pedido = { id: 777, tipo: 'VENDA', partner_name: 'Cliente X', data_emissao: '2024-09-10', numero_promissorias: 0, tem_nota_fiscal: false, total_liquido: 100, frete_total: 0, total_pago: 0 };
+    let deleted = false;
+    global.fetch = jest.fn((input, init) => {
+      const url = typeof input === 'string' ? input : input?.url;
+      if (url?.startsWith('/api/v1/pedidos?')) {
+        if (!deleted) {
+          return Promise.resolve({ ok: true, json: async () => ({ data: [pedido], meta: { total: 1 } }) });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ data: [], meta: { total: 0 } }) });
+      }
+      if (/\/api\/v1\/pedidos\/(\d+)$/.test(url) && init?.method === 'DELETE') {
+        deleted = true;
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(
+      <Wrapper>
+        <OrdersManager />
+      </Wrapper>
+    );
+
+    // Linha presente
+    const rowClient = await screen.findByText('Cliente X');
+    expect(rowClient).toBeInTheDocument();
+
+    const row = rowClient.closest('tr');
+    const deleteBtn = within(row).getByRole('button', { name: /Excluir pedido/i });
+    fireEvent.click(deleteBtn);
+
+    const confirmDialogTitle = await screen.findByText(MSG.ORDER_DELETE_CONFIRM_TITLE(pedido.id));
+    expect(confirmDialogTitle).toBeInTheDocument();
+
+    // Botão de confirmação (label Excluir). Modal inclui botão Cancelar e fechar.
+    const allButtons = await screen.findAllByRole('button', { name: /Excluir/ });
+    // Seleciona aquele cujo texto exato seja 'Excluir' (exclui ícone hover invisível) e que não tenha aria-label diferente
+    const confirmButton = allButtons.find(btn => btn.textContent === 'Excluir');
+    expect(confirmButton).toBeTruthy();
+    fireEvent.click(confirmButton);
+
+    // Toast de sucesso (usa template)
+    const successToast = await screen.findByText(MSG.ORDER_DELETED_SUCCESS(pedido.id));
+    expect(successToast).toBeInTheDocument();
+
+    // Lista deve ficar vazia (mensagem de vazio)
+    const emptyMsg = await screen.findByText(MSG.PEDIDOS_EMPTY);
+    expect(emptyMsg).toBeInTheDocument();
   });
 });
