@@ -34,10 +34,34 @@ export default async function handler(req, res) {
       "proximo",
       "carry",
     ]);
-    const kind = typeof status === "string" ? status.toLowerCase() : "";
+    let kind = typeof status === "string" ? status.toLowerCase().trim() : "";
+    // Normalização de aliases comuns
+    const aliasMap = {
+      atrasados: "atrasadas",
+      atraso: "atrasadas",
+      vencidas: "atrasadas",
+      vencidos: "atrasadas",
+      paga: "pagas",
+      pendente: "pendentes",
+      proxima: "proximo",
+      proximas: "proximo",
+      proximo_mes: "proximo",
+      "proximo-mes": "proximo",
+      anteriores: "carry",
+      anterior: "carry",
+      meses_anteriores: "carry",
+      "meses-anteriores": "carry",
+      carry_over: "carry",
+      "carry-over": "carry",
+    };
+    if (aliasMap[kind]) kind = aliasMap[kind];
     if (!allowed.has(kind)) {
       return res.status(400).json({
         error: "status inválido (use: pagas|pendentes|atrasadas|proximo|carry)",
+        received: status,
+        normalized: kind || null,
+        allowed: Array.from(allowed),
+        aliases: aliasMap,
       });
     }
 
