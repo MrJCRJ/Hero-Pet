@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "components/entities/shared";
-import { toastError, criticalError } from "components/entities/shared/toast";
+import { toastError } from "components/entities/shared/toast";
 import { MSG } from "components/common/messages";
 import LineAreaChart from "components/common/LineAreaChart";
 import { Modal } from "components/common/Modal";
-import { ConfirmDialog } from "components/common/ConfirmDialog";
+import { ConfirmDialog } from "components/common/ConfirmDialog"; // ainda usado para toggle
 import { ProductForm } from "./ProductForm";
 import { useProducts } from "./hooks";
 import ProductsHeader from "./ProductsHeader";
@@ -12,6 +12,12 @@ import ProductRow from "./ProductRow";
 import ProductsFilterBar from "./ProductsFilterBar";
 import useProductCosts from "./useProductCosts";
 import { TopProdutosRanking } from "./TopProdutosRanking";
+import { useProductRanking } from "./useProductRanking";
+import { useProductHardDelete } from "./useProductHardDelete";
+import { useProductToggle } from "./useProductToggle";
+import { ProductActionsModal } from "./ProductActionsModal";
+import { ProductDetailModal } from "./ProductDetailModal";
+import { ProductHardDeleteDialog } from "./ProductHardDeleteDialog";
 // import { ProductDetail } from "./Detail";
 
 // useProducts extraído para ./hooks
@@ -32,43 +38,10 @@ export function ProductsManager({ linkSupplierId }) {
   const [costHistory, setCostHistory] = useState([]); // [{month: '2025-09', avg_cost: 10.5}]
   const [submitting, setSubmitting] = useState(false);
   const [onlyBelowMin, setOnlyBelowMin] = useState(false);
-  const [hardDeleteTarget, setHardDeleteTarget] = useState(null);
-  const [hardDeletePwd, setHardDeletePwd] = useState("");
-  const [hardDeleting, setHardDeleting] = useState(false);
-  const [pendingToggle, setPendingToggle] = useState(null); // { action: 'inactivate'|'reactivate', product }
-  // Ranking de produtos (top lucro)
-  const [topData, setTopData] = useState(null);
-  const [topLoading, setTopLoading] = useState(false);
-  const [showTopModal, setShowTopModal] = useState(false);
-  const TOP_DEFAULT_MONTHS = 6;
-
-  async function fetchTopProdutos(params = {}) {
-    const month = new Date();
-    const yyyyMM = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
-    const qs = new URLSearchParams();
-    qs.set("month", params.month || yyyyMM);
-    qs.set("topN", String(params.topN || 10));
-    qs.set("productMonths", String(params.productMonths || TOP_DEFAULT_MONTHS));
-    setTopLoading(true);
-    try {
-      const resp = await fetch(`/api/v1/produtos/top?${qs.toString()}`, {
-        cache: "no-store",
-      });
-      if (!resp.ok) throw new Error(MSG.GENERIC_ERROR);
-      const json = await resp.json();
-      setTopData(json);
-    } catch (e) {
-      console.warn("Erro carregando top produtos", e);
-      setTopData(null);
-    } finally {
-      setTopLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    // Pré-carrega silenciosamente (lazy). Poderíamos adiar até abrir modal.
-    fetchTopProdutos();
-  }, []);
+  // Hooks extraídos (ranking, hard delete, toggle)
+  const { topData, topLoading, showTopModal, openTopModal, closeTopModal, fetchTopProdutos } = useProductRanking();
+  const { hardDeleteTarget, hardDeletePwd, hardDeleting, setHardDeletePwd, openHardDelete, cancelHardDelete, confirmHardDelete } = useProductHardDelete({ refresh, push });
+  const { pendingToggle, openInactivate, openReactivate, cancelToggle, confirmToggle } = useProductToggle({ refresh, push });
 
   useEffect(() => {
     // debounce simples
@@ -223,54 +196,7 @@ export function ProductsManager({ linkSupplierId }) {
     }
   }
 
-  async function handleInactivate(p) {
-    if (!p?.id) return;
-    setPendingToggle({ action: 'inactivate', product: p });
-  }
-
-  async function handleReactivate(p) {
-    if (!p?.id) return;
-    setPendingToggle({ action: 'reactivate', product: p });
-  }
-
-  async function handleHardDelete(p) {
-    if (!p?.id) return;
-    setHardDeleteTarget(p);
-    setHardDeletePwd("");
-  }
-
-  async function confirmHardDelete() {
-    if (!hardDeleteTarget) return;
-    if (hardDeletePwd !== "98034183") {
-      push("Senha inválida", { type: "error" }); // manter literal específica (não reutilizada em outros domínios)
-      return;
-    }
-    try {
-      setHardDeleting(true);
-      const resp = await fetch(
-        `/api/v1/produtos/${hardDeleteTarget.id}?hard=true&password=${encodeURIComponent(hardDeletePwd)}`,
-        { method: "DELETE" },
-      );
-      if (!resp.ok) {
-        const txt = await resp.text();
-        push(`${MSG.PROD_DELETE_ERROR}: ${resp.status} ${txt}`.trim(), { type: "error", assertive: true });
-        return;
-      }
-      setHardDeleteTarget(null);
-      setHardDeletePwd("");
-      refresh();
-      push(MSG.PROD_HARD_DELETED, { type: "success" });
-    } catch (e) {
-      criticalError(push, e, MSG.PROD_DELETE_ERROR);
-    } finally {
-      setHardDeleting(false);
-    }
-  }
-
-  function cancelHardDelete() {
-    setHardDeleteTarget(null);
-    setHardDeletePwd("");
-  }
+  // Lógica de inativação/reativação e hard delete agora via hooks
 
   return (
     <div className="space-y-3">
@@ -292,15 +218,13 @@ export function ProductsManager({ linkSupplierId }) {
           type="button"
           onClick={() => {
             if (!topData && !topLoading) fetchTopProdutos();
-            setShowTopModal(true);
+            openTopModal();
           }}
           className="text-left flex-1 min-w-[200px] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-3 hover:bg-[var(--color-bg-primary)] transition-colors"
         >
           <div className="text-xs opacity-70">Insights</div>
           <div className="text-sm font-semibold">Top produtos por lucro</div>
-          <div className="text-[11px] opacity-60 mt-1">
-            Clique para ver ranking
-          </div>
+          <div className="text-[11px] opacity-60 mt-1">Clique para ver ranking</div>
         </button>
       </div>
 
@@ -315,9 +239,9 @@ export function ProductsManager({ linkSupplierId }) {
                 costMap={costMap}
                 // Agora clique abre modal de ações
                 onEdit={openActions}
-                onInactivate={handleInactivate}
-                onReactivate={handleReactivate}
-                onHardDelete={handleHardDelete}
+                onInactivate={openInactivate}
+                onReactivate={openReactivate}
+                onHardDelete={openHardDelete}
               />
             ))}
             {!rows.length && (
@@ -346,77 +270,30 @@ export function ProductsManager({ linkSupplierId }) {
         </Modal>
       )}
       {showActionsModal && actionTarget && (
-        <Modal
+        <ProductActionsModal
+          target={actionTarget}
           onClose={() => setShowActionsModal(false)}
-          title={`Produto: ${actionTarget.nome}`}
-        >
-          <div className="space-y-4">
-            <p className="text-sm text-[var(--color-text-secondary)]">
-              Escolha uma ação para este produto.
-            </p>
-            <div className="flex gap-3">
-              <button
-                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
-                onClick={() => {
-                  setShowActionsModal(false);
-                  openEdit(actionTarget);
-                }}
-              >
-                Editar
-              </button>
-              <button
-                className="px-3 py-1.5 text-sm rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
-                onClick={() => openDetails(actionTarget)}
-              >
-                Detalhes
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-      {showDetailModal && detailTarget && (
-        <Modal
-          onClose={() => setShowDetailModal(false)}
-          title={`Histórico de Custos • ${detailTarget.nome}`}
-        >
-          <ProductCostHistoryChart loading={detailLoading} data={costHistory} />
-        </Modal>
-      )}
-      {hardDeleteTarget && (
-        <ConfirmDialog
-          title={`Excluir DEFINITIVO • ${hardDeleteTarget.nome}`}
-          message={
-            <div className="space-y-4 text-sm">
-              <p>
-                Esta ação removerá TODOS os registros relacionados ao produto
-                (movimentos, lotes, itens de pedidos, fornecedores). Não pode
-                ser desfeita.
-              </p>
-              <input
-                type="password"
-                className="w-full rounded border px-3 py-2 bg-[var(--color-bg-secondary)]"
-                placeholder="Senha"
-                value={hardDeletePwd}
-                onChange={(e) => setHardDeletePwd(e.target.value)}
-                disabled={hardDeleting}
-                autoFocus
-              />
-              <div className="text-[11px] opacity-60 leading-snug">
-                Digite a senha para habilitar a exclusão definitiva.
-              </div>
-            </div>
-          }
-          danger
-          confirmLabel={hardDeleting ? "Excluindo..." : "Excluir"}
-          cancelLabel="Cancelar"
-          loading={hardDeleting}
-          onCancel={() => !hardDeleting && cancelHardDelete()}
-          onConfirm={() => {
-            if (!hardDeletePwd || hardDeleting) return;
-            confirmHardDelete();
-          }}
+          onEdit={openEdit}
+          onDetails={(p) => openDetails(p)}
         />
       )}
+      {showDetailModal && detailTarget && (
+        <ProductDetailModal
+          target={detailTarget}
+          loading={detailLoading}
+          data={costHistory}
+          onClose={() => setShowDetailModal(false)}
+          ChartComponent={ProductCostHistoryChart}
+        />
+      )}
+      <ProductHardDeleteDialog
+        target={hardDeleteTarget}
+        password={hardDeletePwd}
+        setPassword={setHardDeletePwd}
+        deleting={hardDeleting}
+        onCancel={cancelHardDelete}
+        onConfirm={confirmHardDelete}
+      />
       {pendingToggle && (
         <ConfirmDialog
           title={pendingToggle.action === 'inactivate' ? 'Inativar produto' : 'Reativar produto'}
@@ -428,40 +305,13 @@ export function ProductsManager({ linkSupplierId }) {
           }
           confirmLabel={pendingToggle.action === 'inactivate' ? 'Inativar' : 'Reativar'}
           cancelLabel="Cancelar"
-          onCancel={() => setPendingToggle(null)}
-          onConfirm={async () => {
-            const p = pendingToggle.product;
-            try {
-              if (pendingToggle.action === 'inactivate') {
-                const resp = await fetch(`/api/v1/produtos/${p.id}`, { method: 'DELETE' });
-                if (!resp.ok) throw new Error(await resp.text());
-              } else {
-                const resp = await fetch(`/api/v1/produtos/${p.id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ nome: p.nome, categoria: p.categoria || null, ativo: true }),
-                });
-                if (!resp.ok) throw new Error(await resp.text());
-              }
-              setPendingToggle(null);
-              refresh();
-              push(
-                pendingToggle.action === 'inactivate'
-                  ? MSG.PROD_INACTIVATED
-                  : MSG.PROD_REACTIVATED,
-                { type: 'success' }
-              );
-            } catch (e) {
-              toastError(push, e, MSG.PROD_TOGGLE_ERROR);
-              // Fecha o dialog também em erro para permitir repetir a ação a partir do estado limpo.
-              setPendingToggle(null);
-            }
-          }}
+          onCancel={cancelToggle}
+          onConfirm={confirmToggle}
         />
       )}
       {showTopModal && (
         <Modal
-          onClose={() => setShowTopModal(false)}
+          onClose={closeTopModal}
           title="Ranking de Produtos por Lucro"
         >
           {topLoading && (
@@ -471,7 +321,7 @@ export function ProductsManager({ linkSupplierId }) {
             <TopProdutosRanking
               data={topData}
               onNavigate={(id) => {
-                setShowTopModal(false);
+                closeTopModal();
                 setQ(`#${id}`);
                 setTimeout(() => searchInputRef.current?.focus(), 30);
               }}
