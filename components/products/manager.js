@@ -54,7 +54,7 @@ export function ProductsManager({ linkSupplierId }) {
       const resp = await fetch(`/api/v1/produtos/top?${qs.toString()}`, {
         cache: "no-store",
       });
-      if (!resp.ok) throw new Error("Falha ranking produtos");
+      if (!resp.ok) throw new Error(MSG.GENERIC_ERROR);
       const json = await resp.json();
       setTopData(json);
     } catch (e) {
@@ -211,13 +211,13 @@ export function ProductsManager({ linkSupplierId }) {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "Erro ao salvar produto");
+        throw new Error(text || MSG.PROD_SAVE_ERROR);
       }
       setShowModal(false);
       setEditing(null);
       await refresh();
     } catch (e) {
-      toastError(push, e, "Erro ao salvar produto");
+      toastError(push, e, MSG.PROD_SAVE_ERROR);
     } finally {
       setSubmitting(false);
     }
@@ -242,7 +242,7 @@ export function ProductsManager({ linkSupplierId }) {
   async function confirmHardDelete() {
     if (!hardDeleteTarget) return;
     if (hardDeletePwd !== "98034183") {
-      push("Senha inválida", { type: "error" }); // validação simples sem toastError
+      push("Senha inválida", { type: "error" }); // manter literal específica (não reutilizada em outros domínios)
       return;
     }
     try {
@@ -253,7 +253,7 @@ export function ProductsManager({ linkSupplierId }) {
       );
       if (!resp.ok) {
         const txt = await resp.text();
-        push(`Falha ao excluir definitivamente: ${resp.status} ${txt}`.trim(), { type: "error" });
+        push(`${MSG.PROD_DELETE_ERROR}: ${resp.status} ${txt}`.trim(), { type: "error" });
         return;
       }
       setHardDeleteTarget(null);
@@ -261,7 +261,7 @@ export function ProductsManager({ linkSupplierId }) {
       refresh();
       push(MSG.PROD_HARD_DELETED, { type: "success" });
     } catch (e) {
-      toastError(push, e, "Erro ao excluir definitivamente");
+      toastError(push, e, MSG.PROD_DELETE_ERROR);
     } finally {
       setHardDeleting(false);
     }
@@ -452,7 +452,7 @@ export function ProductsManager({ linkSupplierId }) {
                 { type: 'success' }
               );
             } catch (e) {
-              toastError(push, e, 'Falha na operação');
+              toastError(push, e, MSG.PROD_TOGGLE_ERROR);
               // Fecha o dialog também em erro para permitir repetir a ação a partir do estado limpo.
               setPendingToggle(null);
             }
@@ -478,9 +478,7 @@ export function ProductsManager({ linkSupplierId }) {
             />
           )}
           {!topLoading && !topData && (
-            <div className="text-sm text-red-500">
-              Falha ao carregar ranking.
-            </div>
+            <div className="text-sm text-red-500">{MSG.GENERIC_ERROR}</div>
           )}
         </Modal>
       )}
