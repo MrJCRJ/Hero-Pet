@@ -26,6 +26,7 @@ export const MSG = {
   ENTITY_UPDATED: 'Entidade atualizada',
   ENTITY_DELETED: 'Entidade excluída',
   ENTITY_DELETE_ERROR: 'Erro ao excluir entidade',
+  ENTITY_CONFLICT: 'Já existe uma entidade com este documento',
 
   // Genéricos
   GENERIC_ERROR: 'Operação falhou',

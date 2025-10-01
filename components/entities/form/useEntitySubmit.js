@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { MSG } from "components/common/messages";
 
 // Responsável por enviar payload de entidade (create/update) e reportar estado
 export function useEntitySubmit({ push }) {
@@ -35,17 +36,17 @@ export function useEntitySubmit({ push }) {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (res.status === 409) {
-          throw new Error(data.error || "Já existe uma entidade com este documento.");
+          throw new Error(data.error || MSG.ENTITY_CONFLICT || "Já existe uma entidade com este documento.");
         }
         throw new Error(
-          data.error || `Falha ao ${editingId ? "atualizar" : "salvar"} (status ${res.status})`,
+          data.error || `${MSG.GENERIC_ERROR} (${res.status})`,
         );
       }
       return { ok: true };
     } catch (e) {
       const msg = e.message || "Erro desconhecido";
       setError(msg);
-      push?.(msg, { type: "error", timeout: 5000 });
+      push?.(msg, { type: "error", timeout: 5000, assertive: true });
       return { ok: false, error: msg };
     } finally {
       setSubmitting(false);

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { MSG } from "components/common/messages";
 import { useToast } from "components/entities/shared/toast";
 import { Button } from "components/ui/Button";
 import { EntitiesBrowser } from "../list/EntitiesBrowser";
-import { EntityTypeSelector, DocumentSection, AddressSection, ContactSection, StatusToggle } from "./index";
-import { FormContainer } from "components/ui/Form";
+import { EntityFormShell } from "./EntityFormShell";
 import { useEntityFormController } from "./useEntityFormController";
 import { useEntitySubmit } from "./useEntitySubmit";
 
@@ -67,11 +67,7 @@ export function EntitiesManager({
       reset();
       setShowForm(false);
       setRefreshKey((k) => k + 1);
-      push(
-        editingId
-          ? "Registro atualizado com sucesso!"
-          : "Registro salvo com sucesso!",
-      );
+      push(editingId ? MSG.ENTITY_UPDATED : MSG.ENTITY_CREATED, { type: 'success' });
     }
   };
 
@@ -118,71 +114,18 @@ export function EntitiesManager({
   }
 
   return (
-    <FormContainer
-      title={`Formulário de Cliente / Fornecedor`}
+    <EntityFormShell
+      form={form}
+      formatted={formatted}
+      documentIsCnpj={documentIsCnpj}
+      isClient={isClient}
+      editingId={editingId}
+      submitting={submitting}
+      error={error}
       onSubmit={handleSubmit}
-    >
-      <div className="space-y-4">
-        <h2 className="text-base font-semibold">
-          {editingId
-            ? `Editando ${isClient ? "Cliente" : "Fornecedor"}`
-            : `Novo ${isClient ? "Cliente" : "Fornecedor"}`}
-        </h2>
-        <div className="card p-2 space-y-2">
-          <EntityTypeSelector value={form.entityType} onChange={handleChange} />
-          <DocumentSection
-            form={formatted}
-            isDocumentCnpj={documentIsCnpj}
-            onChange={handleChange}
-            onBlurDocumento={handleBlurDocumento}
-          />
-        </div>
-        <div className="grid gap-2 lg:grid-cols-2">
-          <div className="card p-1 space-y-2">
-            <AddressSection form={formatted} onChange={handleChange} />
-          </div>
-          <div className="card p-1 space-y-2">
-            <ContactSection form={formatted} onChange={handleChange} />
-          </div>
-          <div className="card p-1 space-y-2">
-            <StatusToggle checked={form.ativo} onChange={handleChange} />
-          </div>
-        </div>
-        {error && (
-          <div className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded">
-            {error}
-          </div>
-        )}
-        <div className="flex justify-end pt-1 gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            fullWidth={false}
-            disabled={submitting}
-            onClick={() => setShowForm(false)}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            fullWidth={false}
-            className="min-w-[120px]"
-            disabled={submitting}
-            loading={submitting}
-          >
-            {submitting
-              ? editingId
-                ? "Atualizando..."
-                : "Salvando..."
-              : editingId
-                ? "Atualizar"
-                : "Salvar"}
-          </Button>
-        </div>
-      </div>
-    </FormContainer>
+      onCancel={() => setShowForm(false)}
+      onChange={handleChange}
+      onBlurDocumento={handleBlurDocumento}
+    />
   );
 }
