@@ -18,6 +18,120 @@ import OrdersDashboard from "./dashboard/OrdersDashboard";
 
 // usePedidos extraído para ./hooks
 
+// Hook responsável por gerenciar ciclo de vida de deleção com confirmação.
+function useOrderDelete({ onDeleted }) {
+  const { push } = useToast();
+  const [confirmingOrder, setConfirmingOrder] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const requestDelete = useCallback((pedido, e) => {
+    e?.stopPropagation?.();
+    setConfirmingOrder(pedido);
+  }, []);
+
+  const performDelete = useCallback(async () => {
+    if (!confirmingOrder) return;
+    try {
+      setDeleting(true);
+      await deleteOrderService(confirmingOrder.id);
+      push(MSG.ORDER_DELETED_SUCCESS(confirmingOrder.id), { type: "success" });
+      setConfirmingOrder(null);
+      await onDeleted?.();
+    } catch (err) {
+      push(err.message || MSG.PEDIDO_DELETE_ERROR, { type: "error" });
+    } finally {
+      setDeleting(false);
+    }
+  }, [confirmingOrder, onDeleted, push]);
+
+  const dialog = confirmingOrder ? (
+    <ConfirmDialog
+      title={MSG.ORDER_DELETE_CONFIRM_TITLE(confirmingOrder.id)}
+      message={MSG.ORDER_DELETE_CONFIRM_MESSAGE(confirmingOrder.id)}
+      confirmLabel="Excluir"
+      cancelLabel="Cancelar"
+      danger
+      loading={deleting}
+      onCancel={() => !deleting && setConfirmingOrder(null)}
+      onConfirm={performDelete}
+    />
+  ) : null;
+
+  return { requestDelete, dialog };
+}
+
+// Subcomponente tabela (somente tbody + estados de loading/empty/error)
+function OrdersTableBody({ rows, loading, error, onEdit, onDelete, reload }) {
+  return (
+    <tbody>
+      {rows.map((p) => (
+        <OrdersRow
+          key={p.id}
+          p={p}
+          onEdit={onEdit}
+          reload={reload}
+          onDelete={(e) => onDelete(p, e)}
+        />
+      ))}
+      {!loading && rows.length === 0 && !error && (
+        <tr>
+          <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
+            {MSG.PEDIDOS_EMPTY}
+          </td>
+        </tr>
+      )}
+      {loading && (
+        <tr>
+          <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
+            {MSG.LOADING_GENERIC}
+          </td>
+        </tr>
+      )}
+      {!loading && error && (
+        <tr>
+          <td className="px-3 py-6 text-center text-red-600 dark:text-red-400" colSpan={8}>
+            {error}
+          </td>
+        </tr>
+      )}
+    </tbody>
+  );
+}
+
+// Rodapé de paginação desacoplado
+function OrdersPaginationFooter({ page, hasMore, loading, total, limit, nextPage, prevPage }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between mt-2 text-xs gap-3">
+      <div className="flex items-center gap-2">
+        <button
+          className="px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-bg-secondary)] disabled:opacity-40"
+          onClick={prevPage}
+          disabled={page === 0 || loading}
+        >
+          Anterior
+        </button>
+        <button
+          className="px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-bg-secondary)] disabled:opacity-40"
+          onClick={nextPage}
+          disabled={!hasMore || loading}
+        >
+          Próxima
+        </button>
+      </div>
+      <div className="opacity-70 flex items-center gap-2">
+        <span>Página {page + 1}</span>
+        {typeof total === 'number' && total >= 0 && (
+          <span className="whitespace-nowrap">
+            {total === 0
+              ? 'Nenhum registro'
+              : `Mostrando ${page * limit + 1}–${Math.min((page + 1) * limit, total)} de ${total}`}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
   const [filters, setFilters] = useState(() => {
     try {
@@ -37,11 +151,12 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
 
   // Scroll para topo quando página mudar
   useEffect(() => {
-    if (tableContainerRef.current) {
-      tableContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    const el = tableContainerRef.current;
+    if (el && typeof el.scrollTo === 'function') {
+      try { el.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { /* ignore */ }
     }
   }, [page, rows]);
-  const { push } = useToast();
+  const { requestDelete, dialog: deleteDialog } = useOrderDelete({ onDeleted: reload });
   useEffect(() => {
     // quando refreshTick muda, recarrega
     reload();
@@ -70,109 +185,32 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  const [confirmingOrder, setConfirmingOrder] = useState(null);
-  const [deleting, setDeleting] = useState(false);
-
-  const requestDelete = (p, e) => {
-    e?.stopPropagation?.();
-    setConfirmingOrder(p);
-  };
-
-  const performDelete = async () => {
-    if (!confirmingOrder) return;
-    try {
-      setDeleting(true);
-      await deleteOrderService(confirmingOrder.id);
-      push(MSG.ORDER_DELETED_SUCCESS(confirmingOrder.id), { type: "success" });
-      setConfirmingOrder(null);
-      await reload();
-    } catch (err) {
-      push(err.message || MSG.PEDIDO_DELETE_ERROR, { type: "error" });
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   return (
     <div className="text-sm">
       <FilterBar filters={filters} onChange={setFilters} onReload={reload} />
       <div ref={tableContainerRef} className="overflow-auto border rounded text-xs max-h-[520px]">
         <table className="min-w-full text-xs">
           <OrdersHeader />
-          <tbody>
-            {rows.map((p) => (
-              <OrdersRow
-                key={p.id}
-                p={p}
-                onEdit={onEdit}
-                reload={reload}
-                onDelete={(e) => requestDelete(p, e)}
-              />
-            ))}
-            {!loading && rows.length === 0 && (
-              <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
-                  {MSG.PEDIDOS_EMPTY}
-                </td>
-              </tr>
-            )}
-            {loading && (
-              <tr>
-                <td className="px-3 py-6 text-center opacity-70" colSpan={8}>
-                  {MSG.LOADING_GENERIC}
-                </td>
-              </tr>
-            )}
-            {!loading && error && (
-              <tr>
-                <td className="px-3 py-6 text-center text-red-600 dark:text-red-400" colSpan={8}>
-                  {error}
-                </td>
-              </tr>
-            )}
-          </tbody>
+          <OrdersTableBody
+            rows={rows}
+            loading={loading}
+            error={error}
+            onEdit={onEdit}
+            onDelete={requestDelete}
+            reload={reload}
+          />
         </table>
       </div>
-      <div className="flex flex-wrap items-center justify-between mt-2 text-xs gap-3">
-        <div className="flex items-center gap-2">
-          <button
-            className="px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-bg-secondary)] disabled:opacity-40"
-            onClick={prevPage}
-            disabled={page === 0 || loading}
-          >
-            Anterior
-          </button>
-          <button
-            className="px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-bg-secondary)] disabled:opacity-40"
-            onClick={nextPage}
-            disabled={!hasMore || loading}
-          >
-            Próxima
-          </button>
-        </div>
-        <div className="opacity-70 flex items-center gap-2">
-          <span>Página {page + 1}</span>
-          {typeof total === 'number' && total >= 0 && (
-            <span className="whitespace-nowrap">
-              {total === 0
-                ? 'Nenhum registro'
-                : `Mostrando ${page * effLimit + 1}–${Math.min((page + 1) * effLimit, total)} de ${total}`}
-            </span>
-          )}
-        </div>
-      </div>
-      {confirmingOrder && (
-        <ConfirmDialog
-          title={MSG.ORDER_DELETE_CONFIRM_TITLE(confirmingOrder.id)}
-          message={MSG.ORDER_DELETE_CONFIRM_MESSAGE(confirmingOrder.id)}
-          confirmLabel="Excluir"
-          cancelLabel="Cancelar"
-          danger
-          loading={deleting}
-          onCancel={() => !deleting && setConfirmingOrder(null)}
-          onConfirm={performDelete}
-        />
-      )}
+      <OrdersPaginationFooter
+        page={page}
+        hasMore={hasMore}
+        loading={loading}
+        total={total}
+        limit={effLimit}
+        nextPage={nextPage}
+        prevPage={prevPage}
+      />
+      {deleteDialog}
     </div>
   );
 }
