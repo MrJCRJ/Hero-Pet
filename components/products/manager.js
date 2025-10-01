@@ -253,7 +253,7 @@ export function ProductsManager({ linkSupplierId }) {
       );
       if (!resp.ok) {
         const txt = await resp.text();
-        push(`${MSG.PROD_DELETE_ERROR}: ${resp.status} ${txt}`.trim(), { type: "error" });
+        push(`${MSG.PROD_DELETE_ERROR}: ${resp.status} ${txt}`.trim(), { type: "error", assertive: true });
         return;
       }
       setHardDeleteTarget(null);
@@ -261,7 +261,7 @@ export function ProductsManager({ linkSupplierId }) {
       refresh();
       push(MSG.PROD_HARD_DELETED, { type: "success" });
     } catch (e) {
-      toastError(push, e, MSG.PROD_DELETE_ERROR);
+      toastError(push, e, MSG.PROD_DELETE_ERROR); // (poderíamos passar assertive aqui se diferenciarmos origem)
     } finally {
       setHardDeleting(false);
     }

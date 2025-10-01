@@ -359,7 +359,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
         push(`${MSG.PEDIDO_CREATED} #${data.id}`, { type: "success" });
       }
     } catch (err) {
-      push(err.message, { type: "error" });
+      push(err.message, { type: "error", assertive: true });
     } finally {
       setSubmitting(false);
     }

@@ -71,28 +71,28 @@ export function useToast() {
 }
 
 // Helper padronizado para exibir erros a partir de objetos Error, resposta ou string.
-export function toastError(push, err, fallback = "Operação falhou") {
+export function toastError(push, err, fallback = "Operação falhou", options = {}) {
   try {
     if (!push) return;
     if (!err) {
-      push(fallback, { type: "error" });
+      push(fallback, { type: "error", ...options });
       return;
     }
     if (typeof err === "string") {
-      push(err, { type: "error" });
+      push(err, { type: "error", ...options });
       return;
     }
     if (err instanceof Error) {
-      push(err.message || fallback, { type: "error" });
+      push(err.message || fallback, { type: "error", ...options });
       return;
     }
     // Tentativa de extrair message comum
     const msg = err.message || err.error || err.msg || fallback;
-    push(msg, { type: "error" });
+    push(msg, { type: "error", ...options });
   } catch (_) {
     // fallback silencioso (ignoramos erros de push também)
     try {
-      push(fallback, { type: "error" });
+      push(fallback, { type: "error", ...options });
     } catch (__) {
       /* noop */
     }
