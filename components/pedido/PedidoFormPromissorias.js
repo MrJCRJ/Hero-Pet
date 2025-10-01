@@ -1,4 +1,5 @@
 import React from "react";
+import { useToast } from "components/entities/shared";
 import { formatYMDToBR } from "components/common/date";
 import { FormField } from "../ui/Form";
 import { formatBRL } from "components/common/format";
@@ -20,6 +21,7 @@ export function PedidoFormPromissorias({
 }) {
   // Controla quais parcelas pagas já receberam aviso para evitar repetir alert
   const warnedPaidRef = React.useRef(new Set());
+  const { push } = useToast();
 
   // Confirmação no foco para parcelas pagas; libera edição local se confirmado
   const handlePaidFocus = React.useCallback(
@@ -30,12 +32,13 @@ export function PedidoFormPromissorias({
         promissoriasMeta.paidSeqs.includes(seq);
       if (!isPaid) return;
       if (warnedPaidRef.current.has(seq)) return;
-      window.alert(
+      push(
         `A ${seq}ª parcela já está PAGA. Alterar a data não terá efeito ao salvar (o cronograma pago é preservado).`,
+        { type: "warn" },
       );
       warnedPaidRef.current.add(seq);
     },
-    [promissoriasMeta?.paidSeqs],
+    [promissoriasMeta?.paidSeqs, push],
   );
 
   // Edição manual
@@ -58,8 +61,9 @@ export function PedidoFormPromissorias({
           Array.isArray(promissoriasMeta?.paidSeqs) &&
           promissoriasMeta.paidSeqs.includes(seq);
         if (isPaid && !warnedPaidRef.current.has(seq)) {
-          window.alert(
+          push(
             `A ${seq}ª parcela já está PAGA. Alterar a data não terá efeito ao salvar (o cronograma pago é preservado).`,
+            { type: "warn" },
           );
           warnedPaidRef.current.add(seq);
         }
@@ -75,6 +79,7 @@ export function PedidoFormPromissorias({
       promissoriaDatas,
       onPromissoriaDatasChange,
       onDataPrimeiraPromissoriasChange,
+      push,
     ],
   );
 

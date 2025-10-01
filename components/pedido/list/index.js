@@ -1,0 +1,1 @@
+export { PedidoListBrowser } from './PedidoListBrowser';

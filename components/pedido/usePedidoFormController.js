@@ -1,12 +1,11 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { useToast } from "../entities/shared/toast";
-import { useItemDiff } from "./useItemDiff";
-import {
-  numOrNull,
-  mapEditingOrderToItems,
-  defaultEmptyItem,
-  computeItemTotal as computeItemTotalPure,
-} from "./utils";
+// import { useItemDiff } from "./useItemDiff"; // legado (remoção futura)
+import { usePedidoItems } from './usePedidoItems';
+import { usePedidoPromissorias } from './usePedidoPromissorias';
+import { usePedidoTotals } from './usePedidoTotals';
+import { numOrNull, mapEditingOrderToItems, defaultEmptyItem } from "./utils";
+import { MSG } from "components/common/messages";
 import {
   updateOrder as updateOrderService,
   createOrder as createOrderService,
@@ -17,9 +16,6 @@ import { emitInventoryChanged } from "./events";
 
 export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   const { push } = useToast();
-  // Flags para controlar interferência do autogerador de cronograma
-  // 1) Evita que a primeira execução sobrescreva o cronograma hidratado
-  const skipNextAutoGenRef = React.useRef(false);
   // FIFO legacy / migração
   const [fifoAplicado, setFifoAplicado] = useState(() => {
     if (editingOrder) {
@@ -30,10 +26,6 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     return true;
   });
   const [migrarFifo, setMigrarFifo] = useState(false);
-  // 2) Marca que estamos editando e já hidratamos datas, para não sobrepor em execuções subsequentes
-  const editingHydratedRef = React.useRef(
-    Boolean(editingOrder?.promissorias && editingOrder.promissorias.length),
-  );
   const [submitting, setSubmitting] = useState(false);
   const [tipo, setTipo] = useState(() => editingOrder?.tipo || "VENDA");
   const [originalTipo, setOriginalTipo] = useState(
@@ -67,74 +59,59 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   const [parcelado, setParcelado] = useState(() =>
     editingOrder?.parcelado != null ? Boolean(editingOrder.parcelado) : true,
   );
-  const [itens, setItens] = useState(() => {
-    if (editingOrder) {
-      const mapped = mapEditingOrderToItems(editingOrder);
-      if (mapped.length) return mapped;
-    }
-    return [defaultEmptyItem()];
-  });
+  // Itens extraídos para hook dedicado (fase 1 de refatoração)
+  const {
+    itens,
+    setItens,
+    originalItens,
+    updateItem,
+    addItem,
+    removeItem,
+    computeItemTotal: computeItemTotalFromHook,
+    getItemChanges,
+    getItemDiffClass,
+    getItemDiffIcon,
+  } = usePedidoItems(editingOrder);
   const [freteTotal, setFreteTotal] = useState("");
-  const [originalItens, setOriginalItens] = useState([]);
   const [created, setCreated] = useState(null);
   const [showPartnerModal, setShowPartnerModal] = useState(false);
   const [productModalIndex, setProductModalIndex] = useState(null);
   const [showTypeChangeModal, setShowTypeChangeModal] = useState(false);
   const [pendingTipo, setPendingTipo] = useState("");
 
-  // Promissórias
-  const [numeroPromissorias, setNumeroPromissorias] = useState(() => {
-    const n = Number(editingOrder?.numero_promissorias || 0);
-    return Number.isFinite(n) && n > 0 ? n : 1;
-  });
-  const [dataPrimeiraPromissoria, setDataPrimeiraPromissoria] = useState(() =>
-    editingOrder?.data_primeira_promissoria
-      ? String(editingOrder.data_primeira_promissoria).slice(0, 10)
-      : "",
-  );
-  const [valorPorPromissoria, setValorPorPromissoria] = useState(() =>
-    Number(editingOrder?.valor_por_promissoria || 0),
-  );
-  // Controle avançado de cronograma
-  const [frequenciaPromissorias, setFrequenciaPromissorias] =
-    useState("mensal"); // 'mensal' | 'quinzenal' | 'semanal' | 'dias' | 'manual'
-  const [intervaloDiasPromissorias, setIntervaloDiasPromissorias] =
-    useState(30);
-  const [promissoriaDatas, setPromissoriaDatas] = useState(() =>
-    Array.isArray(editingOrder?.promissorias) &&
-    editingOrder.promissorias.length
-      ? editingOrder.promissorias.map((p) => p.due_date).filter(Boolean)
-      : [],
-  );
-  const [promissoriasMeta, setPromissoriasMeta] = useState(() => {
-    if (
-      Array.isArray(editingOrder?.promissorias) &&
-      editingOrder.promissorias.length
-    ) {
-      const paidSeqs = editingOrder.promissorias
-        .filter((p) => p.paid_at)
-        .map((p) => p.seq);
-      const today = new Date();
-      const overdueSeqs = editingOrder.promissorias
-        .filter(
-          (p) =>
-            !p.paid_at &&
-            p.due_date &&
-            new Date(p.due_date + "T00:00:00") <
-              new Date(today.getFullYear(), today.getMonth(), today.getDate()),
-        )
-        .map((p) => p.seq);
-      return { anyPaid: paidSeqs.length > 0, paidSeqs, overdueSeqs };
-    }
-    return { anyPaid: false, paidSeqs: [], overdueSeqs: [] };
+  // Promissórias (hook extraído)
+  const {
+    numeroPromissorias,
+    setNumeroPromissorias,
+    dataPrimeiraPromissoria,
+    setDataPrimeiraPromissoria,
+    valorPorPromissoria,
+    setValorPorPromissoria,
+    frequenciaPromissorias,
+    setFrequenciaPromissorias,
+    intervaloDiasPromissorias,
+    setIntervaloDiasPromissorias,
+    promissoriaDatas,
+    setPromissoriaDatas,
+    promissoriasMeta,
+  } = usePedidoPromissorias(editingOrder);
+
+  // Totais & lucro (hook extraído) - usando refs para evitar recriação de callbacks
+  const itensRef = React.useRef(itens);
+  React.useEffect(() => { itensRef.current = itens; }, [itens]);
+  const tipoRef = React.useRef(tipo);
+  React.useEffect(() => { tipoRef.current = tipo; }, [tipo]);
+  const numeroPromissoriasRef = React.useRef(numeroPromissorias);
+  React.useEffect(() => { numeroPromissoriasRef.current = numeroPromissorias; }, [numeroPromissorias]);
+  const { computeOrderTotalEstimate: computeOrderTotalItemsOnly, computeLucroBruto } = usePedidoTotals({
+    itensRef,
+    tipoRef,
+    numeroPromissoriasRef,
+    setValorPorPromissoria,
   });
 
   // Diff de itens
-  const { getItemChanges, getItemDiffClass, getItemDiffIcon } = useItemDiff(
-    itens,
-    originalItens,
-    editingOrder,
-  );
+  // Diferenças agora fornecidas por usePedidoItems
 
   // Preenche estado ao editar
   React.useEffect(() => {
@@ -158,18 +135,11 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     );
     setTemNotaFiscal(Boolean(editingOrder.tem_nota_fiscal));
     setParcelado(Boolean(editingOrder.parcelado));
-    const nProm = Number(editingOrder.numero_promissorias || 0);
-    setNumeroPromissorias(Number.isFinite(nProm) && nProm > 0 ? nProm : 1);
-    setDataPrimeiraPromissoria(
-      editingOrder.data_primeira_promissoria
-        ? String(editingOrder.data_primeira_promissoria).slice(0, 10)
-        : "",
-    );
-    setValorPorPromissoria(Number(editingOrder.valor_por_promissoria || 0));
+    // promissórias inicializadas pelo hook usePedidoPromissorias
     const mapped = mapEditingOrderToItems(editingOrder);
     const itensFinais = mapped.length ? mapped : [defaultEmptyItem()];
     setItens(itensFinais);
-    setOriginalItens(mapped);
+    // originalItens agora gerenciado em hook extraído (usePedidoItems)
     setCreated({ id: editingOrder.id, status: editingOrder.status });
     setFifoAplicado(Boolean(editingOrder.fifo_aplicado));
     setMigrarFifo(false);
@@ -186,39 +156,8 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     }
 
     // Hidratar cronograma se vier do GET /pedidos/:id
-    if (
-      Array.isArray(editingOrder.promissorias) &&
-      editingOrder.promissorias.length
-    ) {
-      const datas = editingOrder.promissorias
-        .map((p) => p.due_date)
-        .filter(Boolean);
-      setPromissoriaDatas(datas);
-      // Evitar que o efeito de geração automática sobreponha imediatamente o cronograma hidratado
-      skipNextAutoGenRef.current = true;
-      editingHydratedRef.current = true;
-      const paidSeqs = editingOrder.promissorias
-        .filter((p) => p.paid_at)
-        .map((p) => p.seq);
-      const today = new Date();
-      const overdueSeqs = editingOrder.promissorias
-        .filter(
-          (p) =>
-            !p.paid_at &&
-            p.due_date &&
-            new Date(p.due_date + "T00:00:00") <
-              new Date(today.getFullYear(), today.getMonth(), today.getDate()),
-        )
-        .map((p) => p.seq);
-      setPromissoriasMeta({
-        anyPaid: paidSeqs.length > 0,
-        paidSeqs,
-        overdueSeqs,
-      });
-    } else {
-      setPromissoriasMeta({ anyPaid: false, paidSeqs: [], overdueSeqs: [] });
-    }
-  }, [editingOrder]);
+    // cronograma & meta tratados no hook
+  }, [editingOrder, setItens]);
 
   const canSubmit = useMemo(() => {
     if (!tipo) return false;
@@ -231,24 +170,6 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     return atLeastOne;
   }, [tipo, partnerId, itens]);
 
-  const updateItem = useCallback((idx, patch) => {
-    setItens((prev) =>
-      prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
-    );
-  }, []);
-  // Agora aceita payload opcional (ex: QuickAddItemRow) para criar item já preenchido
-  const addItem = useCallback((patch) => {
-    setItens((prev) => [
-      ...prev,
-      {
-        ...defaultEmptyItem(),
-        ...(patch && typeof patch === "object" ? patch : {}),
-      },
-    ]);
-  }, []);
-  const removeItem = useCallback((idx) => {
-    setItens((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
   const clearForm = useCallback(() => {
     setTipo("VENDA");
     setPartnerId("");
@@ -259,10 +180,10 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     setTemNotaFiscal(false);
     // Sistema de promissórias sempre ativo por padrão
     setParcelado(true);
-    setItens([defaultEmptyItem()]);
+    setItens([defaultEmptyItem()]); // hook mantém originalItens interno
     setCreated(null);
     setFreteTotal("");
-  }, []);
+  }, [setItens]);
 
   // Forçar temNotaFiscal=true para VENDA (não exibido na UI)
   React.useEffect(() => {
@@ -273,130 +194,14 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   // Saldo para VENDA
   useSaldoSync({ tipo, itens, setItens });
 
-  // Helpers de UI
-  const computeItemTotal = useCallback((it) => computeItemTotalPure(it), []);
-
+  // Helpers de UI (usar computeItemTotal original do hook de itens para manter consistência visual)
+  const computeItemTotal = computeItemTotalFromHook;
+  // Somatório incluindo frete quando COMPRA
   const computeOrderTotalEstimate = useCallback(() => {
-    const sum = itens.reduce((acc, it) => {
-      const t = computeItemTotal(it);
-      return acc + (Number.isFinite(Number(t)) ? Number(t) : 0);
-    }, 0);
-    const freteVal = tipo === "COMPRA" ? Number(freteTotal || 0) : 0;
-    return Number(
-      (sum + (Number.isFinite(freteVal) ? freteVal : 0)).toFixed(2),
-    );
-  }, [itens, computeItemTotal, tipo, freteTotal]);
-
-  // Lucro bruto estimado (somente VENDA): soma((preco - desconto - custo)*qtd)
-  const computeLucroBruto = useCallback(() => {
-    if (tipo !== "VENDA") return 0;
-    try {
-      return Number(
-        itens
-          .reduce((acc, it) => {
-            const qtd = Number(it.quantidade || 0);
-            const preco =
-              Number(it.preco_unitario || 0) -
-              Number(it.desconto_unitario || 0);
-            const custoRaw = Number(
-              it.custo_fifo_unitario != null
-                ? it.custo_fifo_unitario
-                : it.custo_base_unitario,
-            );
-            if (
-              qtd > 0 &&
-              preco > 0 &&
-              Number.isFinite(custoRaw) &&
-              custoRaw > 0
-            ) {
-              return acc + (preco - custoRaw) * qtd;
-            }
-            return acc;
-          }, 0)
-          .toFixed(2),
-      );
-    } catch {
-      return 0;
-    }
-  }, [itens, tipo]);
-
-  // Atualiza valor por promissória quando total muda
-  React.useEffect(() => {
-    const total = computeOrderTotalEstimate();
-    if (numeroPromissorias > 0) {
-      const next = Number((total / numeroPromissorias).toFixed(2));
-      if (valorPorPromissoria !== next) setValorPorPromissoria(next);
-    }
-  }, [
-    itens,
-    numeroPromissorias,
-    computeOrderTotalEstimate,
-    computeLucroBruto,
-    valorPorPromissoria,
-  ]);
-
-  // Gerar cronograma quando não está no modo manual
-  React.useEffect(() => {
-    // Se a próxima execução deve ser ignorada (cronograma acabou de ser hidratado), não gerar nada
-    if (skipNextAutoGenRef.current) {
-      skipNextAutoGenRef.current = false;
-      return;
-    }
-    // Se estamos editando e já temos datas hidratadas, não regenerar automaticamente
-    if (
-      editingHydratedRef.current &&
-      Array.isArray(promissoriaDatas) &&
-      promissoriaDatas.length > 0
-    ) {
-      return;
-    }
-    // Não limpar datas no modo manual, mesmo que parcelado esteja falso em ordens antigas
-    if (frequenciaPromissorias === "manual") return; // manter manual
-    if (
-      !dataPrimeiraPromissoria ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(dataPrimeiraPromissoria) ||
-      !numeroPromissorias ||
-      numeroPromissorias < 2
-    ) {
-      if (Array.isArray(promissoriaDatas) && promissoriaDatas.length)
-        setPromissoriaDatas([]);
-      return;
-    }
-    const base = new Date(dataPrimeiraPromissoria);
-    if (isNaN(base.getTime())) return; // data inválida em digitação parcial
-    const datas = [];
-    for (let i = 0; i < numeroPromissorias; i++) {
-      const d = new Date(base);
-      if (frequenciaPromissorias === "mensal") {
-        d.setMonth(d.getMonth() + i);
-      } else if (frequenciaPromissorias === "quinzenal") {
-        d.setDate(d.getDate() + i * 15);
-      } else if (frequenciaPromissorias === "semanal") {
-        d.setDate(d.getDate() + i * 7);
-      } else if (frequenciaPromissorias === "dias") {
-        const n = Number(intervaloDiasPromissorias) || 30;
-        d.setDate(d.getDate() + i * n);
-      }
-      try {
-        const iso = d.toISOString().slice(0, 10);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) datas.push(iso);
-      } catch (_) {
-        // ignora datas inválidas geradas por overflow raro
-      }
-    }
-    const isSame =
-      Array.isArray(promissoriaDatas) &&
-      promissoriaDatas.length === datas.length &&
-      promissoriaDatas.every((v, i) => v === datas[i]);
-    if (!isSame) setPromissoriaDatas(datas);
-  }, [
-    parcelado,
-    frequenciaPromissorias,
-    dataPrimeiraPromissoria,
-    numeroPromissorias,
-    intervaloDiasPromissorias,
-    promissoriaDatas,
-  ]);
+    const baseTotal = computeOrderTotalItemsOnly();
+    const freteVal = tipo === 'COMPRA' ? Number(freteTotal || 0) : 0;
+    return Number((baseTotal + (Number.isFinite(freteVal) ? freteVal : 0)).toFixed(2));
+  }, [computeOrderTotalItemsOnly, tipo, freteTotal]);
 
   // Fetch helpers
   const { fetchEntities, fetchProdutos } = usePedidoFetchers({
@@ -419,10 +224,10 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
       // Enviar cronograma explícito quando existir (manual ou gerado)
       promissoria_datas: Array.isArray(promissoriaDatas)
         ? promissoriaDatas
-            .filter(
-              (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s),
-            )
-            .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
+          .filter(
+            (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s),
+          )
+          .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
         : [],
       itens: itens
         .filter(
@@ -440,8 +245,8 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
             : {}),
         })),
       ...(tipo === "COMPRA" &&
-      numOrNull(freteTotal) != null &&
-      freteTotal !== ""
+        numOrNull(freteTotal) != null &&
+        freteTotal !== ""
         ? { frete_total: numOrNull(freteTotal) }
         : {}),
     }),
@@ -533,7 +338,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
           source: "order-put",
           orderId: editingOrder.id,
         });
-        push(`Pedido #${editingOrder.id} atualizado.`, { type: "success" });
+        push(`${MSG.PEDIDO_UPDATED} #${editingOrder.id}`, { type: "success" });
       } else {
         const data = await createOrder(payloadBase);
         setCreated({ ...data, status: data.status || "confirmado" });
@@ -551,7 +356,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
           source: "order-post",
           orderId: data.id,
         });
-        push(`Pedido #${data.id} criado.`, { type: "success" });
+        push(`${MSG.PEDIDO_CREATED} #${data.id}`, { type: "success" });
       }
     } catch (err) {
       push(err.message, { type: "error" });
@@ -576,7 +381,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
           /* noop */
         }
       }
-      push(`Pedido #${editingOrder.id} excluído.`, { type: "success" });
+      push(`${MSG.PEDIDO_DELETED} #${editingOrder.id}`, { type: "success" });
     } catch (err) {
       push(err.message, { type: "error" });
     } finally {

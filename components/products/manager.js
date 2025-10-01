@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "components/entities/shared";
 import { toastError } from "components/entities/shared/toast";
+import { MSG } from "components/common/messages";
 import LineAreaChart from "components/common/LineAreaChart";
 import { Modal } from "components/common/Modal";
 import { ConfirmDialog } from "components/common/ConfirmDialog";
@@ -258,7 +259,7 @@ export function ProductsManager({ linkSupplierId }) {
       setHardDeleteTarget(null);
       setHardDeletePwd("");
       refresh();
-      push("Produto excluído definitivamente", { type: "success" });
+      push(MSG.PROD_HARD_DELETED, { type: "success" });
     } catch (e) {
       toastError(push, e, "Erro ao excluir definitivamente");
     } finally {
@@ -446,8 +447,8 @@ export function ProductsManager({ linkSupplierId }) {
               refresh();
               push(
                 pendingToggle.action === 'inactivate'
-                  ? 'Produto inativado'
-                  : 'Produto reativado',
+                  ? MSG.PROD_INACTIVATED
+                  : MSG.PROD_REACTIVATED,
                 { type: 'success' }
               );
             } catch (e) {
