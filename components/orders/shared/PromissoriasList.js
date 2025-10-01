@@ -28,12 +28,12 @@ export default function PromissoriasList({
           status,
           limit: "100",
         }).toString();
-        const res = await fetch(`/api/v1/promissorias?${qs}`, {
+        const res = await fetch(`/api/v1/pedidos/promissorias?${qs}`, {
           cache: "no-store",
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Erro na API");
-        if (alive) setRows(json.items || []);
+        if (alive) setRows(Array.isArray(json) ? json : json.items || []);
       } catch (e) {
         if (alive) setError(e.message);
       } finally {

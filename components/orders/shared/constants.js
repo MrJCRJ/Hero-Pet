@@ -89,7 +89,7 @@ export const PROMISSORIA_STATUS = {
 // Configurações da API
 export const API_ENDPOINTS = {
   SUMMARY: "/api/v1/pedidos/summary",
-  PROMISSORIAS: "/api/v1/promissorias",
+  PROMISSORIAS: "/api/v1/pedidos/promissorias",
 };
 
 // Chaves do localStorage

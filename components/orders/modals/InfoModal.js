@@ -1,5 +1,5 @@
 import React from "react";
-import Modal from "../../common/Modal";
+import { Modal } from "../../common/Modal";
 import { CARD_TITLES } from "../shared/constants";
 import {
   boundsFromYYYYMM,
@@ -74,7 +74,7 @@ export default function InfoModal({
             title="Promissórias pendentes"
             monthLabel={monthLabel}
             monthStr={monthStr}
-            status="pending"
+            status="pendentes"
             expectedCount={data.promissorias?.mesAtual?.pendentes?.count ?? 0}
             expectedAmount={data.promissorias?.mesAtual?.pendentes?.valor ?? 0}
             onSelect={onSelect}
@@ -87,7 +87,7 @@ export default function InfoModal({
             title="Promissórias atrasadas"
             monthLabel={monthLabel}
             monthStr={monthStr}
-            status="late"
+            status="atrasadas"
             expectedCount={data.promissorias?.mesAtual?.atrasados?.count ?? 0}
             expectedAmount={data.promissorias?.mesAtual?.atrasados?.valor ?? 0}
             onSelect={onSelect}
@@ -100,7 +100,7 @@ export default function InfoModal({
             title="Promissórias que irão para o próximo mês"
             monthLabel={monthLabel}
             monthStr={monthStr}
-            status="next"
+            status="proximo"
             expectedCount={data.promissorias?.proximoMes?.pendentes?.count ?? 0}
             expectedAmount={
               data.promissorias?.proximoMes?.pendentes?.valor ?? 0
@@ -115,7 +115,7 @@ export default function InfoModal({
             title="Promissórias que vieram de meses anteriores"
             monthLabel={monthLabel}
             monthStr={monthStr}
-            status="carry_over"
+            status="carry"
             expectedCount={
               data.promissorias?.deMesesAnteriores?.emAberto?.count ?? 0
             }
