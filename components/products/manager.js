@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "components/entities/shared";
-import { toastError } from "components/entities/shared/toast";
+import { toastError, criticalError } from "components/entities/shared/toast";
 import { MSG } from "components/common/messages";
 import LineAreaChart from "components/common/LineAreaChart";
 import { Modal } from "components/common/Modal";
@@ -261,7 +261,7 @@ export function ProductsManager({ linkSupplierId }) {
       refresh();
       push(MSG.PROD_HARD_DELETED, { type: "success" });
     } catch (e) {
-      toastError(push, e, MSG.PROD_DELETE_ERROR); // (poderíamos passar assertive aqui se diferenciarmos origem)
+      criticalError(push, e, MSG.PROD_DELETE_ERROR);
     } finally {
       setHardDeleting(false);
     }

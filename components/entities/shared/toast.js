@@ -99,5 +99,10 @@ export function toastError(push, err, fallback = "Operação falhou", options = 
   }
 }
 
+// Helper para erros críticos que devem sempre usar canal assertive
+export function criticalError(push, err, fallback = 'Falha crítica') {
+  return toastError(push, err, fallback, { assertive: true });
+}
+
 // Pequena animação via util class, pode ser movida para CSS global se preferir
 // (como fallback inline style)
