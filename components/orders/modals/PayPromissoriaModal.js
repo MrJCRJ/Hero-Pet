@@ -66,7 +66,7 @@ export default function PayPromissoriaModal({
           <input
             id="paid_date"
             type="date"
-            className="border rounded px-2 py-1 w-full"
+            className="border rounded px-2 py-1 w-full text-sm  bg-[var(--color-bg-primary)] border-[var(--color-border)] calendar-icon-white fallback-icon cursor-pointer"
             value={paidDate}
             onChange={(e) => setPaidDate(e.target.value)}
           />

@@ -111,6 +111,10 @@ export function useDashboardData(month) {
 export function usePedidos(filters, limit = 20) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
+  const [page, setPage] = useState(0); // zero-based
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(null);
+
   const params = useMemo(() => {
     const p = new URLSearchParams();
     if (filters.tipo) p.set("tipo", filters.tipo);
@@ -118,8 +122,15 @@ export function usePedidos(filters, limit = 20) {
     if (filters.from) p.set("from", filters.from);
     if (filters.to) p.set("to", filters.to);
     p.set("limit", String(limit));
+    p.set("offset", String(page * limit));
+    p.set("meta", "1");
     return p.toString();
-  }, [filters, limit]);
+  }, [filters, limit, page]);
+
+  // Reset page quando filtros mudarem
+  useEffect(() => {
+    setPage(0);
+  }, [filters.tipo, filters.q, filters.from, filters.to]);
 
   const reload = async () => {
     setLoading(true);
@@ -129,7 +140,17 @@ export function usePedidos(filters, limit = 20) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Falha ao carregar pedidos");
-      setData(Array.isArray(json?.data) ? json.data : json);
+      if (json && Array.isArray(json.data) && json.meta) {
+        setData(json.data);
+        setTotal(Number(json.meta.total) || 0);
+        setHasMore((page + 1) * limit < (Number(json.meta.total) || 0));
+      } else {
+        // fallback retrocompatível
+        const arr = Array.isArray(json) ? json : [];
+        setData(arr);
+        setTotal(arr.length);
+        setHasMore(arr.length === limit); // suposição
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -142,5 +163,15 @@ export function usePedidos(filters, limit = 20) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
-  return { loading, data, reload };
+  const nextPage = () => {
+    if (hasMore && !loading) setPage((p) => p + 1);
+  };
+  const prevPage = () => {
+    if (page > 0 && !loading) setPage((p) => Math.max(0, p - 1));
+  };
+  const gotoPage = (p) => {
+    if (p >= 0 && Number.isFinite(p) && !loading) setPage(p);
+  };
+
+  return { loading, data, reload, page, hasMore, nextPage, prevPage, gotoPage, total, limit };
 }

@@ -57,11 +57,11 @@ export default function LucroBrutoDetails({ data }) {
         />
       )}
       <TimeSeriesTable
-        data={chartData.map((p, i) => {
-          const prev = i > 0 ? chartData[i - 1] : null;
+        data={[...chartData].reverse().map((p, idx, arr) => {
+          const originalPrev = idx < arr.length - 1 ? arr[idx + 1] : null;
           return {
             ...p,
-            momLocal: prev && prev.value !== 0 ? ((p.value - prev.value) / prev.value) * 100 : null,
+            momLocal: originalPrev && originalPrev.value !== 0 ? ((p.value - originalPrev.value) / originalPrev.value) * 100 : null,
           };
         })}
         activeLabel={activePoint?.label}

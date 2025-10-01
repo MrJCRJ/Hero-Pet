@@ -1,15 +1,35 @@
-import React, { useMemo, useRef, useCallback, useState } from "react";
+import React, { useMemo, useRef, useCallback, useState, useEffect } from "react";
 import InfoModal from "../modals/InfoModal";
 import HelpModal from "../modals/HelpModal";
 import DashboardCards from "./DashboardCards";
 import { useMonthState, useDashboardData } from "../shared/hooks";
 import { monthToLabel } from "../shared/utils";
 
-export default function OrdersDashboard({ month: monthProp }) {
+export default function OrdersDashboard({ month: monthProp, onMonthPersist }) {
   const [showHelp, setShowHelp] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null); // string key
 
   const { month, setMonth } = useMonthState(monthProp);
+
+  // Persistência local do mês selecionado
+  useEffect(() => {
+    // Hidrata somente no primeiro render se existir valor salvo
+    try {
+      const saved = window.localStorage.getItem('orders.dashboard.month');
+      if (saved && /\d{4}-\d{2}/.test(saved)) {
+        setMonth(saved);
+      }
+    } catch (_) { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!month) return;
+    try {
+      window.localStorage.setItem('orders.dashboard.month', month);
+      onMonthPersist?.(month);
+    } catch (_) { /* ignore */ }
+  }, [month, onMonthPersist]);
   const { data, loading, error } = useDashboardData(month);
 
   const label = useMemo(() => monthToLabel(month), [month]);

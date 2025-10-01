@@ -1,4 +1,5 @@
 import React from "react";
+import { ROW_HOVER, ACTION_BTN_HIDDEN } from "components/common/tableStyles";
 import { formatBRL, formatQtyBR } from "components/common/format";
 
 function PrecoCell({ p, costMap }) {
@@ -86,9 +87,10 @@ export default function ProductRow({
 }) {
   return (
     <tr
-      className="border-t border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] cursor-pointer"
+      className={`${ROW_HOVER} border-[var(--color-border)]`}
       onClick={() => onEdit && onEdit(p)}
       title="Clique na linha para editar"
+      tabIndex={0}
     >
       <td className="p-2">
         <div className="flex items-center gap-2">
@@ -106,26 +108,26 @@ export default function ProductRow({
           title={
             Array.isArray(p.supplier_labels) && p.supplier_labels.length
               ? p.supplier_labels
-                  .map((s) => s.name || s.label || `#${s.id}`)
-                  .join(", ")
+                .map((s) => s.name || s.label || `#${s.id}`)
+                .join(", ")
               : "-"
           }
         >
           {Array.isArray(p.supplier_labels) && p.supplier_labels.length
             ? (() => {
-                const names = p.supplier_labels.map(
-                  (s) => s.name || s.label || `#${s.id}`,
+              const names = p.supplier_labels.map(
+                (s) => s.name || s.label || `#${s.id}`,
+              );
+              const shown = names.slice(0, 2).join(", ");
+              const extra = names.length - 2;
+              if (extra > 0)
+                return (
+                  <span>
+                    {shown} +{extra}
+                  </span>
                 );
-                const shown = names.slice(0, 2).join(", ");
-                const extra = names.length - 2;
-                if (extra > 0)
-                  return (
-                    <span>
-                      {shown} +{extra}
-                    </span>
-                  );
-                return <span>{shown}</span>;
-              })()
+              return <span>{shown}</span>;
+            })()
             : "-"}
         </div>
       </td>
@@ -139,7 +141,7 @@ export default function ProductRow({
         <div className="flex items-center gap-2">
           {p.ativo ? (
             <button
-              className="h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg)] hover:ring-2 hover:ring-[var(--color-border)] hover:shadow-sm transition"
+              className={`h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg)] hover:ring-2 hover:ring-[var(--color-border)] hover:shadow-sm ${ACTION_BTN_HIDDEN}`}
               title="Inativar"
               aria-label="Inativar"
               onClick={(e) => {
@@ -162,7 +164,7 @@ export default function ProductRow({
             </button>
           ) : (
             <button
-              className="h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg)] hover:ring-2 hover:ring-[var(--color-border)] hover:shadow-sm transition"
+              className={`h-7 w-7 flex items-center justify-center rounded border border-[var(--color-border)] hover:bg-[var(--color-bg)] hover:ring-2 hover:ring-[var(--color-border)] hover:shadow-sm ${ACTION_BTN_HIDDEN}`}
               title="Reativar"
               aria-label="Reativar"
               onClick={(e) => {
@@ -186,7 +188,7 @@ export default function ProductRow({
           )}
           {/* Botão de exclusão definitiva */}
           <button
-            className="h-7 w-7 flex items-center justify-center rounded border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-600 dark:text-red-400 hover:ring-2 hover:ring-red-400/40 transition"
+            className={`h-7 w-7 flex items-center justify-center rounded border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-600 dark:text-red-400 hover:ring-2 hover:ring-red-400/40 ${ACTION_BTN_HIDDEN}`}
             title="Excluir definitivamente"
             aria-label="Excluir definitivamente"
             onClick={(e) => {

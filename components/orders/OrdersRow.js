@@ -1,4 +1,5 @@
 import React from "react";
+import { ROW_HOVER, ACTION_BTN_HIDDEN } from "components/common/tableStyles";
 import { Button } from "../ui/Button";
 import { formatBRL } from "components/common/format";
 import { formatYMDToBR } from "components/common/date";
@@ -39,11 +40,12 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
   })();
   return (
     <tr
-      className="border-t hover:bg-[var(--color-bg-secondary)] cursor-pointer"
+      className={`${ROW_HOVER} text-[12px]`}
       onClick={() => onEdit && onEdit(p)}
+      tabIndex={0}
     >
-      <td className="px-3 py-2">{p.tipo}</td>
-      <td className="px-3 py-2 w-[160px] align-top">
+      <td className="px-3 py-1.5 align-top whitespace-nowrap">{p.tipo}</td>
+      <td className="px-3 py-1.5 w-[160px] align-top">
         <div
           className="max-w-[160px] truncate whitespace-nowrap"
           title={p.partner_name || "-"}
@@ -54,10 +56,10 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
           <div className="mt-1 flex items-center gap-2">{fifoBadge}</div>
         )}
       </td>
-      <td className="px-3 py-2">
+      <td className="px-3 py-1.5 whitespace-nowrap">
         {p.data_emissao ? formatYMDToBR(p.data_emissao) : "-"}
       </td>
-      <td className="px-3 py-2 text-center">
+      <td className="px-3 py-1.5 text-center">
         {p.tipo === "VENDA" && p.tem_nota_fiscal ? (
           <Button
             size="sm"
@@ -77,7 +79,7 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
           <span className="text-gray-400">-</span>
         )}
       </td>
-      <td className="px-3 py-2 text-center">
+      <td className="px-3 py-1.5 text-center">
         {p.tipo === "VENDA" && Number(p.numero_promissorias) >= 1 ? (
           <Button
             size="sm"
@@ -101,7 +103,7 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
           <span className="text-gray-400">-</span>
         )}
       </td>
-      <td className="px-3 py-2 text-right">
+      <td className="px-3 py-1.5 text-right">
         {(() => {
           const tl = p.total_liquido != null ? Number(p.total_liquido) : NaN;
           const ft = p.frete_total != null ? Number(p.frete_total) : 0;
@@ -130,39 +132,41 @@ export default function OrdersRow({ p, onEdit, onDelete, reload }) {
           );
         })()}
       </td>
-      <td className="px-3 py-2 text-center">
+      <td className="px-3 py-1.5 text-center">
         <PromissoriasDots
           pedidoId={p.id}
           count={p.numero_promissorias}
           onChanged={reload}
         />
       </td>
-      <td className="px-3 py-2 text-center">
-        <Button
-          size="sm"
-          variant="secondary"
-          fullWidth={false}
-          className="px-2 py-1 text-white"
-          title="Excluir pedido"
-          aria-label="Excluir pedido"
-          onClick={(e) => onDelete && onDelete(e)}
-          icon={(props) => (
+      <td className="px-3 py-1.5 text-center">
+        <div className="flex items-center justify-center">
+          <button
+            type="button"
+            title="Excluir pedido"
+            aria-label="Excluir pedido"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete && onDelete(e);
+            }}
+            className={`${ACTION_BTN_HIDDEN} h-6 w-6 flex items-center justify-center rounded border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-600 dark:text-red-400 hover:ring-2 hover:ring-red-400/40`}
+          >
             <svg
-              {...props}
               xmlns="http://www.w3.org/2000/svg"
-              fill="none"
               viewBox="0 0 24 24"
-              strokeWidth={1.5}
+              fill="none"
               stroke="currentColor"
+              strokeWidth={1.6}
+              className="h-4 w-4"
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M6 7h12m-9 4v6m6-6v6M9 7l1-2h4l1 2m-9 0h12l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7z"
+                d="M9 3h6m-9 4h12m-10 3v7m4-7v7M5 7l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12"
               />
             </svg>
-          )}
-        />
+          </button>
+        </div>
       </td>
     </tr>
   );

@@ -3,7 +3,7 @@ import { usePaginatedEntities } from "hooks/usePaginatedEntities";
 import { useToast } from "components/entities/shared/toast";
 import { EntitiesFilters } from "./EntitiesFilters";
 import { EntitiesTable } from "./EntitiesTable";
-import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { ConfirmDialog } from "components/common/ConfirmDialog";
 import { EntitiesSummary } from "./EntitiesSummary";
 
 export function EntitiesBrowser({
@@ -78,9 +78,9 @@ export function EntitiesBrowser({
     onEdit
       ? onEdit(row)
       : push("Callback de edição não implementado", {
-          type: "warn",
-          timeout: 3000,
-        });
+        type: "warn",
+        timeout: 3000,
+      });
   }
   return (
     <div className={`space-y-4 ${textSize}`}>
@@ -125,15 +125,25 @@ export function EntitiesBrowser({
         onRequestDelete={handleDeleteClick}
       />
       {confirmId && (
-        <DeleteConfirmModal
-          open={!!confirmId}
-          onClose={closeConfirm}
+        <ConfirmDialog
+          title="Excluir entidade"
+          message={(
+            <p className="text-sm leading-relaxed">
+              Tem certeza que deseja excluir
+              {" "}
+              <strong>{rows.find((r) => r.id === confirmId)?.name}</strong>? Esta
+              ação não pode ser desfeita.
+            </p>
+          )}
+          confirmLabel={deletingId === confirmId ? "Excluindo..." : "Excluir"}
+          cancelLabel="Cancelar"
+          danger
+          loading={deletingId === confirmId}
+          onCancel={closeConfirm}
           onConfirm={() => {
             const row = rows.find((r) => r.id === confirmId);
             if (row) confirmDelete(row);
           }}
-          loading={deletingId === confirmId}
-          entity={rows.find((r) => r.id === confirmId)}
         />
       )}
     </div>

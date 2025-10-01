@@ -51,12 +51,12 @@ export default function ComprasHistoryChart({ comprasHistory }) {
         />
       )}
       <TimeSeriesTable
-        data={chartData.map((p, i) => {
-          const prev = i > 0 ? chartData[i - 1].value : null;
+        data={[...chartData].reverse().map((p, idx, arr) => {
+          const originalPrevVal = idx < arr.length - 1 ? arr[idx + 1].value : null;
           return {
             ...p,
-            delta: prev != null ? p.value - prev : null,
-            momLocal: prev && prev !== 0 ? ((p.value - prev) / prev) * 100 : null,
+            delta: originalPrevVal != null ? p.value - originalPrevVal : null,
+            momLocal: originalPrevVal && originalPrevVal !== 0 ? ((p.value - originalPrevVal) / originalPrevVal) * 100 : null,
           };
         })}
         activeLabel={activePoint?.label}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import LineAreaChart from "components/common/LineAreaChart";
 import { Modal } from "components/common/Modal";
+import { ConfirmDialog } from "components/common/ConfirmDialog";
 import { ProductForm } from "./ProductForm";
 import { useProducts } from "./hooks";
 import ProductsHeader from "./ProductsHeader";
@@ -121,15 +122,15 @@ export function ProductsManager({ linkSupplierId }) {
   // Linhas visíveis considerando filtro "Abaixo do mínimo"
   const visibleRows = onlyBelowMin
     ? rows.filter((p) => {
-        const saldo = costMap[p.id]?.saldo;
-        const minConfigured =
-          p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
-        const minHint = costMap[p.id]?.min_hint ?? null;
-        const minimo = minConfigured != null ? minConfigured : minHint;
-        return (
-          Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo
-        );
-      })
+      const saldo = costMap[p.id]?.saldo;
+      const minConfigured =
+        p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
+      const minHint = costMap[p.id]?.min_hint ?? null;
+      const minimo = minConfigured != null ? minConfigured : minHint;
+      return (
+        Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo
+      );
+    })
     : rows;
 
   // formatQtyBR extraído para utils comuns
@@ -400,46 +401,39 @@ export function ProductsManager({ linkSupplierId }) {
         </Modal>
       )}
       {hardDeleteTarget && (
-        <Modal
-          onClose={hardDeleting ? undefined : cancelHardDelete}
+        <ConfirmDialog
           title={`Excluir DEFINITIVO • ${hardDeleteTarget.nome}`}
-        >
-          <div className="space-y-4 text-sm">
-            <p>
-              Esta ação irá remover TODOS os registros relacionados ao produto
-              (movimentos, lotes, itens de pedidos, fornecedores). Digite a
-              senha para confirmar.
-            </p>
-            <input
-              type="password"
-              className="w-full rounded border px-3 py-2 bg-[var(--color-bg-secondary)]"
-              placeholder="Senha"
-              value={hardDeletePwd}
-              onChange={(e) => setHardDeletePwd(e.target.value)}
-              disabled={hardDeleting}
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-3 py-1.5 text-xs rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
-                onClick={cancelHardDelete}
+          message={
+            <div className="space-y-4 text-sm">
+              <p>
+                Esta ação removerá TODOS os registros relacionados ao produto
+                (movimentos, lotes, itens de pedidos, fornecedores). Não pode
+                ser desfeita.
+              </p>
+              <input
+                type="password"
+                className="w-full rounded border px-3 py-2 bg-[var(--color-bg-secondary)]"
+                placeholder="Senha"
+                value={hardDeletePwd}
+                onChange={(e) => setHardDeletePwd(e.target.value)}
                 disabled={hardDeleting}
-              >
-                Cancelar
-              </button>
-              <button
-                className="px-3 py-1.5 text-xs rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-                onClick={confirmHardDelete}
-                disabled={hardDeleting || !hardDeletePwd}
-              >
-                {hardDeleting ? "Excluindo..." : "Confirmar Exclusão"}
-              </button>
+                autoFocus
+              />
+              <div className="text-[11px] opacity-60 leading-snug">
+                Digite a senha para habilitar a exclusão definitiva.
+              </div>
             </div>
-            <div className="text-[11px] opacity-60 leading-snug">
-              Esta operação não pode ser desfeita.
-            </div>
-          </div>
-        </Modal>
+          }
+          danger
+          confirmLabel={hardDeleting ? "Excluindo..." : "Excluir"}
+          cancelLabel="Cancelar"
+          loading={hardDeleting}
+          onCancel={() => !hardDeleting && cancelHardDelete()}
+          onConfirm={() => {
+            if (!hardDeletePwd || hardDeleting) return;
+            confirmHardDelete();
+          }}
+        />
       )}
       {showTopModal && (
         <Modal
@@ -474,8 +468,8 @@ export function ProductsManager({ linkSupplierId }) {
 function ProductCostHistoryChart({ data, loading }) {
   const parsed = Array.isArray(data)
     ? data
-        .filter((d) => d && d.month && Number.isFinite(Number(d.avg_cost)))
-        .map((d) => ({ label: d.month, value: Number(d.avg_cost) }))
+      .filter((d) => d && d.month && Number.isFinite(Number(d.avg_cost)))
+      .map((d) => ({ label: d.month, value: Number(d.avg_cost) }))
     : [];
   const [focused, setFocused] = React.useState(null);
   const firstVal = parsed.length ? parsed[0].value : 0;
@@ -486,73 +480,68 @@ function ProductCostHistoryChart({ data, loading }) {
   const prevPoint =
     active && parsed.length > 1
       ? (() => {
-          const idx = parsed.findIndex((p) => p.label === active.label);
-          if (idx > 0) return parsed[idx - 1];
-          return null;
-        })()
+        const idx = parsed.findIndex((p) => p.label === active.label);
+        if (idx > 0) return parsed[idx - 1];
+        return null;
+      })()
       : null;
+
   const momPct =
-    prevPoint && prevPoint.value !== 0
+    prevPoint && active
       ? ((active.value - prevPoint.value) / prevPoint.value) * 100
       : 0;
-  function formatValue(v) {
-    return Number(v || 0).toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  }
+
   return (
-    <div className="flex flex-col md:flex-row gap-6">
-      <div className="flex-1 min-w-[360px]">
-        <LineAreaChart
-          data={parsed}
-          loading={loading}
-          showArea
-          disableTooltip
-          onHover={(pt) => setFocused(pt)}
-        />
-      </div>
-      <div className="w-full md:w-64 flex flex-col gap-3 text-xs border rounded p-3 bg-[var(--color-bg-secondary)]">
-        <div>
-          <div className="text-[10px] uppercase opacity-60 tracking-wide">
-            Mês
+    <div className="p-2 border rounded bg-[var(--color-bg-secondary)]/40">
+      {loading && (
+        <div className="text-xs opacity-60">Carregando custos...</div>
+      )}
+      {!loading && parsed.length === 0 && (
+        <div className="text-xs opacity-60">Sem histórico suficiente.</div>
+      )}
+      {parsed.length > 0 && (
+        <div className="space-y-3">
+          <LineAreaChart
+            data={parsed}
+            onFocus={(label) => {
+              const f = parsed.find((p) => p.label === label) || null;
+              setFocused(f);
+            }}
+            onBlur={() => setFocused(null)}
+          />
+          <div className="flex gap-6 text-xs">
+            <div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">
+                Var. Mês
+              </div>
+              <div
+                className={`text-sm font-semibold ${!prevPoint ? "opacity-50" : momPct > 0 ? "text-green-500" : momPct < 0 ? "text-red-400" : ""}`}
+              >
+                {!prevPoint
+                  ? "—"
+                  : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase opacity-60 tracking-wide">
+                Var. Acumulada
+              </div>
+              <div
+                className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
+              >
+                {active
+                  ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(
+                    1,
+                  )}%`
+                  : "—"}
+              </div>
+            </div>
           </div>
-          <div className="text-sm font-semibold">{active?.label || "—"}</div>
+          <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
+            Passe o mouse sobre os pontos. Sem hover mostra o último mês.
+          </div>
         </div>
-        <div>
-          <div className="text-[10px] uppercase opacity-60 tracking-wide">
-            Custo Médio
-          </div>
-          <div className="text-sm font-semibold">
-            {active ? formatValue(active.value) : "—"}
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase opacity-60 tracking-wide">
-            Var. Mês→Mês
-          </div>
-          <div
-            className={`text-sm font-semibold ${!prevPoint ? "opacity-50" : momPct > 0 ? "text-green-500" : momPct < 0 ? "text-red-400" : ""}`}
-          >
-            {!prevPoint ? "—" : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase opacity-60 tracking-wide">
-            Var. Acumulada
-          </div>
-          <div
-            className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
-          >
-            {active
-              ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%`
-              : "—"}
-          </div>
-        </div>
-        <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
-          Passe o mouse sobre os pontos. Sem hover mostra o último mês.
-        </div>
-      </div>
+      )}
     </div>
   );
 }

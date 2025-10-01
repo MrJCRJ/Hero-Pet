@@ -9,7 +9,8 @@ export function useTimeSeriesActivePoint(chartData) {
   const [selected, setSelected] = React.useState(null);
 
   const fallbackPoint = chartData[chartData.length - 1] || null;
-  const activePoint = selected || hovered || fallbackPoint;
+  // Prioridade: hovered (interação atual) > selected (fixado) > fallback (último)
+  const activePoint = hovered || selected || fallbackPoint;
 
   const prevPoint = React.useMemo(() => {
     if (!activePoint) return null;
@@ -23,10 +24,14 @@ export function useTimeSeriesActivePoint(chartData) {
   }, [activePoint, prevPoint]);
 
   const acumuladaPct = React.useMemo(() => {
-    if (!activePoint || chartData.length === 0) return 0;
-    const firstVal = chartData[0].value;
-    if (firstVal === 0) return 0;
-    return ((activePoint.value - firstVal) / firstVal) * 100;
+    if (!activePoint || chartData.length === 0) return null;
+    // Usa o primeiro valor não-zero como base. Se todos forem zero, não há crescimento acumulado significativo.
+    const basePoint = chartData.find(p => p.value !== 0);
+    if (!basePoint) return null; // todos zero
+    const baseVal = basePoint.value;
+    if (activePoint.label === basePoint.label) return 0; // primeiro ponto válido
+    if (baseVal === 0) return null;
+    return ((activePoint.value - baseVal) / baseVal) * 100;
   }, [activePoint, chartData]);
 
   function toggleSelect(point) {

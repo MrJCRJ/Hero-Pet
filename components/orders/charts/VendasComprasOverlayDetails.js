@@ -49,11 +49,12 @@ export default function VendasComprasOverlayDetails({ data }) {
         />
       )}
       <TimeSeriesTable
-        data={chartData.map((p, i) => {
-          const prev = i > 0 ? chartData[i - 1].value : null;
+        data={[...chartData].reverse().map((p, idx, arr) => {
+          // Como invertido, prev lógico é o próximo no array original (arr[idx+1])
+          const originalPrev = idx < arr.length - 1 ? arr[idx + 1].value : null;
           return {
             ...p,
-            delta: prev != null ? p.value - prev : null,
+            delta: originalPrev != null ? p.value - originalPrev : null,
           };
         })}
         activeLabel={activePoint?.label}
