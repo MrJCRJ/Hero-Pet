@@ -142,6 +142,13 @@ export function ProductsManager({ linkSupplierId }) {
     if (highlighted) {
       setEditing(highlighted);
       setShowModal(true);
+      try {
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('highlight');
+          window.history.replaceState({}, document.title, url.toString());
+        }
+      } catch (_) { /* noop */ }
     }
   }, [highlighted]);
 

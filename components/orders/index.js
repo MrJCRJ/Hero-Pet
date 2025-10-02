@@ -246,6 +246,14 @@ export function OrdersManager({ limit = 20 }) {
     if (highlighted) {
       setEditing(highlighted);
       setShowForm(true);
+      // Limpa parametro highlight da URL para evitar reprocessar ao fechar/voltar
+      try {
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('highlight');
+          window.history.replaceState({}, document.title, url.toString());
+        }
+      } catch (_) { /* noop */ }
     }
   }, [highlighted]);
 

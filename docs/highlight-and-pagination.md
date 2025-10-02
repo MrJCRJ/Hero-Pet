@@ -2,12 +2,12 @@
 
 Este documento descreve dois padrões recentes adotados para unificar comportamento entre módulos (Pedidos, Entidades e Produtos):
 
-1. Paginação com metadados via `usePaginatedPedidos` (extensível a outros domínios).
+1. Paginação com metadados via `usePaginatedPedidos` (agora baseado em `usePaginatedResource`).
 2. Edição direta por deep-link usando o parâmetro de query `?highlight=<id>` através do hook genérico `useHighlightEntityLoad`.
 
 ---
 
-## 1. Paginação com `usePaginatedPedidos`
+## 1. Paginação com `usePaginatedPedidos` (e base genérica `usePaginatedResource`)
 
 Objetivo: substituir hooks legados específicos e duplicação de lógica de `offset/limit` por um hook único que:
 
@@ -51,7 +51,23 @@ Boas práticas:
 - Exibir `total` quando disponível (evita paginação cega).
 - Tratar `error` distinto de estado vazio para evitar falsa percepção de ausência de dados.
 
-Extensão futura: extrair versão genérica `usePaginatedResource` se surgir segundo domínio com semântica idêntica.
+Internamente `usePaginatedPedidos` utiliza agora o hook genérico `usePaginatedResource`, que aceita:
+
+```js
+usePaginatedResource({
+  baseUrl: '/api/v1/pedidos',
+  initialFilters: {...},
+  limit: 20,
+  buildParams: (filters) => { /* retorna URLSearchParams */ },
+  parse: (json) => ({ rows, total }), // opcional
+  errorFallback: MSG.GENERIC_ERROR,
+});
+```
+
+Benefícios:
+
+- Facilita replicar padrão para outros domínios (ex.: produtos, entidades) sem duplicar código.
+- Parser customizado permite adaptar quando backend evoluir formato.
 
 ---
 
@@ -134,7 +150,7 @@ Domínios atualmente suportando:
 
 - Falhas de rede ou 404 não bloqueiam a lista: apenas exibem `errorHighlight` (não modal).
 - Evitar loops: hook só recarrega automaticamente quando `highlightId` muda.
-- Se usuário fecha modal ou formulário após highlight, pode permanecer o param — opção futura: limpar param via `history.replaceState` ao fechar (não implementado ainda).
+- Parâmetro `highlight` agora é limpo automaticamente da URL após abertura do formulário/modal (via `history.replaceState`).
 
 ---
 
