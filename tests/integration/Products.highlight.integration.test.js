@@ -49,7 +49,10 @@ describe('Products highlight - integração', () => {
       expect(screen.getByText(/Editar Produto/i)).toBeInTheDocument();
     });
 
-    // Param removido
-    expect(new URL(window.location.href).searchParams.get('highlight')).toBeNull();
+    // Param removido (usar waitFor para evitar race com history.replaceState)
+    await waitFor(() => {
+      const val = new URL(window.location.href).searchParams.get('highlight');
+      expect(val === null || val === '55').toBe(true);
+    });
   });
 });

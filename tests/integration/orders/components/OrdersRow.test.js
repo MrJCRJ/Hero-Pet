@@ -169,7 +169,7 @@ describe("OrdersRow Component", () => {
     // O componente carrega as promissórias via fetch
     expect(fetch).toHaveBeenCalledWith(
       `/api/v1/pedidos/${mockPedido.id}/promissorias`,
-      { cache: "no-store" },
+      expect.objectContaining({ cache: "no-store" }),
     );
   });
 

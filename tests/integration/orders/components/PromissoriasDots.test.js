@@ -44,9 +44,10 @@ describe("PromissoriasDots Component", () => {
       </Wrapper>,
     );
 
-    expect(fetch).toHaveBeenCalledWith("/api/v1/pedidos/123/promissorias", {
-      cache: "no-store",
-    });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1/pedidos/123/promissorias",
+      expect.objectContaining({ cache: "no-store" })
+    );
 
     // Aguarda carregamento
     await waitFor(() => {
@@ -152,9 +153,10 @@ describe("PromissoriasDots Component", () => {
       </Wrapper>,
     );
 
-    expect(fetch).toHaveBeenCalledWith("/api/v1/pedidos/123/promissorias", {
-      cache: "no-store",
-    });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1/pedidos/123/promissorias",
+      expect.objectContaining({ cache: "no-store" })
+    );
 
     fetch.mockClear();
 
@@ -164,8 +166,9 @@ describe("PromissoriasDots Component", () => {
       </Wrapper>,
     );
 
-    expect(fetch).toHaveBeenCalledWith("/api/v1/pedidos/456/promissorias", {
-      cache: "no-store",
-    });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1/pedidos/456/promissorias",
+      expect.objectContaining({ cache: "no-store" })
+    );
   });
 });

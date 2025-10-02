@@ -290,8 +290,9 @@ describe("InfoModal Component", () => {
     );
 
     expect(screen.getByText("Compras do mês")).toBeInTheDocument();
-    expect(screen.getByText("💰 Histórico de Compras (12 meses)")).toBeInTheDocument();
-    expect(screen.getByText("💡 Glossário:")).toBeInTheDocument();
+    // Relaxa dependência de emojis que podem variar em encoding
+    expect(screen.getByText(/Histórico de Compras \(12 meses\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Glossário:/)).toBeInTheDocument();
   });
 
   test("renderiza modal de lucro bruto", () => {

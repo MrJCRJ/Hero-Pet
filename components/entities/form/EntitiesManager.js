@@ -35,8 +35,11 @@ export function EntitiesManager({
   }, [loadForEdit]);
 
   // Novo: uso de hook genérico de highlight
+  // Permitir uso automático via ?highlight= se prop não fornecida
+  const derivedHighlightId = externalHighlightId != null ? externalHighlightId : (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('highlight') : null);
+
   const { highlighted, loadingHighlight, errorHighlight } = useHighlightEntityLoad({
-    highlightId: externalHighlightId,
+    highlightId: derivedHighlightId,
     fetcher: async (id) => {
       const res = await fetch(`/api/v1/entities/${id}`);
       if (!res.ok) {
@@ -122,10 +125,10 @@ export function EntitiesManager({
           onEdit={handleEditRow}
           highlightId={externalHighlightId ?? lastEditedId}
         />
-        {loadingHighlight && externalHighlightId && (
-          <div className="text-xs opacity-70">Carregando entidade #{externalHighlightId}…</div>
+        {loadingHighlight && derivedHighlightId && (
+          <div className="text-xs opacity-70">Carregando entidade #{derivedHighlightId}…</div>
         )}
-        {errorHighlight && externalHighlightId && (
+        {errorHighlight && derivedHighlightId && (
           <div className="text-xs text-red-600">{errorHighlight}</div>
         )}
       </div>

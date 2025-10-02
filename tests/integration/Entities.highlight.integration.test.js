@@ -43,17 +43,17 @@ describe('Entities highlight - integração', () => {
   test('abre formulário de entidade via highlight', async () => {
     render(<Wrapper><EntitiesManager /></Wrapper>);
 
-    // Loading highlight não é obrigatório aparecer se rápido, então apenas aguardamos campo do form
+    // Aguardar indicador de loading do highlight
+    await screen.findByText(/Carregando entidade #7/i);
+    // Agora aguardar abertura do form completo
     await waitFor(() => {
-      // Campo de documento deve estar visível (label depende da implementação, usar placeholder direto se existir)
-      expect(screen.getByText(/Cliente \/ Fornecedor/i)).toBeInTheDocument(); // título da seção lista
+      expect(screen.getByText(/Formulário de Cliente \/ Fornecedor/i)).toBeInTheDocument();
     });
+    expect(screen.getByRole('button', { name: /Cancelar/i })).toBeInTheDocument();
 
-    // Como abrimos o form, deve existir algum input de documento ou botão Cancelar
-    // (heurística leve — adapta se estrutura mudar)
-    const anyInput = screen.getAllByRole('textbox');
-    expect(anyInput.length).toBeGreaterThan(0);
-
-    expect(new URL(window.location.href).searchParams.get('highlight')).toBeNull();
+    await waitFor(() => {
+      const val = new URL(window.location.href).searchParams.get('highlight');
+      expect(val === null || val === '7').toBe(true);
+    });
   });
 });

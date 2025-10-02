@@ -9,10 +9,8 @@ import { ToastProvider } from "components/entities/shared/toast";
 import { OrdersManager } from "components/orders";
 
 // Mock simplificado de fetch para jsdom
-// Este teste faz um smoke: renderiza, lista linhas e abre o modal de pagar promissória
-// Não valida PDF ou chamadas reais — isso já é coberto pelos testes de API.
-
-global.fetch = jest.fn();
+// Smoke: renderiza, lista linhas e abre modal de pagar promissória
+// Mock é recriado em cada beforeEach para evitar interferência de outros testes que modificam fetch.
 
 function Wrapper({ children }) {
   return (
@@ -44,6 +42,7 @@ describe("Orders UI - Smoke", () => {
     }
   });
   beforeEach(() => {
+    global.fetch = jest.fn();
     fetch.mockClear();
 
     // Estado em memória para promissórias simuladas
@@ -74,7 +73,7 @@ describe("Orders UI - Smoke", () => {
       if (url.includes("/api/v1/pedidos?") || url.endsWith("/api/v1/pedidos")) {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ data: fakeOrders }),
+          json: async () => ({ data: fakeOrders, meta: { total: fakeOrders.length } }),
         });
       }
 

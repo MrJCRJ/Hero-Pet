@@ -30,12 +30,15 @@ describe('PromissoriasDots', () => {
 
     const { rerender, findByLabelText } = render(<PromissoriasDots pedidoId={123} count={3} />);
 
-    // fallback: deve existir aria-label com count
-    expect(screen.getByLabelText(/3 parcela\(s\)/i)).toBeInTheDocument();
+    // Aguardar transição do skeleton (Carregando parcelas) para fallback vazio com count.
+    // O fallback aria-label inclui texto completo: "3 parcela(s) (dados detalhados ainda não carregados)"
+    const fallback = await screen.findByLabelText(/3 parcela\(s\).*detalhados ainda não carregados/i);
+    expect(fallback).toBeInTheDocument();
 
-    // Força recarregar para segunda resposta
-    await rerender(<PromissoriasDots pedidoId={123} count={3} />);
-    await findByLabelText(/PENDENTE/i);
+    // Força novo fetch alterando o pedidoId (trigger de useEffect)
+    await rerender(<PromissoriasDots pedidoId={124} count={3} />);
+    // Segunda resposta deve conter uma promissória com status
+    await findByLabelText(/PENDENTE|ATRASADO|PAGO/i);
 
     restore();
   });

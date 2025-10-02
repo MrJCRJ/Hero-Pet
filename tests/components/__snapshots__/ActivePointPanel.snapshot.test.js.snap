@@ -1,0 +1,229 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ActivePointPanel snapshots render completo 1`] = `
+<div>
+  <div
+    class="mt-3 p-3 bg-[var(--color-bg-secondary)] border rounded text-xs"
+  >
+    <div
+      class="font-medium mb-2"
+    >
+      2025-01
+    </div>
+    <div
+      class="grid grid-cols-2 gap-3"
+    >
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Vendas
+        </div>
+        <span
+          class="font-semibold"
+        >
+          R$ 1.000,00
+        </span>
+      </div>
+      <div>
+        <div
+          class="opacity-70"
+        >
+          MoM 
+          📊
+        </div>
+        <div
+          class="font-semibold text-green-600"
+        >
+          +25.0%
+        </div>
+      </div>
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Mês anterior
+        </div>
+        <div>
+          R$ 800,00
+        </div>
+      </div>
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Acumulado 
+          📈
+        </div>
+        <div
+          class="text-green-600"
+        >
+          +50.0%
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ActivePointPanel snapshots sem acumulado 1`] = `
+<div>
+  <div
+    class="mt-3 p-3 bg-[var(--color-bg-secondary)] border rounded text-xs"
+  >
+    <div
+      class="font-medium mb-2"
+    >
+      2025-01
+    </div>
+    <div
+      class="grid grid-cols-2 gap-3"
+    >
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Vendas
+        </div>
+        <span
+          class="font-semibold"
+        >
+          R$ 1.000,00
+        </span>
+      </div>
+      <div>
+        <div
+          class="opacity-70"
+        >
+          MoM 
+          📊
+        </div>
+        <div
+          class="font-semibold text-green-600"
+        >
+          +25.0%
+        </div>
+      </div>
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Mês anterior
+        </div>
+        <div>
+          R$ 800,00
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ActivePointPanel snapshots sem mom 1`] = `
+<div>
+  <div
+    class="mt-3 p-3 bg-[var(--color-bg-secondary)] border rounded text-xs"
+  >
+    <div
+      class="font-medium mb-2"
+    >
+      2025-01
+    </div>
+    <div
+      class="grid grid-cols-2 gap-3"
+    >
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Vendas
+        </div>
+        <span
+          class="font-semibold"
+        >
+          R$ 1.000,00
+        </span>
+      </div>
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Mês anterior
+        </div>
+        <div>
+          R$ 800,00
+        </div>
+      </div>
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Acumulado 
+          📈
+        </div>
+        <div
+          class="text-green-600"
+        >
+          +50.0%
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ActivePointPanel snapshots sem prev 1`] = `
+<div>
+  <div
+    class="mt-3 p-3 bg-[var(--color-bg-secondary)] border rounded text-xs"
+  >
+    <div
+      class="font-medium mb-2"
+    >
+      2025-01
+    </div>
+    <div
+      class="grid grid-cols-2 gap-3"
+    >
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Vendas
+        </div>
+        <span
+          class="font-semibold"
+        >
+          R$ 1.000,00
+        </span>
+      </div>
+      <div>
+        <div
+          class="opacity-70"
+        >
+          MoM 
+          📊
+        </div>
+        <div
+          class="font-semibold text-green-600"
+        >
+          +25.0%
+        </div>
+      </div>
+      <div>
+        <div
+          class="opacity-70"
+        >
+          Acumulado 
+          📈
+        </div>
+        <div
+          class="text-green-600"
+        >
+          +50.0%
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

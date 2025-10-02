@@ -46,7 +46,7 @@ describe("FilterBar Component", () => {
     expect(
       screen.getByPlaceholderText(/ID.*parceiro.*documento/i),
     ).toBeInTheDocument();
-    expect(screen.getByDisplayValue("")).toBeInTheDocument(); // input de busca vazio
+    // Não usar getByDisplayValue("") pois pode haver vários inputs vazios; já garantimos placeholder presente
   });
 
   test("permite busca por texto", async () => {
@@ -80,7 +80,7 @@ describe("FilterBar Component", () => {
       </Wrapper>,
     );
 
-    const reloadButton = screen.getByRole("button");
+    const reloadButton = screen.getByRole("button", { name: /atualizar/i });
     fireEvent.click(reloadButton);
 
     expect(mockOnReload).toHaveBeenCalled();
