@@ -223,3 +223,56 @@ Fase 2 (Opcional / Futuro):
 
 Data plano: 2025-10-02
 Responsável: Refactor Initiative
+
+### Auto-Save / Persistência (Fase 2 Implementada Parcialmente)
+
+Foi introduzido o hook `usePedidoPersistence` para unificar create/update/delete e habilitar auto-save simples.
+
+Características atuais:
+
+- Debounce: 2000ms (2s) – evita disparos excessivos enquanto o usuário digita.
+- Escopo: somente em modo edição (`isEdit = true`). Novos pedidos não são auto-salvos até primeiro submit (reduz risco de criar rascunhos inválidos no backend).
+- Trigger: Qualquer mudança em campos chave (tipo, datas, parceiro, promissórias, itens, frete, flags).
+- Tolerância a erros: silenciosa (falha de auto-save não interrompe a interação; futuro callback pode surfacear estado).
+- Toast opcional: controlado por flag `showAutoSaveToast` (default `false`) para evitar ruído constante visual em sessões normais.
+
+Recomendação de Uso da Flag:
+
+- Ativar (true) apenas em sessões de QA, debug de inconsistências ou quando intencionalmente avaliando comportamento de persistência em tempo real.
+- Manter desativada em produção para não poluir a experiência (toasts a cada alteração podem gerar fadiga).
+
+API Resumida (`usePedidoPersistence`):
+
+```ts
+usePedidoPersistence({
+  editingOrder,
+  tipo, partnerId, partnerName,
+  observacao, dataEmissao, dataEntrega,
+  temNotaFiscal, parcelado,
+  numeroPromissorias, dataPrimeiraPromissoria, promissoriaDatas,
+  itens, freteTotal, migrarFifo,
+  setCreated, push, onSaved, onCreated, setSubmitting,
+  showAutoSaveToast = false,
+}) => { handleSubmit, handleDelete }
+```
+
+Futura Melhoria Planejada:
+
+- Callback `onAutoSave(status)` onde `status` poderia ser `{ phase: 'started' | 'success' | 'error', at: Date }` para permitir UI discreta (ex: ícone pulsante / ponto verde) em vez de toasts.
+- Estado incremental de dirty granular (ex: `dirty.promissorias`, `dirty.itens`) para evitar persistências completas quando só metadados mudaram.
+
+Critérios Futuramente Considerados:
+
+- Cancelamento programático (ex: ao navegar para outro módulo antes do debounce finalizar).
+- Retry exponencial opcional em conexões intermitentes.
+- Gate para não salvar se nenhum campo relevante modificou valor semântico (normalização de whitespace etc.).
+
+Riscos & Mitigações:
+
+| Risco                                                  | Mitigação                                              |
+| ------------------------------------------------------ | ------------------------------------------------------ |
+| Flood de requests em digitação rápida                  | Debounce 2s + considerar batching futuro               |
+| Estado inconsistente se backend falhar silenciosamente | Introduzir `onAutoSave` + badge deferido               |
+| Confusão usuário sobre "quando salvou"                 | UI discreta futura + histórico de autosave (timestamp) |
+
+Status: Parcial (create/update/delete centralizado + auto-save básico). Extensões listadas aguardam priorização.
