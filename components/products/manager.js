@@ -6,11 +6,12 @@ import LineAreaChart from "components/common/LineAreaChart";
 import { Modal } from "components/common/Modal";
 import { ConfirmDialog } from "components/common/ConfirmDialog"; // ainda usado para toggle
 import { ProductForm } from "./ProductForm";
-import { useProducts } from "./hooks";
+// IMPORTS: usar alias "components/products/*" para facilitar mocks determinísticos em testes
+import { useProducts } from "components/products/hooks";
 import ProductsHeader from "./ProductsHeader";
 import ProductRow from "./ProductRow";
 import ProductsFilterBar from "./ProductsFilterBar";
-import useProductCosts from "./useProductCosts";
+import useProductCosts from "components/products/useProductCosts";
 import { TopProdutosRanking } from "./TopProdutosRanking";
 import { useProductRanking } from "./useProductRanking";
 import { useProductHardDelete } from "./useProductHardDelete";

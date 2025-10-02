@@ -3,7 +3,8 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
+import renderAndFlush from "../../../test-utils/renderAndFlush";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 import OrdersRow from "components/orders/OrdersRow";
@@ -67,8 +68,8 @@ describe("OrdersRow Component", () => {
     });
   });
 
-  test("renderiza dados básicos do pedido", () => {
-    render(
+  test("renderiza dados básicos do pedido", async () => {
+    await renderAndFlush(
       <Wrapper>
         <table>
           <tbody>
@@ -88,8 +89,8 @@ describe("OrdersRow Component", () => {
     expect(screen.getByText("15/03/2024")).toBeInTheDocument();
   });
 
-  test("exibe botão de duplicatas para VENDA com promissórias", () => {
-    render(
+  test("exibe botão de duplicatas para VENDA com promissórias", async () => {
+    await renderAndFlush(
       <Wrapper>
         <table>
           <tbody>
@@ -116,7 +117,7 @@ describe("OrdersRow Component", () => {
     );
   });
 
-  test("não exibe botões de download para COMPRA", () => {
+  test("não exibe botões de download para COMPRA", async () => {
     const compraPedido = {
       ...mockPedido,
       tipo: "COMPRA",
@@ -124,7 +125,7 @@ describe("OrdersRow Component", () => {
       numero_promissorias: 0,
     };
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <table>
@@ -150,7 +151,7 @@ describe("OrdersRow Component", () => {
   });
 
   test("renderiza promissórias dots", async () => {
-    render(
+    await renderAndFlush(
       <Wrapper>
         <table>
           <tbody>
@@ -173,8 +174,8 @@ describe("OrdersRow Component", () => {
     );
   });
 
-  test("mostra valores monetários formatados", () => {
-    render(
+  test("mostra valores monetários formatados", async () => {
+    await renderAndFlush(
       <Wrapper>
         <table>
           <tbody>
@@ -194,8 +195,8 @@ describe("OrdersRow Component", () => {
     expect(screen.getByText(/Pago:.*R\$ 50,00/)).toBeInTheDocument(); // total_pago formatado
   });
 
-  test("possui botão de exclusão", () => {
-    render(
+  test("possui botão de exclusão", async () => {
+    await renderAndFlush(
       <Wrapper>
         <table>
           <tbody>
@@ -217,8 +218,8 @@ describe("OrdersRow Component", () => {
     expect(mockOnDelete).toHaveBeenCalled();
   });
 
-  test("gerencia status de nota fiscal", () => {
-    render(
+  test("gerencia status de nota fiscal", async () => {
+    await renderAndFlush(
       <Wrapper>
         <table>
           <tbody>

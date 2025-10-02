@@ -6,39 +6,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
-import { ProductsManager } from "components/products/manager";
-
-// Mocka hooks de produtos para evitar debounce e múltiplos fetches
-jest.mock("components/products/hooks", () => ({
-  useProducts: () => ({
-    rows: [
-      {
-        id: 1,
-        nome: "Ração Premium",
-        categoria: "Racao",
-        ativo: true,
-        supplier_labels: [],
-        preco_tabela: 100,
-      },
-    ],
-    total: 1,
-    loading: false,
-    query: { q: "", categoria: "", ativo: "true" },
-    setQ: jest.fn(),
-    setCategoria: jest.fn(),
-    setAtivo: jest.fn(),
-    refresh: jest.fn(),
-  }),
-}));
-
-jest.mock("components/products/useProductCosts", () => ({
-  __esModule: true,
-  default: () => ({
-    costMap: {
-      1: { saldo: 10, custo_medio: 32.5, ultimo_custo: 30, min_hint: 8 },
-    },
-  }),
-}));
+import { mockProductsBase } from "./products/__utils__/mockProductsHooks";
+// Aplica mock antes de carregar componente
+mockProductsBase({ id: 1, nome: 'Ração Premium', saldo: 10, custo_medio: 32.5, ultimo_custo: 30 });
+// eslint-disable-next-line import/first
+const { ProductsManager } = require("components/products/manager");
 
 function Wrapper({ children }) {
   return (
@@ -104,9 +76,9 @@ describe("ProductsManager detalhes produto", () => {
     await screen.findByText(/Histórico de Custos/);
     await screen.findByText(/Var\. Acumulada/i);
     const monthNode = screen.queryByText(/2025-09/);
-    if (!monthNode) {
+    if (!monthNode && process.env.DEBUG_MISSING_LABELS) {
       // eslint-disable-next-line no-console
-      console.warn('Label 2025-09 não encontrado; gráfico pode ter renderizado sem labels textuais acessíveis.');
+      console.warn('[DEBUG_MISSING_LABELS] label 2025-09 ausente');
     }
     // Alguns labels podem estar em caixa alta/menor, usamos regex flexível
     // Verificação da variação acumulada ou placeholder de variação

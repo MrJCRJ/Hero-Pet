@@ -13,6 +13,8 @@
     "test": "npm run services:up && jest --runInBand --verbose --detectOpenHandles",
     "test:ci": "jest --runInBand --verbose --detectOpenHandles",
     "test:with-next": "npm run services:up && concurrently -n next,jest --hide next -k -s command-jest \"next dev\" \"jest --runInBand --verbose\"",
+    "test:act-debug": "DEBUG_ACT_WARNINGS=1 npm test",
+    "test:act-strict": "ACT_STRICT=1 npm test",
     "posttest": "npm run services:stop",
     "test:watch": "jest --watchAll --runInBand --verbose",
     "services:up": "docker compose -f infra/compose.yaml up -d",

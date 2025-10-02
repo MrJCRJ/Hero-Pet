@@ -3,7 +3,8 @@
  */
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import { renderAndFlush } from "tests/test-utils/renderAndFlush";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 import PromissoriasList from "components/orders/shared/PromissoriasList";
@@ -21,6 +22,7 @@ describe("PromissoriasList Component", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
+
 
   test("renderiza lista de promissórias", async () => {
     global.fetch.mockResolvedValueOnce({
@@ -45,7 +47,7 @@ describe("PromissoriasList Component", () => {
       ],
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList
@@ -87,7 +89,7 @@ describe("PromissoriasList Component", () => {
       }),
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList
@@ -129,7 +131,7 @@ describe("PromissoriasList Component", () => {
       }),
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList
@@ -171,7 +173,7 @@ describe("PromissoriasList Component", () => {
       }),
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList
@@ -196,8 +198,8 @@ describe("PromissoriasList Component", () => {
     expect(screen.getByText("VENDA")).toBeInTheDocument();
   });
 
-  test("gerencia lista vazia", () => {
-    render(
+  test("gerencia lista vazia", async () => {
+    await renderAndFlush(
       <Wrapper>
         <PromissoriasList data={[]} onSelect={mockOnSelect} />
       </Wrapper>,
@@ -207,8 +209,8 @@ describe("PromissoriasList Component", () => {
     expect(document.body).toBeTruthy();
   });
 
-  test("funciona sem dados", () => {
-    render(
+  test("funciona sem dados", async () => {
+    await renderAndFlush(
       <Wrapper>
         <PromissoriasList data={null} onSelect={mockOnSelect} />
       </Wrapper>,
@@ -243,7 +245,7 @@ describe("PromissoriasList Component", () => {
       }),
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList
@@ -286,7 +288,7 @@ describe("PromissoriasList Component", () => {
       }),
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList
@@ -330,7 +332,7 @@ describe("PromissoriasList Component", () => {
       json: async () => directArray,
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList
@@ -360,7 +362,7 @@ describe("PromissoriasList Component", () => {
       json: async () => [],
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList
@@ -401,7 +403,7 @@ describe("PromissoriasList Component", () => {
       json: async () => incompleteData,
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList
@@ -444,7 +446,7 @@ describe("PromissoriasList Component", () => {
       json: async () => extremeData,
     });
 
-    render(
+    await renderAndFlush(
       <ThemeProvider>
         <ToastProvider>
           <PromissoriasList

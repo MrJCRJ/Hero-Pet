@@ -3,7 +3,8 @@
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import renderAndFlush from "../../../test-utils/renderAndFlush";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 import OrdersDashboard from "components/orders/dashboard/OrdersDashboard";
@@ -52,60 +53,43 @@ describe("OrdersDashboard", () => {
   });
 
   test("renderiza cards do dashboard", async () => {
-    render(
+    await renderAndFlush(
       <Wrapper>
         <OrdersDashboard />
       </Wrapper>,
+      { cycles: 3 },
     );
 
-    // Aguarda um pouco para o carregamento inicial
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Verifica se o componente renderizou (verificação simples)
     expect(document.body).toBeTruthy();
-
-    // Procura por estruturas comuns do dashboard sem ser específico demais
     const dashboardElements = document.querySelectorAll("div");
     expect(dashboardElements.length).toBeGreaterThan(0);
   });
 
   test("abre modal de ajuda quando clica no botão", async () => {
-    render(
+    await renderAndFlush(
       <Wrapper>
         <OrdersDashboard />
       </Wrapper>,
+      { cycles: 3 },
     );
-
-    // Aguarda carregamento
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Verifica que o componente renderizou de alguma forma
     expect(document.body).toBeTruthy();
-
-    // Smoke test básico - não tenta encontrar botões específicos
     const allElements = document.querySelectorAll("*");
     expect(allElements.length).toBeGreaterThan(1);
   });
 
   test("permite navegar entre meses", async () => {
-    render(
+    await renderAndFlush(
       <Wrapper>
         <OrdersDashboard />
       </Wrapper>,
+      { cycles: 3 },
     );
-
-    // Aguarda carregamento
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Smoke test básico
     expect(document.body).toBeTruthy();
-
-    // Verifica que há elementos na página
     const elements = document.querySelectorAll("div, button, span");
     expect(elements.length).toBeGreaterThan(0);
   });
 
-  test("exibe loading state durante carregamento", () => {
+  test("exibe loading state durante carregamento", async () => {
     // Mock que simula demora na resposta
     fetch.mockImplementation(
       () =>
@@ -121,7 +105,7 @@ describe("OrdersDashboard", () => {
         }),
     );
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <OrdersDashboard />
       </Wrapper>,
@@ -130,8 +114,8 @@ describe("OrdersDashboard", () => {
     // Verifica se há indicação de loading
     expect(
       screen.getByText(/carregando|loading/i) ||
-        screen.getByRole("status") ||
-        document.querySelector(".animate-pulse"),
+      screen.getByRole("status") ||
+      document.querySelector(".animate-pulse"),
     ).toBeTruthy();
   });
 });

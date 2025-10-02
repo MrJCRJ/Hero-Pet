@@ -3,7 +3,9 @@
  */
 
 import React from "react";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import { render, screen, within, fireEvent, waitFor } from "@testing-library/react";
+import { renderAndFlush } from "tests/test-utils/renderAndFlush";
+import { flushAsync } from "tests/test-utils/flushAsync";
 import PayPromissoriaModal from "components/orders/modals/PayPromissoriaModal";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
@@ -32,7 +34,7 @@ describe("PayPromissoriaModal", () => {
     // Mock da resposta de sucesso do POST
     fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <PayPromissoriaModal
           pedidoId={123}
@@ -61,16 +63,16 @@ describe("PayPromissoriaModal", () => {
     });
     fireEvent.click(confirmar);
 
-    // onSuccess e onClose devem ser chamados após sucesso
-    // Pequena espera microtask
-    await new Promise((r) => setTimeout(r, 0));
-
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/v1/pedidos/123/promissorias/2?action=pay",
-      expect.objectContaining({ method: "POST" }),
-    );
-    expect(onSuccess).toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalled();
+    // Aguarda microtasks de envio + callbacks
+    await flushAsync(2);
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/v1/pedidos/123/promissorias/2?action=pay",
+        expect.objectContaining({ method: "POST" }),
+      );
+      expect(onSuccess).toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 
   test("Cancelar fecha o modal sem chamar API", () => {

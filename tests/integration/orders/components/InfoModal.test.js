@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { screen, waitFor, fireEvent } from "@testing-library/react";
+import renderAndFlush from "../../../test-utils/renderAndFlush";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 import InfoModal from "components/orders/modals/InfoModal";
@@ -49,7 +50,7 @@ describe("InfoModal Component", () => {
   });
 
   test("renderiza modal de promissórias pendentes", async () => {
-    render(
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="promissorias_pendentes"
@@ -71,7 +72,7 @@ describe("InfoModal Component", () => {
   });
 
   test("renderiza modal de promissórias atrasadas", async () => {
-    render(
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="promissorias_atrasadas"
@@ -92,7 +93,7 @@ describe("InfoModal Component", () => {
   });
 
   test("renderiza modal próximo mês", async () => {
-    render(
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="proximo_mes"
@@ -113,7 +114,7 @@ describe("InfoModal Component", () => {
   });
 
   test("renderiza modal carry over", async () => {
-    render(
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="carry_over"
@@ -158,7 +159,7 @@ describe("InfoModal Component", () => {
       json: async () => mockPromissorias
     });
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="promissorias_pendentes"
@@ -195,7 +196,7 @@ describe("InfoModal Component", () => {
       json: async () => ({ error: "Falha na API" })
     });
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="promissorias_pendentes"
@@ -212,11 +213,11 @@ describe("InfoModal Component", () => {
     });
   });
 
-  test("exibe estado de loading", () => {
+  test("exibe estado de loading", async () => {
     // Mock que nunca resolve para simular loading permanente
     global.fetch.mockImplementation(() => new Promise(() => { }));
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="promissorias_pendentes"
@@ -237,7 +238,7 @@ describe("InfoModal Component", () => {
       json: async () => []
     });
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="promissorias_pendentes"
@@ -254,8 +255,8 @@ describe("InfoModal Component", () => {
     });
   });
 
-  test("fecha modal ao clicar no botão fechar", () => {
-    render(
+  test("fecha modal ao clicar no botão fechar", async () => {
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="promissorias_pendentes"
@@ -276,8 +277,8 @@ describe("InfoModal Component", () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  test("renderiza modal de compras", () => {
-    render(
+  test("renderiza modal de compras", async () => {
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="comprasMes"
@@ -295,8 +296,8 @@ describe("InfoModal Component", () => {
     expect(screen.getByText(/Glossário:/)).toBeInTheDocument();
   });
 
-  test("renderiza modal de lucro bruto", () => {
-    render(
+  test("renderiza modal de lucro bruto", async () => {
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="lucro_bruto"
@@ -311,8 +312,8 @@ describe("InfoModal Component", () => {
     expect(screen.getByText("Lucro bruto")).toBeInTheDocument();
   });
 
-  test("renderiza modal de crescimento", () => {
-    render(
+  test("renderiza modal de crescimento", async () => {
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="crescimento_mom"
@@ -327,8 +328,8 @@ describe("InfoModal Component", () => {
     expect(screen.getByText("Crescimento (mês vs. anterior)")).toBeInTheDocument();
   });
 
-  test("renderiza modal padrão para cardKey desconhecida", () => {
-    render(
+  test("renderiza modal padrão para cardKey desconhecida", async () => {
+    await renderAndFlush(
       <Wrapper>
         <InfoModal
           cardKey="unknown_key"
@@ -359,7 +360,7 @@ describe("InfoModal Component", () => {
         json: async () => []
       });
 
-      render(
+      await renderAndFlush(
         <Wrapper>
           <InfoModal
             cardKey={cardKey}

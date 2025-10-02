@@ -6,39 +6,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
-import { ProductsManager } from "components/products/manager";
-
-// Mocka hooks para evitar debounce + fetchs extras (saldos/movimentos)
-jest.mock("components/products/hooks", () => ({
-  useProducts: () => ({
-    rows: [
-      {
-        id: 11,
-        nome: "TEST FIFO",
-        categoria: "Teste",
-        ativo: true,
-        supplier_labels: [],
-        preco_tabela: 100,
-      },
-    ],
-    total: 1,
-    loading: false,
-    query: { q: "", categoria: "", ativo: "true" },
-    setQ: jest.fn(),
-    setCategoria: jest.fn(),
-    setAtivo: jest.fn(),
-    refresh: jest.fn(),
-  }),
-}));
-
-jest.mock("components/products/useProductCosts", () => ({
-  __esModule: true,
-  default: () => ({
-    costMap: {
-      11: { saldo: 0, custo_medio: 10, ultimo_custo: 9, min_hint: 5 },
-    },
-  }),
-}));
+import { mockProductsBase } from "./products/__utils__/mockProductsHooks";
+// Aplica mock (id 11 com custos específicos) antes de carregar componente alvo
+mockProductsBase({ id: 11, nome: 'TEST FIFO', saldo: 0, custo_medio: 10, ultimo_custo: 9 });
+// Carrega componente após mocks para garantir que hooks sejam substituídos
+// eslint-disable-next-line import/first
+const { ProductsManager } = require("components/products/manager");
 
 function Wrapper({ children }) {
   return (
@@ -103,9 +76,9 @@ describe("ProductsManager gráfico de histórico de custos", () => {
 
     // Mês final pode não renderizar como texto pesquisável em alguns ambientes; tentar mas não falhar se ausente
     const monthNode = screen.queryByText(/2025-09/);
-    if (!monthNode) {
+    if (!monthNode && process.env.DEBUG_MISSING_LABELS) {
       // eslint-disable-next-line no-console
-      console.warn('Aviso: label textual 2025-09 não encontrado; prosseguindo pois métrica carregou.');
+      console.warn('[DEBUG_MISSING_LABELS] label 2025-09 ausente');
     }
 
     // Labels do painel de métricas (Var. Mês / Var. Acumulada)

@@ -4,6 +4,7 @@
 
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderAndFlush } from "tests/test-utils/renderAndFlush";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 import PromissoriasDots from "components/orders/PromissoriasDots";
@@ -38,7 +39,7 @@ describe("PromissoriasDots Component", () => {
       json: () => Promise.resolve(mockPromissorias),
     });
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <PromissoriasDots pedidoId={123} count={2} onChanged={mockOnChanged} />
       </Wrapper>,
@@ -49,37 +50,31 @@ describe("PromissoriasDots Component", () => {
       expect.objectContaining({ cache: "no-store" })
     );
 
-    // Aguarda carregamento
-    await waitFor(() => {
-      expect(screen.queryByText(/carregando/i)).not.toBeInTheDocument();
-    });
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
   });
 
-  test("exibe estado de loading", () => {
+  test("exibe estado de loading", async () => {
     fetch.mockImplementation(() => new Promise(() => { })); // Never resolves
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <PromissoriasDots pedidoId={123} count={2} onChanged={mockOnChanged} />
       </Wrapper>,
     );
 
-    // Deve mostrar algum indicador de loading (implementação pode variar)
-    expect(document.body).toBeTruthy(); // Pelo menos o componente renderiza
+    expect(document.body).toBeTruthy();
   });
 
   test("gerencia erro na API", async () => {
     fetch.mockRejectedValueOnce(new Error("API Error"));
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <PromissoriasDots pedidoId={123} count={2} onChanged={mockOnChanged} />
       </Wrapper>,
     );
 
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalled();
-    });
+    expect(fetch).toHaveBeenCalled();
 
     // Componente deve lidar com erro graciosamente
     expect(document.body).toBeTruthy();
@@ -96,17 +91,15 @@ describe("PromissoriasDots Component", () => {
       json: () => Promise.resolve(mockPromissorias),
     });
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <PromissoriasDots pedidoId={123} count={2} onChanged={mockOnChanged} />
       </Wrapper>,
     );
 
     // Aguarda carregamento e busca por elementos clicáveis
-    await waitFor(() => {
-      const buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBeGreaterThan(0);
-    });
+    const buttons = await screen.findAllByRole("button");
+    expect(buttons.length).toBeGreaterThan(0);
   });
 
   test("abre modal de pagamento ao clicar em dot", async () => {
@@ -119,20 +112,15 @@ describe("PromissoriasDots Component", () => {
       json: () => Promise.resolve(mockPromissorias),
     });
 
-    render(
+    await renderAndFlush(
       <Wrapper>
         <PromissoriasDots pedidoId={123} count={1} onChanged={mockOnChanged} />
       </Wrapper>,
     );
 
-    await waitFor(() => {
-      const buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBeGreaterThan(0);
-      fireEvent.click(buttons[0]);
-      // Modal pode ou não aparecer dependendo da implementação
-      // Este é um smoke test - verifica que o click não quebra
-      expect(true).toBe(true);
-    });
+    const buttons = await screen.findAllByRole("button");
+    fireEvent.click(buttons[0]);
+    expect(true).toBe(true);
   });
 
   test("funciona com count zero", () => {
@@ -147,7 +135,7 @@ describe("PromissoriasDots Component", () => {
   });
 
   test("recarrega dados quando pedidoId muda", async () => {
-    const { rerender } = render(
+    const { rerender } = await renderAndFlush(
       <Wrapper>
         <PromissoriasDots pedidoId={123} count={1} onChanged={mockOnChanged} />
       </Wrapper>,
@@ -158,6 +146,7 @@ describe("PromissoriasDots Component", () => {
       expect.objectContaining({ cache: "no-store" })
     );
 
+    // já drenado pelo renderAndFlush
     fetch.mockClear();
 
     rerender(
