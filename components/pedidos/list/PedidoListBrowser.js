@@ -1,9 +1,8 @@
 import React from 'react';
 import { ConfirmDialog } from 'components/common/ConfirmDialog';
 import { useToast } from 'components/entities/shared/toast';
-import { deleteOrder as deleteOrderService } from 'components/pedido/service';
-import FilterBar from 'components/orders/FilterBar';
-// import { usePedidos } from 'components/orders/shared/hooks'; // legacy
+import { deleteOrder as deleteOrderService } from 'components/pedidos/service';
+import FilterBar from 'components/pedidos/orders/FilterBar';
 import { usePaginatedPedidos } from 'hooks/usePaginatedPedidos';
 import { MSG } from 'components/common/messages';
 import PedidoListRow from './PedidoListRow';

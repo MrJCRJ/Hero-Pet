@@ -7,7 +7,7 @@ import { screen, waitFor } from "@testing-library/react";
 import { renderAndFlush } from "tests/test-utils/renderAndFlush";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
-import PromissoriasList from "components/orders/shared/PromissoriasList";
+import PromissoriasList from "components/pedidos/orders/shared/PromissoriasList";
 
 // Mock fetch global
 global.fetch = jest.fn();

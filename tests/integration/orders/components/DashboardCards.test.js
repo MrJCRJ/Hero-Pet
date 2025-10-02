@@ -5,7 +5,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ThemeProvider } from "contexts/ThemeContext";
-import DashboardCards from "components/orders/dashboard/DashboardCards";
+import DashboardCards from "components/pedidos/orders/dashboard/DashboardCards";
 
 function Wrapper({ children }) {
   return <ThemeProvider>{children}</ThemeProvider>;

@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal } from "../../common/Modal";
+import { Modal } from "../../../common/Modal";
 import { CARD_TITLES } from "../shared/constants";
 import {
   dispatchOrdersFilter,

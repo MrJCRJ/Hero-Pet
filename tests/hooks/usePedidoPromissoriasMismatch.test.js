@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { usePedidoPromissorias } from 'components/pedido/usePedidoPromissorias';
+import { usePedidoPromissorias } from 'components/pedidos/usePedidoPromissorias';
 
 describe('usePedidoPromissorias mismatch', () => {
   it('detecta mismatch e depois corrige quando valorPorPromissoria ajustado', () => {

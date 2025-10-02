@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
-import OrdersDashboard from "components/orders/dashboard/OrdersDashboard";
+import OrdersDashboard from "components/pedidos/orders/dashboard/OrdersDashboard";
 
 // Mock fetch global
 global.fetch = jest.fn();

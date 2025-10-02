@@ -5,7 +5,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from 'contexts/ThemeContext';
 import { ToastProvider } from 'components/entities/shared/toast';
-import { OrdersManager } from 'components/orders';
+import { OrdersManager } from 'components/pedidos/orders';
 import { MSG } from 'components/common/messages';
 
 function Wrapper({ children }) {

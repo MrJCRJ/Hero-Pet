@@ -1,7 +1,7 @@
 import React from "react";
-import { PedidoFormView } from "./pedido/PedidoFormView";
-import { usePedidoFormController } from "./pedido/usePedidoFormController";
-import { fetchSaldo as fetchSaldoService } from "./pedido/service";
+import { PedidoFormView } from "./pedidos/PedidoFormView";
+import { usePedidoFormController } from "./pedidos/usePedidoFormController";
+import { fetchSaldo as fetchSaldoService } from "./pedidos/service";
 
 export function PedidoForm(props) {
   const controller = usePedidoFormController(props);

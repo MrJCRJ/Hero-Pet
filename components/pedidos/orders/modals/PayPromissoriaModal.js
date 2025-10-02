@@ -1,7 +1,7 @@
 import React from "react";
-import { Button } from "../../ui/Button";
-import { Modal } from "../../common/Modal";
-import { useToast } from "../../entities/shared/toast";
+import { Button } from "../../../ui/Button";
+import { Modal } from "../../../common/Modal";
+import { useToast } from "../../../entities/shared/toast";
 
 export default function PayPromissoriaModal({
   pedidoId,

@@ -6,7 +6,7 @@ import React from "react";
 import { render, screen, within, fireEvent } from "@testing-library/react";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
-import { OrdersManager } from "components/orders";
+import { OrdersManager } from "components/pedidos/orders";
 
 // Mock simplificado de fetch para jsdom
 // Smoke: renderiza, lista linhas e abre modal de pagar promissória

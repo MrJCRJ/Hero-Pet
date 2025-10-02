@@ -7,7 +7,7 @@ import { screen, fireEvent } from "@testing-library/react";
 import renderAndFlush from "../../../test-utils/renderAndFlush";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
-import OrdersRow from "components/orders/OrdersRow";
+import OrdersRow from "components/pedidos/orders/OrdersRow";
 
 // Mock das dependências
 global.fetch = jest.fn();

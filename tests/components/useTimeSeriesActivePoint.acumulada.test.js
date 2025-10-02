@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { useTimeSeriesActivePoint } from '../../components/orders/charts/hooks/useTimeSeriesActivePoint';
+import { useTimeSeriesActivePoint } from '../../components/pedidos/orders/charts/hooks/useTimeSeriesActivePoint';
 
 // Helper para montar dados simples
 const buildData = (values) => values.map((v, i) => ({ label: `M${i + 1}`, value: v }));

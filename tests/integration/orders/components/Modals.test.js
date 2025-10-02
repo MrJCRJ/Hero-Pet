@@ -23,7 +23,7 @@ const MockInfoModal = ({ cardKey, monthLabel, onClose }) => (
 );
 
 // Import real do HelpModal
-import HelpModal from "components/orders/modals/HelpModal";
+import HelpModal from "components/pedidos/orders/modals/HelpModal";
 
 describe("Orders Modals", () => {
   describe("InfoModal (Mocked)", () => {

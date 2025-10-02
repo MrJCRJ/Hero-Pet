@@ -1,4 +1,4 @@
-import { persistPedido } from 'components/pedido/serviceHelpers';
+import { persistPedido } from 'components/pedidos/serviceHelpers';
 
 // Mock dos services internos
 jest.mock('components/pedido/service', () => ({
@@ -7,7 +7,7 @@ jest.mock('components/pedido/service', () => ({
   deleteOrder: jest.fn(id => Promise.resolve({ id, deleted: true })),
 }));
 
-import { updateOrder as updateOrderService, createOrder as createOrderService } from 'components/pedido/service';
+import { updateOrder as updateOrderService, createOrder as createOrderService } from 'components/pedidos/service';
 
 describe('persistPedido', () => {
   afterEach(() => {

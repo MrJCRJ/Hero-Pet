@@ -7,7 +7,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderAndFlush } from "tests/test-utils/renderAndFlush";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
-import PromissoriasDots from "components/orders/PromissoriasDots";
+import PromissoriasDots from "components/pedidos/orders/PromissoriasDots";
 
 // Mock das dependências
 global.fetch = jest.fn();

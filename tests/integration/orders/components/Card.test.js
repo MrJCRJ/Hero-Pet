@@ -5,7 +5,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ThemeProvider } from "contexts/ThemeContext";
-import Card from "components/orders/shared/Card";
+import Card from "components/pedidos/orders/shared/Card";
 
 function Wrapper({ children }) {
   return <ThemeProvider>{children}</ThemeProvider>;

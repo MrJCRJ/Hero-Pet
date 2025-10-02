@@ -1,5 +1,5 @@
 import React from "react";
-import LineAreaChart from "../../common/LineAreaChart";
+import LineAreaChart from "../../../common/LineAreaChart";
 import ActivePointPanel from "./ActivePointPanel";
 import TimeSeriesTable from "./TimeSeriesTable";
 import { useTimeSeriesActivePoint } from "./hooks/useTimeSeriesActivePoint";

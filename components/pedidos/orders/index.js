@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useHighlightEntityLoad } from "hooks/useHighlightEntityLoad";
-import { Button } from "../ui/Button";
-import { PedidoForm } from "../PedidoForm";
-import { useToast } from "../entities/shared/toast";
-import { deleteOrder as deleteOrderService } from "../pedido/service";
-import { ConfirmDialog } from "../common/ConfirmDialog";
+import { Button } from "../../ui/Button";
+import { PedidoForm } from "../../PedidoForm";
+import { useToast } from "../../entities/shared/toast";
+import { deleteOrder as deleteOrderService } from "../service";
+import { ConfirmDialog } from "../../common/ConfirmDialog";
 import FilterBar from "./FilterBar";
 // import { usePedidos } from "./shared/hooks"; // legacy (remoção futura) - não usado após migração
 import { usePaginatedPedidos } from "hooks/usePaginatedPedidos";

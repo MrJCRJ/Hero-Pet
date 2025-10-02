@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { usePedidoTotals } from 'components/pedido/usePedidoTotals';
+import { usePedidoTotals } from 'components/pedidos/usePedidoTotals';
 
 // Util simples para construir refs mutáveis aceitas pelo hook
 function buildRefs({ itens, tipo = 'VENDA', numeroPromissorias = 1, frete = '' }) {

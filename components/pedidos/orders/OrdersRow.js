@@ -1,6 +1,6 @@
 import React from "react";
 import { ROW_HOVER, ACTION_BTN_HIDDEN } from "components/common/tableStyles";
-import { Button } from "../ui/Button";
+import { Button } from "../../ui/Button";
 import { formatBRL } from "components/common/format";
 import { formatYMDToBR } from "components/common/date";
 import PromissoriasDots from "./PromissoriasDots";

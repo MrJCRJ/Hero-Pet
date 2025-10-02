@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react';
-import ActivePointPanel from '../../components/orders/charts/ActivePointPanel';
+import ActivePointPanel from '../../components/pedidos/orders/charts/ActivePointPanel';
 
 const basePoint = { label: '2025-01', value: 1000 };
 const prevPoint = { label: '2024-12', value: 800 };

@@ -6,7 +6,7 @@ import { renderHook, act } from "@testing-library/react";
 import {
   useMonthState,
   useDashboardData,
-} from "components/orders/shared/hooks";
+} from "components/pedidos/orders/shared/hooks";
 
 // Mock localStorage
 const localStorageMock = {
@@ -126,7 +126,7 @@ describe("Orders Hooks", () => {
     });
 
     test("gerencia estado de loading", () => {
-      fetch.mockImplementation(() => new Promise(() => {})); // Promise que nunca resolve
+      fetch.mockImplementation(() => new Promise(() => { })); // Promise que nunca resolve
 
       const { result } = renderHook(() => useDashboardData("202403"));
 

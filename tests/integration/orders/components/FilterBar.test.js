@@ -6,7 +6,7 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider } from "contexts/ThemeContext";
-import FilterBar from "components/orders/FilterBar";
+import FilterBar from "components/pedidos/orders/FilterBar";
 
 // Mock das dependências
 global.fetch = jest.fn();

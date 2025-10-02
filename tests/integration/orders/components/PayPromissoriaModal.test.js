@@ -6,7 +6,7 @@ import React from "react";
 import { render, screen, within, fireEvent, waitFor } from "@testing-library/react";
 import { renderAndFlush } from "tests/test-utils/renderAndFlush";
 import { flushAsync } from "tests/test-utils/flushAsync";
-import PayPromissoriaModal from "components/orders/modals/PayPromissoriaModal";
+import PayPromissoriaModal from "components/pedidos/orders/modals/PayPromissoriaModal";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 

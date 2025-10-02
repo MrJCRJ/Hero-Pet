@@ -5,9 +5,9 @@
 import React from "react";
 import { render } from "@testing-library/react";
 import { ThemeProvider } from "contexts/ThemeContext";
-import ComprasHistoryChart from "components/orders/charts/ComprasHistoryChart";
-import LucroBrutoDetails from "components/orders/charts/LucroBrutoDetails";
-import VendasComprasOverlayDetails from "components/orders/charts/VendasComprasOverlayDetails";
+import ComprasHistoryChart from "components/pedidos/orders/charts/ComprasHistoryChart";
+import LucroBrutoDetails from "components/pedidos/orders/charts/LucroBrutoDetails";
+import VendasComprasOverlayDetails from "components/pedidos/orders/charts/VendasComprasOverlayDetails";
 
 function Wrapper({ children }) {
   return <ThemeProvider>{children}</ThemeProvider>;

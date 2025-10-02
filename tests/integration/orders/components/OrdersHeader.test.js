@@ -5,7 +5,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { ThemeProvider } from "contexts/ThemeContext";
-import OrdersHeader from "components/orders/OrdersHeader";
+import OrdersHeader from "components/pedidos/orders/OrdersHeader";
 
 function Wrapper({ children }) {
   return <ThemeProvider>{children}</ThemeProvider>;

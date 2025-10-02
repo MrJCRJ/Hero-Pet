@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { usePedidoPromissorias } from 'components/pedido/usePedidoPromissorias';
+import { usePedidoPromissorias } from 'components/pedidos/usePedidoPromissorias';
 
 function advanceEffects() {
   return new Promise(r => setTimeout(r, 0));

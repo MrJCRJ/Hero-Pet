@@ -3,7 +3,7 @@ import { screen, waitFor, fireEvent } from "@testing-library/react";
 import renderAndFlush from "../../../test-utils/renderAndFlush";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
-import InfoModal from "components/orders/modals/InfoModal";
+import InfoModal from "components/pedidos/orders/modals/InfoModal";
 
 // Mock fetch global
 global.fetch = jest.fn();

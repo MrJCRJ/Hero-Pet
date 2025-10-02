@@ -7,9 +7,7 @@ import { ThemeToggle } from "../components/ThemeToggle";
 import React, { useEffect, useState } from "react";
 import { EntitiesManager } from "components/entities";
 // import { PedidoForm } from "../components/PedidoForm";
-// import { OrdersManager } from "../components/orders";
-// OrdersPage removido; usar OrdersManager que contém botão Adicionar
-import { PedidoListManager } from "../components/pedido/list";
+import { PedidoListManager } from "../components/pedidos/list";
 import { ProductsManager } from "../components/products";
 import { Button } from "../components/ui/Button";
 

@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Button } from 'components/ui/Button';
 import { PedidoForm } from 'components/PedidoForm';
 import { PedidoListBrowser } from './PedidoListBrowser';
-import OrdersDashboard from 'components/orders/dashboard/OrdersDashboard';
+import OrdersDashboard from 'components/pedidos/orders/dashboard/OrdersDashboard';
 
 export function PedidoListManager({ limit = 20 }) {
   const [showForm, setShowForm] = useState(false);

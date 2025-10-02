@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import PromissoriasDots from 'components/orders/PromissoriasDots';
+import PromissoriasDots from 'components/pedidos/orders/PromissoriasDots';
 import React from 'react';
 
 // Helper para mock de fetch sequencial

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { OrdersManager } from ".";
-import { PedidoForm } from "../PedidoForm";
+import { PedidoForm } from "../../PedidoForm";
 
 export function OrdersPage() {
   const [tick, setTick] = useState(0);

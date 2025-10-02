@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { usePedidoItems } from 'components/pedido/usePedidoItems';
+import { usePedidoItems } from 'components/pedidos/usePedidoItems';
 
 describe('usePedidoItems', () => {
   it('inicializa com item vazio quando sem editingOrder', () => {
