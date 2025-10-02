@@ -22,6 +22,33 @@ async function api(method, path, body, expectOk = true) {
 
 describe("API Pedidos - Promissórias", () => {
   let cliente, fornecedor, produto;
+  // Helpers de data dinâmica para evitar flakiness conforme a data atual avança
+  function pad(n) {
+    return String(n).padStart(2, "0");
+  }
+  function today() {
+    const d = new Date();
+    return { y: d.getFullYear(), m: d.getMonth(), d: d.getDate() };
+  }
+  function dateOffset(days) {
+    const { y, m, d } = today();
+    const base = new Date(y, m, d + days);
+    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}`;
+  }
+  // Convenções:
+  // firstFuture1 = +5 dias (para primeira promissória futura -> PENDENTE)
+  // firstFuture2 = +35 dias (segunda parcela futura)
+  const firstFuture1 = dateOffset(5);
+  // NOTA: antes utilizávamos offsets de 35 e 65 dias para prever as parcelas 2 e 3.
+  // Isso falha em meses de diferentes comprimentos (ex: fevereiro) porque o backend
+  // gera o cronograma adicionando meses civis (setMonth +1, +2) à primeira data.
+  // Mantemos only firstFuture1 baseado em offset e derivamos as demais via addMonths.
+  function addMonths(dateStr, n) {
+    const [yyyy, mm, dd] = dateStr.split("-").map(Number);
+    const dt = new Date(yyyy, mm - 1, dd);
+    dt.setMonth(dt.getMonth() + n);
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+  }
   function randomDigits(n) {
     let s = "";
     for (let i = 0; i < n; i++) s += Math.floor(Math.random() * 10);
@@ -133,7 +160,7 @@ describe("API Pedidos - Promissórias", () => {
       tipo: "VENDA",
       partner_entity_id: cliente.id,
       numero_promissorias: 3,
-      data_primeira_promissoria: "2025-10-01",
+      data_primeira_promissoria: firstFuture1,
       itens: [{ produto_id: produto.id, quantidade: 1, preco_unitario: 150 }],
     });
 
@@ -147,13 +174,14 @@ describe("API Pedidos - Promissórias", () => {
 
     expect(promissorias).toHaveLength(3);
     expect(promissorias[0].seq).toBe(1);
-    expect(promissorias[0].due_date).toBe("2025-10-01");
+    expect(promissorias[0].due_date).toBe(firstFuture1);
     expect(promissorias[0].amount).toBe("50.00");
     expect(promissorias[0].status).toBe("PENDENTE");
     expect(promissorias[0].paid_at).toBeNull();
 
-    expect(promissorias[1].due_date).toBe("2025-11-01");
-    expect(promissorias[2].due_date).toBe("2025-12-01");
+    // Próximas parcelas são geradas mês a mês a partir da primeira
+    expect(promissorias[1].due_date).toBe(addMonths(firstFuture1, 1));
+    expect(promissorias[2].due_date).toBe(addMonths(firstFuture1, 2));
   });
 
   test("deve respeitar cronograma manual (promissoria_datas) no POST", async () => {

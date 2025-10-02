@@ -6,8 +6,8 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { PedidoFormView } from "components/pedido/PedidoFormView";
-import { usePedidoFormController } from "components/pedido/usePedidoFormController";
+import { PedidoFormView } from "components/pedidos/PedidoFormView";
+import { usePedidoFormController } from "components/pedidos/usePedidoFormController";
 import { ToastProvider } from "components/entities/shared/toast";
 import { ThemeProvider } from "contexts/ThemeContext";
 

@@ -106,11 +106,37 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
           throw new Error(`Falha ao carregar entities: ${res.status}`);
         const data = await res.json();
         if (incremental) {
-          setRows((prev) => [...prev, ...data.data]);
-          setTotal(data.total);
+          const incoming = Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+              ? data
+              : [];
+          const incomingTotal =
+            typeof data?.total === "number"
+              ? data.total
+              : Array.isArray(data?.data)
+                ? data.data.length
+                : Array.isArray(data)
+                  ? data.length
+                  : 0;
+          setRows((prev) => [...prev, ...incoming]);
+          setTotal(incomingTotal);
         } else {
-          setRows(data.data);
-          setTotal(data.total);
+          const incoming = Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+              ? data
+              : [];
+          const incomingTotal =
+            typeof data?.total === "number"
+              ? data.total
+              : Array.isArray(data?.data)
+                ? data.data.length
+                : Array.isArray(data)
+                  ? data.length
+                  : 0;
+          setRows(incoming);
+          setTotal(incomingTotal);
         }
       } catch (e) {
         if (e.name !== "AbortError") setError(e.message);

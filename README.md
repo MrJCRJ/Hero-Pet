@@ -1,5 +1,9 @@
 # Hero-Pet
 
+<p align="left">
+  <img alt="Act Warnings" src="https://github.com/MrJCRJ/Hero-Pet/actions/workflows/act-warnings.yml/badge.svg" />
+</p>
+
 Sistema de gestão (Entidades, Produtos e Estoque) em Next.js + Node.js com TailwindCSS e Jest. O backend expõe rotas versionadas em `pages/api/v1/*` e usa Postgres via Docker e migrações em `infra/migrations/`.
 
 ## Sumário rápido
@@ -119,6 +123,60 @@ Schema relevante em `infra/migrations`:
 - Exemplos recentes:
   - Produtos: `tests/api/v1/produtos/post.test.js`, `get.test.js`, `put-delete.test.js`, `pagination-meta.test.js`.
   - Estoque: `tests/api/v1/estoque/movimentos-and-saldos.test.js`, `get-movimentos.test.js`, `get-movimentos-filters.test.js`.
+
+### renderAndFlush (UI com efeitos em cadeia)
+
+Para componentes que disparam sequência de efeitos (ex: `fetch -> setState(data) -> setLoading(false)`), usamos o helper `tests/test-utils/renderAndFlush.js`.
+
+Motivação:
+
+- Eliminar flakiness baseada em `setTimeout` arbitrário.
+- Garantir que warnings de `act()` sejam capturados e (em modo estrito `ACT_STRICT=1`) quebrem o teste.
+
+Uso básico:
+
+```js
+import renderAndFlush from "tests/test-utils/renderAndFlush";
+
+test("exemplo", async () => {
+  await renderAndFlush(<MeuComponente />); // 2 ciclos padrão
+});
+```
+
+Quando há mais efeitos encadeados (ex: dashboards), aumente ciclos:
+
+```js
+await renderAndFlush(<Dashboard />, { cycles: 3 });
+```
+
+Aplicado recentemente a: `OrdersRow`, `OrdersDashboard`, `InfoModal`, `PromissoriasList`, `PromissoriasDots`, `PayPromissoriaModal`.
+
+Scripts úteis:
+
+- `npm run test:act-debug` – mostra warnings de `act()`.
+- `npm run test:act-strict` – falha se houver qualquer warning.
+
+Workflow `act-warnings` em CI roda ambos (badge no topo indica status). Documentação complementar em `tests/README.md`.
+
+### Guia de Estilo / Padronização
+
+Políticas de tamanho e modularização:
+
+- Componentes > 350 linhas: falha em `npm run lint:components` (extraia subcomponentes / hook de lógica).
+- Hooks > 400 linhas: falha em `npm run lint:hooks` (dividir em sub-hooks focados). Exceção temporária: comentar `// hooks-lint: allow-large (motivo)` nas 5 primeiras linhas.
+- Forms complexos seguem padrão Hook + Seções (ex.: ProductForm, PedidoForm refatorado).
+
+Refactors estruturais em andamento / plano:
+
+- Split do controller de pedido documentado em `docs/pedido-controller-split.md` (divide em: usePedidoTipoParceiro, usePedidoItens, usePedidoPromissorias, usePedidoTotals, usePedidoSideEffects...).
+
+Checklist antes de criar/alterar grande bloco:
+
+1. Existe util/hook reutilizável já pronto? Reutilize antes de reimplementar.
+2. Tamanho após mudança permanece abaixo dos limites? Caso contrário, extraia.
+3. Adicionou testes (feliz + edge principal)?
+4. Removido código morto / duplicado?
+5. Rodou `lint:components`, `lint:hooks` e suite relevante de testes.
 
 Para rodar somente um conjunto:
 

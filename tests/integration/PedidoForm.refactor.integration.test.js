@@ -164,7 +164,7 @@ describe("PedidoForm Refatoração - Integração", () => {
     expect(dataInput).toHaveValue("2024-12-31");
   });
 
-  test("cronograma: travar manual e mostrar inputs + badge PAGO + confirmar ao editar paga", async () => {
+  test("cronograma: travar manual e mostrar inputs + badge PAGO + avisar (toast) ao editar parcela paga", async () => {
     const user = userEvent.setup();
 
     const editingOrder = {
@@ -217,12 +217,14 @@ describe("PedidoForm Refatoração - Integração", () => {
       );
     });
 
-    // Ao tentar editar a 1ª (paga), deve exibir alerta informativo (sem bloquear)
-    const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
+    // Ao tentar editar a 1ª (paga), deve exibir toast informativo (sem bloquear)
     const paidInput = screen.getAllByDisplayValue("2025-10-01")[0];
     await user.clear(paidInput);
     await user.type(paidInput, "2025-10-10");
-    expect(alertSpy).toHaveBeenCalled();
+    // Toast de aviso deve aparecer com trecho 'já está PAGA'
+    await waitFor(() => {
+      expect(screen.getByText(/já está PAGA/i)).toBeInTheDocument();
+    });
     // A alteração deve persistir mesmo sendo parcela paga
     expect(paidInput).toHaveValue("2025-10-10");
 
@@ -230,6 +232,8 @@ describe("PedidoForm Refatoração - Integração", () => {
     await user.clear(paidInput);
     await user.type(paidInput, "2025-10-15");
     expect(paidInput).toHaveValue("2025-10-15");
-    alertSpy.mockRestore();
+    // Segunda edição não deve gerar novo toast (o componente evita repetição)
+    const warnToasts = screen.getAllByText(/já está PAGA/i);
+    expect(warnToasts.length).toBe(1);
   });
 });
