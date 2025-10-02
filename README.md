@@ -158,6 +158,10 @@ Scripts úteis:
 
 Workflow `act-warnings` em CI roda ambos (badge no topo indica status). Documentação complementar em `tests/README.md`.
 
+### Guia de Estilo / Padronização
+
+Ver `CODE_STYLE.md` para limites de tamanho, critérios de extração (hooks, subcomponentes) e checklist de refatoração.
+
 Para rodar somente um conjunto:
 
 ```bash

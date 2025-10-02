@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useToast } from "components/entities/shared";
 import { toastError } from "components/entities/shared/toast";
 import { MSG } from "components/common/messages";
-import LineAreaChart from "components/common/LineAreaChart";
 import { Modal } from "components/common/Modal";
 import { ConfirmDialog } from "components/common/ConfirmDialog"; // ainda usado para toggle
 import { ProductForm } from "./ProductForm";
@@ -18,6 +17,7 @@ import { useProductHardDelete } from "./useProductHardDelete";
 import { useProductToggle } from "./useProductToggle";
 import { ProductActionsModal } from "./ProductActionsModal";
 import { ProductDetailModal } from "./ProductDetailModal";
+import ProductCostHistoryChart from "./ProductCostHistoryChart";
 import { ProductHardDeleteDialog } from "./ProductHardDeleteDialog";
 import { useHighlightEntityLoad } from "hooks/useHighlightEntityLoad";
 // import { ProductDetail } from "./Detail";
@@ -241,20 +241,14 @@ export function ProductsManager({ linkSupplierId }) {
         searchInputRef={searchInputRef}
       />
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            if (!topData && !topLoading) fetchTopProdutos();
-            openTopModal();
-          }}
-          className="text-left flex-1 min-w-[200px] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-3 hover:bg-[var(--color-bg-primary)] transition-colors"
-        >
-          <div className="text-xs opacity-70">Insights</div>
-          <div className="text-sm font-semibold">Top produtos por lucro</div>
-          <div className="text-[11px] opacity-60 mt-1">Clique para ver ranking</div>
-        </button>
-      </div>
+      <ProductsInsightsButton
+        loading={topLoading}
+        hasData={!!topData}
+        onClick={() => {
+          if (!topData && !topLoading) fetchTopProdutos();
+          openTopModal();
+        }}
+      />
 
       <div className="border border-[var(--color-border)] rounded-md overflow-hidden">
         <table className="w-full text-left">
@@ -370,84 +364,21 @@ export function ProductsManager({ linkSupplierId }) {
   );
 }
 
-// Componente de gráfico simples inline (SVG) — linha custo médio mensal
-function ProductCostHistoryChart({ data, loading }) {
-  const parsed = Array.isArray(data)
-    ? data
-      .filter((d) => d && d.month && Number.isFinite(Number(d.avg_cost)))
-      .map((d) => ({ label: d.month, value: Number(d.avg_cost) }))
-    : [];
-  const [focused, setFocused] = React.useState(null);
-  const firstVal = parsed.length ? parsed[0].value : 0;
-  const lastPoint = parsed[parsed.length - 1] || null;
-  const active = focused || lastPoint;
-  const acumuladaPct =
-    active && firstVal !== 0 ? ((active.value - firstVal) / firstVal) * 100 : 0;
-  const prevPoint =
-    active && parsed.length > 1
-      ? (() => {
-        const idx = parsed.findIndex((p) => p.label === active.label);
-        if (idx > 0) return parsed[idx - 1];
-        return null;
-      })()
-      : null;
-
-  const momPct =
-    prevPoint && active
-      ? ((active.value - prevPoint.value) / prevPoint.value) * 100
-      : 0;
-
+// Botão de Insights extraído para reduzir o escopo do manager
+function ProductsInsightsButton({ onClick, loading, hasData }) {
   return (
-    <div className="p-2 border rounded bg-[var(--color-bg-secondary)]/40">
-      {loading && (
-        <div className="text-xs opacity-60">Carregando custos...</div>
-      )}
-      {!loading && parsed.length === 0 && (
-        <div className="text-xs opacity-60">Sem histórico suficiente.</div>
-      )}
-      {parsed.length > 0 && (
-        <div className="space-y-3">
-          <LineAreaChart
-            data={parsed}
-            onFocus={(label) => {
-              const f = parsed.find((p) => p.label === label) || null;
-              setFocused(f);
-            }}
-            onBlur={() => setFocused(null)}
-          />
-          <div className="flex gap-6 text-xs">
-            <div>
-              <div className="text-[10px] uppercase opacity-60 tracking-wide">
-                Var. Mês
-              </div>
-              <div
-                className={`text-sm font-semibold ${!prevPoint ? "opacity-50" : momPct > 0 ? "text-green-500" : momPct < 0 ? "text-red-400" : ""}`}
-              >
-                {!prevPoint
-                  ? "—"
-                  : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase opacity-60 tracking-wide">
-                Var. Acumulada
-              </div>
-              <div
-                className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
-              >
-                {active
-                  ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(
-                    1,
-                  )}%`
-                  : "—"}
-              </div>
-            </div>
-          </div>
-          <div className="pt-2 border-t text-[11px] opacity-70 leading-snug">
-            Passe o mouse sobre os pontos. Sem hover mostra o último mês.
-          </div>
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={onClick}
+        className="text-left flex-1 min-w-[200px] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-3 hover:bg-[var(--color-bg-primary)] transition-colors"
+      >
+        <div className="text-xs opacity-70">Insights</div>
+        <div className="text-sm font-semibold">Top produtos por lucro</div>
+        <div className="text-[11px] opacity-60 mt-1">
+          {loading && !hasData ? 'Carregando...' : 'Clique para ver ranking'}
         </div>
-      )}
+      </button>
     </div>
   );
 }

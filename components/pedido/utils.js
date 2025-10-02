@@ -37,15 +37,15 @@ export function mapEditingOrderToItems(editingOrder) {
     ...(it.custo_fifo_unitario == null && it.custo_base_unitario == null
       ? {}
       : {
-          custo_fifo_unitario:
-            it.custo_fifo_unitario != null
-              ? Number(it.custo_fifo_unitario)
-              : it.custo_fifo_unitario,
-          custo_base_unitario:
-            it.custo_base_unitario != null
-              ? Number(it.custo_base_unitario)
-              : it.custo_base_unitario,
-        }),
+        custo_fifo_unitario:
+          it.custo_fifo_unitario != null
+            ? Number(it.custo_fifo_unitario)
+            : it.custo_fifo_unitario,
+        custo_base_unitario:
+          it.custo_base_unitario != null
+            ? Number(it.custo_base_unitario)
+            : it.custo_base_unitario,
+      }),
   }));
 }
 
@@ -161,4 +161,39 @@ export function computeMargensPosComissao(lucroBruto, totalVenda, comissoes) {
     if (!Number.isFinite(ln)) return null;
     return Number(((ln / tv) * 100).toFixed(2));
   });
+}
+
+/**
+ * Distribui frete proporcional à quantidade de cada item.
+ * Mantém soma final ajustada para bater exatamente com o total (corrige arredondamento).
+ * @param {Array} itens
+ * @param {number|string} freteTotal
+ * @returns {number[]} array alinhado com itens
+ */
+export function computeFreteShares(itens, freteTotal) {
+  const totalFrete = Number(freteTotal || 0);
+  if (!Array.isArray(itens) || itens.length === 0) return [];
+  if (!Number.isFinite(totalFrete) || totalFrete <= 0) return itens.map(() => 0);
+  const quants = itens.map((it) => {
+    const qtd = Number(it?.quantidade);
+    return Number.isFinite(qtd) && qtd > 0 ? qtd : 0;
+  });
+  const sumQtd = quants.reduce((acc, q) => acc + (Number.isFinite(q) ? q : 0), 0);
+  if (!Number.isFinite(sumQtd) || sumQtd <= 0) return itens.map(() => 0);
+  const raw = quants.map((q) => (q > 0 ? (totalFrete * q) / sumQtd : 0));
+  const rounded = raw.map((v) => Number(v.toFixed(2)));
+  const sumRounded = rounded.reduce((a, b) => a + b, 0);
+  let diff = Number((totalFrete - sumRounded).toFixed(2));
+  if (diff !== 0) {
+    let idx = 0;
+    let maxQtd = -Infinity;
+    for (let i = 0; i < quants.length; i++) {
+      if (quants[i] > maxQtd) {
+        maxQtd = quants[i];
+        idx = i;
+      }
+    }
+    rounded[idx] = Number((rounded[idx] + diff).toFixed(2));
+  }
+  return rounded;
 }

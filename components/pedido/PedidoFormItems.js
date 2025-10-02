@@ -1,12 +1,11 @@
 import React from "react";
-import { Button } from "../ui/Button";
 import { SelectionModal } from "../common/SelectionModal";
-import {
-  formatQty,
-  computeComissoes,
-  computeMargensPosComissao,
-  computeLucroBruto,
-} from "./utils";
+// utils principais (computeItemTotal default importado abaixo)
+import { computeItemTotal as defaultComputeItemTotal } from './utils';
+import { computeFreteShares } from './utils';
+import { useAutoLoadItemCosts } from './hooks/useAutoLoadItemCosts';
+import PedidoItemRow from './PedidoItemRow';
+import PedidoFormResumoLucro from './PedidoFormResumoLucro';
 import { QuickAddItemRow } from "./QuickAddItemRow";
 import {
   fetchLastPurchasePrice,
@@ -36,15 +35,13 @@ export function PedidoFormItems(props) {
   } = props;
 
   const totalItens = React.useMemo(() => {
+    const fn = computeItemTotal || defaultComputeItemTotal;
     try {
       return (itens || []).reduce((acc, it) => {
-        const t = computeItemTotal ? computeItemTotal(it) : null;
-        const n = t != null && Number.isFinite(Number(t)) ? Number(t) : 0;
-        return acc + n;
+        const t = fn(it);
+        return acc + (Number.isFinite(t) ? Number(t) : 0);
       }, 0);
-    } catch (_) {
-      return 0;
-    }
+    } catch (_) { return 0; }
   }, [itens, computeItemTotal]);
 
   // Percentuais configuráveis para referência de comissão (default 3 e 5)
@@ -57,82 +54,11 @@ export function PedidoFormItems(props) {
       .slice(0, 4);
   }, [percRefInput]);
 
-  // Auto-carrega custos para itens de uma VENDA que ainda não possuem custos (custo FIFO ou base)
-  React.useEffect(() => {
-    if (tipo !== "VENDA") return;
-    (itens || []).forEach((it, idx) => {
-      if (!it) return;
-      const hasProduto = !!it.produto_id;
-      const temCustos =
-        (it.custo_fifo_unitario != null && it.custo_fifo_unitario > 0) ||
-        (it.custo_base_unitario != null && it.custo_base_unitario > 0);
-      const jaTentou = it.custo_fetch_tentado;
-      if (hasProduto && !temCustos && !jaTentou) {
-        onUpdateItem(idx, {
-          custo_carregando: true,
-          custo_fetch_tentado: true,
-        });
-        Promise.all([
-          fetchSaldoDetalhado(it.produto_id),
-          fetchSaldoFifoDetalhado(it.produto_id),
-        ])
-          .then(([det, fifo]) => {
-            const custoFifo =
-              Number.isFinite(fifo.custo_medio_fifo) &&
-              fifo.custo_medio_fifo > 0
-                ? fifo.custo_medio_fifo
-                : null;
-            const baseLegacy = (() => {
-              const cm = Number(det.custo_medio);
-              const ult = Number(det.ultimo_custo);
-              if (Number.isFinite(cm) && cm > 0) return cm;
-              if (Number.isFinite(ult) && ult > 0) return ult;
-              return null;
-            })();
-            onUpdateItem(idx, {
-              custo_fifo_unitario: custoFifo,
-              custo_base_unitario: baseLegacy,
-              produto_saldo: det.saldo ?? it.produto_saldo ?? null,
-              custo_carregando: false,
-            });
-          })
-          .catch(() => {
-            onUpdateItem(idx, { custo_carregando: false });
-          });
-      }
-    });
-  }, [tipo, itens, onUpdateItem]);
+  useAutoLoadItemCosts({ tipo, itens, onUpdateItem });
 
   const freteShares = React.useMemo(() => {
-    if (tipo !== "COMPRA") return itens.map(() => 0);
-    const totalFrete = Number(freteTotal || 0);
-    if (!Number.isFinite(totalFrete) || totalFrete <= 0)
-      return itens.map(() => 0);
-    const quants = itens.map((it) => {
-      const qtd = Number(it?.quantidade);
-      return Number.isFinite(qtd) && qtd > 0 ? qtd : 0;
-    });
-    const sumQtd = quants.reduce(
-      (acc, q) => acc + (Number.isFinite(q) ? q : 0),
-      0,
-    );
-    if (!Number.isFinite(sumQtd) || sumQtd <= 0) return itens.map(() => 0);
-    const raw = quants.map((q) => (q > 0 ? (totalFrete * q) / sumQtd : 0));
-    const rounded = raw.map((v) => Number(v.toFixed(2)));
-    const sumRounded = rounded.reduce((a, b) => a + b, 0);
-    let diff = Number((totalFrete - sumRounded).toFixed(2));
-    if (diff !== 0) {
-      let idx = 0;
-      let maxQtd = -Infinity;
-      for (let i = 0; i < quants.length; i++) {
-        if (quants[i] > maxQtd) {
-          maxQtd = quants[i];
-          idx = i;
-        }
-      }
-      rounded[idx] = Number((rounded[idx] + diff).toFixed(2));
-    }
-    return rounded;
+    if (tipo !== 'COMPRA') return itens.map(() => 0);
+    return computeFreteShares(itens, freteTotal);
   }, [tipo, freteTotal, itens]);
 
   return (
@@ -196,106 +122,18 @@ export function PedidoFormItems(props) {
           </thead>
           <tbody className="divide-y">
             {itens.map((it, idx) => (
-              <tr key={idx} className={`${getItemDiffClass(it) || ""}`}>
-                <td className="px-2 py-2 max-w-[240px]">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">
-                      {it.produto_label || "Produto não selecionado"}
-                    </span>
-                    {getItemDiffIcon(it)}
-                  </div>
-                </td>
-                <td className="px-2 py-2 text-right whitespace-nowrap">
-                  {formatQty(it.quantidade)}
-                </td>
-                <td className="px-2 py-2 text-right whitespace-nowrap">
-                  {it.preco_unitario !== ""
-                    ? formatBRL(Number(it.preco_unitario))
-                    : "—"}
-                </td>
-                <td className="px-2 py-2 text-right whitespace-nowrap">
-                  {it.desconto_unitario !== ""
-                    ? formatBRL(Number(it.desconto_unitario))
-                    : "—"}
-                </td>
-                <td className="px-2 py-2 text-right font-semibold whitespace-nowrap">
-                  {(() => {
-                    const t = computeItemTotal(it);
-                    return t != null ? formatBRL(Number(t)) : "—";
-                  })()}
-                </td>
-                {tipo === "VENDA" && (
-                  <td className="px-2 py-2 text-right whitespace-nowrap">
-                    {(() => {
-                      // Indicador de loading enquanto custos ainda não chegaram
-                      if (it.custo_carregando) {
-                        return (
-                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                            <span
-                              className="inline-block w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"
-                              aria-label="Carregando lucro"
-                            />
-                            <span>…</span>
-                          </span>
-                        );
-                      }
-                      const qtd = Number(it.quantidade || 0);
-                      const preco =
-                        Number(it.preco_unitario || 0) -
-                        Number(it.desconto_unitario || 0);
-                      const custoRaw = Number(
-                        it.custo_fifo_unitario != null
-                          ? it.custo_fifo_unitario
-                          : it.custo_base_unitario,
-                      );
-                      if (!Number.isFinite(qtd) || qtd <= 0) return "—";
-                      if (!Number.isFinite(preco) || preco <= 0) return "—";
-                      if (!Number.isFinite(custoRaw) || custoRaw <= 0)
-                        return "—";
-                      const lucro = (preco - custoRaw) * qtd;
-                      const cls =
-                        lucro > 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : lucro < 0
-                            ? "text-red-600 dark:text-red-400"
-                            : "opacity-70";
-                      return <span className={cls}>{formatBRL(lucro)}</span>;
-                    })()}
-                  </td>
-                )}
-                {tipo === "COMPRA" && Number(freteTotal || 0) > 0 && (
-                  <td className="px-2 py-2 text-right text-xs whitespace-nowrap">
-                    {formatBRL(Number(freteShares?.[idx] || 0))}
-                  </td>
-                )}
-                <td className="px-2 py-2 text-right">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    fullWidth={false}
-                    onClick={() => onRemoveItem(idx)}
-                    aria-label="Remover item"
-                    className="px-2 py-1 text-white"
-                    title="Remover item"
-                    icon={(props) => (
-                      <svg
-                        {...props}
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M6 7h12m-9 4v6m6-6v6M9 7l1-2h4l1 2m-9 0h12l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7z"
-                        />
-                      </svg>
-                    )}
-                  />
-                </td>
-              </tr>
+              <PedidoItemRow
+                key={idx}
+                it={it}
+                idx={idx}
+                tipo={tipo}
+                computeItemTotal={computeItemTotal || defaultComputeItemTotal}
+                getItemDiffClass={getItemDiffClass}
+                getItemDiffIcon={getItemDiffIcon}
+                onRemoveItem={onRemoveItem}
+                freteShares={freteShares}
+                freteTotal={freteTotal}
+              />
             ))}
           </tbody>
         </table>
@@ -331,109 +169,15 @@ export function PedidoFormItems(props) {
       )}
 
       <div className="flex justify-end mt-3 gap-6 items-start flex-wrap">
-        {tipo === "VENDA" &&
-          (() => {
-            const { totalLucro } = computeLucroBruto(itens);
-            const algumCarregando = itens.some((it) => it?.custo_carregando);
-            // Percentuais dinâmicos de referência (padrão 3% e 5%) calculados sobre total da venda
-            const percentuaisRef = percentuaisRefParsed.length
-              ? percentuaisRefParsed
-              : [3, 5];
-            const comissoesRef = computeComissoes(totalItens, percentuaisRef);
-            const lucroPos = comissoesRef.map((c) => totalLucro - c);
-            const margensPos = computeMargensPosComissao(
-              totalLucro,
-              totalItens,
-              comissoesRef,
-            );
-            const lucroCls =
-              totalLucro > 0
-                ? "text-emerald-600 dark:text-emerald-400"
-                : totalLucro < 0
-                  ? "text-red-600 dark:text-red-400"
-                  : "opacity-70";
-            return (
-              <div className="flex flex-col items-end gap-1 text-xs">
-                <div className="flex items-center gap-3 flex-wrap justify-end">
-                  <span className="font-medium">Total:</span>
-                  <span className="font-semibold">
-                    {formatBRL(Number(totalItens || 0))}
-                  </span>
-                  <span className="font-medium">Lucro:</span>
-                  <span className={`font-semibold ${lucroCls}`}>
-                    {algumCarregando && totalLucro === 0
-                      ? "…"
-                      : formatBRL(totalLucro)}
-                  </span>
-                  <label className="flex items-center gap-1 text-[10px] opacity-70">
-                    <span>Ref %:</span>
-                    <input
-                      type="text"
-                      value={percRefInput}
-                      onChange={(e) => setPercRefInput(e.target.value)}
-                      className="px-1 py-0.5 border rounded w-24 bg-[var(--color-bg-primary)] focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      title="Digite percentuais separados por vírgula. Ex: 3,5 ou 2,4,6"
-                    />
-                  </label>
-                  {percentuaisRef.map((p, idx) => {
-                    const comVal = comissoesRef[idx];
-                    const lp = lucroPos[idx];
-                    const marg = margensPos[idx];
-                    const lucroPosCls =
-                      lp > 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : lp < 0
-                          ? "text-red-600 dark:text-red-400"
-                          : "opacity-70";
-                    return (
-                      <React.Fragment key={p}>
-                        <span
-                          className="font-medium"
-                          title={`Comissão de ${p}% sobre o total da venda`}
-                        >
-                          Comissão {p}%:
-                        </span>
-                        <span
-                          className={`font-semibold ${comVal > 0 ? "text-amber-600 dark:text-amber-400" : "opacity-70"}`}
-                          title={`Valor da comissão de ${p}%`}
-                        >
-                          {formatBRL(comVal)}
-                        </span>
-                        <span
-                          className="font-medium"
-                          title={`Lucro após deduzir ${p}% do total da venda`}
-                        >
-                          Lucro - {p}%:
-                        </span>
-                        <span
-                          className={`font-semibold ${lucroPosCls}`}
-                          title={`Lucro final após deduzir ${p}%`}
-                        >
-                          {formatBRL(lp)}
-                        </span>
-                        {marg != null && (
-                          <span
-                            className="text-[10px] opacity-70"
-                            title={`Margem % após comissão ${p}%`}
-                          >
-                            ({marg}% marg.)
-                          </span>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-                <div className="opacity-60 text-[10px] leading-snug max-w-[560px] text-right">
-                  Comissão X% calculada sobre o TOTAL da venda. Edite a lista de
-                  percentuais em &quot;Ref %&quot; (máx 4). Lucro - X% = Lucro
-                  total - Comissão X%.
-                </div>
-                <div className={`text-[11px] mt-1 font-medium ${lucroCls}`}>
-                  {`Lucro Total: ${formatBRL(totalLucro)}`}
-                </div>
-              </div>
-            );
-          })()}
+        {tipo === 'VENDA' && (
+          <PedidoFormResumoLucro
+            itens={itens}
+            totalItens={totalItens}
+            percentuaisRefParsed={percentuaisRefParsed}
+            percRefInput={percRefInput}
+            setPercRefInput={setPercRefInput}
+          />
+        )}
         <div className="text-right text-sm font-semibold">
           {(() => {
             const freteVal = tipo === "COMPRA" ? Number(freteTotal || 0) : 0;
@@ -470,7 +214,7 @@ export function PedidoFormItems(props) {
                     const saldo = det.saldo;
                     const custoFifo =
                       Number.isFinite(fifo.custo_medio_fifo) &&
-                      fifo.custo_medio_fifo > 0
+                        fifo.custo_medio_fifo > 0
                         ? fifo.custo_medio_fifo
                         : null;
                     const baseLegacy = (() => {
