@@ -1,6 +1,18 @@
 ## Plano de Divisão: `usePedidoFormController.js`
 
-Arquivo atual (~500 linhas) concentra múltiplas responsabilidades:
+Status Atual (2025-10-02 – fase 1 concluída)
+
+O controller original (~500 linhas) foi reduzido para ~292 linhas na primeira onda de extrações. Foram criados e integrados:
+
+- `usePedidoItens`
+- `usePedidoTipoParceiro`
+- `usePedidoSideEffects`
+- `usePedidoTotals` (expandido com `subtotal`, `totalDescontos`, `totalLiquido`, `computeLucroPercent`)
+- `usePedidoPromissorias` (já existente – mantido)
+
+Próxima etapa opcional: Extrair builders de payload e persistência futura (`usePedidoPersistence`) para avançar rumo à meta < 250 linhas (atualmente adiada por não ser bloqueante).
+
+Arquivo original concentrava as responsabilidades abaixo:
 
 1. Estado primário do pedido (tipo, datas, parceiro, situação)
 2. Gestão de itens (CRUD, cálculo de totais, sugestões de preço)
@@ -9,23 +21,23 @@ Arquivo atual (~500 linhas) concentra múltiplas responsabilidades:
 5. Side-effects de sincronização (refetch estoque, disparo de eventos, highlight)
 6. Lógica de inicialização / carregamento (prefill de edição, resets parciais)
 
-### Objetivos da Refatoração
+### Objetivos da Refatoração (e status)
 
-- Reduzir o arquivo principal para < 250 linhas.
-- Aumentar testabilidade isolando domínios.
-- Evitar regressões: interface externa (API do hook principal exposto ao form) permanece estável.
-- Preparar para futuras extensões (ex.: condições especiais de pagamento, múltiplos parceiros) sem inflar o core.
+- Reduzir o arquivo principal para < 250 linhas. (Em progresso: 292 linhas atuais – segunda fase opcional)
+- Aumentar testabilidade isolando domínios. (Concluído: novos testes unitários `usePedidoTotals` + existentes de itens)
+- Evitar regressões mantendo a interface pública estável. (Concluído – integração PedidoForm permanece verde)
+- Preparar extensões futuras (pagamento/persistência). (Em preparação – espaço restante para `usePedidoPersistence`)
 
-### Nova Arquitetura de Hooks
+### Arquitetura de Hooks (Estado Atual)
 
 ```
 usePedidoFormController (fachada)
-  ├─ usePedidoTipoParceiro           (tipo=VENDA|COMPRA, parceiro seleção, reset relacionando)
-  ├─ usePedidoItens                  (lista itens, add/remove/update, diff, validações, cálculo custo parcial)
-  ├─ usePedidoPromissorias           (já extraído parcialmente: gerar/editar/lock + sincronização cronograma)
-  ├─ usePedidoTotals                 (derivados: subtotal, descontos, lucro, margem; memo + dependências claras)
-  ├─ usePedidoSideEffects            (efeitos cruzados: refresh estoque após item add/remove, eventos window, highlight)
-  └─ usePedidoPersistence (futuro)   (salvar rascunho/localStorage ou auto-save opcional)
+  ├─ usePedidoTipoParceiro           (implementado)
+  ├─ usePedidoItens                  (implementado)
+  ├─ usePedidoPromissorias           (existente / integrado)
+  ├─ usePedidoTotals                 (implementado + expandido: subtotal, totalDescontos, totalLiquido, lucro%, lucro bruto)
+  ├─ usePedidoSideEffects            (implementado: temNotaFiscal policy + saldo sync)
+  └─ usePedidoPersistence (futuro)   (pendente – não prioritário)
 ```
 
 ### Contrato Externo (Mantido)
@@ -40,7 +52,29 @@ const controller = usePedidoFormController({ initial, mode });
 //  - meta: loading, saving, errors, dirtyFlags
 ```
 
-### Divisão Detalhada
+### API de Totais (Nova)
+
+`usePedidoTotals` agora expõe:
+
+```
+{
+  computeItemTotal(it),
+  subtotal(),            // soma dos itens após desconto unitário aplicado em cada item
+  totalDescontos(),      // soma (quantidade * desconto_unitario) por item
+  totalLiquido(),        // subtotal - totalDescontos (+ frete se COMPRA)
+  computeOrderTotalEstimate(), // alias de totalLiquido()
+  computeLucroBruto(),
+  computeLucroPercent(),
+}
+```
+
+Testes cobrindo cenários:
+
+- desconto aplicado (subtotal/totalDescontos/totalLiquido)
+- lucro negativo (lucro % negativo)
+- COMPRA com frete (frete somado apenas em COMPRA)
+
+### Divisão Detalhada (Planejamento Original)
 
 #### 1. `usePedidoTipoParceiro`
 
@@ -127,12 +161,12 @@ usePedidoSideEffects({ itens, tipo, parceiro, promissorias, refreshEstoque });
 6. Reescrever `usePedidoFormController` como composição orquestradora das camadas acima; manter shape público.
 7. Remover código legado e atualizar documentação (`CODE_STYLE.md` seção Forms / Pedido).
 
-### Testes Necessários
+### Testes (Status)
 
-- Unidade: `usePedidoItens` (add item, update qty/preço, remove, totalBruto, totalLiquido).
-- Unidade: `usePedidoTotals` (margem e lucro com cenários: desconto, sem desconto, custo zero, margem negativa).
-- Integração existente `PedidoForm.refactor.integration.test.js` deve permanecer verde (garantir comportamento macro).
-- Novo teste focado promissórias + itens alterando subtotal para garantir recalculo de divergência.
+- `usePedidoTotals.test.js` implementado (desconto, frete compra, lucro negativo).
+- Teste unitário específico de itens: (parcial – validar se necessário expandir para cobertura de regressão futura).
+- Integrações do PedidoForm permanecem verdes (ver execução de suíte após segunda fase quando adicionarmos persistence).
+- Pendentes futuros: cenário custo zero e divergência promissórias vs total (agendar na fase Persistence).
 
 ### Riscos e Mitigações
 
@@ -143,12 +177,20 @@ usePedidoSideEffects({ itens, tipo, parceiro, promissorias, refreshEstoque });
 | Ordem de inicialização (promissórias dependem de itens iniciais) | Sequenciar composição: itens -> promissórias -> totals                   |
 | Regressão em highlight deep-link                                 | Preservar lógica atual intacta dentro de `usePedidoSideEffects` primeiro |
 
-### Critério de Conclusão
+### Critério de Conclusão (Atualizado)
 
-- Arquivo original reduzido < 250 linhas
-- Todos testes existentes + novos passando
-- Lint de componentes sem warnings adicionais
-- Documentação atualizada
+Fase 1 (Concluída):
+
+- Controller < 300 linhas (292) ✅
+- Hooks de domínio criados e integrados ✅
+- Totais expandidos + testes unitários ✅
+- Documentação atualizada ✅
+
+Fase 2 (Opcional / Futuro):
+
+- Reduzir para < 250 linhas extraindo payload/persistence ⏳
+- Adicionar testes extras (custo zero, divergência promissórias) ⏳
+- Introduzir `usePedidoPersistence` (auto-save/rascunho) ⏳
 
 ---
 

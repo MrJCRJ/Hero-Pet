@@ -5,7 +5,8 @@ import { usePedidoPromissorias } from './usePedidoPromissorias';
 import { usePedidoTotals } from './usePedidoTotals';
 import { usePedidoTipoParceiro } from './usePedidoTipoParceiro';
 import { usePedidoSideEffects } from './usePedidoSideEffects';
-import { numOrNull, defaultEmptyItem } from "./utils";
+import { defaultEmptyItem } from "./utils";
+import { buildPedidoPayloadBase } from './payload';
 import { MSG } from "components/common/messages";
 import { updateOrder as updateOrderService, createOrder as createOrderService, deleteOrder as deleteOrderService } from "./service";
 import { usePedidoFetchers } from "./hooks";
@@ -118,27 +119,21 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   // Fetch helpers
   const { fetchEntities, fetchProdutos } = usePedidoFetchers({ tipo, partnerId });
 
-  // Montagem de payload base (compartilhado entre POST/PUT)
-  const buildPayloadBase = useCallback(() => ({
-    partner_entity_id: Number(partnerId),
-    partner_name: partnerName || null,
-    observacao: observacao || null,
-    data_emissao: dataEmissao || null,
-    data_entrega: dataEntrega || null,
-    tem_nota_fiscal: temNotaFiscal,
-    parcelado: parcelado,
-    numero_promissorias: Number(numeroPromissorias) || 1,
-    data_primeira_promissoria: dataPrimeiraPromissoria || null,
-    promissoria_datas: Array.isArray(promissoriaDatas)
-      ? promissoriaDatas.filter(s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)).slice(0, Math.max(0, Number(numeroPromissorias) || 0))
-      : [],
-    itens: itens.filter(it => Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0).map(it => ({
-      produto_id: Number(it.produto_id),
-      quantidade: Number(it.quantidade),
-      ...(numOrNull(it.preco_unitario) != null ? { preco_unitario: numOrNull(it.preco_unitario) } : {}),
-      ...(numOrNull(it.desconto_unitario) != null ? { desconto_unitario: numOrNull(it.desconto_unitario) } : {}),
-    })),
-    ...(tipo === 'COMPRA' && numOrNull(freteTotal) != null && freteTotal !== '' ? { frete_total: numOrNull(freteTotal) } : {}),
+  // Payload base (agora util externo)
+  const buildPayloadBase = useCallback(() => buildPedidoPayloadBase({
+    partnerId,
+    partnerName,
+    observacao,
+    dataEmissao,
+    dataEntrega,
+    temNotaFiscal,
+    parcelado,
+    numeroPromissorias,
+    dataPrimeiraPromissoria,
+    promissoriaDatas,
+    itens,
+    freteTotal,
+    tipo,
   }), [partnerId, partnerName, observacao, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, promissoriaDatas, itens, freteTotal, tipo]);
 
   const updateOrder = useCallback(async (orderId, payloadBase) => {
