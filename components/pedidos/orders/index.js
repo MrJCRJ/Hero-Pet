@@ -90,7 +90,10 @@ function OrdersTableBody({ rows, loading, error, onEdit, onDelete, reload }) {
       )}
       {!loading && error && (
         <tr>
-          <td className="px-3 py-6 text-center text-red-600 dark:text-red-400" colSpan={8}>
+          <td
+            className="px-3 py-6 text-center text-red-600 dark:text-red-400"
+            colSpan={8}
+          >
             {error}
           </td>
         </tr>
@@ -100,7 +103,15 @@ function OrdersTableBody({ rows, loading, error, onEdit, onDelete, reload }) {
 }
 
 // Rodapé de paginação desacoplado
-function OrdersPaginationFooter({ page, hasMore, loading, total, limit, nextPage, prevPage }) {
+function OrdersPaginationFooter({
+  page,
+  hasMore,
+  loading,
+  total,
+  limit,
+  nextPage,
+  prevPage,
+}) {
   return (
     <div className="flex flex-wrap items-center justify-between mt-2 text-xs gap-3">
       <div className="flex items-center gap-2">
@@ -121,10 +132,10 @@ function OrdersPaginationFooter({ page, hasMore, loading, total, limit, nextPage
       </div>
       <div className="opacity-70 flex items-center gap-2">
         <span>Página {page + 1}</span>
-        {typeof total === 'number' && total >= 0 && (
+        {typeof total === "number" && total >= 0 && (
           <span className="whitespace-nowrap">
             {total === 0
-              ? 'Nenhum registro'
+              ? "Nenhum registro"
               : `Mostrando ${page * limit + 1}–${Math.min((page + 1) * limit, total)} de ${total}`}
           </span>
         )}
@@ -136,28 +147,47 @@ function OrdersPaginationFooter({ page, hasMore, loading, total, limit, nextPage
 export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
   const [filters, setFilters] = useState(() => {
     try {
-      const saved = window.localStorage.getItem('orders.filters');
+      const saved = window.localStorage.getItem("orders.filters");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          return { tipo: '', q: '', from: '', to: '', ...parsed };
+        if (parsed && typeof parsed === "object") {
+          return { tipo: "", q: "", from: "", to: "", ...parsed };
         }
       }
-    } catch (_) { /* ignore */ }
+    } catch (_) {
+      /* ignore */
+    }
     return { tipo: "", q: "", from: "", to: "" };
   });
   // Novo hook paginado (mantém fallback antigo se resposta não vier com meta)
-  const { rows, loading, reload, page, hasMore, nextPage, prevPage, total, limit: effLimit, error } = usePaginatedPedidos(filters, limit);
+  const {
+    rows,
+    loading,
+    reload,
+    page,
+    hasMore,
+    nextPage,
+    prevPage,
+    total,
+    limit: effLimit,
+    error,
+  } = usePaginatedPedidos(filters, limit);
   const tableContainerRef = useRef(null);
 
   // Scroll para topo quando página mudar
   useEffect(() => {
     const el = tableContainerRef.current;
-    if (el && typeof el.scrollTo === 'function') {
-      try { el.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { /* ignore */ }
+    if (el && typeof el.scrollTo === "function") {
+      try {
+        el.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (_) {
+        /* ignore */
+      }
     }
   }, [page, rows]);
-  const { requestDelete, dialog: deleteDialog } = useOrderDelete({ onDeleted: reload });
+  const { requestDelete, dialog: deleteDialog } = useOrderDelete({
+    onDeleted: reload,
+  });
   useEffect(() => {
     // quando refreshTick muda, recarrega
     reload();
@@ -189,7 +219,10 @@ export function OrdersBrowser({ limit = 20, refreshTick = 0, onEdit }) {
   return (
     <div className="text-sm">
       <FilterBar filters={filters} onChange={setFilters} onReload={reload} />
-      <div ref={tableContainerRef} className="overflow-auto border rounded text-xs max-h-[520px]">
+      <div
+        ref={tableContainerRef}
+        className="overflow-auto border rounded text-xs max-h-[520px]"
+      >
         <table className="min-w-full text-xs">
           <OrdersHeader />
           <OrdersTableBody
@@ -225,21 +258,22 @@ export function OrdersManager({ limit = 20 }) {
 
   // Highlight via query param ?highlight=ID
   const highlightId = (() => {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
     const sp = new URLSearchParams(window.location.search);
-    const h = sp.get('highlight');
+    const h = sp.get("highlight");
     return h ? h : null;
   })();
 
-  const { highlighted, loadingHighlight, clearHighlight } = useHighlightEntityLoad({
-    highlightId,
-    fetcher: async (id) => {
-      const res = await fetch(`/api/v1/pedidos/${id}`, { cache: 'no-store' });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Falha ao carregar pedido');
-      return json;
-    },
-  });
+  const { highlighted, loadingHighlight, clearHighlight } =
+    useHighlightEntityLoad({
+      highlightId,
+      fetcher: async (id) => {
+        const res = await fetch(`/api/v1/pedidos/${id}`, { cache: "no-store" });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Falha ao carregar pedido");
+        return json;
+      },
+    });
 
   // Quando carregar highlight com sucesso, abre formulário em modo edição
   useEffect(() => {
@@ -248,12 +282,14 @@ export function OrdersManager({ limit = 20 }) {
       setShowForm(true);
       // Limpa parametro highlight da URL para evitar reprocessar ao fechar/voltar
       try {
-        if (typeof window !== 'undefined' && window.history?.replaceState) {
+        if (typeof window !== "undefined" && window.history?.replaceState) {
           const url = new URL(window.location.href);
-          url.searchParams.delete('highlight');
+          url.searchParams.delete("highlight");
           window.history.replaceState({}, document.title, url.toString());
         }
-      } catch (_) { /* noop */ }
+      } catch (_) {
+        /* noop */
+      }
     }
   }, [highlighted]);
 
@@ -297,7 +333,9 @@ export function OrdersManager({ limit = 20 }) {
           onEdit={handleEdit}
         />
         {loadingHighlight && highlightId && (
-          <div className="text-xs opacity-70">Carregando pedido #{highlightId}…</div>
+          <div className="text-xs opacity-70">
+            Carregando pedido #{highlightId}…
+          </div>
         )}
       </div>
     );

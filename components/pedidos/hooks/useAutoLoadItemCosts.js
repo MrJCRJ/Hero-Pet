@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { fetchSaldoDetalhado, fetchSaldoFifoDetalhado } from '../service';
+import { useEffect } from "react";
+import { fetchSaldoDetalhado, fetchSaldoFifoDetalhado } from "../service";
 
 /**
  * useAutoLoadItemCosts
@@ -8,7 +8,7 @@ import { fetchSaldoDetalhado, fetchSaldoFifoDetalhado } from '../service';
  */
 export function useAutoLoadItemCosts({ tipo, itens, onUpdateItem }) {
   useEffect(() => {
-    if (tipo !== 'VENDA') return;
+    if (tipo !== "VENDA") return;
     (itens || []).forEach((it, idx) => {
       if (!it) return;
       const hasProduto = !!it.produto_id;
@@ -27,7 +27,8 @@ export function useAutoLoadItemCosts({ tipo, itens, onUpdateItem }) {
         ])
           .then(([det, fifo]) => {
             const custoFifo =
-              Number.isFinite(fifo.custo_medio_fifo) && fifo.custo_medio_fifo > 0
+              Number.isFinite(fifo.custo_medio_fifo) &&
+              fifo.custo_medio_fifo > 0
                 ? fifo.custo_medio_fifo
                 : null;
             const baseLegacy = (() => {

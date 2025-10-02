@@ -1,5 +1,5 @@
-import { usePaginatedResource } from './usePaginatedResource';
-import { MSG } from 'components/common/messages';
+import { usePaginatedResource } from "./usePaginatedResource";
+import { MSG } from "components/common/messages";
 
 /**
  * Hook de paginação e filtros para pedidos (substitui gradualmente usePedidos legacy).
@@ -9,15 +9,15 @@ import { MSG } from 'components/common/messages';
  */
 export function usePaginatedPedidos(initialFilters = {}, limit = 20) {
   return usePaginatedResource({
-    baseUrl: '/api/v1/pedidos',
-    initialFilters: { tipo: '', q: '', from: '', to: '', ...initialFilters },
+    baseUrl: "/api/v1/pedidos",
+    initialFilters: { tipo: "", q: "", from: "", to: "", ...initialFilters },
     limit,
     buildParams: (filters) => {
       const p = new URLSearchParams();
-      if (filters.tipo) p.set('tipo', filters.tipo);
-      if (filters.q) p.set('q', filters.q);
-      if (filters.from) p.set('from', filters.from);
-      if (filters.to) p.set('to', filters.to);
+      if (filters.tipo) p.set("tipo", filters.tipo);
+      if (filters.q) p.set("q", filters.q);
+      if (filters.from) p.set("from", filters.from);
+      if (filters.to) p.set("to", filters.to);
       return p;
     },
     errorFallback: MSG.PEDIDOS_LOAD_ERROR,

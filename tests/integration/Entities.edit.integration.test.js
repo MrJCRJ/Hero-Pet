@@ -38,13 +38,26 @@ describe("Entities UI - Edit", () => {
       const url = typeof input === "string" ? input : input?.url;
       if (!url) return Promise.resolve({ ok: true, json: async () => ({}) });
 
-      if (url.includes("/api/v1/entities?") && (!init || init.method === "GET")) {
-        return Promise.resolve({ ok: true, json: async () => ({ data: fakeEntities, total: 1 }) });
+      if (
+        url.includes("/api/v1/entities?") &&
+        (!init || init.method === "GET")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: fakeEntities, total: 1 }),
+        });
       }
-      if (/\/api\/v1\/entities\/42$/.test(url) && (!init || init.method === "GET")) {
+      if (
+        /\/api\/v1\/entities\/42$/.test(url) &&
+        (!init || init.method === "GET")
+      ) {
         return Promise.resolve({ ok: true, json: async () => fakeEntities[0] });
       }
-      if (/\/api\/v1\/entities\/42$/.test(url) && init && init.method === "PUT") {
+      if (
+        /\/api\/v1\/entities\/42$/.test(url) &&
+        init &&
+        init.method === "PUT"
+      ) {
         return Promise.resolve({ ok: true, json: async () => ({}) });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -55,18 +68,24 @@ describe("Entities UI - Edit", () => {
     render(
       <Wrapper>
         <EntitiesManager highlightId={42} />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // Form deve abrir automaticamente pela prop highlightId
-    expect(await screen.findByText(/Formulário de Cliente/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Formulário de Cliente/),
+    ).toBeInTheDocument();
 
     // Campo Nome (pode ser "Razão Social" para PJ)
     const nomeInput = screen.getByLabelText(/Razão Social|Nome/i);
-    fireEvent.change(nomeInput, { target: { value: "FOO SUPRIMENTOS ALTERADO" } });
+    fireEvent.change(nomeInput, {
+      target: { value: "FOO SUPRIMENTOS ALTERADO" },
+    });
 
     // Submit (Atualizar... -> Atualizar)
-    const submitBtn = screen.getByRole("button", { name: /Atualizar|Atualizando/i });
+    const submitBtn = screen.getByRole("button", {
+      name: /Atualizar|Atualizando/i,
+    });
     fireEvent.click(submitBtn);
 
     // Após salvar volta à lista (título de browser visível)

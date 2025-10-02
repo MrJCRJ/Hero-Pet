@@ -19,19 +19,23 @@ export function PedidoFormPromissorias({
   onPromissoriaDatasChange,
   promissoriasMeta,
 }) {
-  const { datasVencimento, handleManualDateEdit, handlePrimeiraDataChange, handlePaidFocus } =
-    usePromissoriasSchedule({
-      numeroPromissorias,
-      onNumeroPromissoriasChange,
-      dataPrimeiraPromissoria,
-      onDataPrimeiraPromissoriasChange,
-      totalLiquido,
-      frequenciaPromissorias,
-      intervaloDiasPromissorias,
-      promissoriaDatas,
-      onPromissoriaDatasChange,
-      promissoriasMeta,
-    });
+  const {
+    datasVencimento,
+    handleManualDateEdit,
+    handlePrimeiraDataChange,
+    handlePaidFocus,
+  } = usePromissoriasSchedule({
+    numeroPromissorias,
+    onNumeroPromissoriasChange,
+    dataPrimeiraPromissoria,
+    onDataPrimeiraPromissoriasChange,
+    totalLiquido,
+    frequenciaPromissorias,
+    intervaloDiasPromissorias,
+    promissoriaDatas,
+    onPromissoriaDatasChange,
+    promissoriasMeta,
+  });
 
   return (
     <div className="mt-4 border border-[var(--color-border)] rounded-lg p-4">

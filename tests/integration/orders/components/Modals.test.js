@@ -75,7 +75,7 @@ describe("Orders Modals", () => {
     test("renderiza modal de ajuda", () => {
       render(
         <Wrapper>
-          <HelpModal isOpen={true} onClose={() => { }} />
+          <HelpModal isOpen={true} onClose={() => {}} />
         </Wrapper>,
       );
 
@@ -85,7 +85,7 @@ describe("Orders Modals", () => {
     test("contém explicações dos cálculos", () => {
       render(
         <Wrapper>
-          <HelpModal isOpen={true} onClose={() => { }} />
+          <HelpModal isOpen={true} onClose={() => {}} />
         </Wrapper>,
       );
 
@@ -116,7 +116,7 @@ describe("Orders Modals", () => {
       const { container } = render(
         <Wrapper>
           {/* HelpModal não aceita isOpen - controle é feito pelo componente pai */}
-          {false && <HelpModal onClose={() => { }} />}
+          {false && <HelpModal onClose={() => {}} />}
         </Wrapper>,
       );
 
@@ -128,7 +128,7 @@ describe("Orders Modals", () => {
     test("contém informações sobre promissórias", () => {
       render(
         <Wrapper>
-          <HelpModal isOpen={true} onClose={() => { }} />
+          <HelpModal isOpen={true} onClose={() => {}} />
         </Wrapper>,
       );
 

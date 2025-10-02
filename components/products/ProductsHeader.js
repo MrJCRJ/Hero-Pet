@@ -6,7 +6,9 @@ export default function ProductsHeader() {
       <tr className="relative bg-[var(--color-bg-secondary)]/95 backdrop-blur text-[11px] uppercase tracking-wide text-[var(--color-text-secondary)] border-b border-[var(--color-border)]">
         <th className="text-left px-3 py-1.5 font-semibold">Nome</th>
         <th className="text-left px-3 py-1.5 font-semibold">Categoria</th>
-        <th className="text-left px-3 py-1.5 w-[160px] max-w-[160px] font-semibold">Fornecedores</th>
+        <th className="text-left px-3 py-1.5 w-[160px] max-w-[160px] font-semibold">
+          Fornecedores
+        </th>
         <th className="text-left px-3 py-1.5 font-semibold">Preço</th>
         <th className="text-left px-3 py-1.5 font-semibold">Estoque</th>
         <th className="text-center px-3 py-1.5 w-10 font-semibold">Ações</th>

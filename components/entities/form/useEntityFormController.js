@@ -18,7 +18,10 @@ export function useEntityFormController() {
 
   const initNew = useCallback(() => {
     setEditingId(null);
-    setForm((prev) => ({ ...createInitialEntityForm(), entityType: prev.entityType }));
+    setForm((prev) => ({
+      ...createInitialEntityForm(),
+      entityType: prev.entityType,
+    }));
   }, []);
 
   const loadForEdit = useCallback((row) => {

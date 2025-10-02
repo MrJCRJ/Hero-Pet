@@ -9,28 +9,39 @@ export default function FilterBar({ filters, onChange, onReload }) {
   // Persistência local de filtros (tipo, q, from, to)
   React.useEffect(() => {
     try {
-      const saved = window.localStorage.getItem('orders.filters');
+      const saved = window.localStorage.getItem("orders.filters");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
+        if (parsed && typeof parsed === "object") {
           onChange({ ...filters, ...parsed });
         }
       }
-    } catch (_) { /* ignore */ }
+    } catch (_) {
+      /* ignore */
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   React.useEffect(() => {
     try {
-      const payload = { tipo: filters.tipo, q: filters.q, from: filters.from, to: filters.to };
-      window.localStorage.setItem('orders.filters', JSON.stringify(payload));
-    } catch (_) { /* ignore */ }
+      const payload = {
+        tipo: filters.tipo,
+        q: filters.q,
+        from: filters.from,
+        to: filters.to,
+      };
+      window.localStorage.setItem("orders.filters", JSON.stringify(payload));
+    } catch (_) {
+      /* ignore */
+    }
   }, [filters.tipo, filters.q, filters.from, filters.to]);
   return (
     <div className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/70 backdrop-blur-md p-3 md:p-4 flex flex-wrap gap-4 items-end shadow-sm dark:shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
       {/* Tipo */}
       <div className="min-w-[130px]">
-        <label className="block text-[10px] uppercase tracking-wide font-semibold text-[var(--color-text-secondary)] mb-1">Tipo</label>
+        <label className="block text-[10px] uppercase tracking-wide font-semibold text-[var(--color-text-secondary)] mb-1">
+          Tipo
+        </label>
         <div className="relative">
           <select
             className={fieldBase + " pr-7 appearance-none cursor-pointer"}
@@ -41,13 +52,17 @@ export default function FilterBar({ filters, onChange, onReload }) {
             <option value="VENDA">VENDA</option>
             <option value="COMPRA">COMPRA</option>
           </select>
-          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--color-text-secondary)]">▾</span>
+          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--color-text-secondary)]">
+            ▾
+          </span>
         </div>
       </div>
 
       {/* Busca */}
       <div className="flex-1 min-w-[220px]">
-        <label className="block text-[10px] uppercase tracking-wide font-semibold text-[var(--color-text-secondary)] mb-1">Busca</label>
+        <label className="block text-[10px] uppercase tracking-wide font-semibold text-[var(--color-text-secondary)] mb-1">
+          Busca
+        </label>
         <input
           className={fieldBase}
           placeholder="ID (#123), parceiro ou documento"
@@ -58,22 +73,30 @@ export default function FilterBar({ filters, onChange, onReload }) {
 
       {/* Data De */}
       <div className="min-w-[150px]">
-        <label className="block text-[10px] uppercase tracking-wide font-semibold text-[var(--color-text-secondary)] mb-1">De</label>
+        <label className="block text-[10px] uppercase tracking-wide font-semibold text-[var(--color-text-secondary)] mb-1">
+          De
+        </label>
         <input
           type="date"
-          className={fieldBase + ' calendar-icon-white fallback-icon cursor-pointer'}
-          value={filters.from || ''}
+          className={
+            fieldBase + " calendar-icon-white fallback-icon cursor-pointer"
+          }
+          value={filters.from || ""}
           onChange={(e) => onChange({ ...filters, from: e.target.value })}
         />
       </div>
 
       {/* Data Até */}
       <div className="min-w-[150px]">
-        <label className="block text-[10px] uppercase tracking-wide font-semibold text-[var(--color-text-secondary)] mb-1">Até</label>
+        <label className="block text-[10px] uppercase tracking-wide font-semibold text-[var(--color-text-secondary)] mb-1">
+          Até
+        </label>
         <input
           type="date"
-          className={fieldBase + ' calendar-icon-white fallback-icon cursor-pointer'}
-          value={filters.to || ''}
+          className={
+            fieldBase + " calendar-icon-white fallback-icon cursor-pointer"
+          }
+          value={filters.to || ""}
           onChange={(e) => onChange({ ...filters, to: e.target.value })}
         />
       </div>

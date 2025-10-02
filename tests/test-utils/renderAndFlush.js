@@ -1,5 +1,5 @@
-import { render } from '@testing-library/react';
-import { flushAsync } from './flushAsync';
+import { render } from "@testing-library/react";
+import { flushAsync } from "./flushAsync";
 
 /**
  * renderAndFlush

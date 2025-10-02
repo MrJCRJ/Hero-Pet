@@ -1,6 +1,10 @@
-import React from 'react';
-import { defaultEmptyItem, mapEditingOrderToItems, computeItemTotal as computeItemTotalPure } from './utils';
-import { useItemDiff } from './useItemDiff';
+import React from "react";
+import {
+  defaultEmptyItem,
+  mapEditingOrderToItems,
+  computeItemTotal as computeItemTotalPure,
+} from "./utils";
+import { useItemDiff } from "./useItemDiff";
 
 export function usePedidoItems(editingOrder) {
   const [itens, setItens] = React.useState(() => {
@@ -21,16 +25,27 @@ export function usePedidoItems(editingOrder) {
   }, [editingOrder]);
 
   const updateItem = React.useCallback((idx, patch) => {
-    setItens(prev => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+    setItens((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
+    );
   }, []);
   const addItem = React.useCallback((patch) => {
-    setItens(prev => [...prev, { ...defaultEmptyItem(), ...(patch && typeof patch === 'object' ? patch : {}) }]);
+    setItens((prev) => [
+      ...prev,
+      {
+        ...defaultEmptyItem(),
+        ...(patch && typeof patch === "object" ? patch : {}),
+      },
+    ]);
   }, []);
   const removeItem = React.useCallback((idx) => {
-    setItens(prev => prev.filter((_, i) => i !== idx));
+    setItens((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
-  const computeItemTotal = React.useCallback(it => computeItemTotalPure(it), []);
+  const computeItemTotal = React.useCallback(
+    (it) => computeItemTotalPure(it),
+    [],
+  );
 
   // Agregados básicos para eventual consumo por usePedidoTotals (ou UI simples)
   const totalBruto = React.useMemo(() => {
@@ -55,7 +70,10 @@ export function usePedidoItems(editingOrder) {
     }, 0);
   }, [itens]);
 
-  const totalLiquido = React.useMemo(() => Number((totalBruto - totalDescontos).toFixed(2)), [totalBruto, totalDescontos]);
+  const totalLiquido = React.useMemo(
+    () => Number((totalBruto - totalDescontos).toFixed(2)),
+    [totalBruto, totalDescontos],
+  );
 
   const { getItemChanges, getItemDiffClass, getItemDiffIcon } = useItemDiff(
     itens,

@@ -29,39 +29,55 @@ export function EntitiesManager({
   const [refreshKey, setRefreshKey] = useState(0);
   const [lastEditedId, setLastEditedId] = useState(null);
   // push já obtido acima
-  const handleEditRow = useCallback((row) => {
-    loadForEdit(row);
-    setShowForm(true);
-  }, [loadForEdit]);
+  const handleEditRow = useCallback(
+    (row) => {
+      loadForEdit(row);
+      setShowForm(true);
+    },
+    [loadForEdit],
+  );
 
   // Novo: uso de hook genérico de highlight
   // Permitir uso automático via ?highlight= se prop não fornecida
-  const derivedHighlightId = externalHighlightId != null ? externalHighlightId : (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('highlight') : null);
+  const derivedHighlightId =
+    externalHighlightId != null
+      ? externalHighlightId
+      : typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("highlight")
+        : null;
 
-  const { highlighted, loadingHighlight, errorHighlight } = useHighlightEntityLoad({
-    highlightId: derivedHighlightId,
-    fetcher: async (id) => {
-      const res = await fetch(`/api/v1/entities/${id}`);
-      if (!res.ok) {
-        let msg = MSG.GENERIC_ERROR;
-        try { const j = await res.json(); msg = j?.error || msg; } catch (_) { /* noop */ }
-        throw new Error(msg);
-      }
-      return res.json();
-    },
-  });
+  const { highlighted, loadingHighlight, errorHighlight } =
+    useHighlightEntityLoad({
+      highlightId: derivedHighlightId,
+      fetcher: async (id) => {
+        const res = await fetch(`/api/v1/entities/${id}`);
+        if (!res.ok) {
+          let msg = MSG.GENERIC_ERROR;
+          try {
+            const j = await res.json();
+            msg = j?.error || msg;
+          } catch (_) {
+            /* noop */
+          }
+          throw new Error(msg);
+        }
+        return res.json();
+      },
+    });
 
   // Ao carregar highlight com sucesso, abrir formulário em modo edição
   useEffect(() => {
     if (highlighted) {
       handleEditRow(highlighted);
       try {
-        if (typeof window !== 'undefined' && window.history?.replaceState) {
+        if (typeof window !== "undefined" && window.history?.replaceState) {
           const url = new URL(window.location.href);
-          url.searchParams.delete('highlight');
+          url.searchParams.delete("highlight");
           window.history.replaceState({}, document.title, url.toString());
         }
-      } catch (_) { /* noop */ }
+      } catch (_) {
+        /* noop */
+      }
     }
   }, [highlighted, handleEditRow]);
 
@@ -83,10 +99,11 @@ export function EntitiesManager({
       reset();
       setShowForm(false);
       setRefreshKey((k) => k + 1);
-      push(editingId ? MSG.ENTITY_UPDATED : MSG.ENTITY_CREATED, { type: 'success' });
+      push(editingId ? MSG.ENTITY_UPDATED : MSG.ENTITY_CREATED, {
+        type: "success",
+      });
     }
   };
-
 
   // ESC para cancelar edição
   const escHandler = useCallback(
@@ -126,7 +143,9 @@ export function EntitiesManager({
           highlightId={externalHighlightId ?? lastEditedId}
         />
         {loadingHighlight && derivedHighlightId && (
-          <div className="text-xs opacity-70">Carregando entidade #{derivedHighlightId}…</div>
+          <div className="text-xs opacity-70">
+            Carregando entidade #{derivedHighlightId}…
+          </div>
         )}
         {errorHighlight && derivedHighlightId && (
           <div className="text-xs text-red-600">{errorHighlight}</div>

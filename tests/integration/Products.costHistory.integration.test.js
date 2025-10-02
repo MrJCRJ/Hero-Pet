@@ -8,7 +8,13 @@ import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 import { mockProductsBase } from "./products/__utils__/mockProductsHooks";
 // Aplica mock (id 11 com custos específicos) antes de carregar componente alvo
-mockProductsBase({ id: 11, nome: 'TEST FIFO', saldo: 0, custo_medio: 10, ultimo_custo: 9 });
+mockProductsBase({
+  id: 11,
+  nome: "TEST FIFO",
+  saldo: 0,
+  custo_medio: 10,
+  ultimo_custo: 9,
+});
 // Carrega componente após mocks para garantir que hooks sejam substituídos
 // eslint-disable-next-line import/first
 const { ProductsManager } = require("components/products/manager");
@@ -63,7 +69,9 @@ describe("ProductsManager gráfico de histórico de custos", () => {
 
     // Espera chamada do endpoint de custos
     await waitFor(() => {
-      const called = fetch.mock.calls.some(c => String(c[0]).includes('/produtos/11/custos_historicos?months=12'));
+      const called = fetch.mock.calls.some((c) =>
+        String(c[0]).includes("/produtos/11/custos_historicos?months=12"),
+      );
       expect(called).toBe(true);
     });
 
@@ -78,7 +86,7 @@ describe("ProductsManager gráfico de histórico de custos", () => {
     const monthNode = screen.queryByText(/2025-09/);
     if (!monthNode && process.env.DEBUG_MISSING_LABELS) {
       // eslint-disable-next-line no-console
-      console.warn('[DEBUG_MISSING_LABELS] label 2025-09 ausente');
+      console.warn("[DEBUG_MISSING_LABELS] label 2025-09 ausente");
     }
 
     // Labels do painel de métricas (Var. Mês / Var. Acumulada)
@@ -98,7 +106,7 @@ describe("ProductsManager gráfico de histórico de custos", () => {
       // Não falha se variação específica não aparecer – pode depender de foco SVG
       if (!mom.length) {
         // eslint-disable-next-line no-console
-        console.warn('Variação Mês→Mês específica não encontrada após hover.');
+        console.warn("Variação Mês→Mês específica não encontrada após hover.");
       }
     }
   });

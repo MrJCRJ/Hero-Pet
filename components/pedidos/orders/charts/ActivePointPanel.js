@@ -1,5 +1,5 @@
-import React from 'react';
-import { formatMoney, formatPercent } from './shared/formatters';
+import React from "react";
+import { formatMoney, formatPercent } from "./shared/formatters";
 
 /**
  * Painel reutilizável para exibir detalhes do ponto ativo em gráficos de séries temporais.
@@ -21,7 +21,7 @@ export default function ActivePointPanel({
   rows = [],
   moneyFormatter = formatMoney,
   percentFormatter = (n) => formatPercent(n, { withSign: true }),
-  icons = { mom: '📊', acumulado: '📈' },
+  icons = { mom: "📊", acumulado: "📈" },
   showAcumulado = true,
   showPrev = true,
 }) {
@@ -29,8 +29,10 @@ export default function ActivePointPanel({
 
   const renderValue = (row) => {
     const { value, type } = row;
-    if (type === 'money') return <span className="font-semibold">{moneyFormatter(value)}</span>;
-    if (type === 'percent') return <span className="font-semibold">{percentFormatter(value)}</span>;
+    if (type === "money")
+      return <span className="font-semibold">{moneyFormatter(value)}</span>;
+    if (type === "percent")
+      return <span className="font-semibold">{percentFormatter(value)}</span>;
     return <span className="font-semibold">{value}</span>;
   };
 
@@ -47,7 +49,9 @@ export default function ActivePointPanel({
         {momPct != null && (
           <div>
             <div className="opacity-70">MoM {icons.mom}</div>
-            <div className={`font-semibold ${momPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <div
+              className={`font-semibold ${momPct >= 0 ? "text-green-600" : "text-red-600"}`}
+            >
               {percentFormatter(momPct)}
             </div>
           </div>
@@ -61,7 +65,9 @@ export default function ActivePointPanel({
         {showAcumulado && (
           <div>
             <div className="opacity-70">Acumulado {icons.acumulado}</div>
-            <div className={`${acumuladaPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <div
+              className={`${acumuladaPct >= 0 ? "text-green-600" : "text-red-600"}`}
+            >
               {percentFormatter(acumuladaPct)}
             </div>
           </div>

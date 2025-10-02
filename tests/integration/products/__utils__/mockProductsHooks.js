@@ -2,13 +2,13 @@
 // Evita repetição em vários arquivos e remove dependência de debounce/fetch real.
 
 export function mockProductsBase(productOverrides = {}) {
-  jest.mock('components/products/hooks', () => ({
+  jest.mock("components/products/hooks", () => ({
     useProducts: () => ({
       rows: [
         {
           id: 1,
-          nome: 'Produto Mock',
-          categoria: 'Teste',
+          nome: "Produto Mock",
+          categoria: "Teste",
           ativo: true,
           supplier_labels: [],
           preco_tabela: 100,
@@ -17,7 +17,7 @@ export function mockProductsBase(productOverrides = {}) {
       ],
       total: 1,
       loading: false,
-      query: { q: '', categoria: '', ativo: 'true' },
+      query: { q: "", categoria: "", ativo: "true" },
       setQ: jest.fn(),
       setCategoria: jest.fn(),
       setAtivo: jest.fn(),
@@ -25,7 +25,7 @@ export function mockProductsBase(productOverrides = {}) {
     }),
   }));
 
-  jest.mock('components/products/useProductCosts', () => ({
+  jest.mock("components/products/useProductCosts", () => ({
     __esModule: true,
     default: () => ({
       costMap: {

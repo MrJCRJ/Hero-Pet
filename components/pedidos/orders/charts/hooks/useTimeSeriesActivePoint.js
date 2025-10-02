@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 /**
  * Hook para gerenciar estado de ponto ativo em séries temporais (hover + seleção) e métricas derivadas.
@@ -14,7 +14,7 @@ export function useTimeSeriesActivePoint(chartData) {
 
   const prevPoint = React.useMemo(() => {
     if (!activePoint) return null;
-    const idx = chartData.findIndex(p => p.label === activePoint.label);
+    const idx = chartData.findIndex((p) => p.label === activePoint.label);
     return idx > 0 ? chartData[idx - 1] : null;
   }, [activePoint, chartData]);
 
@@ -26,7 +26,7 @@ export function useTimeSeriesActivePoint(chartData) {
   const acumuladaPct = React.useMemo(() => {
     if (!activePoint || chartData.length === 0) return null;
     // Usa o primeiro valor não-zero como base. Se todos forem zero, não há crescimento acumulado significativo.
-    const basePoint = chartData.find(p => p.value !== 0);
+    const basePoint = chartData.find((p) => p.value !== 0);
     if (!basePoint) return null; // todos zero
     const baseVal = basePoint.value;
     if (activePoint.label === basePoint.label) return 0; // primeiro ponto válido
@@ -35,7 +35,9 @@ export function useTimeSeriesActivePoint(chartData) {
   }, [activePoint, chartData]);
 
   function toggleSelect(point) {
-    setSelected(point && selected && point.label === selected.label ? null : point);
+    setSelected(
+      point && selected && point.label === selected.label ? null : point,
+    );
   }
 
   return {

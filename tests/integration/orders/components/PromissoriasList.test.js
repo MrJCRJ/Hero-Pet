@@ -23,7 +23,6 @@ describe("PromissoriasList Component", () => {
     jest.clearAllMocks();
   });
 
-
   test("renderiza lista de promissórias", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
@@ -381,7 +380,7 @@ describe("PromissoriasList Component", () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         "/api/v1/pedidos/promissorias?month=2025-10&status=atrasadas&limit=100",
-        { cache: "no-store" }
+        { cache: "no-store" },
       );
     });
   });
@@ -434,7 +433,8 @@ describe("PromissoriasList Component", () => {
       {
         pedido_id: 999,
         seq: 10,
-        partner_name: "Nome Muito Longo Que Pode Ser Truncado No Display Da Interface",
+        partner_name:
+          "Nome Muito Longo Que Pode Ser Truncado No Display Da Interface",
         tipo: "VENDA",
         due_date: "2024-12-31",
         amount: 9999.99,

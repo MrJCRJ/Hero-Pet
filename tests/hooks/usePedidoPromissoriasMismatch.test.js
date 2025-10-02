@@ -1,8 +1,8 @@
-import { renderHook, act } from '@testing-library/react';
-import { usePedidoPromissorias } from 'components/pedidos/usePedidoPromissorias';
+import { renderHook, act } from "@testing-library/react";
+import { usePedidoPromissorias } from "components/pedidos/usePedidoPromissorias";
 
-describe('usePedidoPromissorias mismatch', () => {
-  it('detecta mismatch e depois corrige quando valorPorPromissoria ajustado', () => {
+describe("usePedidoPromissorias mismatch", () => {
+  it("detecta mismatch e depois corrige quando valorPorPromissoria ajustado", () => {
     const { result } = renderHook(() => usePedidoPromissorias(null));
     // setup: 3 promissórias de 100 => soma 300
     act(() => {

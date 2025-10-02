@@ -47,14 +47,14 @@ describe("PromissoriasDots Component", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       "/api/v1/pedidos/123/promissorias",
-      expect.objectContaining({ cache: "no-store" })
+      expect.objectContaining({ cache: "no-store" }),
     );
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
   });
 
   test("exibe estado de loading", async () => {
-    fetch.mockImplementation(() => new Promise(() => { })); // Never resolves
+    fetch.mockImplementation(() => new Promise(() => {})); // Never resolves
 
     await renderAndFlush(
       <Wrapper>
@@ -143,7 +143,7 @@ describe("PromissoriasDots Component", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       "/api/v1/pedidos/123/promissorias",
-      expect.objectContaining({ cache: "no-store" })
+      expect.objectContaining({ cache: "no-store" }),
     );
 
     // já drenado pelo renderAndFlush
@@ -157,7 +157,7 @@ describe("PromissoriasDots Component", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       "/api/v1/pedidos/456/promissorias",
-      expect.objectContaining({ cache: "no-store" })
+      expect.objectContaining({ cache: "no-store" }),
     );
   });
 });

@@ -1,11 +1,13 @@
 // Helpers para testar comportamento de highlight (carregamento automático via ?highlight=)
 // Uso: importar em testes de integração que simulam deep-link de edição.
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from "@testing-library/react";
 
 /** Aguarda texto de carregamento padrão "Carregando <entidade> #ID…" */
 export async function waitHighlightLoading(id, matcher = /Carregando/i) {
   await waitFor(() => {
-    const el = screen.getByText((txt) => matcher.test(txt) && txt.includes(`#${id}`));
+    const el = screen.getByText(
+      (txt) => matcher.test(txt) && txt.includes(`#${id}`),
+    );
     expect(el).toBeInTheDocument();
   });
 }
@@ -13,7 +15,9 @@ export async function waitHighlightLoading(id, matcher = /Carregando/i) {
 /** Verifica que mensagem de erro de highlight apareceu */
 export async function waitHighlightError() {
   await waitFor(() => {
-    const el = screen.getByText((txt) => /#?\d+/.test(txt) && /erro|falha|não/i.test(txt));
+    const el = screen.getByText(
+      (txt) => /#?\d+/.test(txt) && /erro|falha|não/i.test(txt),
+    );
     expect(el).toBeInTheDocument();
   });
 }

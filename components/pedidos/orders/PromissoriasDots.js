@@ -210,7 +210,10 @@ export default function PromissoriasDots({
 
   // Render final com dados completos
   return (
-    <div className="relative inline-flex gap-1" aria-label="Promissórias do pedido">
+    <div
+      className="relative inline-flex gap-1"
+      aria-label="Promissórias do pedido"
+    >
       {rows.map((r) => {
         const isPaid = r.status === "PAGO";
         return (

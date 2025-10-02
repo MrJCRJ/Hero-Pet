@@ -1,4 +1,8 @@
-import { updateOrder as updateOrderService, createOrder as createOrderService, deleteOrder as deleteOrderService } from './service';
+import {
+  updateOrder as updateOrderService,
+  createOrder as createOrderService,
+  deleteOrder as deleteOrderService,
+} from "./service";
 
 export async function persistPedido({
   isEdit,
@@ -29,7 +33,9 @@ export async function persistPedido({
     data_primeira_promissoria: dataPrimeiraPromissoria || null,
     promissoria_datas: payloadBase.promissoria_datas || [],
     itens: payloadBase.itens,
-    ...(Object.prototype.hasOwnProperty.call(payloadBase, 'frete_total') ? { frete_total: payloadBase.frete_total } : {}),
+    ...(Object.prototype.hasOwnProperty.call(payloadBase, "frete_total")
+      ? { frete_total: payloadBase.frete_total }
+      : {}),
     ...(migrarFifo ? { migrar_fifo: true } : {}),
   };
   if (isEdit) {

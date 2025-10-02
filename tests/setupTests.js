@@ -19,10 +19,10 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     matches: false,
     media: query,
     onchange: null,
-    addEventListener: () => { },
-    removeEventListener: () => { },
-    addListener: () => { }, // suporte legacy
-    removeListener: () => { },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {}, // suporte legacy
+    removeListener: () => {},
     dispatchEvent: () => false,
   });
 }
@@ -54,13 +54,15 @@ if (typeof global.fetch === "function") {
 }
 
 // --- Captura e inspeção de warnings de act() ---
-const ACT_WARNING_SIGNATURE = 'not wrapped in act';
+const ACT_WARNING_SIGNATURE = "not wrapped in act";
 let __capturedActWarnings = [];
 
 const originalConsoleError = console.error;
 console.error = function patchedConsoleError(...args) {
-  if (args.some(a => typeof a === 'string' && a.includes(ACT_WARNING_SIGNATURE))) {
-    __capturedActWarnings.push(args.join(' '));
+  if (
+    args.some((a) => typeof a === "string" && a.includes(ACT_WARNING_SIGNATURE))
+  ) {
+    __capturedActWarnings.push(args.join(" "));
     // Silenciar output a menos que DEBUG_ACT_WARNINGS ativo
     if (!process.env.DEBUG_ACT_WARNINGS) return;
   }
@@ -72,9 +74,10 @@ expect.extend({
     const pass = __capturedActWarnings.length === 0;
     return {
       pass,
-      message: () => pass
-        ? 'Esperava encontrar warnings de act(), mas nenhum foi capturado.'
-        : `Foram capturados warnings de act():\n${__capturedActWarnings.join('\n---\n')}`,
+      message: () =>
+        pass
+          ? "Esperava encontrar warnings de act(), mas nenhum foi capturado."
+          : `Foram capturados warnings de act():\n${__capturedActWarnings.join("\n---\n")}`,
     };
   },
 });
@@ -82,7 +85,9 @@ expect.extend({
 // Helper global opcional
 global.expectNoActWarnings = function expectNoActWarnings() {
   if (__capturedActWarnings.length) {
-    throw new Error(`Warnings de act() detectados:\n${__capturedActWarnings.join('\n---\n')}`);
+    throw new Error(
+      `Warnings de act() detectados:\n${__capturedActWarnings.join("\n---\n")}`,
+    );
   }
 };
 
@@ -93,6 +98,8 @@ beforeEach(() => {
 
 afterEach(() => {
   if (process.env.ACT_STRICT && __capturedActWarnings.length) {
-    throw new Error(`ACT_STRICT: warnings de act() detectados:\n${__capturedActWarnings.join('\n---\n')}`);
+    throw new Error(
+      `ACT_STRICT: warnings de act() detectados:\n${__capturedActWarnings.join("\n---\n")}`,
+    );
   }
 });

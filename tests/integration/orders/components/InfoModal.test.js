@@ -25,27 +25,27 @@ describe("InfoModal Component", () => {
       { month: "2024-01", valor: 500 },
       { month: "2024-02", valor: 600 },
       { month: "2024-03", valor: 700 },
-      { month: "2024-04", valor: 800 }
+      { month: "2024-04", valor: 800 },
     ],
     promissorias: {
       mesAtual: {
         pendentes: { count: 2, valor: 150 },
-        atrasados: { count: 1, valor: 50 }
+        atrasados: { count: 1, valor: 50 },
       },
       proximoMes: {
-        pendentes: { count: 3, valor: 200 }
+        pendentes: { count: 3, valor: 200 },
       },
       deMesesAnteriores: {
-        emAberto: { count: 1, valor: 75 }
-      }
-    }
+        emAberto: { count: 1, valor: 75 },
+      },
+    },
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     global.fetch.mockResolvedValue({
       ok: true,
-      json: async () => []
+      json: async () => [],
     });
   });
 
@@ -59,15 +59,21 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
-    expect(screen.getByText("Promissórias pendentes (mês)")).toBeInTheDocument();
-    expect(screen.getByText("Promissórias pendentes — outubro/2025")).toBeInTheDocument();
+    expect(
+      screen.getByText("Promissórias pendentes (mês)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Promissórias pendentes — outubro/2025"),
+    ).toBeInTheDocument();
 
     // Aguarda carregamento
     await waitFor(() => {
-      expect(screen.getByText("Esperado pelo resumo: 2 itens — R$ 150,00")).toBeInTheDocument();
+      expect(
+        screen.getByText("Esperado pelo resumo: 2 itens — R$ 150,00"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -81,14 +87,20 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
-    expect(screen.getByText("Promissórias atrasadas (mês)")).toBeInTheDocument();
-    expect(screen.getByText("Promissórias atrasadas — outubro/2025")).toBeInTheDocument();
+    expect(
+      screen.getByText("Promissórias atrasadas (mês)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Promissórias atrasadas — outubro/2025"),
+    ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText("Esperado pelo resumo: 1 itens — R$ 50,00")).toBeInTheDocument();
+      expect(
+        screen.getByText("Esperado pelo resumo: 1 itens — R$ 50,00"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -102,14 +114,20 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     expect(screen.getByText("Vão para o próximo mês")).toBeInTheDocument();
-    expect(screen.getByText("Promissórias que irão para o próximo mês — outubro/2025")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Promissórias que irão para o próximo mês — outubro/2025",
+      ),
+    ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText("Esperado pelo resumo: 3 itens — R$ 200,00")).toBeInTheDocument();
+      expect(
+        screen.getByText("Esperado pelo resumo: 3 itens — R$ 200,00"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -123,14 +141,20 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     expect(screen.getByText("Vieram de meses anteriores")).toBeInTheDocument();
-    expect(screen.getByText("Promissórias que vieram de meses anteriores — outubro/2025")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Promissórias que vieram de meses anteriores — outubro/2025",
+      ),
+    ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText("Esperado pelo resumo: 1 itens — R$ 75,00")).toBeInTheDocument();
+      expect(
+        screen.getByText("Esperado pelo resumo: 1 itens — R$ 75,00"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -142,7 +166,7 @@ describe("InfoModal Component", () => {
         partner_name: "Cliente A",
         tipo: "VENDA",
         due_date: "2025-10-15",
-        amount: 150.0
+        amount: 150.0,
       },
       {
         pedido_id: 2,
@@ -150,13 +174,13 @@ describe("InfoModal Component", () => {
         partner_name: "Cliente B",
         tipo: "VENDA",
         due_date: "2025-10-20",
-        amount: 200.0
-      }
+        amount: 200.0,
+      },
     ];
 
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockPromissorias
+      json: async () => mockPromissorias,
     });
 
     await renderAndFlush(
@@ -168,16 +192,18 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // Verifica se a API foi chamada com parâmetros corretos
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/v1/pedidos/promissorias?month=2025-10&status=pendentes&limit=100"),
+        expect.stringContaining(
+          "/api/v1/pedidos/promissorias?month=2025-10&status=pendentes&limit=100",
+        ),
         expect.objectContaining({
-          cache: "no-store"
-        })
+          cache: "no-store",
+        }),
       );
     });
 
@@ -193,7 +219,7 @@ describe("InfoModal Component", () => {
   test("exibe erro quando API falha", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: false,
-      json: async () => ({ error: "Falha na API" })
+      json: async () => ({ error: "Falha na API" }),
     });
 
     await renderAndFlush(
@@ -205,7 +231,7 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     await waitFor(() => {
@@ -215,7 +241,7 @@ describe("InfoModal Component", () => {
 
   test("exibe estado de loading", async () => {
     // Mock que nunca resolve para simular loading permanente
-    global.fetch.mockImplementation(() => new Promise(() => { }));
+    global.fetch.mockImplementation(() => new Promise(() => {}));
 
     await renderAndFlush(
       <Wrapper>
@@ -226,7 +252,7 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     expect(screen.getByText("Carregando...")).toBeInTheDocument();
@@ -235,7 +261,7 @@ describe("InfoModal Component", () => {
   test("exibe mensagem quando não há itens", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => []
+      json: async () => [],
     });
 
     await renderAndFlush(
@@ -247,7 +273,7 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     await waitFor(() => {
@@ -265,7 +291,7 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // Procura por botões de fechar (X ou similar)
@@ -287,12 +313,14 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     expect(screen.getByText("Compras do mês")).toBeInTheDocument();
     // Relaxa dependência de emojis que podem variar em encoding
-    expect(screen.getByText(/Histórico de Compras \(12 meses\)/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Histórico de Compras \(12 meses\)/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Glossário:/)).toBeInTheDocument();
   });
 
@@ -306,7 +334,7 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     expect(screen.getByText("Lucro bruto")).toBeInTheDocument();
@@ -322,10 +350,12 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
-    expect(screen.getByText("Crescimento (mês vs. anterior)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Crescimento (mês vs. anterior)"),
+    ).toBeInTheDocument();
   });
 
   test("renderiza modal padrão para cardKey desconhecida", async () => {
@@ -338,7 +368,7 @@ describe("InfoModal Component", () => {
           monthStr="2025-10"
           onClose={mockOnClose}
         />
-      </Wrapper>
+      </Wrapper>,
     );
 
     expect(screen.getByText("Detalhes")).toBeInTheDocument();
@@ -350,14 +380,14 @@ describe("InfoModal Component", () => {
       { cardKey: "promissorias_pendentes", expectedStatus: "pendentes" },
       { cardKey: "promissorias_atrasadas", expectedStatus: "atrasadas" },
       { cardKey: "proximo_mes", expectedStatus: "proximo" },
-      { cardKey: "carry_over", expectedStatus: "carry" }
+      { cardKey: "carry_over", expectedStatus: "carry" },
     ];
 
     for (const { cardKey, expectedStatus } of testCases) {
       global.fetch.mockClear();
       global.fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => []
+        json: async () => [],
       });
 
       await renderAndFlush(
@@ -369,13 +399,13 @@ describe("InfoModal Component", () => {
             monthStr="2025-10"
             onClose={mockOnClose}
           />
-        </Wrapper>
+        </Wrapper>,
       );
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
           expect.stringContaining(`status=${expectedStatus}`),
-          expect.any(Object)
+          expect.any(Object),
         );
       });
     }

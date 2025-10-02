@@ -1,7 +1,7 @@
-import React from 'react';
-import { Button } from '../ui/Button';
-import { formatBRL } from 'components/common/format';
-import { formatQty } from './utils';
+import React from "react";
+import { Button } from "../ui/Button";
+import { formatBRL } from "components/common/format";
+import { formatQty } from "./utils";
 
 /**
  * Linha de item do Pedido (apenas render). Lógica de cálculo fica em utils / hooks.
@@ -18,29 +18,33 @@ export function PedidoItemRow({
   freteTotal,
 }) {
   return (
-    <tr key={idx} className={`${getItemDiffClass(it) || ''}`}>
+    <tr key={idx} className={`${getItemDiffClass(it) || ""}`}>
       <td className="px-2 py-2 max-w-[240px]">
         <div className="flex items-center gap-2">
           <span className="font-medium truncate">
-            {it.produto_label || 'Produto não selecionado'}
+            {it.produto_label || "Produto não selecionado"}
           </span>
           {getItemDiffIcon(it)}
         </div>
       </td>
-      <td className="px-2 py-2 text-right whitespace-nowrap">{formatQty(it.quantidade)}</td>
       <td className="px-2 py-2 text-right whitespace-nowrap">
-        {it.preco_unitario !== '' ? formatBRL(Number(it.preco_unitario)) : '—'}
+        {formatQty(it.quantidade)}
       </td>
       <td className="px-2 py-2 text-right whitespace-nowrap">
-        {it.desconto_unitario !== '' ? formatBRL(Number(it.desconto_unitario)) : '—'}
+        {it.preco_unitario !== "" ? formatBRL(Number(it.preco_unitario)) : "—"}
+      </td>
+      <td className="px-2 py-2 text-right whitespace-nowrap">
+        {it.desconto_unitario !== ""
+          ? formatBRL(Number(it.desconto_unitario))
+          : "—"}
       </td>
       <td className="px-2 py-2 text-right font-semibold whitespace-nowrap">
         {(() => {
           const t = computeItemTotal(it);
-          return t != null ? formatBRL(Number(t)) : '—';
+          return t != null ? formatBRL(Number(t)) : "—";
         })()}
       </td>
-      {tipo === 'VENDA' && (
+      {tipo === "VENDA" && (
         <td className="px-2 py-2 text-right whitespace-nowrap">
           {(() => {
             if (it.custo_carregando) {
@@ -56,27 +60,28 @@ export function PedidoItemRow({
             }
             const qtd = Number(it.quantidade || 0);
             const preco =
-              Number(it.preco_unitario || 0) - Number(it.desconto_unitario || 0);
+              Number(it.preco_unitario || 0) -
+              Number(it.desconto_unitario || 0);
             const custoRaw = Number(
               it.custo_fifo_unitario != null
                 ? it.custo_fifo_unitario
                 : it.custo_base_unitario,
             );
-            if (!Number.isFinite(qtd) || qtd <= 0) return '—';
-            if (!Number.isFinite(preco) || preco <= 0) return '—';
-            if (!Number.isFinite(custoRaw) || custoRaw <= 0) return '—';
+            if (!Number.isFinite(qtd) || qtd <= 0) return "—";
+            if (!Number.isFinite(preco) || preco <= 0) return "—";
+            if (!Number.isFinite(custoRaw) || custoRaw <= 0) return "—";
             const lucro = (preco - custoRaw) * qtd;
             const cls =
               lucro > 0
-                ? 'text-emerald-600 dark:text-emerald-400'
+                ? "text-emerald-600 dark:text-emerald-400"
                 : lucro < 0
-                  ? 'text-red-600 dark:text-red-400'
-                  : 'opacity-70';
+                  ? "text-red-600 dark:text-red-400"
+                  : "opacity-70";
             return <span className={cls}>{formatBRL(lucro)}</span>;
           })()}
         </td>
       )}
-      {tipo === 'COMPRA' && Number(freteTotal || 0) > 0 && (
+      {tipo === "COMPRA" && Number(freteTotal || 0) > 0 && (
         <td className="px-2 py-2 text-right text-xs whitespace-nowrap">
           {formatBRL(Number(freteShares?.[idx] || 0))}
         </td>

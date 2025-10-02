@@ -18,8 +18,8 @@ export function ProductHardDeleteDialog({
         <div className="space-y-4 text-sm">
           <p>
             Esta ação removerá TODOS os registros relacionados ao produto
-            (movimentos, lotes, itens de pedidos, fornecedores). Não pode
-            ser desfeita.
+            (movimentos, lotes, itens de pedidos, fornecedores). Não pode ser
+            desfeita.
           </p>
           <input
             type="password"

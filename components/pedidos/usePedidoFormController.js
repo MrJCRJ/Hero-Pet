@@ -1,21 +1,22 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { useToast } from "../entities/shared/toast";
-import { usePedidoItems } from './usePedidoItems';
-import { usePedidoPromissorias } from './usePedidoPromissorias';
-import { usePedidoTotals } from './usePedidoTotals';
-import { usePedidoTipoParceiro } from './usePedidoTipoParceiro';
-import { usePedidoSideEffects } from './usePedidoSideEffects';
+import { usePedidoItems } from "./usePedidoItems";
+import { usePedidoPromissorias } from "./usePedidoPromissorias";
+import { usePedidoTotals } from "./usePedidoTotals";
+import { usePedidoTipoParceiro } from "./usePedidoTipoParceiro";
+import { usePedidoSideEffects } from "./usePedidoSideEffects";
 import { defaultEmptyItem } from "./utils";
 // MSG agora utilizado apenas dentro do hook de persistência
 import { usePedidoFetchers } from "./hooks";
-import { usePedidoPersistence } from './usePedidoPersistence';
+import { usePedidoPersistence } from "./usePedidoPersistence";
 
 export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   const { push } = useToast();
   // FIFO flags
   const [fifoAplicado, setFifoAplicado] = useState(() => {
     if (editingOrder) {
-      if (typeof editingOrder.fifo_aplicado === 'boolean') return editingOrder.fifo_aplicado;
+      if (typeof editingOrder.fifo_aplicado === "boolean")
+        return editingOrder.fifo_aplicado;
       return true;
     }
     return true;
@@ -42,25 +43,91 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   } = usePedidoTipoParceiro(editingOrder);
 
   // Campos básicos
-  const [observacao, setObservacao] = useState(() => editingOrder?.observacao || "");
-  const [dataEmissao, setDataEmissao] = useState(() => editingOrder?.data_emissao ? String(editingOrder.data_emissao).slice(0, 10) : "");
-  const [dataEntrega, setDataEntrega] = useState(() => editingOrder?.data_entrega ? new Date(editingOrder.data_entrega).toISOString().slice(0, 10) : "");
-  const [temNotaFiscal, setTemNotaFiscal] = useState(() => editingOrder ? Boolean(editingOrder.tem_nota_fiscal) : true);
-  const [parcelado, setParcelado] = useState(() => (editingOrder?.parcelado != null ? Boolean(editingOrder.parcelado) : true));
+  const [observacao, setObservacao] = useState(
+    () => editingOrder?.observacao || "",
+  );
+  const [dataEmissao, setDataEmissao] = useState(() =>
+    editingOrder?.data_emissao
+      ? String(editingOrder.data_emissao).slice(0, 10)
+      : "",
+  );
+  const [dataEntrega, setDataEntrega] = useState(() =>
+    editingOrder?.data_entrega
+      ? new Date(editingOrder.data_entrega).toISOString().slice(0, 10)
+      : "",
+  );
+  const [temNotaFiscal, setTemNotaFiscal] = useState(() =>
+    editingOrder ? Boolean(editingOrder.tem_nota_fiscal) : true,
+  );
+  const [parcelado, setParcelado] = useState(() =>
+    editingOrder?.parcelado != null ? Boolean(editingOrder.parcelado) : true,
+  );
 
   // Itens
-  const { itens, setItens, originalItens, updateItem, addItem, removeItem, computeItemTotal: computeItemTotalFromHook, getItemChanges, getItemDiffClass, getItemDiffIcon } = usePedidoItems(editingOrder);
+  const {
+    itens,
+    setItens,
+    originalItens,
+    updateItem,
+    addItem,
+    removeItem,
+    computeItemTotal: computeItemTotalFromHook,
+    getItemChanges,
+    getItemDiffClass,
+    getItemDiffIcon,
+  } = usePedidoItems(editingOrder);
 
   // Promissórias
-  const { numeroPromissorias, setNumeroPromissorias, dataPrimeiraPromissoria, setDataPrimeiraPromissoria, valorPorPromissoria, setValorPorPromissoria, frequenciaPromissorias, setFrequenciaPromissorias, intervaloDiasPromissorias, setIntervaloDiasPromissorias, promissoriaDatas, setPromissoriaDatas, promissoriasMeta, sumPromissorias, computePromissoriasMismatch } = usePedidoPromissorias(editingOrder);
+  const {
+    numeroPromissorias,
+    setNumeroPromissorias,
+    dataPrimeiraPromissoria,
+    setDataPrimeiraPromissoria,
+    valorPorPromissoria,
+    setValorPorPromissoria,
+    frequenciaPromissorias,
+    setFrequenciaPromissorias,
+    intervaloDiasPromissorias,
+    setIntervaloDiasPromissorias,
+    promissoriaDatas,
+    setPromissoriaDatas,
+    promissoriasMeta,
+    sumPromissorias,
+    computePromissoriasMismatch,
+  } = usePedidoPromissorias(editingOrder);
 
   // Frete & Totais
   const [freteTotal, setFreteTotal] = useState("");
-  const itensRef = React.useRef(itens); React.useEffect(() => { itensRef.current = itens; }, [itens]);
-  const tipoRef = React.useRef(tipo); React.useEffect(() => { tipoRef.current = tipo; }, [tipo]);
-  const numeroPromissoriasRef = React.useRef(numeroPromissorias); React.useEffect(() => { numeroPromissoriasRef.current = numeroPromissorias; }, [numeroPromissorias]);
-  const freteRef = React.useRef(""); React.useEffect(() => { freteRef.current = freteTotal; }, [freteTotal]);
-  const { computeOrderTotalEstimate, computeLucroBruto, computeLucroPercent, subtotal, totalDescontos, totalLiquido } = usePedidoTotals({ itensRef, tipoRef, numeroPromissoriasRef, setValorPorPromissoria, freteRef });
+  const itensRef = React.useRef(itens);
+  React.useEffect(() => {
+    itensRef.current = itens;
+  }, [itens]);
+  const tipoRef = React.useRef(tipo);
+  React.useEffect(() => {
+    tipoRef.current = tipo;
+  }, [tipo]);
+  const numeroPromissoriasRef = React.useRef(numeroPromissorias);
+  React.useEffect(() => {
+    numeroPromissoriasRef.current = numeroPromissorias;
+  }, [numeroPromissorias]);
+  const freteRef = React.useRef("");
+  React.useEffect(() => {
+    freteRef.current = freteTotal;
+  }, [freteTotal]);
+  const {
+    computeOrderTotalEstimate,
+    computeLucroBruto,
+    computeLucroPercent,
+    subtotal,
+    totalDescontos,
+    totalLiquido,
+  } = usePedidoTotals({
+    itensRef,
+    tipoRef,
+    numeroPromissoriasRef,
+    setValorPorPromissoria,
+    freteRef,
+  });
 
   // Created record (após POST/PUT)
   const [created, setCreated] = useState(null);
@@ -74,15 +141,27 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   React.useEffect(() => {
     if (!editingOrder) return;
     setObservacao(editingOrder.observacao || "");
-    setDataEmissao(editingOrder.data_emissao ? String(editingOrder.data_emissao).slice(0, 10) : "");
-    setDataEntrega(editingOrder.data_entrega ? new Date(editingOrder.data_entrega).toISOString().slice(0, 10) : "");
+    setDataEmissao(
+      editingOrder.data_emissao
+        ? String(editingOrder.data_emissao).slice(0, 10)
+        : "",
+    );
+    setDataEntrega(
+      editingOrder.data_entrega
+        ? new Date(editingOrder.data_entrega).toISOString().slice(0, 10)
+        : "",
+    );
     setTemNotaFiscal(Boolean(editingOrder.tem_nota_fiscal));
     setParcelado(Boolean(editingOrder.parcelado));
     setCreated({ id: editingOrder.id, status: editingOrder.status });
     setFifoAplicado(Boolean(editingOrder.fifo_aplicado));
     setMigrarFifo(false);
-    if (Object.prototype.hasOwnProperty.call(editingOrder, 'frete_total')) {
-      setFreteTotal(editingOrder.frete_total != null ? String(editingOrder.frete_total) : "");
+    if (Object.prototype.hasOwnProperty.call(editingOrder, "frete_total")) {
+      setFreteTotal(
+        editingOrder.frete_total != null
+          ? String(editingOrder.frete_total)
+          : "",
+      );
     } else {
       setFreteTotal("");
     }
@@ -93,30 +172,35 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     if (!tipo) return false;
     const pid = Number(partnerId);
     if (!Number.isFinite(pid)) return false;
-    return itens.some(it => Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0);
+    return itens.some(
+      (it) =>
+        Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0,
+    );
   }, [tipo, partnerId, itens]);
 
   // Limpeza do formulário
   const clearForm = useCallback(() => {
-    setTipo('VENDA');
-    setPartnerId('');
-    setPartnerLabel('');
-    setPartnerName('');
-    setObservacao('');
-    setDataEntrega('');
+    setTipo("VENDA");
+    setPartnerId("");
+    setPartnerLabel("");
+    setPartnerName("");
+    setObservacao("");
+    setDataEntrega("");
     setTemNotaFiscal(false);
     setParcelado(true);
     setItens([defaultEmptyItem()]);
     setCreated(null);
-    setFreteTotal('');
+    setFreteTotal("");
   }, [setTipo, setPartnerId, setPartnerLabel, setPartnerName, setItens]);
 
   // Helpers
   const computeItemTotal = computeItemTotalFromHook; // mantém API anterior
 
   // Fetch helpers
-  const { fetchEntities, fetchProdutos } = usePedidoFetchers({ tipo, partnerId });
-
+  const { fetchEntities, fetchProdutos } = usePedidoFetchers({
+    tipo,
+    partnerId,
+  });
 
   // Persistência unificada
   const { handleSubmit, handleDelete } = usePedidoPersistence({

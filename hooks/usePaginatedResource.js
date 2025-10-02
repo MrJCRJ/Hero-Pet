@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MSG } from 'components/common/messages';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MSG } from "components/common/messages";
 
 /**
  * Hook genérico de paginação para recursos REST com pattern limit/offset + meta opcional.
@@ -31,9 +31,9 @@ export function usePaginatedResource({
 
   const paramsStr = useMemo(() => {
     const p = buildParams ? buildParams(filters) : new URLSearchParams();
-    p.set('limit', String(limit));
-    p.set('offset', String(page * limit));
-    p.set('meta', '1');
+    p.set("limit", String(limit));
+    p.set("offset", String(page * limit));
+    p.set("meta", "1");
     return p.toString();
   }, [filters, limit, page, buildParams]);
 
@@ -47,7 +47,7 @@ export function usePaginatedResource({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${baseUrl}?${paramsStr}`, { cache: 'no-store' });
+      const res = await fetch(`${baseUrl}?${paramsStr}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || errorFallback);
       if (parse) {
@@ -74,9 +74,15 @@ export function usePaginatedResource({
   }, [reload]);
 
   const hasMore = (page + 1) * limit < total;
-  const nextPage = () => { if (hasMore && !loading) setPage(p => p + 1); };
-  const prevPage = () => { if (page > 0 && !loading) setPage(p => Math.max(0, p - 1)); };
-  const gotoPage = (p) => { if (p >= 0 && Number.isFinite(p) && !loading) setPage(p); };
+  const nextPage = () => {
+    if (hasMore && !loading) setPage((p) => p + 1);
+  };
+  const prevPage = () => {
+    if (page > 0 && !loading) setPage((p) => Math.max(0, p - 1));
+  };
+  const gotoPage = (p) => {
+    if (p >= 0 && Number.isFinite(p) && !loading) setPage(p);
+  };
 
   return {
     filters,

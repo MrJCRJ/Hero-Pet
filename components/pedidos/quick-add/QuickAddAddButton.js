@@ -19,9 +19,9 @@ export function QuickAddAddButton({
 
   const title =
     tipo === "VENDA" &&
-      displaySaldo != null &&
-      Number.isFinite(Number(quantidade)) &&
-      Number(quantidade) > Number(displaySaldo)
+    displaySaldo != null &&
+    Number.isFinite(Number(quantidade)) &&
+    Number(quantidade) > Number(displaySaldo)
       ? "Estoque insuficiente"
       : "Adicionar item";
 

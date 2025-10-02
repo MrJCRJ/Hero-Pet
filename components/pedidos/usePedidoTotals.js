@@ -1,8 +1,17 @@
-import React from 'react';
-import { computeItemTotal as computeItemTotalPure } from './utils';
+import React from "react";
+import { computeItemTotal as computeItemTotalPure } from "./utils";
 
-export function usePedidoTotals({ itensRef, tipoRef, numeroPromissoriasRef, setValorPorPromissoria, freteRef }) {
-  const computeItemTotal = React.useCallback(it => computeItemTotalPure(it), []);
+export function usePedidoTotals({
+  itensRef,
+  tipoRef,
+  numeroPromissoriasRef,
+  setValorPorPromissoria,
+  freteRef,
+}) {
+  const computeItemTotal = React.useCallback(
+    (it) => computeItemTotalPure(it),
+    [],
+  );
 
   const subtotal = React.useCallback(() => {
     const itens = itensRef.current || [];
@@ -15,36 +24,53 @@ export function usePedidoTotals({ itensRef, tipoRef, numeroPromissoriasRef, setV
 
   const totalDescontos = React.useCallback(() => {
     const itens = itensRef.current || [];
-    return Number(itens.reduce((acc, it) => {
-      const q = Number(it.quantidade);
-      const d = Number(it.desconto_unitario);
-      if (Number.isFinite(q) && Number.isFinite(d) && q > 0 && d > 0) return acc + q * d;
-      return acc;
-    }, 0).toFixed(2));
+    return Number(
+      itens
+        .reduce((acc, it) => {
+          const q = Number(it.quantidade);
+          const d = Number(it.desconto_unitario);
+          if (Number.isFinite(q) && Number.isFinite(d) && q > 0 && d > 0)
+            return acc + q * d;
+          return acc;
+        }, 0)
+        .toFixed(2),
+    );
   }, [itensRef]);
 
   const totalLiquido = React.useCallback(() => {
     const base = subtotal();
     const desc = totalDescontos();
-    const frete = tipoRef.current === 'COMPRA' ? Number(freteRef?.current || 0) : 0;
-    return Number((base - desc + (Number.isFinite(frete) ? frete : 0)).toFixed(2));
+    const frete =
+      tipoRef.current === "COMPRA" ? Number(freteRef?.current || 0) : 0;
+    return Number(
+      (base - desc + (Number.isFinite(frete) ? frete : 0)).toFixed(2),
+    );
   }, [subtotal, totalDescontos, tipoRef, freteRef]);
 
   const computeOrderTotalEstimate = totalLiquido;
 
   const computeLucroBruto = React.useCallback(() => {
-    if (tipoRef.current !== 'VENDA') return 0;
+    if (tipoRef.current !== "VENDA") return 0;
     const itens = itensRef.current || [];
     try {
       return Number(
         itens
           .reduce((acc, it) => {
             const qtd = Number(it.quantidade || 0);
-            const preco = Number(it.preco_unitario || 0) - Number(it.desconto_unitario || 0);
+            const preco =
+              Number(it.preco_unitario || 0) -
+              Number(it.desconto_unitario || 0);
             const custoRaw = Number(
-              it.custo_fifo_unitario != null ? it.custo_fifo_unitario : it.custo_base_unitario,
+              it.custo_fifo_unitario != null
+                ? it.custo_fifo_unitario
+                : it.custo_base_unitario,
             );
-            if (qtd > 0 && preco > 0 && Number.isFinite(custoRaw) && custoRaw > 0) {
+            if (
+              qtd > 0 &&
+              preco > 0 &&
+              Number.isFinite(custoRaw) &&
+              custoRaw > 0
+            ) {
               return acc + (preco - custoRaw) * qtd;
             }
             return acc;
@@ -57,7 +83,7 @@ export function usePedidoTotals({ itensRef, tipoRef, numeroPromissoriasRef, setV
   }, [itensRef, tipoRef]);
 
   const computeLucroPercent = React.useCallback(() => {
-    if (tipoRef.current !== 'VENDA') return 0;
+    if (tipoRef.current !== "VENDA") return 0;
     const lucro = computeLucroBruto();
     const receita = subtotal();
     if (!receita) return 0;
@@ -74,8 +100,13 @@ export function usePedidoTotals({ itensRef, tipoRef, numeroPromissoriasRef, setV
       return acc + (Number.isFinite(Number(t)) ? Number(t) : 0);
     }, 0);
     const next = Number((sum / numero).toFixed(2));
-    setValorPorPromissoria(v => (v !== next ? next : v));
-  }, [itensRef, numeroPromissoriasRef, computeItemTotal, setValorPorPromissoria]);
+    setValorPorPromissoria((v) => (v !== next ? next : v));
+  }, [
+    itensRef,
+    numeroPromissoriasRef,
+    computeItemTotal,
+    setValorPorPromissoria,
+  ]);
 
   return {
     computeItemTotal,

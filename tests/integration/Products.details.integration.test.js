@@ -8,7 +8,13 @@ import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 import { mockProductsBase } from "./products/__utils__/mockProductsHooks";
 // Aplica mock antes de carregar componente
-mockProductsBase({ id: 1, nome: 'Ração Premium', saldo: 10, custo_medio: 32.5, ultimo_custo: 30 });
+mockProductsBase({
+  id: 1,
+  nome: "Ração Premium",
+  saldo: 10,
+  custo_medio: 32.5,
+  ultimo_custo: 30,
+});
 // eslint-disable-next-line import/first
 const { ProductsManager } = require("components/products/manager");
 
@@ -50,25 +56,30 @@ describe("ProductsManager detalhes produto", () => {
     );
 
     // Produto já carregado via mock do hook
-    expect(await screen.findByText('Ração Premium')).toBeInTheDocument();
+    expect(await screen.findByText("Ração Premium")).toBeInTheDocument();
 
     const user = userEvent.setup();
-    const row = await screen.findByTitle('Clique na linha para editar');
+    const row = await screen.findByTitle("Clique na linha para editar");
     await user.click(row);
     try {
       await screen.findByText(/Produto: Ração Premium/);
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error('DEBUG fetch.calls após clique linha:', fetch.mock.calls.map(c => c[0]));
+      console.error(
+        "DEBUG fetch.calls após clique linha:",
+        fetch.mock.calls.map((c) => c[0]),
+      );
       throw e;
     }
 
-    const detailsBtn = screen.getByRole('button', { name: 'Detalhes' });
+    const detailsBtn = screen.getByRole("button", { name: "Detalhes" });
     await user.click(detailsBtn);
 
     // Espera chamada endpoint custos
     await waitFor(() => {
-      const called = fetch.mock.calls.some(c => String(c[0]).includes('/produtos/1/custos_historicos?months=12'));
+      const called = fetch.mock.calls.some((c) =>
+        String(c[0]).includes("/produtos/1/custos_historicos?months=12"),
+      );
       expect(called).toBe(true);
     });
 
@@ -78,7 +89,7 @@ describe("ProductsManager detalhes produto", () => {
     const monthNode = screen.queryByText(/2025-09/);
     if (!monthNode && process.env.DEBUG_MISSING_LABELS) {
       // eslint-disable-next-line no-console
-      console.warn('[DEBUG_MISSING_LABELS] label 2025-09 ausente');
+      console.warn("[DEBUG_MISSING_LABELS] label 2025-09 ausente");
     }
     // Alguns labels podem estar em caixa alta/menor, usamos regex flexível
     // Verificação da variação acumulada ou placeholder de variação

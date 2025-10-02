@@ -34,7 +34,9 @@ export function ConfirmDialog({
     <Modal title={title} onClose={onCancel} maxWidth="max-w-md">
       <div className="space-y-4">
         {typeof message === "string" ? (
-          <p className="text-sm leading-relaxed whitespace-pre-line">{message}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-line">
+            {message}
+          </p>
         ) : (
           message
         )}

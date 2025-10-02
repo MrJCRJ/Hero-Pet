@@ -43,7 +43,10 @@ describe("Entities UI - Smoke", () => {
       const url = typeof input === "string" ? input : input?.url;
       if (!url) return Promise.resolve({ ok: true, json: async () => ({}) });
 
-      if (url.includes("/api/v1/entities?") || url.endsWith("/api/v1/entities")) {
+      if (
+        url.includes("/api/v1/entities?") ||
+        url.endsWith("/api/v1/entities")
+      ) {
         if (init && init.method === "POST") {
           return Promise.resolve({ ok: true, json: async () => ({ id: 99 }) });
         }
@@ -52,7 +55,10 @@ describe("Entities UI - Smoke", () => {
           json: async () => ({ data: fakeEntities, meta: { total: 1 } }),
         });
       }
-      if (/\/api\/v1\/entities\/(\d+)$/.test(url) && (!init || init.method === "GET")) {
+      if (
+        /\/api\/v1\/entities\/(\d+)$/.test(url) &&
+        (!init || init.method === "GET")
+      ) {
         return Promise.resolve({ ok: true, json: async () => fakeEntities[0] });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -63,7 +69,7 @@ describe("Entities UI - Smoke", () => {
     render(
       <Wrapper>
         <EntitiesManager />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // Lista inicial
@@ -76,7 +82,9 @@ describe("Entities UI - Smoke", () => {
     // Abrir formulário
     fireEvent.click(screen.getByRole("button", { name: /Adicionar/i }));
 
-    expect(await screen.findByText(/Formulário de Cliente/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Formulário de Cliente/),
+    ).toBeInTheDocument();
 
     // Preenche nome e documento parcial (marcando pendente para permitir salvar)
     const nomeInput = screen.getByLabelText(/Nome/i);
@@ -87,7 +95,9 @@ describe("Entities UI - Smoke", () => {
     fireEvent.change(docInput, { target: { value: "1234567890" } });
 
     // Marcar como pendente para não exigir dígitos completos
-    const pendenteCheckbox = screen.getByLabelText(/Documento ainda não disponível/i);
+    const pendenteCheckbox = screen.getByLabelText(
+      /Documento ainda não disponível/i,
+    );
     fireEvent.click(pendenteCheckbox);
 
     // Submete

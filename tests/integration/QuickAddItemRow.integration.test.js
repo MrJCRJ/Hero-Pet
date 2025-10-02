@@ -18,7 +18,7 @@ function InnerPedidoForm() {
     <PedidoFormView
       {...controller}
       handleSubmit={(e) => e.preventDefault()}
-      handleDelete={() => { }}
+      handleDelete={() => {}}
       fetchEntities={async () => ({ results: [] })}
       // SelectionModal espera um array simples
       fetchProdutos={async () => [{ id: 1, label: "Ração Premium" }]}

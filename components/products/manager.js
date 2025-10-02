@@ -15,18 +15,56 @@ import { MSG } from "components/common/messages";
 
 export function ProductsManager({ linkSupplierId }) {
   const {
-    rows, loading, query, setQ, setCategoria, setAtivo, refresh,
-    showModal, setShowModal, editing,
-    actionTarget, showActionsModal, setShowActionsModal,
-    detailTarget, showDetailModal, setShowDetailModal,
-    detailLoading, costHistory,
-    submitting, onlyBelowMin, setOnlyBelowMin,
-    topData, topLoading, showTopModal, openTopModal, closeTopModal, fetchTopProdutos,
-    hardDeleteTarget, hardDeletePwd, hardDeleting, setHardDeletePwd, openHardDelete, cancelHardDelete, confirmHardDelete,
-    pendingToggle, openInactivate, openReactivate, cancelToggle, confirmToggle,
-    costMap, visibleRows, searchInputRef,
-    highlightId, loadingHighlight, errorHighlight,
-    openNew, openEdit, openActions, openDetails, handleSubmit,
+    rows,
+    loading,
+    query,
+    setQ,
+    setCategoria,
+    setAtivo,
+    refresh,
+    showModal,
+    setShowModal,
+    editing,
+    actionTarget,
+    showActionsModal,
+    setShowActionsModal,
+    detailTarget,
+    showDetailModal,
+    setShowDetailModal,
+    detailLoading,
+    costHistory,
+    submitting,
+    onlyBelowMin,
+    setOnlyBelowMin,
+    topData,
+    topLoading,
+    showTopModal,
+    openTopModal,
+    closeTopModal,
+    fetchTopProdutos,
+    hardDeleteTarget,
+    hardDeletePwd,
+    hardDeleting,
+    setHardDeletePwd,
+    openHardDelete,
+    cancelHardDelete,
+    confirmHardDelete,
+    pendingToggle,
+    openInactivate,
+    openReactivate,
+    cancelToggle,
+    confirmToggle,
+    costMap,
+    visibleRows,
+    searchInputRef,
+    highlightId,
+    loadingHighlight,
+    errorHighlight,
+    openNew,
+    openEdit,
+    openActions,
+    openDetails,
+    handleSubmit,
   } = useProductsManagerLogic();
 
   return (
@@ -83,7 +121,9 @@ export function ProductsManager({ linkSupplierId }) {
         </table>
       </div>
       {loadingHighlight && highlightId && (
-        <div className="text-xs opacity-70">Carregando produto #{highlightId}…</div>
+        <div className="text-xs opacity-70">
+          Carregando produto #{highlightId}…
+        </div>
       )}
       {errorHighlight && highlightId && (
         <div className="text-xs text-red-600">{errorHighlight}</div>
@@ -127,24 +167,29 @@ export function ProductsManager({ linkSupplierId }) {
       />
       {pendingToggle && (
         <ConfirmDialog
-          title={pendingToggle.action === 'inactivate' ? 'Inativar produto' : 'Reativar produto'}
+          title={
+            pendingToggle.action === "inactivate"
+              ? "Inativar produto"
+              : "Reativar produto"
+          }
           message={
             <p className="text-sm">
-              {pendingToggle.action === 'inactivate' ? 'Tem certeza que deseja inativar' : 'Confirmar reativação de'} {" "}
+              {pendingToggle.action === "inactivate"
+                ? "Tem certeza que deseja inativar"
+                : "Confirmar reativação de"}{" "}
               <strong>{pendingToggle.product.nome}</strong>?
             </p>
           }
-          confirmLabel={pendingToggle.action === 'inactivate' ? 'Inativar' : 'Reativar'}
+          confirmLabel={
+            pendingToggle.action === "inactivate" ? "Inativar" : "Reativar"
+          }
           cancelLabel="Cancelar"
           onCancel={cancelToggle}
           onConfirm={confirmToggle}
         />
       )}
       {showTopModal && (
-        <Modal
-          onClose={closeTopModal}
-          title="Ranking de Produtos por Lucro"
-        >
+        <Modal onClose={closeTopModal} title="Ranking de Produtos por Lucro">
           {topLoading && (
             <div className="text-sm opacity-70">Carregando ranking...</div>
           )}
@@ -179,7 +224,7 @@ function ProductsInsightsButton({ onClick, loading, hasData }) {
         <div className="text-xs opacity-70">Insights</div>
         <div className="text-sm font-semibold">Top produtos por lucro</div>
         <div className="text-[11px] opacity-60 mt-1">
-          {loading && !hasData ? 'Carregando...' : 'Clique para ver ranking'}
+          {loading && !hasData ? "Carregando..." : "Clique para ver ranking"}
         </div>
       </button>
     </div>

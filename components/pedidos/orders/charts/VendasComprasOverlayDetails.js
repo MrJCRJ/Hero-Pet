@@ -43,8 +43,8 @@ export default function VendasComprasOverlayDetails({ data }) {
           prevPoint={prevPoint}
           momPct={momPct}
           acumuladaPct={acumuladaPct}
-          rows={[{ label: 'Vendas', value: activePoint.value, type: 'money' }]}
-          icons={{ mom: '📊', acumulado: '📈' }}
+          rows={[{ label: "Vendas", value: activePoint.value, type: "money" }]}
+          icons={{ mom: "📊", acumulado: "📈" }}
           percentFormatter={(n) => formatPercent(n, { withSign: true })}
         />
       )}
@@ -60,19 +60,49 @@ export default function VendasComprasOverlayDetails({ data }) {
         activeLabel={activePoint?.label}
         onRowClick={toggleSelect}
         columns={[
-          { key: 'label', header: 'Mês', colSpan: 'col-span-3' },
-          { key: 'value', header: 'Vendas', colSpan: 'col-span-3', align: 'right', render: (row, { formatMoney }) => formatMoney(row.value) },
-          { key: 'crescimento', header: 'MoM % 📊', colSpan: 'col-span-3', align: 'right', render: (row, { formatPercent }) => row.crescimento != null ? formatPercent(row.crescimento, { withSign: true }) : '—' },
-          { key: 'delta', header: 'Δ Absoluto 📈', colSpan: 'col-span-3', align: 'right', render: (row, { formatMoney }) => row.delta != null ? formatMoney(row.delta) : '—' },
+          { key: "label", header: "Mês", colSpan: "col-span-3" },
+          {
+            key: "value",
+            header: "Vendas",
+            colSpan: "col-span-3",
+            align: "right",
+            render: (row, { formatMoney }) => formatMoney(row.value),
+          },
+          {
+            key: "crescimento",
+            header: "MoM % 📊",
+            colSpan: "col-span-3",
+            align: "right",
+            render: (row, { formatPercent }) =>
+              row.crescimento != null
+                ? formatPercent(row.crescimento, { withSign: true })
+                : "—",
+          },
+          {
+            key: "delta",
+            header: "Δ Absoluto 📈",
+            colSpan: "col-span-3",
+            align: "right",
+            render: (row, { formatMoney }) =>
+              row.delta != null ? formatMoney(row.delta) : "—",
+          },
         ]}
       />
 
       {/* Glossário */}
       <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-        <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">💡 Glossário:</h4>
+        <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
+          💡 Glossário:
+        </h4>
         <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1">
-          <div><strong>MoM %:</strong> Crescimento/decréscimo percentual em relação ao mês anterior</div>
-          <div><strong>Δ Absoluto:</strong> Diferença em valores monetários entre vendas e compras</div>
+          <div>
+            <strong>MoM %:</strong> Crescimento/decréscimo percentual em relação
+            ao mês anterior
+          </div>
+          <div>
+            <strong>Δ Absoluto:</strong> Diferença em valores monetários entre
+            vendas e compras
+          </div>
         </div>
       </div>
     </div>

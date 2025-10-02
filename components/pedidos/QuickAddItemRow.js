@@ -10,7 +10,12 @@ import { PriceSuggestionModal } from "./PriceSuggestionModal";
 import useQuickAddItemRowLogic from "./hooks/useQuickAddItemRowLogic";
 
 export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
-  const logic = useQuickAddItemRowLogic({ tipo, itens, fetchProdutos, onAppend });
+  const logic = useQuickAddItemRowLogic({
+    tipo,
+    itens,
+    fetchProdutos,
+    onAppend,
+  });
   const {
     label,
     produtoId,
@@ -86,7 +91,9 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
             loading: suggestionModal.data.loading,
             error: suggestionModal.data.error,
           }}
-          onClose={() => setSuggestionModal((prev) => ({ ...prev, open: false }))}
+          onClose={() =>
+            setSuggestionModal((prev) => ({ ...prev, open: false }))
+          }
           onApply={(v) => setPreco(String(Number(v).toFixed(2)))}
         />
       )}

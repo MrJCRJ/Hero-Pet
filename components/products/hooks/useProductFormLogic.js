@@ -15,7 +15,9 @@ export function useProductFormLogic({ initial = {}, onSubmit }) {
 
   const [nome, setNome] = React.useState(initial.nome || "");
   const [categoria, setCategoria] = React.useState(initial.categoria || "");
-  const [codigoBarras, setCodigoBarras] = React.useState(initial.codigo_barras || "");
+  const [codigoBarras, setCodigoBarras] = React.useState(
+    initial.codigo_barras || "",
+  );
   const [ativo, setAtivo] = React.useState(initial.ativo ?? true);
   const [descricao, setDescricao] = React.useState(initial.descricao || "");
   const [precoTabela] = React.useState(
@@ -40,9 +42,9 @@ export function useProductFormLogic({ initial = {}, onSubmit }) {
   const [supplierLabels, setSupplierLabels] = React.useState(
     Array.isArray(initial.supplier_labels)
       ? initial.supplier_labels.map((s) => ({
-        id: s.id,
-        label: s.name || s.label || String(s.id),
-      }))
+          id: s.id,
+          label: s.name || s.label || String(s.id),
+        }))
       : [],
   );
   const [showSupplierModal, setShowSupplierModal] = React.useState(false);
@@ -68,7 +70,7 @@ export function useProductFormLogic({ initial = {}, onSubmit }) {
         const uc = Number(data.ultimo_custo);
         setCostInfo({ custo_medio: cm, ultimo_custo: uc });
       })
-      .catch(() => { });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -110,7 +112,7 @@ export function useProductFormLogic({ initial = {}, onSubmit }) {
         );
         setEstoqueHint(Math.max(0, Math.ceil(totalSaida)));
       })
-      .catch(() => { });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };

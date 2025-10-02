@@ -7,7 +7,7 @@ import { formatMoney, formatPercent } from "./shared/formatters";
 
 export default function ComprasHistoryChart({ comprasHistory }) {
   const safeHistory = Array.isArray(comprasHistory) ? comprasHistory : [];
-  const chartData = safeHistory.map(item => ({
+  const chartData = safeHistory.map((item) => ({
     label: item.month,
     value: Number(item.compras || 0),
   }));
@@ -23,7 +23,9 @@ export default function ComprasHistoryChart({ comprasHistory }) {
   } = useTimeSeriesActivePoint(chartData);
 
   if (!chartData.length) {
-    return <div className="text-xs opacity-70 mt-2">Sem histórico de compras.</div>;
+    return (
+      <div className="text-xs opacity-70 mt-2">Sem histórico de compras.</div>
+    );
   }
 
   return (
@@ -45,36 +47,70 @@ export default function ComprasHistoryChart({ comprasHistory }) {
           prevPoint={prevPoint}
           momPct={momPct}
           acumuladaPct={acumuladaPct}
-          rows={[{ label: 'Compras', value: activePoint.value, type: 'money' }]}
-          icons={{ mom: '📊', acumulado: '📈' }}
+          rows={[{ label: "Compras", value: activePoint.value, type: "money" }]}
+          icons={{ mom: "📊", acumulado: "📈" }}
           percentFormatter={(n) => formatPercent(n, { withSign: true })}
         />
       )}
       <TimeSeriesTable
         data={[...chartData].reverse().map((p, idx, arr) => {
-          const originalPrevVal = idx < arr.length - 1 ? arr[idx + 1].value : null;
+          const originalPrevVal =
+            idx < arr.length - 1 ? arr[idx + 1].value : null;
           return {
             ...p,
             delta: originalPrevVal != null ? p.value - originalPrevVal : null,
-            momLocal: originalPrevVal && originalPrevVal !== 0 ? ((p.value - originalPrevVal) / originalPrevVal) * 100 : null,
+            momLocal:
+              originalPrevVal && originalPrevVal !== 0
+                ? ((p.value - originalPrevVal) / originalPrevVal) * 100
+                : null,
           };
         })}
         activeLabel={activePoint?.label}
         onRowClick={toggleSelect}
         columns={[
-          { key: 'label', header: 'Mês', colSpan: 'col-span-3' },
-          { key: 'value', header: 'Compras', colSpan: 'col-span-3', align: 'right', render: (row, { formatMoney }) => formatMoney(row.value) },
-          { key: 'momLocal', header: 'MoM % 📊', colSpan: 'col-span-3', align: 'right', render: (row, { formatPercent }) => row.momLocal != null ? formatPercent(row.momLocal, { withSign: true }) : '—' },
-          { key: 'delta', header: 'Δ Absoluto 📈', colSpan: 'col-span-3', align: 'right', render: (row, { formatMoney }) => row.delta != null ? formatMoney(row.delta) : '—' },
+          { key: "label", header: "Mês", colSpan: "col-span-3" },
+          {
+            key: "value",
+            header: "Compras",
+            colSpan: "col-span-3",
+            align: "right",
+            render: (row, { formatMoney }) => formatMoney(row.value),
+          },
+          {
+            key: "momLocal",
+            header: "MoM % 📊",
+            colSpan: "col-span-3",
+            align: "right",
+            render: (row, { formatPercent }) =>
+              row.momLocal != null
+                ? formatPercent(row.momLocal, { withSign: true })
+                : "—",
+          },
+          {
+            key: "delta",
+            header: "Δ Absoluto 📈",
+            colSpan: "col-span-3",
+            align: "right",
+            render: (row, { formatMoney }) =>
+              row.delta != null ? formatMoney(row.delta) : "—",
+          },
         ]}
       />
 
       {/* Glossário */}
       <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-        <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">💡 Glossário:</h4>
+        <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
+          💡 Glossário:
+        </h4>
         <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1">
-          <div><strong>MoM %:</strong> Crescimento/decréscimo percentual em relação ao mês anterior</div>
-          <div><strong>Δ Absoluto:</strong> Diferença em valores monetários entre meses consecutivos</div>
+          <div>
+            <strong>MoM %:</strong> Crescimento/decréscimo percentual em relação
+            ao mês anterior
+          </div>
+          <div>
+            <strong>Δ Absoluto:</strong> Diferença em valores monetários entre
+            meses consecutivos
+          </div>
         </div>
       </div>
     </div>

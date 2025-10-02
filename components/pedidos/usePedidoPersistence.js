@@ -1,8 +1,8 @@
-import React from 'react';
-import { buildPedidoPayloadBase } from './payload';
-import { persistPedido, excluirPedido } from './serviceHelpers';
-import { emitInventoryChanged } from './events';
-import { MSG } from 'components/common/messages';
+import React from "react";
+import { buildPedidoPayloadBase } from "./payload";
+import { persistPedido, excluirPedido } from "./serviceHelpers";
+import { emitInventoryChanged } from "./events";
+import { MSG } from "components/common/messages";
 
 // Hook responsável por persistência (create/update/delete) e auto-save básico (debounced)
 export function usePedidoPersistence({
@@ -32,7 +32,44 @@ export function usePedidoPersistence({
   const autoSaveTimer = React.useRef(null);
   const dirtyRef = React.useRef(false);
 
-  const buildBase = React.useCallback(() => buildPedidoPayloadBase({
+  const buildBase = React.useCallback(
+    () =>
+      buildPedidoPayloadBase({
+        partnerId,
+        partnerName,
+        observacao,
+        dataEmissao,
+        dataEntrega,
+        temNotaFiscal,
+        parcelado,
+        numeroPromissorias,
+        dataPrimeiraPromissoria,
+        promissoriaDatas,
+        itens,
+        freteTotal,
+        tipo,
+      }),
+    [
+      partnerId,
+      partnerName,
+      observacao,
+      dataEmissao,
+      dataEntrega,
+      temNotaFiscal,
+      parcelado,
+      numeroPromissorias,
+      dataPrimeiraPromissoria,
+      promissoriaDatas,
+      itens,
+      freteTotal,
+      tipo,
+    ],
+  );
+
+  // Marca dirty quando campos relevantes mudam (simples)
+  React.useEffect(() => {
+    dirtyRef.current = true;
+  }, [
     partnerId,
     partnerName,
     observacao,
@@ -46,10 +83,7 @@ export function usePedidoPersistence({
     itens,
     freteTotal,
     tipo,
-  }), [partnerId, partnerName, observacao, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, promissoriaDatas, itens, freteTotal, tipo]);
-
-  // Marca dirty quando campos relevantes mudam (simples)
-  React.useEffect(() => { dirtyRef.current = true; }, [partnerId, partnerName, observacao, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, promissoriaDatas, itens, freteTotal, tipo]);
+  ]);
 
   // Auto-save (apenas se já existir pedido e valorPorPromissoria definido) – pode evoluir
   React.useEffect(() => {
@@ -77,7 +111,7 @@ export function usePedidoPersistence({
         });
         dirtyRef.current = false;
         if (showAutoSaveToast && push) {
-          push('Alterações salvas automaticamente', { type: 'info' });
+          push("Alterações salvas automaticamente", { type: "info" });
         }
       } catch (_) {
         // silencioso por enquanto; futura surface de erros de autosave
@@ -86,7 +120,24 @@ export function usePedidoPersistence({
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     };
-  }, [isEdit, buildBase, editingOrder, tipo, partnerId, observacao, partnerName, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, migrarFifo, showAutoSaveToast, push]);
+  }, [
+    isEdit,
+    buildBase,
+    editingOrder,
+    tipo,
+    partnerId,
+    observacao,
+    partnerName,
+    dataEmissao,
+    dataEntrega,
+    temNotaFiscal,
+    parcelado,
+    numeroPromissorias,
+    dataPrimeiraPromissoria,
+    migrarFifo,
+    showAutoSaveToast,
+    push,
+  ]);
 
   async function handleSubmit(canSubmit) {
     if (!canSubmit) return;
@@ -112,16 +163,28 @@ export function usePedidoPersistence({
       if (isEdit) {
         onSaved && onSaved({ id: editingOrder.id });
         setCreated({ id: editingOrder.id, status: editingOrder.status });
-        emitInventoryChanged({ productIds: itens.map(it => Number(it.produto_id)).filter(v => Number.isFinite(v)), source: 'order-put', orderId: editingOrder.id });
-        push(`${MSG.PEDIDO_UPDATED} #${editingOrder.id}`, { type: 'success' });
+        emitInventoryChanged({
+          productIds: itens
+            .map((it) => Number(it.produto_id))
+            .filter((v) => Number.isFinite(v)),
+          source: "order-put",
+          orderId: editingOrder.id,
+        });
+        push(`${MSG.PEDIDO_UPDATED} #${editingOrder.id}`, { type: "success" });
       } else {
-        setCreated({ ...result, status: result.status || 'confirmado' });
+        setCreated({ ...result, status: result.status || "confirmado" });
         onCreated && onCreated(result);
-        emitInventoryChanged({ productIds: itens.map(it => Number(it.produto_id)).filter(v => Number.isFinite(v)), source: 'order-post', orderId: result.id });
-        push(`${MSG.PEDIDO_CREATED} #${result.id}`, { type: 'success' });
+        emitInventoryChanged({
+          productIds: itens
+            .map((it) => Number(it.produto_id))
+            .filter((v) => Number.isFinite(v)),
+          source: "order-post",
+          orderId: result.id,
+        });
+        push(`${MSG.PEDIDO_CREATED} #${result.id}`, { type: "success" });
       }
     } catch (err) {
-      push(err.message, { type: 'error', assertive: true });
+      push(err.message, { type: "error", assertive: true });
     } finally {
       setSubmitting(false);
     }
@@ -129,15 +192,17 @@ export function usePedidoPersistence({
 
   async function handleDelete() {
     if (!editingOrder?.id) return;
-    const ok = window.confirm(`Excluir pedido #${editingOrder.id}? Esta ação remove movimentos e itens relacionados.`);
+    const ok = window.confirm(
+      `Excluir pedido #${editingOrder.id}? Esta ação remove movimentos e itens relacionados.`,
+    );
     if (!ok) return;
     try {
       setSubmitting(true);
       await excluirPedido(editingOrder.id);
       onSaved && onSaved({ id: editingOrder.id, deleted: true });
-      push(`${MSG.PEDIDO_DELETED} #${editingOrder.id}`, { type: 'success' });
+      push(`${MSG.PEDIDO_DELETED} #${editingOrder.id}`, { type: "success" });
     } catch (err) {
-      push(err.message, { type: 'error' });
+      push(err.message, { type: "error" });
     } finally {
       setSubmitting(false);
     }

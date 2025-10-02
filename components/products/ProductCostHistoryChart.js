@@ -1,5 +1,5 @@
-import React from 'react';
-import LineAreaChart from 'components/common/LineAreaChart';
+import React from "react";
+import LineAreaChart from "components/common/LineAreaChart";
 
 /**
  * ProductCostHistoryChart
@@ -9,8 +9,8 @@ import LineAreaChart from 'components/common/LineAreaChart';
 export function ProductCostHistoryChart({ data, loading }) {
   const parsed = Array.isArray(data)
     ? data
-      .filter((d) => d && d.month && Number.isFinite(Number(d.avg_cost)))
-      .map((d) => ({ label: d.month, value: Number(d.avg_cost) }))
+        .filter((d) => d && d.month && Number.isFinite(Number(d.avg_cost)))
+        .map((d) => ({ label: d.month, value: Number(d.avg_cost) }))
     : [];
   const [focused, setFocused] = React.useState(null);
   const firstVal = parsed.length ? parsed[0].value : 0;
@@ -21,10 +21,10 @@ export function ProductCostHistoryChart({ data, loading }) {
   const prevPoint =
     active && parsed.length > 1
       ? (() => {
-        const idx = parsed.findIndex((p) => p.label === active.label);
-        if (idx > 0) return parsed[idx - 1];
-        return null;
-      })()
+          const idx = parsed.findIndex((p) => p.label === active.label);
+          if (idx > 0) return parsed[idx - 1];
+          return null;
+        })()
       : null;
 
   const momPct =
@@ -56,9 +56,11 @@ export function ProductCostHistoryChart({ data, loading }) {
                 Var. Mês
               </div>
               <div
-                className={`text-sm font-semibold ${!prevPoint ? 'opacity-50' : momPct > 0 ? 'text-green-500' : momPct < 0 ? 'text-red-400' : ''}`}
+                className={`text-sm font-semibold ${!prevPoint ? "opacity-50" : momPct > 0 ? "text-green-500" : momPct < 0 ? "text-red-400" : ""}`}
               >
-                {!prevPoint ? '—' : `${momPct > 0 ? '+' : ''}${momPct.toFixed(1)}%`}
+                {!prevPoint
+                  ? "—"
+                  : `${momPct > 0 ? "+" : ""}${momPct.toFixed(1)}%`}
               </div>
             </div>
             <div>
@@ -66,11 +68,11 @@ export function ProductCostHistoryChart({ data, loading }) {
                 Var. Acumulada
               </div>
               <div
-                className={`text-sm font-semibold ${acumuladaPct === 0 ? 'opacity-70' : acumuladaPct > 0 ? 'text-green-500' : 'text-red-400'}`}
+                className={`text-sm font-semibold ${acumuladaPct === 0 ? "opacity-70" : acumuladaPct > 0 ? "text-green-500" : "text-red-400"}`}
               >
                 {active
-                  ? `${acumuladaPct > 0 ? '+' : ''}${acumuladaPct.toFixed(1)}%`
-                  : '—'}
+                  ? `${acumuladaPct > 0 ? "+" : ""}${acumuladaPct.toFixed(1)}%`
+                  : "—"}
               </div>
             </div>
           </div>

@@ -111,13 +111,14 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
             : Array.isArray(data)
               ? data
               : [];
-          const incomingTotal = typeof data?.total === 'number'
-            ? data.total
-            : Array.isArray(data?.data)
-              ? data.data.length
-              : Array.isArray(data)
-                ? data.length
-                : 0;
+          const incomingTotal =
+            typeof data?.total === "number"
+              ? data.total
+              : Array.isArray(data?.data)
+                ? data.data.length
+                : Array.isArray(data)
+                  ? data.length
+                  : 0;
           setRows((prev) => [...prev, ...incoming]);
           setTotal(incomingTotal);
         } else {
@@ -126,13 +127,14 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
             : Array.isArray(data)
               ? data
               : [];
-          const incomingTotal = typeof data?.total === 'number'
-            ? data.total
-            : Array.isArray(data?.data)
-              ? data.data.length
-              : Array.isArray(data)
-                ? data.length
-                : 0;
+          const incomingTotal =
+            typeof data?.total === "number"
+              ? data.total
+              : Array.isArray(data?.data)
+                ? data.data.length
+                : Array.isArray(data)
+                  ? data.length
+                  : 0;
           setRows(incoming);
           setTotal(incomingTotal);
         }

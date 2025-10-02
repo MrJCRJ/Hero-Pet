@@ -37,15 +37,15 @@ export function mapEditingOrderToItems(editingOrder) {
     ...(it.custo_fifo_unitario == null && it.custo_base_unitario == null
       ? {}
       : {
-        custo_fifo_unitario:
-          it.custo_fifo_unitario != null
-            ? Number(it.custo_fifo_unitario)
-            : it.custo_fifo_unitario,
-        custo_base_unitario:
-          it.custo_base_unitario != null
-            ? Number(it.custo_base_unitario)
-            : it.custo_base_unitario,
-      }),
+          custo_fifo_unitario:
+            it.custo_fifo_unitario != null
+              ? Number(it.custo_fifo_unitario)
+              : it.custo_fifo_unitario,
+          custo_base_unitario:
+            it.custo_base_unitario != null
+              ? Number(it.custo_base_unitario)
+              : it.custo_base_unitario,
+        }),
   }));
 }
 
@@ -173,12 +173,16 @@ export function computeMargensPosComissao(lucroBruto, totalVenda, comissoes) {
 export function computeFreteShares(itens, freteTotal) {
   const totalFrete = Number(freteTotal || 0);
   if (!Array.isArray(itens) || itens.length === 0) return [];
-  if (!Number.isFinite(totalFrete) || totalFrete <= 0) return itens.map(() => 0);
+  if (!Number.isFinite(totalFrete) || totalFrete <= 0)
+    return itens.map(() => 0);
   const quants = itens.map((it) => {
     const qtd = Number(it?.quantidade);
     return Number.isFinite(qtd) && qtd > 0 ? qtd : 0;
   });
-  const sumQtd = quants.reduce((acc, q) => acc + (Number.isFinite(q) ? q : 0), 0);
+  const sumQtd = quants.reduce(
+    (acc, q) => acc + (Number.isFinite(q) ? q : 0),
+    0,
+  );
   if (!Number.isFinite(sumQtd) || sumQtd <= 0) return itens.map(() => 0);
   const raw = quants.map((q) => (q > 0 ? (totalFrete * q) / sumQtd : 0));
   const rounded = raw.map((v) => Number(v.toFixed(2)));

@@ -1,9 +1,7 @@
 import React from "react";
 import { Modal } from "../../../common/Modal";
 import { CARD_TITLES } from "../shared/constants";
-import {
-  dispatchOrdersFilter,
-} from "../shared/utils";
+import { dispatchOrdersFilter } from "../shared/utils";
 import ComprasHistoryChart from "../charts/ComprasHistoryChart";
 import LucroBrutoDetails from "../charts/LucroBrutoDetails";
 import VendasComprasOverlayDetails from "../charts/VendasComprasOverlayDetails";

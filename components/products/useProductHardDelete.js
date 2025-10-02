@@ -28,10 +28,16 @@ export function useProductHardDelete({ refresh, push, password = "98034183" }) {
     }
     try {
       setHardDeleting(true);
-      const resp = await fetch(`/api/v1/produtos/${hardDeleteTarget.id}?hard=true&password=${encodeURIComponent(hardDeletePwd)}`, { method: "DELETE" });
+      const resp = await fetch(
+        `/api/v1/produtos/${hardDeleteTarget.id}?hard=true&password=${encodeURIComponent(hardDeletePwd)}`,
+        { method: "DELETE" },
+      );
       if (!resp.ok) {
         const txt = await resp.text();
-        push(`${MSG.PROD_DELETE_ERROR}: ${resp.status} ${txt}`.trim(), { type: "error", assertive: true });
+        push(`${MSG.PROD_DELETE_ERROR}: ${resp.status} ${txt}`.trim(), {
+          type: "error",
+          assertive: true,
+        });
         return;
       }
       setHardDeleteTarget(null);

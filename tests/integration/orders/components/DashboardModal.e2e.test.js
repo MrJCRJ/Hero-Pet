@@ -1,5 +1,11 @@
 import React from "react";
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  act,
+} from "@testing-library/react";
 import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 import OrdersDashboard from "components/pedidos/orders/dashboard/OrdersDashboard";
@@ -24,15 +30,15 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     promissorias: {
       mesAtual: {
         pendentes: { count: 5, valor: 1500 },
-        atrasados: { count: 2, valor: 800 }
+        atrasados: { count: 2, valor: 800 },
       },
       proximoMes: {
-        pendentes: { count: 3, valor: 1200 }
+        pendentes: { count: 3, valor: 1200 },
       },
       deMesesAnteriores: {
-        emAberto: { count: 1, valor: 300 }
-      }
-    }
+        emAberto: { count: 1, valor: 300 },
+      },
+    },
   };
 
   const mockPromissoriasData = [
@@ -42,7 +48,7 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
       partner_name: "Empresa ABC Ltda",
       tipo: "VENDA",
       due_date: "2025-10-15",
-      amount: 750.0
+      amount: 750.0,
     },
     {
       pedido_id: 102,
@@ -50,8 +56,8 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
       partner_name: "João Silva",
       tipo: "VENDA",
       due_date: "2025-10-20",
-      amount: 750.0
-    }
+      amount: 750.0,
+    },
   ];
 
   beforeEach(() => {
@@ -62,20 +68,20 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
       if (url.includes("/api/v1/pedidos/summary")) {
         return Promise.resolve({
           ok: true,
-          json: async () => mockDashboardData
+          json: async () => mockDashboardData,
         });
       }
 
       if (url.includes("/api/v1/pedidos/promissorias")) {
         return Promise.resolve({
           ok: true,
-          json: async () => mockPromissoriasData
+          json: async () => mockPromissoriasData,
         });
       }
 
       return Promise.resolve({
         ok: true,
-        json: async () => ({})
+        json: async () => ({}),
       });
     });
   });
@@ -84,7 +90,7 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     render(
       <Wrapper>
         <OrdersDashboard />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // 1. Aguarda dashboard carregar
@@ -103,7 +109,9 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     // 3. Verifica se modal abriu (usando role para ser único)
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Promissórias pendentes (mês)" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Promissórias pendentes (mês)" }),
+      ).toBeInTheDocument();
     });
 
     // 4. Aguarda dados do modal carregarem
@@ -118,7 +126,9 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     expect(screen.getByText("20/10/2025")).toBeInTheDocument();
 
     // 6. Verifica se resumo esperado bate
-    expect(screen.getByText("Esperado pelo resumo: 5 itens — R$ 1.500,00")).toBeInTheDocument();
+    expect(
+      screen.getByText("Esperado pelo resumo: 5 itens — R$ 1.500,00"),
+    ).toBeInTheDocument();
   });
 
   test("fluxo: dashboard → card atrasadas → modal com dados específicos", async () => {
@@ -129,7 +139,7 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
         partner_name: "Cliente Atrasado",
         tipo: "VENDA",
         due_date: "2025-09-15", // data passada
-        amount: 400.0
+        amount: 400.0,
       },
       {
         pedido_id: 202,
@@ -137,8 +147,8 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
         partner_name: "Outro Cliente",
         tipo: "VENDA",
         due_date: "2025-09-20",
-        amount: 400.0
-      }
+        amount: 400.0,
+      },
     ];
 
     // Override mock para atrasadas
@@ -146,27 +156,27 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
       if (url.includes("/api/v1/pedidos/summary")) {
         return Promise.resolve({
           ok: true,
-          json: async () => mockDashboardData
+          json: async () => mockDashboardData,
         });
       }
 
       if (url.includes("status=atrasadas")) {
         return Promise.resolve({
           ok: true,
-          json: async () => mockAtrasadasData
+          json: async () => mockAtrasadasData,
         });
       }
 
       return Promise.resolve({
         ok: true,
-        json: async () => []
+        json: async () => [],
       });
     });
 
     render(
       <Wrapper>
         <OrdersDashboard />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // Aguarda dashboard carregar
@@ -184,7 +194,9 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     // Verifica modal específico de atrasadas
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Promissórias atrasadas (mês)" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Promissórias atrasadas (mês)" }),
+      ).toBeInTheDocument();
     });
 
     // Aguarda dados específicos
@@ -207,27 +219,27 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
       if (url.includes("/api/v1/pedidos/summary")) {
         return Promise.resolve({
           ok: true,
-          json: async () => mockDashboardData
+          json: async () => mockDashboardData,
         });
       }
 
       if (url.includes("/api/v1/pedidos/promissorias")) {
         return Promise.resolve({
           ok: false,
-          json: async () => ({ error: "Erro na API de promissórias" })
+          json: async () => ({ error: "Erro na API de promissórias" }),
         });
       }
 
       return Promise.resolve({
         ok: true,
-        json: async () => ({})
+        json: async () => ({}),
       });
     });
 
     render(
       <Wrapper>
         <OrdersDashboard />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // Dashboard carrega normalmente
@@ -245,12 +257,16 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     // Modal abre
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Promissórias pendentes (mês)" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Promissórias pendentes (mês)" }),
+      ).toBeInTheDocument();
     });
 
     // Mas exibe erro
     await waitFor(() => {
-      expect(screen.getByText("Erro: Erro na API de promissórias")).toBeInTheDocument();
+      expect(
+        screen.getByText("Erro: Erro na API de promissórias"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -258,7 +274,7 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     render(
       <Wrapper>
         <OrdersDashboard />
-      </Wrapper>
+      </Wrapper>,
     );
 
     await waitFor(() => {
@@ -277,10 +293,12 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     // Verifica se API foi chamada com parâmetros corretos
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/api\/v1\/pedidos\/promissorias\?month=\d{4}-\d{2}&status=pendentes&limit=100/),
+        expect.stringMatching(
+          /\/api\/v1\/pedidos\/promissorias\?month=\d{4}-\d{2}&status=pendentes&limit=100/,
+        ),
         expect.objectContaining({
-          cache: "no-store"
-        })
+          cache: "no-store",
+        }),
       );
     });
   });
@@ -289,7 +307,7 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     render(
       <Wrapper>
         <OrdersDashboard />
-      </Wrapper>
+      </Wrapper>,
     );
 
     await waitFor(() => {
@@ -304,7 +322,9 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Promissórias pendentes (mês)" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Promissórias pendentes (mês)" }),
+      ).toBeInTheDocument();
     });
 
     // Fecha modal
@@ -326,14 +346,14 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     render(
       <Wrapper>
         <OrdersDashboard />
-      </Wrapper>
+      </Wrapper>,
     );
 
     // Aguarda carregamento inicial
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining("/api/v1/pedidos/summary"),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -343,7 +363,7 @@ describe("Orders Dashboard - Modal Integration E2E", () => {
     // O dashboard deve estar usando o mês atual
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining(`month=${currentMonth}`),
-      expect.any(Object)
+      expect.any(Object),
     );
   });
 });

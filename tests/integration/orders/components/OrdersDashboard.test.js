@@ -114,8 +114,8 @@ describe("OrdersDashboard", () => {
     // Verifica se há indicação de loading
     expect(
       screen.getByText(/carregando|loading/i) ||
-      screen.getByRole("status") ||
-      document.querySelector(".animate-pulse"),
+        screen.getByRole("status") ||
+        document.querySelector(".animate-pulse"),
     ).toBeTruthy();
   });
 });

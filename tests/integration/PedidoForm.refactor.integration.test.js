@@ -223,9 +223,7 @@ describe("PedidoForm Refatoração - Integração", () => {
     await user.type(paidInput, "2025-10-10");
     // Toast de aviso deve aparecer com trecho 'já está PAGA'
     await waitFor(() => {
-      expect(
-        screen.getByText(/já está PAGA/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/já está PAGA/i)).toBeInTheDocument();
     });
     // A alteração deve persistir mesmo sendo parcela paga
     expect(paidInput).toHaveValue("2025-10-10");

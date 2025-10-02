@@ -1,7 +1,13 @@
 import React from "react";
 import { FormContainer } from "components/ui/Form";
 import { Button } from "components/ui/Button";
-import { EntityTypeSelector, DocumentSection, AddressSection, ContactSection, StatusToggle } from "./index";
+import {
+  EntityTypeSelector,
+  DocumentSection,
+  AddressSection,
+  ContactSection,
+  StatusToggle,
+} from "./index";
 
 export function EntityFormShell({
   form,
@@ -17,7 +23,10 @@ export function EntityFormShell({
   onBlurDocumento,
 }) {
   return (
-    <FormContainer title="Formulário de Cliente / Fornecedor" onSubmit={onSubmit}>
+    <FormContainer
+      title="Formulário de Cliente / Fornecedor"
+      onSubmit={onSubmit}
+    >
       <div className="space-y-4">
         <h2 className="text-base font-semibold">
           {editingId

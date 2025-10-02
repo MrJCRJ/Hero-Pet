@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { MSG } from 'components/common/messages';
+import { useCallback, useEffect, useState } from "react";
+import { MSG } from "components/common/messages";
 
 /**
  * Hook genérico para carregar automaticamente um recurso quando highlightId é fornecido.
@@ -12,27 +12,34 @@ import { MSG } from 'components/common/messages';
  * @param {(id:string|number)=>Promise<any>} options.fetcher Função que faz fetch e retorna dados
  * @param {boolean} [options.autoLoad=true] Se true, carrega imediatamente ao montar se highlightId existir.
  */
-export function useHighlightEntityLoad({ highlightId, fetcher, autoLoad = true }) {
+export function useHighlightEntityLoad({
+  highlightId,
+  fetcher,
+  autoLoad = true,
+}) {
   const [loadingHighlight, setLoadingHighlight] = useState(false);
   const [highlighted, setHighlighted] = useState(null);
   const [errorHighlight, setErrorHighlight] = useState(null);
 
-  const load = useCallback(async (id) => {
-    if (!id) return;
-    setLoadingHighlight(true);
-    setErrorHighlight(null);
-    try {
-      const data = await fetcher(id);
-      setHighlighted(data || null);
-    } catch (e) {
-      setErrorHighlight(e.message || MSG.GENERIC_ERROR);
-    } finally {
-      setLoadingHighlight(false);
-    }
-  }, [fetcher]);
+  const load = useCallback(
+    async (id) => {
+      if (!id) return;
+      setLoadingHighlight(true);
+      setErrorHighlight(null);
+      try {
+        const data = await fetcher(id);
+        setHighlighted(data || null);
+      } catch (e) {
+        setErrorHighlight(e.message || MSG.GENERIC_ERROR);
+      } finally {
+        setLoadingHighlight(false);
+      }
+    },
+    [fetcher],
+  );
 
   useEffect(() => {
-    if (autoLoad && highlightId != null && highlightId !== '') {
+    if (autoLoad && highlightId != null && highlightId !== "") {
       load(highlightId);
     }
   }, [autoLoad, highlightId, load]);

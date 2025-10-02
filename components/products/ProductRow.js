@@ -108,26 +108,26 @@ export default function ProductRow({
           title={
             Array.isArray(p.supplier_labels) && p.supplier_labels.length
               ? p.supplier_labels
-                .map((s) => s.name || s.label || `#${s.id}`)
-                .join(", ")
+                  .map((s) => s.name || s.label || `#${s.id}`)
+                  .join(", ")
               : "-"
           }
         >
           {Array.isArray(p.supplier_labels) && p.supplier_labels.length
             ? (() => {
-              const names = p.supplier_labels.map(
-                (s) => s.name || s.label || `#${s.id}`,
-              );
-              const shown = names.slice(0, 2).join(", ");
-              const extra = names.length - 2;
-              if (extra > 0)
-                return (
-                  <span>
-                    {shown} +{extra}
-                  </span>
+                const names = p.supplier_labels.map(
+                  (s) => s.name || s.label || `#${s.id}`,
                 );
-              return <span>{shown}</span>;
-            })()
+                const shown = names.slice(0, 2).join(", ");
+                const extra = names.length - 2;
+                if (extra > 0)
+                  return (
+                    <span>
+                      {shown} +{extra}
+                    </span>
+                  );
+                return <span>{shown}</span>;
+              })()
             : "-"}
         </div>
       </td>

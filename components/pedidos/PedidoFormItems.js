@@ -1,11 +1,11 @@
 import React from "react";
 import { SelectionModal } from "../common/SelectionModal";
 // utils principais (computeItemTotal default importado abaixo)
-import { computeItemTotal as defaultComputeItemTotal } from './utils';
-import { computeFreteShares } from './utils';
-import { useAutoLoadItemCosts } from './hooks/useAutoLoadItemCosts';
-import PedidoItemRow from './PedidoItemRow';
-import PedidoFormResumoLucro from './PedidoFormResumoLucro';
+import { computeItemTotal as defaultComputeItemTotal } from "./utils";
+import { computeFreteShares } from "./utils";
+import { useAutoLoadItemCosts } from "./hooks/useAutoLoadItemCosts";
+import PedidoItemRow from "./PedidoItemRow";
+import PedidoFormResumoLucro from "./PedidoFormResumoLucro";
 import { QuickAddItemRow } from "./QuickAddItemRow";
 import {
   fetchLastPurchasePrice,
@@ -41,7 +41,9 @@ export function PedidoFormItems(props) {
         const t = fn(it);
         return acc + (Number.isFinite(t) ? Number(t) : 0);
       }, 0);
-    } catch (_) { return 0; }
+    } catch (_) {
+      return 0;
+    }
   }, [itens, computeItemTotal]);
 
   // Percentuais configuráveis para referência de comissão (default 3 e 5)
@@ -57,7 +59,7 @@ export function PedidoFormItems(props) {
   useAutoLoadItemCosts({ tipo, itens, onUpdateItem });
 
   const freteShares = React.useMemo(() => {
-    if (tipo !== 'COMPRA') return itens.map(() => 0);
+    if (tipo !== "COMPRA") return itens.map(() => 0);
     return computeFreteShares(itens, freteTotal);
   }, [tipo, freteTotal, itens]);
 
@@ -169,7 +171,7 @@ export function PedidoFormItems(props) {
       )}
 
       <div className="flex justify-end mt-3 gap-6 items-start flex-wrap">
-        {tipo === 'VENDA' && (
+        {tipo === "VENDA" && (
           <PedidoFormResumoLucro
             itens={itens}
             totalItens={totalItens}
@@ -214,7 +216,7 @@ export function PedidoFormItems(props) {
                     const saldo = det.saldo;
                     const custoFifo =
                       Number.isFinite(fifo.custo_medio_fifo) &&
-                        fifo.custo_medio_fifo > 0
+                      fifo.custo_medio_fifo > 0
                         ? fifo.custo_medio_fifo
                         : null;
                     const baseLegacy = (() => {

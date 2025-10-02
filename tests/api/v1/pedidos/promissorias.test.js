@@ -23,9 +23,18 @@ async function api(method, path, body, expectOk = true) {
 describe("API Pedidos - Promissórias", () => {
   let cliente, fornecedor, produto;
   // Helpers de data dinâmica para evitar flakiness conforme a data atual avança
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function today() { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth(), d: d.getDate() }; }
-  function dateOffset(days) { const { y, m, d } = today(); const base = new Date(y, m, d + days); return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}`; }
+  function pad(n) {
+    return String(n).padStart(2, "0");
+  }
+  function today() {
+    const d = new Date();
+    return { y: d.getFullYear(), m: d.getMonth(), d: d.getDate() };
+  }
+  function dateOffset(days) {
+    const { y, m, d } = today();
+    const base = new Date(y, m, d + days);
+    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}`;
+  }
   // Convenções:
   // firstFuture1 = +5 dias (para primeira promissória futura -> PENDENTE)
   // firstFuture2 = +35 dias (segunda parcela futura)
@@ -35,7 +44,7 @@ describe("API Pedidos - Promissórias", () => {
   // gera o cronograma adicionando meses civis (setMonth +1, +2) à primeira data.
   // Mantemos only firstFuture1 baseado em offset e derivamos as demais via addMonths.
   function addMonths(dateStr, n) {
-    const [yyyy, mm, dd] = dateStr.split('-').map(Number);
+    const [yyyy, mm, dd] = dateStr.split("-").map(Number);
     const dt = new Date(yyyy, mm - 1, dd);
     dt.setMonth(dt.getMonth() + n);
     return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;

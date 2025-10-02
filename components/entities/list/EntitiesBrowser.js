@@ -78,9 +78,9 @@ export function EntitiesBrowser({
     onEdit
       ? onEdit(row)
       : push("Callback de edição não implementado", {
-        type: "warn",
-        timeout: 3000,
-      });
+          type: "warn",
+          timeout: 3000,
+        });
   }
   return (
     <div className={`space-y-4 ${textSize}`}>
@@ -127,14 +127,13 @@ export function EntitiesBrowser({
       {confirmId && (
         <ConfirmDialog
           title="Excluir entidade"
-          message={(
+          message={
             <p className="text-sm leading-relaxed">
-              Tem certeza que deseja excluir
-              {" "}
-              <strong>{rows.find((r) => r.id === confirmId)?.name}</strong>? Esta
-              ação não pode ser desfeita.
+              Tem certeza que deseja excluir{" "}
+              <strong>{rows.find((r) => r.id === confirmId)?.name}</strong>?
+              Esta ação não pode ser desfeita.
             </p>
-          )}
+          }
           confirmLabel={deletingId === confirmId ? "Excluindo..." : "Excluir"}
           cancelLabel="Cancelar"
           danger

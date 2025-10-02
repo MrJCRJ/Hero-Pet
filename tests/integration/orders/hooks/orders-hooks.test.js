@@ -126,7 +126,7 @@ describe("Orders Hooks", () => {
     });
 
     test("gerencia estado de loading", () => {
-      fetch.mockImplementation(() => new Promise(() => { })); // Promise que nunca resolve
+      fetch.mockImplementation(() => new Promise(() => {})); // Promise que nunca resolve
 
       const { result } = renderHook(() => useDashboardData("202403"));
 

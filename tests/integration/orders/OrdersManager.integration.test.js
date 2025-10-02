@@ -73,7 +73,10 @@ describe("Orders UI - Smoke", () => {
       if (url.includes("/api/v1/pedidos?") || url.endsWith("/api/v1/pedidos")) {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ data: fakeOrders, meta: { total: fakeOrders.length } }),
+          json: async () => ({
+            data: fakeOrders,
+            meta: { total: fakeOrders.length },
+          }),
         });
       }
 

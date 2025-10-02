@@ -1,6 +1,6 @@
 // Util responsável por construir o payload base de pedido (POST/PUT)
 // Mantém regra concentrada e reaproveitável (possível futuro: auto-save / draft persistence)
-import { numOrNull } from './utils';
+import { numOrNull } from "./utils";
 
 export function buildPedidoPayloadBase({
   partnerId,
@@ -29,12 +29,13 @@ export function buildPedidoPayloadBase({
     data_primeira_promissoria: dataPrimeiraPromissoria || null,
     promissoria_datas: Array.isArray(promissoriaDatas)
       ? promissoriaDatas
-        .filter((s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s))
-        .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
+          .filter((s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s))
+          .slice(0, Math.max(0, Number(numeroPromissorias) || 0))
       : [],
     itens: itens
       .filter(
-        (it) => Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0,
+        (it) =>
+          Number.isFinite(Number(it.produto_id)) && Number(it.quantidade) > 0,
       )
       .map((it) => ({
         produto_id: Number(it.produto_id),
@@ -46,9 +47,7 @@ export function buildPedidoPayloadBase({
           ? { desconto_unitario: numOrNull(it.desconto_unitario) }
           : {}),
       })),
-    ...(tipo === 'COMPRA' &&
-      numOrNull(freteTotal) != null &&
-      freteTotal !== ''
+    ...(tipo === "COMPRA" && numOrNull(freteTotal) != null && freteTotal !== ""
       ? { frete_total: numOrNull(freteTotal) }
       : {}),
   };
