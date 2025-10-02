@@ -32,6 +32,31 @@ export function usePedidoItems(editingOrder) {
 
   const computeItemTotal = React.useCallback(it => computeItemTotalPure(it), []);
 
+  // Agregados básicos para eventual consumo por usePedidoTotals (ou UI simples)
+  const totalBruto = React.useMemo(() => {
+    return itens.reduce((acc, it) => {
+      const q = Number(it.quantidade);
+      const p = Number(it.preco_unitario);
+      if (Number.isFinite(q) && Number.isFinite(p) && q > 0 && p >= 0) {
+        return acc + q * p;
+      }
+      return acc;
+    }, 0);
+  }, [itens]);
+
+  const totalDescontos = React.useMemo(() => {
+    return itens.reduce((acc, it) => {
+      const q = Number(it.quantidade);
+      const d = Number(it.desconto_unitario);
+      if (Number.isFinite(q) && Number.isFinite(d) && q > 0 && d > 0) {
+        return acc + q * d;
+      }
+      return acc;
+    }, 0);
+  }, [itens]);
+
+  const totalLiquido = React.useMemo(() => Number((totalBruto - totalDescontos).toFixed(2)), [totalBruto, totalDescontos]);
+
   const { getItemChanges, getItemDiffClass, getItemDiffIcon } = useItemDiff(
     itens,
     originalItens,
@@ -49,5 +74,8 @@ export function usePedidoItems(editingOrder) {
     getItemChanges,
     getItemDiffClass,
     getItemDiffIcon,
+    totalBruto,
+    totalDescontos,
+    totalLiquido,
   };
 }

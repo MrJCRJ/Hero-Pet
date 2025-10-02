@@ -27,7 +27,8 @@
     "import:orders": "node scripts/import-orders.js",
     "seed:demo": "node scripts/seed-demo-data.js",
     "lint:forms": "node scripts/check-large-forms.js",
-    "lint:components": "node scripts/check-large-components.js"
+    "lint:components": "node scripts/check-large-components.js",
+    "lint:hooks": "node scripts/check-large-hooks.js"
   },
   "author": "",
   "license": "MIT",

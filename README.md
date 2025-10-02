@@ -160,7 +160,23 @@ Workflow `act-warnings` em CI roda ambos (badge no topo indica status). Document
 
 ### Guia de Estilo / Padronização
 
-Ver `CODE_STYLE.md` para limites de tamanho, critérios de extração (hooks, subcomponentes) e checklist de refatoração.
+Políticas de tamanho e modularização:
+
+- Componentes > 350 linhas: falha em `npm run lint:components` (extraia subcomponentes / hook de lógica).
+- Hooks > 400 linhas: falha em `npm run lint:hooks` (dividir em sub-hooks focados). Exceção temporária: comentar `// hooks-lint: allow-large (motivo)` nas 5 primeiras linhas.
+- Forms complexos seguem padrão Hook + Seções (ex.: ProductForm, PedidoForm refatorado).
+
+Refactors estruturais em andamento / plano:
+
+- Split do controller de pedido documentado em `docs/pedido-controller-split.md` (divide em: usePedidoTipoParceiro, usePedidoItens, usePedidoPromissorias, usePedidoTotals, usePedidoSideEffects...).
+
+Checklist antes de criar/alterar grande bloco:
+
+1. Existe util/hook reutilizável já pronto? Reutilize antes de reimplementar.
+2. Tamanho após mudança permanece abaixo dos limites? Caso contrário, extraia.
+3. Adicionou testes (feliz + edge principal)?
+4. Removido código morto / duplicado?
+5. Rodou `lint:components`, `lint:hooks` e suite relevante de testes.
 
 Para rodar somente um conjunto:
 
