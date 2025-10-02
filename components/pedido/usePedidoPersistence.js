@@ -26,6 +26,7 @@ export function usePedidoPersistence({
   onSaved,
   onCreated,
   setSubmitting,
+  showAutoSaveToast = false,
 }) {
   const isEdit = Boolean(editingOrder?.id);
   const autoSaveTimer = React.useRef(null);
@@ -75,8 +76,9 @@ export function usePedidoPersistence({
           migrarFifo,
         });
         dirtyRef.current = false;
-        // Podemos futuramente exibir feedback sutil de auto-save:
-        // push && push('Alterações salvas automaticamente', { type: 'info' });
+        if (showAutoSaveToast && push) {
+          push('Alterações salvas automaticamente', { type: 'info' });
+        }
       } catch (_) {
         // silencioso por enquanto; futura surface de erros de autosave
       }
@@ -84,7 +86,7 @@ export function usePedidoPersistence({
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     };
-  }, [isEdit, buildBase, editingOrder, tipo, partnerId, observacao, partnerName, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, migrarFifo]);
+  }, [isEdit, buildBase, editingOrder, tipo, partnerId, observacao, partnerName, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, migrarFifo, showAutoSaveToast, push]);
 
   async function handleSubmit(canSubmit) {
     if (!canSubmit) return;
