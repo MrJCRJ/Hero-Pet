@@ -41,7 +41,11 @@ export async function persistPedido({
   if (isEdit) {
     return updateOrderService(editingOrderId, body);
   }
-  return createOrderService({ tipo, ...payloadBase });
+  // Create: antes enviávamos somente { tipo, ...payloadBase } e backend exigia partner_entity_id etc.
+  // unificamos para reutilizar a mesma estrutura (body) porém preservando itens/frete/promissorias originais.
+  // body já contém campos normalizados; para manter expectativa de teste que payloadBase influencia frete_total
+  // basta garantir que frete_total foi incluído acima quando presente.
+  return createOrderService(body);
 }
 
 export async function excluirPedido(id) {

@@ -1,7 +1,7 @@
 import { persistPedido } from "components/pedidos/serviceHelpers";
 
-// Mock dos services internos
-jest.mock("components/pedido/service", () => ({
+// Mock dos services internos (apontar para o módulo realmente importado por serviceHelpers)
+jest.mock("components/pedidos/service", () => ({
   updateOrder: jest.fn((id, body) => Promise.resolve({ id, ...body })),
   createOrder: jest.fn((body) => Promise.resolve({ id: 123, ...body })),
   deleteOrder: jest.fn((id) => Promise.resolve({ id, deleted: true })),
