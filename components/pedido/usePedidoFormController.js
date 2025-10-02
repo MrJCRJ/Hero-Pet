@@ -6,11 +6,9 @@ import { usePedidoTotals } from './usePedidoTotals';
 import { usePedidoTipoParceiro } from './usePedidoTipoParceiro';
 import { usePedidoSideEffects } from './usePedidoSideEffects';
 import { defaultEmptyItem } from "./utils";
-import { buildPedidoPayloadBase } from './payload';
-import { MSG } from "components/common/messages";
-import { updateOrder as updateOrderService, createOrder as createOrderService, deleteOrder as deleteOrderService } from "./service";
+// MSG agora utilizado apenas dentro do hook de persistência
 import { usePedidoFetchers } from "./hooks";
-import { emitInventoryChanged } from "./events";
+import { usePedidoPersistence } from './usePedidoPersistence';
 
 export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   const { push } = useToast();
@@ -119,8 +117,11 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   // Fetch helpers
   const { fetchEntities, fetchProdutos } = usePedidoFetchers({ tipo, partnerId });
 
-  // Payload base (agora util externo)
-  const buildPayloadBase = useCallback(() => buildPedidoPayloadBase({
+
+  // Persistência unificada
+  const { handleSubmit, handleDelete } = usePedidoPersistence({
+    editingOrder,
+    tipo,
     partnerId,
     partnerName,
     observacao,
@@ -133,75 +134,13 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     promissoriaDatas,
     itens,
     freteTotal,
-    tipo,
-  }), [partnerId, partnerName, observacao, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, promissoriaDatas, itens, freteTotal, tipo]);
-
-  const updateOrder = useCallback(async (orderId, payloadBase) => {
-    const body = {
-      tipo,
-      partner_entity_id: Number(partnerId),
-      observacao: observacao || null,
-      partner_name: partnerName || null,
-      data_emissao: dataEmissao || null,
-      data_entrega: dataEntrega || null,
-      tem_nota_fiscal: temNotaFiscal,
-      parcelado: parcelado,
-      numero_promissorias: Number(numeroPromissorias) || 1,
-      data_primeira_promissoria: dataPrimeiraPromissoria || null,
-      promissoria_datas: payloadBase.promissoria_datas || [],
-      itens: payloadBase.itens,
-      ...(Object.prototype.hasOwnProperty.call(payloadBase, 'frete_total') ? { frete_total: payloadBase.frete_total } : {}),
-      ...(migrarFifo ? { migrar_fifo: true } : {}),
-    };
-    return updateOrderService(editingOrder?.id ?? orderId, body);
-  }, [tipo, partnerId, observacao, partnerName, dataEmissao, dataEntrega, temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria, editingOrder?.id, migrarFifo]);
-
-  const createOrder = useCallback(async (payloadBase) => {
-    const payload = { tipo, ...payloadBase };
-    return createOrderService(payload);
-  }, [tipo]);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!canSubmit) return;
-    setSubmitting(true);
-    try {
-      const payloadBase = buildPayloadBase();
-      if (editingOrder?.id) {
-        await updateOrder(editingOrder.id, payloadBase);
-        onSaved && onSaved({ id: editingOrder.id });
-        setCreated({ id: editingOrder.id, status: editingOrder.status });
-        emitInventoryChanged({ productIds: itens.map(it => Number(it.produto_id)).filter(v => Number.isFinite(v)), source: 'order-put', orderId: editingOrder.id });
-        push(`${MSG.PEDIDO_UPDATED} #${editingOrder.id}`, { type: 'success' });
-      } else {
-        const data = await createOrder(payloadBase);
-        setCreated({ ...data, status: data.status || 'confirmado' });
-        onCreated && onCreated(data);
-        emitInventoryChanged({ productIds: itens.map(it => Number(it.produto_id)).filter(v => Number.isFinite(v)), source: 'order-post', orderId: data.id });
-        push(`${MSG.PEDIDO_CREATED} #${data.id}`, { type: 'success' });
-      }
-    } catch (err) {
-      push(err.message, { type: 'error', assertive: true });
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!editingOrder?.id) return;
-    const ok = window.confirm(`Excluir pedido #${editingOrder.id}? Esta ação remove movimentos e itens relacionados.`);
-    if (!ok) return;
-    try {
-      setSubmitting(true);
-      await deleteOrderService(editingOrder.id);
-      onSaved && onSaved({ id: editingOrder.id, deleted: true });
-      push(`${MSG.PEDIDO_DELETED} #${editingOrder.id}`, { type: 'success' });
-    } catch (err) {
-      push(err.message, { type: 'error' });
-    } finally {
-      setSubmitting(false);
-    }
-  }
+    migrarFifo,
+    setCreated,
+    push,
+    onSaved,
+    onCreated,
+    setSubmitting,
+  });
 
   return {
     // estado geral

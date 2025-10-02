@@ -10,7 +10,7 @@ O controller original (~500 linhas) foi reduzido para ~292 linhas na primeira on
 - `usePedidoTotals` (expandido com `subtotal`, `totalDescontos`, `totalLiquido`, `computeLucroPercent`)
 - `usePedidoPromissorias` (já existente – mantido)
 
-Próxima etapa opcional: Extrair builders de payload e persistência futura (`usePedidoPersistence`) para avançar rumo à meta < 250 linhas (atualmente adiada por não ser bloqueante).
+Próxima etapa opcional: Persistência futura (`usePedidoPersistence`) para avançar rumo à meta < 250 linhas (payload principal já extraído para `components/pedido/payload.js`).
 
 Arquivo original concentrava as responsabilidades abaixo:
 
@@ -73,6 +73,33 @@ Testes cobrindo cenários:
 - desconto aplicado (subtotal/totalDescontos/totalLiquido)
 - lucro negativo (lucro % negativo)
 - COMPRA com frete (frete somado apenas em COMPRA)
+
+### Payload Helper
+
+O antigo builder inline `buildPayloadBase` foi movido para `components/pedido/payload.js` como `buildPedidoPayloadBase`, reduzindo ~5 linhas diretas e concentrando regra em um único lugar. Benefícios:
+
+- Facilita futura reutilização por `usePedidoPersistence` ou rotinas de autosave.
+- Mantém controller focado em orquestração e não em montagem de estruturas.
+- Permite validar payload em testes isolados (planejado para fase 2, se necessário).
+
+Contrato do helper:
+
+```ts
+buildPedidoPayloadBase({
+  partnerId, partnerName, observacao, dataEmissao, dataEntrega,
+  temNotaFiscal, parcelado, numeroPromissorias, dataPrimeiraPromissoria,
+  promissoriaDatas, itens, freteTotal, tipo
+}) => PedidoPayloadBase
+```
+
+### Divergência Promissórias (Planejado)
+
+Ainda não validamos divergência entre `valor_por_promissoria * numero_promissorias` e `totalLiquido()`. Próximos passos planejados para quando persistência for introduzida:
+
+1. Adicionar derivação `sumPromissorias` em `usePedidoPromissorias`.
+2. Expor flag `hasScheduleMismatch = Math.abs(sumPromissorias - totalLiquido()) > 0.009`.
+3. UI: Exibir badge de alerta e sugestão de recalcular ou ajustar última parcela.
+4. Teste: placeholder atual (skipped) será ativado cobrindo criação manual + alteração de item.
 
 ### Divisão Detalhada (Planejamento Original)
 
@@ -188,8 +215,8 @@ Fase 1 (Concluída):
 
 Fase 2 (Opcional / Futuro):
 
-- Reduzir para < 250 linhas extraindo payload/persistence ⏳
-- Adicionar testes extras (custo zero, divergência promissórias) ⏳
+- Reduzir para < 250 linhas extraindo persistence e helpers adicionais ⏳
+- Adicionar testes extras (divergência promissórias) ⏳
 - Introduzir `usePedidoPersistence` (auto-save/rascunho) ⏳
 
 ---
