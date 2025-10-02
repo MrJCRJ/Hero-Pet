@@ -52,7 +52,7 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
   const { itens, setItens, originalItens, updateItem, addItem, removeItem, computeItemTotal: computeItemTotalFromHook, getItemChanges, getItemDiffClass, getItemDiffIcon } = usePedidoItems(editingOrder);
 
   // Promissórias
-  const { numeroPromissorias, setNumeroPromissorias, dataPrimeiraPromissoria, setDataPrimeiraPromissoria, valorPorPromissoria, setValorPorPromissoria, frequenciaPromissorias, setFrequenciaPromissorias, intervaloDiasPromissorias, setIntervaloDiasPromissorias, promissoriaDatas, setPromissoriaDatas, promissoriasMeta } = usePedidoPromissorias(editingOrder);
+  const { numeroPromissorias, setNumeroPromissorias, dataPrimeiraPromissoria, setDataPrimeiraPromissoria, valorPorPromissoria, setValorPorPromissoria, frequenciaPromissorias, setFrequenciaPromissorias, intervaloDiasPromissorias, setIntervaloDiasPromissorias, promissoriaDatas, setPromissoriaDatas, promissoriasMeta, sumPromissorias, computePromissoriasMismatch } = usePedidoPromissorias(editingOrder);
 
   // Frete & Totais
   const [freteTotal, setFreteTotal] = useState("");
@@ -200,6 +200,9 @@ export function usePedidoFormController({ onCreated, onSaved, editingOrder }) {
     promissoriaDatas,
     setPromissoriaDatas,
     promissoriasMeta,
+    sumPromissorias,
+    promissoriasMismatch: computePromissoriasMismatch(totalLiquido).mismatch,
+    promissoriasDiferenca: computePromissoriasMismatch(totalLiquido).diff,
     // helpers
     computeItemTotal,
     computeOrderTotalEstimate,

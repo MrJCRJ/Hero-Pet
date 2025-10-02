@@ -85,6 +85,22 @@ export function usePedidoPromissorias(editingOrder) {
     }
   }
 
+  // Soma total das promissórias baseada no valor unitário (fallback simples)
+  const sumPromissorias = React.useMemo(() => {
+    const n = Number(numeroPromissorias) || 0;
+    const v = Number(valorPorPromissoria) || 0;
+    if (n <= 0 || v <= 0) return 0;
+    return Number((n * v).toFixed(2));
+  }, [numeroPromissorias, valorPorPromissoria]);
+
+  // Expor função para comparar com totalLiquido (tolerância 0.01)
+  function computePromissoriasMismatch(totalLiquido) {
+    const t = Number(totalLiquido) || 0;
+    const diff = Number((sumPromissorias - t).toFixed(2));
+    const mismatch = Math.abs(diff) > 0.01;
+    return { mismatch, diff, sumPromissorias };
+  }
+
   return {
     numeroPromissorias,
     setNumeroPromissorias,
@@ -100,5 +116,7 @@ export function usePedidoPromissorias(editingOrder) {
     setPromissoriaDatas,
     promissoriasMeta,
     hydrateFromEditing,
+    sumPromissorias,
+    computePromissoriasMismatch,
   };
 }
