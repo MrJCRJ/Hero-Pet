@@ -3,85 +3,28 @@ import { Button } from "../ui/Button";
 import { SelectionModal } from "../common/SelectionModal";
 // Modal genérico substituído pelo componente PriceSuggestionModal
 import { PriceSuggestionModal } from "./PriceSuggestionModal";
-import { useToast } from "../entities/shared/toast";
-import { formatQty } from "./utils";
-import { fetchLastPurchasePrice } from "./service";
+import useQuickAddItemRowLogic from "./hooks/useQuickAddItemRowLogic";
 
 export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
-  const { push } = useToast();
-  const [label, setLabel] = React.useState("");
-  const [produtoId, setProdutoId] = React.useState("");
-  const [quantidade, setQuantidade] = React.useState("");
-  const [preco, setPreco] = React.useState("");
-  const [desconto, setDesconto] = React.useState("");
-  const [showModal, setShowModal] = React.useState(false);
-  const [saldo, setSaldo] = React.useState(null);
-  // Estado unificado para modal de sugestão (COMPRA ou VENDA)
-  const [suggestionModal, setSuggestionModal] = React.useState({
-    open: false,
-    mode: null, // 'COMPRA' | 'VENDA'
-    data: {
-      value: null,
-      base: null,
-      markup: null,
-      sourceLabel: null,
-      loading: false,
-      error: null,
-    },
-  });
-
-  // Cache por produto (não refaz fetch se já buscado nessa sessão)
-  const purchaseCacheRef = React.useRef(new Map()); // produtoId -> { value }
-  const saleCacheRef = React.useRef(new Map()); // produtoId -> { value, base, markup }
-
-  const reservedQty = React.useMemo(() => {
-    if (!Array.isArray(itens) || !produtoId) return 0;
-    try {
-      return itens.reduce((acc, it) => {
-        if (String(it?.produto_id || "") === String(produtoId)) {
-          const q = Number(it?.quantidade);
-          return acc + (Number.isFinite(q) ? q : 0);
-        }
-        return acc;
-      }, 0);
-    } catch (_) {
-      return 0;
-    }
-  }, [itens, produtoId]);
-
-  const displaySaldo = React.useMemo(() => {
-    if (saldo == null || !Number.isFinite(Number(saldo))) return null;
-    const rem =
-      Number(saldo) -
-      (Number.isFinite(Number(reservedQty)) ? Number(reservedQty) : 0);
-    return rem;
-  }, [saldo, reservedQty]);
-
-  const handleAdd = () => {
-    if (!produtoId) return;
-    if (!Number.isFinite(Number(quantidade)) || Number(quantidade) <= 0) return;
-    if (
-      tipo === "VENDA" &&
-      displaySaldo != null &&
-      Number.isFinite(Number(displaySaldo)) &&
-      Number(quantidade) > Number(displaySaldo)
-    ) {
-      try {
-        push("Quantidade maior que o estoque disponível.", { type: "warning" });
-      } catch (_) {
-        /* noop */
-      }
-      return;
-    }
-    onAppend({
-      produto_id: produtoId,
-      produto_label: label,
-      quantidade,
-      preco_unitario: preco,
-      desconto_unitario: desconto,
-    });
-    setQuantidade("");
-  };
+  const logic = useQuickAddItemRowLogic({ tipo, itens, fetchProdutos, onAppend });
+  const {
+    label,
+    produtoId,
+    quantidade,
+    preco,
+    desconto,
+    showModal,
+    suggestionModal,
+    produtoSaldoBadge,
+    displaySaldo,
+    setShowModal,
+    setQuantidade,
+    setPreco,
+    setDesconto,
+    handleAdd,
+    handleProductSelect,
+    setSuggestionModal,
+  } = logic;
 
   return (
     <div className="mb-4 p-3 border rounded-md bg-[var(--color-bg-secondary)]">
@@ -98,7 +41,7 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
             </span>
             {tipo === "VENDA" && produtoId && (
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-primary)]">
-                Est.: {displaySaldo != null ? formatQty(displaySaldo) : "…"}
+                Est.: {produtoSaldoBadge}
               </span>
             )}
           </button>
@@ -154,9 +97,9 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
             aria-label="Adicionar item"
             title={
               tipo === "VENDA" &&
-              displaySaldo != null &&
-              Number.isFinite(Number(quantidade)) &&
-              Number(quantidade) > Number(displaySaldo)
+                displaySaldo != null &&
+                Number.isFinite(Number(quantidade)) &&
+                Number(quantidade) > Number(displaySaldo)
                 ? "Estoque insuficiente"
                 : "Adicionar item"
             }
@@ -187,143 +130,7 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
           title="Selecionar Produto"
           fetcher={fetchProdutos}
           extractLabel={(it) => it.label}
-          onSelect={(it) => {
-            setShowModal(false);
-            if (it) {
-              setProdutoId(String(it.id));
-              setLabel(it.label);
-              if (!quantidade) setQuantidade("1");
-              // COMPRA: usar cache ou buscar último preço
-              if (tipo === "COMPRA") {
-                const cached = purchaseCacheRef.current.get(it.id);
-                if (cached) {
-                  setSuggestionModal({
-                    open: true,
-                    mode: "COMPRA",
-                    data: {
-                      ...cached,
-                      loading: false,
-                      error: null,
-                      sourceLabel: "Último preço de compra",
-                    },
-                  });
-                } else {
-                  setSuggestionModal({
-                    open: true,
-                    mode: "COMPRA",
-                    data: {
-                      value: null,
-                      loading: true,
-                      error: null,
-                      sourceLabel: "Último preço de compra",
-                      base: null,
-                      markup: null,
-                    },
-                  });
-                  fetchLastPurchasePrice(it.id)
-                    .then((val) => {
-                      const normalized =
-                        val == null || !Number.isFinite(Number(val))
-                          ? null
-                          : Number(val);
-                      const payload = { value: normalized };
-                      purchaseCacheRef.current.set(it.id, payload);
-                      setSuggestionModal((prev) => ({
-                        ...prev,
-                        data: {
-                          ...prev.data,
-                          value: normalized,
-                          loading: false,
-                        },
-                      }));
-                    })
-                    .catch(() => {
-                      setSuggestionModal((prev) => ({
-                        ...prev,
-                        data: {
-                          ...prev.data,
-                          value: null,
-                          loading: false,
-                          error: "Erro ao buscar último preço",
-                        },
-                      }));
-                    });
-                }
-              }
-              // VENDA: custo + markup
-              if (tipo === "VENDA") {
-                const cached = saleCacheRef.current.get(it.id);
-                if (cached) {
-                  setSuggestionModal({
-                    open: true,
-                    mode: "VENDA",
-                    data: { ...cached, loading: false, error: null },
-                  });
-                } else {
-                  setSuggestionModal({
-                    open: true,
-                    mode: "VENDA",
-                    data: {
-                      value: null,
-                      base: null,
-                      markup: null,
-                      loading: true,
-                      error: null,
-                    },
-                  });
-                  fetch(`/api/v1/estoque/saldos?produto_id=${it.id}`, {
-                    cache: "no-store",
-                  })
-                    .then((res) =>
-                      res.json().then((data) => ({ ok: res.ok, data })),
-                    )
-                    .then(({ ok, data }) => {
-                      if (!ok) throw new Error(data?.error || "erro saldo");
-                      setSaldo(Number(data.saldo));
-                      const custoMedio = Number(data.custo_medio);
-                      const ultimoCusto = Number(data.ultimo_custo);
-                      const base =
-                        Number.isFinite(custoMedio) && custoMedio > 0
-                          ? custoMedio
-                          : Number.isFinite(ultimoCusto) && ultimoCusto > 0
-                            ? ultimoCusto
-                            : null;
-                      const markupDefault =
-                        Number.isFinite(Number(it.markup_percent_default)) &&
-                        Number(it.markup_percent_default) > 0
-                          ? Number(it.markup_percent_default)
-                          : 30;
-                      let suggested = null;
-                      if (base != null) {
-                        suggested = Number(
-                          (base * (1 + markupDefault / 100)).toFixed(2),
-                        );
-                      }
-                      const payload = {
-                        value: suggested,
-                        base,
-                        markup: markupDefault,
-                      };
-                      saleCacheRef.current.set(it.id, payload);
-                      setSuggestionModal((prev) => ({
-                        ...prev,
-                        data: { ...prev.data, ...payload, loading: false },
-                      }));
-                    })
-                    .catch(() => {
-                      setSuggestionModal((prev) => ({
-                        ...prev,
-                        data: {
-                          ...prev.data,
-                          loading: false,
-                          error: "Falha ao calcular preço sugerido",
-                        },
-                      }));
-                    });
-                }
-              }
-            }
-          }}
+          onSelect={handleProductSelect}
           onClose={() => setShowModal(false)}
           emptyMessage={
             tipo === "COMPRA"
@@ -343,9 +150,7 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
             loading: suggestionModal.data.loading,
             error: suggestionModal.data.error,
           }}
-          onClose={() =>
-            setSuggestionModal((prev) => ({ ...prev, open: false }))
-          }
+          onClose={() => setSuggestionModal((prev) => ({ ...prev, open: false }))}
           onApply={(v) => setPreco(String(Number(v).toFixed(2)))}
         />
       )}
