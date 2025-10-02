@@ -1,5 +1,9 @@
 import React from "react";
-import { Button } from "../ui/Button";
+// Subcomponentes de QuickAdd extraídos para reduzir complexidade
+import { QuickAddQuantityInput } from "./quick-add/QuickAddQuantityInput";
+import { QuickAddPriceInput } from "./quick-add/QuickAddPriceInput";
+import { QuickAddDiscountInput } from "./quick-add/QuickAddDiscountInput";
+import { QuickAddAddButton } from "./quick-add/QuickAddAddButton";
 import { SelectionModal } from "../common/SelectionModal";
 // Modal genérico substituído pelo componente PriceSuggestionModal
 import { PriceSuggestionModal } from "./PriceSuggestionModal";
@@ -46,84 +50,16 @@ export function QuickAddItemRow({ tipo, itens, onAppend, fetchProdutos }) {
             )}
           </button>
         </div>
-        <div>
-          <label htmlFor="qa_quantidade" className="block text-xs mb-1">
-            Quantidade
-          </label>
-          <input
-            id="qa_quantidade"
-            type="number"
-            step="1"
-            className="w-full border rounded px-2 py-1"
-            value={quantidade}
-            onChange={(e) => setQuantidade(e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="qa_preco" className="block text-xs mb-1">
-            Preço Unitário
-          </label>
-          <input
-            id="qa_preco"
-            type="number"
-            step="0.01"
-            className="w-full border rounded px-2 py-1"
-            value={preco}
-            onChange={(e) => {
-              setPreco(e.target.value);
-            }}
-          />
-        </div>
-        <div>
-          <label htmlFor="qa_desconto" className="block text-xs mb-1">
-            Desconto Unitário
-          </label>
-          <input
-            id="qa_desconto"
-            type="number"
-            step="0.01"
-            className="w-full border rounded px-2 py-1"
-            value={desconto}
-            onChange={(e) => setDesconto(e.target.value)}
-          />
-        </div>
-        <div className="text-right">
-          <Button
-            variant="primary"
-            size="sm"
-            fullWidth={false}
-            className="px-2 py-1"
-            onClick={handleAdd}
-            aria-label="Adicionar item"
-            title={
-              tipo === "VENDA" &&
-                displaySaldo != null &&
-                Number.isFinite(Number(quantidade)) &&
-                Number(quantidade) > Number(displaySaldo)
-                ? "Estoque insuficiente"
-                : "Adicionar item"
-            }
-            disabled={
-              (tipo === "VENDA" &&
-                displaySaldo != null &&
-                Number.isFinite(Number(quantidade)) &&
-                Number(quantidade) > Number(displaySaldo)) ||
-              !produtoId ||
-              !Number.isFinite(Number(quantidade)) ||
-              Number(quantidade) <= 0
-            }
-            icon={(props) => (
-              <svg
-                {...props}
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M12 5a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H6a1 1 0 110-2h5V6a1 1 0 011-1z" />
-              </svg>
-            )}
-          />
-        </div>
+        <QuickAddQuantityInput value={quantidade} onChange={setQuantidade} />
+        <QuickAddPriceInput value={preco} onChange={setPreco} />
+        <QuickAddDiscountInput value={desconto} onChange={setDesconto} />
+        <QuickAddAddButton
+          tipo={tipo}
+          displaySaldo={displaySaldo}
+          quantidade={quantidade}
+          produtoId={produtoId}
+          onAdd={handleAdd}
+        />
       </div>
       {showModal && (
         <SelectionModal
