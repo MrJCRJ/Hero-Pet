@@ -1,8 +1,8 @@
 import React from "react";
-import { useToast } from "components/entities/shared";
 import { formatYMDToBR } from "components/common/date";
 import { FormField } from "../ui/Form";
 import { formatBRL } from "components/common/format";
+import usePromissoriasSchedule from "./hooks/usePromissoriasSchedule";
 
 export function PedidoFormPromissorias({
   numeroPromissorias,
@@ -19,135 +19,19 @@ export function PedidoFormPromissorias({
   onPromissoriaDatasChange,
   promissoriasMeta,
 }) {
-  // Controla quais parcelas pagas já receberam aviso para evitar repetir alert
-  const warnedPaidRef = React.useRef(new Set());
-  const { push } = useToast();
-
-  // Confirmação no foco para parcelas pagas; libera edição local se confirmado
-  const handlePaidFocus = React.useCallback(
-    (idx) => {
-      const seq = idx + 1;
-      const isPaid =
-        Array.isArray(promissoriasMeta?.paidSeqs) &&
-        promissoriasMeta.paidSeqs.includes(seq);
-      if (!isPaid) return;
-      if (warnedPaidRef.current.has(seq)) return;
-      push(
-        `A ${seq}ª parcela já está PAGA. Alterar a data não terá efeito ao salvar (o cronograma pago é preservado).`,
-        { type: "warn" },
-      );
-      warnedPaidRef.current.add(seq);
-    },
-    [promissoriasMeta?.paidSeqs, push],
-  );
-
-  // Edição manual
-  const handleManualDateEdit = React.useCallback(
-    (idx, e) => {
-      const newValue = e?.target?.value ?? "";
-      const next = [...promissoriaDatas];
-      next[idx] = newValue;
-      onPromissoriaDatasChange(next);
-    },
-    [promissoriaDatas, onPromissoriaDatasChange],
-  );
-
-  // Edição da 1ª data
-  const handlePrimeiraDataChange = React.useCallback(
-    (value) => {
-      if (frequenciaPromissorias === "manual") {
-        const seq = 1;
-        const isPaid =
-          Array.isArray(promissoriasMeta?.paidSeqs) &&
-          promissoriasMeta.paidSeqs.includes(seq);
-        if (isPaid && !warnedPaidRef.current.has(seq)) {
-          push(
-            `A ${seq}ª parcela já está PAGA. Alterar a data não terá efeito ao salvar (o cronograma pago é preservado).`,
-            { type: "warn" },
-          );
-          warnedPaidRef.current.add(seq);
-        }
-        const next = [...promissoriaDatas];
-        next[0] = value || "";
-        onPromissoriaDatasChange(next);
-      }
-      onDataPrimeiraPromissoriasChange(value);
-    },
-    [
+  const { datasVencimento, handleManualDateEdit, handlePrimeiraDataChange, handlePaidFocus } =
+    usePromissoriasSchedule({
+      numeroPromissorias,
+      onNumeroPromissoriasChange,
+      dataPrimeiraPromissoria,
+      onDataPrimeiraPromissoriasChange,
+      totalLiquido,
       frequenciaPromissorias,
-      promissoriasMeta?.paidSeqs,
+      intervaloDiasPromissorias,
       promissoriaDatas,
       onPromissoriaDatasChange,
-      onDataPrimeiraPromissoriasChange,
-      push,
-    ],
-  );
-
-  // Calcular valor por promissória quando há total
-  React.useEffect(() => {
-    if (totalLiquido > 0 && numeroPromissorias > 0) {
-      const valorCalculado = totalLiquido / numeroPromissorias;
-      onNumeroPromissoriasChange(numeroPromissorias, valorCalculado);
-    }
-  }, [totalLiquido, numeroPromissorias, onNumeroPromissoriasChange]);
-
-  // Gerar datas de vencimento baseado na primeira data e frequência
-  const datasVencimento = React.useMemo(() => {
-    if (promissoriaDatas && promissoriaDatas.length) return promissoriaDatas;
-    if (!dataPrimeiraPromissoria || numeroPromissorias < 1) return [];
-    // Validar formato parcial para evitar RangeError ao chamar toISOString em Date inválida
-    // Aceitamos progresso de digitação: só gera quando YYYY-MM-DD completo
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataPrimeiraPromissoria)) return [];
-    const base = new Date(dataPrimeiraPromissoria + "T00:00:00");
-    if (isNaN(base.getTime())) return [];
-    const result = [];
-    const count = Math.max(1, numeroPromissorias);
-
-    const addDays = (date, days) => {
-      const d = new Date(date);
-      d.setDate(d.getDate() + days);
-      return d;
-    };
-
-    for (let i = 0; i < count; i++) {
-      let d;
-      switch (frequenciaPromissorias) {
-        case "semanal":
-          d = addDays(base, 7 * i);
-          break;
-        case "quinzenal":
-          d = addDays(base, 15 * i);
-          break;
-        case "dias": {
-          const step = Math.max(1, Number(intervaloDiasPromissorias) || 1);
-          d = addDays(base, step * i);
-          break;
-        }
-        case "manual":
-          // manual não usa geração automática aqui; já teria retornado acima se existisse
-          d = new Date(base);
-          d.setMonth(d.getMonth() + i);
-          break;
-        case "mensal":
-        default:
-          d = new Date(base);
-          d.setMonth(d.getMonth() + i);
-      }
-      try {
-        const iso = d.toISOString().slice(0, 10);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) result.push(iso);
-      } catch (_) {
-        // Ignorar caso raro de data inválida pós-manipulação
-      }
-    }
-    return result;
-  }, [
-    promissoriaDatas,
-    dataPrimeiraPromissoria,
-    numeroPromissorias,
-    frequenciaPromissorias,
-    intervaloDiasPromissorias,
-  ]);
+      promissoriasMeta,
+    });
 
   return (
     <div className="mt-4 border border-[var(--color-border)] rounded-lg p-4">

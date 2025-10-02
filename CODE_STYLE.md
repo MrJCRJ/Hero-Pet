@@ -76,6 +76,27 @@ Checklist antes de abrir PR grande:
 
 - `components/products/manager.js` → extraído `ProductCostHistoryChart` + botão de insights.
 - `components/pedido/PedidoFormItems.js` → extraídos `useAutoLoadItemCosts`, `PedidoItemRow`, `PedidoFormResumoLucro`, cálculo de frete para `computeFreteShares`.
+- `components/products/ProductForm.js` → extraídos `useProductFormLogic`, `ProductFormPricingSection`, `ProductFormSuppliersSection` (redução de responsabilidades e melhor testabilidade futura).
+
+### 11.1 Padrão de Formularios (Hook + \*Section)
+
+Aplicamos um padrão leve para formulários que começam a misturar:
+
+1. Estado de campos básicos
+2. Efeitos de carregamento/derivação (fetch custos, sugestões, hints)
+3. Blocos de UI coesos (ex: precificação, fornecedores, resumo financeiro)
+
+Estratégia:
+
+- Extrair toda a orquestração e efeitos para `use<Nome>FormLogic`.
+- Componentes de seção (ex: `ProductFormPricingSection`) só recebem props derivadas prontas; zero fetch interno.
+- Mantém `ProductForm` enxuto: focado em composição e markup.
+- Benefícios: menor risco de regressão ao adicionar novos campos, possibilidade de testar hook isolado futuramente e reaproveitar se surgirem variantes (ex: QuickCreate vs FullEdit).
+
+Critério de Adoção:
+
+- Quando arquivo >250 linhas E contém ≥2 efeitos de fetch OU ≥2 grupos de JSX sem dependência cruzada forte.
+- Evitar sobre-engenharia em formulários simples (<150 linhas, 0-1 efeito).
 
 ## 12. Evolução
 
@@ -83,6 +104,36 @@ Refinamentos futuros:
 
 - Automatizar lint para apontar arquivos > limite soft.
 - Criar jest matcher para garantir nenhum uso direto de `render` em pastas marcadas.
+
+### 12.1 Verificação Automática de Formulários Grandes
+
+Script: `npm run lint:forms`.
+
+Regras:
+
+- Falha se existir `*Form.js` >250 linhas sem hook correspondente (`use<Nome>FormLogic|Controller|Form`).
+- Exceção temporária: adicionar comentário no topo `// forms-lint: allow-large (motivo)` e abrir tarefa para redução.
+- Hook deve conter principais efeitos, fetches e validações, mantendo o componente de formulário focado em markup/composição.
+
+Objetivo: impedir crescimento silencioso e incentivar modularização incremental e testabilidade.
+
+### 12.2 Verificação Automática de Componentes Grandes
+
+Script: `npm run lint:components`.
+
+Regras:
+
+- Componentes >350 linhas sem comentário de exceção: falha.
+- Hooks >450 linhas: warning (iniciar plano de divisão). Exceções podem ser anotadas com comentário dentro do arquivo até a refatoração.
+- Comentário de exceção temporária permitido (primeiras 5 linhas): `// components-lint: allow-large (motivo)`. Usar somente para desbloquear PR urgente + abrir tarefa.
+
+Sugestões de redução:
+
+1. Extrair subcomponentes visuais (blocos repetidos/tabelas/modais).
+2. Extrair hooks de domínio (ex: usePromissoriasSchedule, useProductCosts etc.).
+3. Mover cálculos numéricos para `lib/` ou `utils` do domínio.
+
+Meta: manter tempo de leitura inicial < 30s para entender responsabilidades de um componente.
 
 ---
 
