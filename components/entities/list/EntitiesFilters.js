@@ -8,6 +8,8 @@ export function EntitiesFilters({
   onStatusChange,
   profileFilter,
   onProfileChange,
+  searchFilter,
+  onSearchChange,
   loading,
   addressFillFilter,
   onAddressFillChange,
@@ -16,6 +18,24 @@ export function EntitiesFilters({
 }) {
   return (
     <div className="flex flex-wrap gap-4 items-end">
+      <div className="flex flex-col">
+        <label
+          htmlFor="entities-search-filter"
+          className="text-[10px] font-medium mb-1"
+        >
+          Buscar
+        </label>
+        <input
+          id="entities-search-filter"
+          type="text"
+          placeholder="Nome ou documento..."
+          disabled={loading}
+          className="border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/70 backdrop-blur-sm rounded px-2 py-1 text-[10px] min-w-[160px] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 focus:ring-offset-[var(--color-bg-primary)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-bg-secondary)]"
+          value={searchFilter}
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
+      </div>
+
       <div className="flex flex-col">
         <label
           htmlFor="entities-status-filter"

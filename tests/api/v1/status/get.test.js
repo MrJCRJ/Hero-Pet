@@ -39,7 +39,8 @@ describe("GET /api/v1/status", () => {
   });
 
   test("deve ter a estrutura correta de resposta", async () => {
-    const { data } = await getStatus();
+    const response = await getStatus();
+    const { data } = response.data; // Extrair data.data da resposta
 
     expect(data).toHaveProperty("updated_at");
     expect(data).toHaveProperty("dependencies");
@@ -52,7 +53,8 @@ describe("GET /api/v1/status", () => {
   });
 
   test("deve retornar timestamp ISO 8601 válido em updated_at", async () => {
-    const { data } = await getStatus();
+    const response = await getStatus();
+    const { data } = response.data;
 
     expect(data.updated_at).toBeDefined();
     expect(typeof data.updated_at).toBe("string");
@@ -65,7 +67,8 @@ describe("GET /api/v1/status", () => {
   });
 
   test("deve retornar versão válida do PostgreSQL", async () => {
-    const { data } = await getStatus();
+    const response = await getStatus();
+    const { data } = response.data;
     const { version } = data.dependencies.database;
 
     expect(version).toBeDefined();
@@ -77,7 +80,8 @@ describe("GET /api/v1/status", () => {
   });
 
   test("deve retornar valor válido para max_connections", async () => {
-    const { data } = await getStatus();
+    const response = await getStatus();
+    const { data } = response.data;
     const { max_connections } = data.dependencies.database;
 
     expect(max_connections).toBeDefined();
@@ -86,7 +90,8 @@ describe("GET /api/v1/status", () => {
   });
 
   test("deve retornar valor válido para current_connections", async () => {
-    const { data } = await getStatus();
+    const response = await getStatus();
+    const { data } = response.data;
     const { current_connections, max_connections } = data.dependencies.database;
 
     expect(current_connections).toBeDefined();
@@ -136,7 +141,7 @@ describe("GET /api/v1/status - Casos de Borda", () => {
       expect(response.status).toBe(200);
     });
 
-    const responseBodies = responses.map((r) => r.data);
+    const responseBodies = responses.map((r) => r.data.data); // Extrair data.data
 
     responseBodies.forEach((body) => {
       expect(body).toHaveProperty("updated_at");
@@ -151,19 +156,19 @@ describe("GET /api/v1/status - Casos de Borda", () => {
   });
 
   test("deve ignorar parâmetros de query não utilizados", async () => {
-    const { status, data } = await getStatus("?unused=param&test=value");
+    const response = await getStatus("?unused=param&test=value");
+    const { status, data } = response;
 
     expect(status).toBe(200);
-    expect(data).toHaveProperty("updated_at");
+    expect(data.data).toHaveProperty("updated_at");
   });
 
   test("deve resistir a parâmetros de query maliciosos", async () => {
-    const { status, data } = await getStatus(
-      "?sql_injection=1%3BDROP%20TABLE%20users",
-    );
+    const response = await getStatus("?sql_injection=1%3BDROP%20TABLE%20users");
+    const { status, data } = response;
 
     expect(status).toBe(200);
-    expect(data).toHaveProperty("updated_at");
+    expect(data.data).toHaveProperty("updated_at");
   });
 });
 
@@ -171,8 +176,8 @@ describe("GET /api/v1/status - Resiliência", () => {
   test("deve manter valores consistentes do banco entre requisições", async () => {
     const [res1, res2] = await Promise.all([getStatus(), getStatus()]);
 
-    const body1 = res1.data;
-    const body2 = res2.data;
+    const body1 = res1.data.data;
+    const body2 = res2.data.data;
 
     expect(body1.dependencies.database.version).toBe(
       body2.dependencies.database.version,

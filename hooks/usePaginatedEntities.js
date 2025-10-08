@@ -12,6 +12,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
   const [statusFilter, setStatusFilter] = useState("");
   // profileFilter: '' | 'client' | 'supplier'
   const [profileFilter, setProfileFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
   const [page, setPage] = useState(0); // zero-based
   const [addressFillFilter, setAddressFillFilter] = useState("");
   const [contactFillFilter, setContactFillFilter] = useState("");
@@ -19,7 +20,6 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const abortRef = useRef(null);
 
@@ -28,12 +28,14 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
   const lastFiltersRef = useRef({
     statusFilter,
     profileFilter,
+    searchFilter,
     addressFillFilter,
     contactFillFilter,
   });
   const [debouncedFilters, setDebouncedFilters] = useState(() => ({
     statusFilter,
     profileFilter,
+    searchFilter,
     addressFillFilter,
     contactFillFilter,
   }));
@@ -41,12 +43,14 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     const same =
       lastFiltersRef.current.statusFilter === statusFilter &&
       lastFiltersRef.current.profileFilter === profileFilter &&
+      lastFiltersRef.current.searchFilter === searchFilter &&
       lastFiltersRef.current.addressFillFilter === addressFillFilter &&
       lastFiltersRef.current.contactFillFilter === contactFillFilter;
     if (same) return; // nada mudou
     lastFiltersRef.current = {
       statusFilter,
       profileFilter,
+      searchFilter,
       addressFillFilter,
       contactFillFilter,
     };
@@ -58,18 +62,26 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
       setDebouncedFilters(lastFiltersRef.current);
     }, 250);
     return () => clearTimeout(handle);
-  }, [statusFilter, profileFilter, addressFillFilter, contactFillFilter]);
+  }, [
+    statusFilter,
+    profileFilter,
+    searchFilter,
+    addressFillFilter,
+    contactFillFilter,
+  ]);
 
   const queryString = useMemo(() => {
     const {
       statusFilter: sf,
       profileFilter: pf,
+      searchFilter: search,
       addressFillFilter: af,
       contactFillFilter: cf,
     } = debouncedFilters;
     const params = new URLSearchParams();
     if (sf) params.set("status", sf);
     if (pf) params.set("entity_type", pf === "client" ? "PF" : "PJ");
+    if (search) params.set("search", search);
     if (af) params.set("address_fill", af);
     if (cf) params.set("contact_fill", cf);
     params.set("meta", "1");
@@ -84,16 +96,15 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
   }, [
     debouncedFilters.statusFilter,
     debouncedFilters.profileFilter,
+    debouncedFilters.searchFilter,
     debouncedFilters.addressFillFilter,
     debouncedFilters.contactFillFilter,
   ]);
 
-  // Carregamento principal / incremental
+  // Carregamento principal
   useEffect(() => {
     async function load() {
-      const incremental = page > 0;
-      if (incremental) setLoadingMore(true);
-      else setLoading(true);
+      setLoading(true);
       setError(null);
       if (abortRef.current) abortRef.current.abort();
       const controller = new AbortController();
@@ -105,44 +116,28 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
         if (!res.ok)
           throw new Error(`Falha ao carregar entities: ${res.status}`);
         const data = await res.json();
-        if (incremental) {
-          const incoming = Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [];
-          const incomingTotal =
-            typeof data?.total === "number"
-              ? data.total
-              : Array.isArray(data?.data)
-                ? data.data.length
-                : Array.isArray(data)
-                  ? data.length
-                  : 0;
-          setRows((prev) => [...prev, ...incoming]);
-          setTotal(incomingTotal);
-        } else {
-          const incoming = Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [];
-          const incomingTotal =
-            typeof data?.total === "number"
-              ? data.total
-              : Array.isArray(data?.data)
-                ? data.data.length
-                : Array.isArray(data)
-                  ? data.length
-                  : 0;
-          setRows(incoming);
-          setTotal(incomingTotal);
-        }
+
+        const incoming = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+            ? data
+            : [];
+        const incomingTotal =
+          typeof data?.total === "number"
+            ? data.total
+            : Array.isArray(data?.data)
+              ? data.data.length
+              : Array.isArray(data)
+                ? data.length
+                : 0;
+
+        // Sempre substitui o conteúdo (não mais incremental)
+        setRows(incoming);
+        setTotal(incomingTotal);
       } catch (e) {
         if (e.name !== "AbortError") setError(e.message);
       } finally {
-        if (incremental) setLoadingMore(false);
-        else setLoading(false);
+        setLoading(false);
       }
     }
     load();
@@ -168,11 +163,35 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
   }, [loadSummary]);
 
   const loadMore = useCallback(() => {
-    // evita múltiplos increments durante loadingMore
-    if (loading || loadingMore) return;
+    // evita múltiplos increments durante loading
+    if (loading) return;
     if (rows.length >= total) return;
     setPage((p) => p + 1);
-  }, [loading, loadingMore, rows.length, total]);
+  }, [loading, rows.length, total]);
+
+  const goToPage = useCallback(
+    (newPage) => {
+      if (loading) return;
+      setPage(newPage);
+    },
+    [loading],
+  );
+
+  const nextPage = useCallback(() => {
+    if (loading) return;
+    const currentPage = page;
+    const totalPages = Math.ceil(total / limit);
+    if (currentPage < totalPages - 1) {
+      setPage(currentPage + 1);
+    }
+  }, [loading, page, total, limit]);
+
+  const prevPage = useCallback(() => {
+    if (loading) return;
+    if (page > 0) {
+      setPage(page - 1);
+    }
+  }, [loading, page]);
 
   const refresh = useCallback(() => {
     setPage(0); // triggers reload
@@ -193,7 +212,11 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     }
   }, []);
 
-  const canLoadMore = rows.length < total && !loading && !loadingMore;
+  const canLoadMore = rows.length < total && !loading;
+  const currentPage = page + 1; // zero-based para one-based
+  const totalPages = Math.ceil(total / limit);
+  const hasNextPage = page < totalPages - 1;
+  const hasPrevPage = page > 0;
 
   return {
     // dados
@@ -202,19 +225,27 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     summary,
     // estados
     loading,
-    loadingMore,
     error,
     statusFilter,
     profileFilter,
+    searchFilter,
     addressFillFilter,
     contactFillFilter,
     canLoadMore,
+    currentPage,
+    totalPages,
+    hasNextPage,
+    hasPrevPage,
     // ações
     setStatusFilter,
     setProfileFilter,
+    setSearchFilter,
     setAddressFillFilter,
     setContactFillFilter,
     loadMore,
+    goToPage,
+    nextPage,
+    prevPage,
     refresh,
     reload,
     loadSummary,
