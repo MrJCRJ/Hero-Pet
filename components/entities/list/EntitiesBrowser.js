@@ -16,17 +16,26 @@ export function EntitiesBrowser({
   const state = usePaginatedEntities({ limit });
   const {
     rows,
-    total,
     summary,
     loading,
-    loadingMore,
     error,
     statusFilter,
     profileFilter,
-    canLoadMore,
+    searchFilter,
+    addressFillFilter,
+    contactFillFilter,
+    currentPage,
+    totalPages,
+    hasNextPage,
+    hasPrevPage,
     setStatusFilter,
     setProfileFilter,
-    loadMore,
+    setSearchFilter,
+    setAddressFillFilter,
+    setContactFillFilter,
+    goToPage,
+    nextPage,
+    prevPage,
     reload,
   } = state;
   const textSize = compact ? "text-xs" : "text-sm";
@@ -60,7 +69,7 @@ export function EntitiesBrowser({
       }
       push(`Registro ${row.name} removido.`);
       if (onDeleted) onDeleted(row.id);
-      else if (rows.length === 1 && canLoadMore) reload();
+      else reload();
     } catch (e) {
       push(e.message, { type: "error", timeout: 6000 });
       setLocalRemovedIds((prev) => prev.filter((id) => id !== row.id));
@@ -99,11 +108,13 @@ export function EntitiesBrowser({
           onStatusChange={setStatusFilter}
           profileFilter={profileFilter}
           onProfileChange={setProfileFilter}
+          searchFilter={searchFilter}
+          onSearchChange={setSearchFilter}
           loading={loading}
-          addressFillFilter={state.addressFillFilter}
-          onAddressFillChange={state.setAddressFillFilter}
-          contactFillFilter={state.contactFillFilter}
-          onContactFillChange={state.setContactFillFilter}
+          addressFillFilter={addressFillFilter}
+          onAddressFillChange={setAddressFillFilter}
+          contactFillFilter={contactFillFilter}
+          onContactFillChange={setContactFillFilter}
         />
       </div>
       {error && (
@@ -114,15 +125,18 @@ export function EntitiesBrowser({
       <EntitiesTable
         rows={rows.filter((r) => !localRemovedIds.includes(r.id))}
         loading={loading}
-        total={total}
-        onLoadMore={loadMore}
-        canLoadMore={canLoadMore}
-        loadingMore={loadingMore}
         compact={compact}
         deletingId={deletingId}
         onRowClick={handleEdit}
         highlightId={highlightId}
         onRequestDelete={handleDeleteClick}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        hasNextPage={hasNextPage}
+        hasPrevPage={hasPrevPage}
+        onGoToPage={goToPage}
+        onNextPage={nextPage}
+        onPrevPage={prevPage}
       />
       {confirmId && (
         <ConfirmDialog

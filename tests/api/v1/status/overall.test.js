@@ -26,7 +26,8 @@ describe("GET /api/v1/status overall", () => {
   test("deve conter dependencies.overall = healthy", async () => {
     const { status, json } = await getJson("/api/v1/status");
     expect(status).toBe(200);
-    expect(json.dependencies).toBeDefined();
-    expect(json.dependencies.overall).toBe("healthy");
+    expect(json.data).toBeDefined();
+    expect(json.data.dependencies).toBeDefined();
+    expect(json.data.dependencies.overall).toBe("healthy");
   });
 });
