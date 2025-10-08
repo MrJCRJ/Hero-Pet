@@ -10,7 +10,19 @@ export function StatusNav({ status, compact = false }) {
     );
   }
 
-  const { database, webserver } = status.dependencies;
+  // Tratar estrutura da API: status pode ser { data: { dependencies: ... } } ou apenas { dependencies: ... }
+  const statusData = status.data || status;
+  const dependencies = statusData.dependencies;
+
+  if (!dependencies) {
+    return (
+      <p className="text-center text-sm text-yellow-500">
+        Dados de status incompletos.
+      </p>
+    );
+  }
+
+  const { database, webserver } = dependencies;
 
   const items = [
     {

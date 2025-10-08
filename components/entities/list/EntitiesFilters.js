@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 
 const STATUS_OPTIONS = ["", "pending", "provisional", "valid"];
 const FILL_OPTIONS = ["", "completo", "parcial", "vazio"];
@@ -16,6 +16,39 @@ export function EntitiesFilters({
   contactFillFilter,
   onContactFillChange,
 }) {
+  const searchInputRef = useRef(null);
+  const lastCursorPositionRef = useRef(0);
+  const wasFocusedRef = useRef(false);
+
+  // Capturar posição do cursor e estado de foco
+  const handleInputChange = (e) => {
+    lastCursorPositionRef.current = e.target.selectionStart;
+    onSearchChange(e.target.value);
+  };
+
+  const handleFocus = () => {
+    wasFocusedRef.current = true;
+  };
+
+  const handleBlur = () => {
+    wasFocusedRef.current = false;
+  };
+
+  // Restaurar foco e posição do cursor após cada re-renderização
+  useEffect(() => {
+    if (wasFocusedRef.current && searchInputRef.current) {
+      const input = searchInputRef.current;
+      if (document.activeElement !== input) {
+        input.focus();
+        // Restaurar posição do cursor
+        const cursorPos = Math.min(
+          lastCursorPositionRef.current,
+          searchFilter.length,
+        );
+        input.setSelectionRange(cursorPos, cursorPos);
+      }
+    }
+  });
   return (
     <div className="flex flex-wrap gap-4 items-end">
       <div className="flex flex-col">
@@ -26,13 +59,16 @@ export function EntitiesFilters({
           Buscar
         </label>
         <input
+          ref={searchInputRef}
           id="entities-search-filter"
           type="text"
           placeholder="Nome ou documento..."
           disabled={loading}
           className="border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/70 backdrop-blur-sm rounded px-2 py-1 text-[10px] min-w-[160px] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 focus:ring-offset-[var(--color-bg-primary)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-bg-secondary)]"
           value={searchFilter}
-          onChange={(e) => onSearchChange(e.target.value)}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
         />
       </div>
 

@@ -81,7 +81,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     const params = new URLSearchParams();
     if (sf) params.set("status", sf);
     if (pf) params.set("entity_type", pf === "client" ? "PF" : "PJ");
-    if (search) params.set("search", search);
+    if (search) params.set("q", search);
     if (af) params.set("address_fill", af);
     if (cf) params.set("contact_fill", cf);
     params.set("meta", "1");
