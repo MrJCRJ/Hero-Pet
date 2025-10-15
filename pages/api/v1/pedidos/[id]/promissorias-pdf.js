@@ -89,7 +89,7 @@ async function getPromissoriasPDF(req, res) {
 
     // Buscar promissórias registradas para usar datas e valores definidos no formulário
     const promissoriasQ = await database.query({
-      text: `SELECT * FROM promissorias WHERE pedido_id = $1 ORDER BY seq`,
+      text: `SELECT * FROM pedido_promissorias WHERE pedido_id = $1 ORDER BY seq`,
       values: [id],
     });
     let parcelas = [];
