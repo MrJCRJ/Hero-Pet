@@ -87,23 +87,37 @@ async function getPromissoriasPDF(req, res) {
       pedido.valor_por_promissoria || (n > 0 ? totalLiquido / n : totalLiquido),
     );
 
-    // Corrigir arredondamento distribuindo diferença na última parcela
-    const parcelas = [];
-    let acumulado = 0;
-    for (let i = 0; i < Math.max(1, n); i++) {
-      const due = addMonths(firstDate, i);
-      let amount = Number(baseAmount.toFixed(2));
-      if (i < n - 1) {
-        acumulado += amount;
-      } else {
-        amount = Number((totalLiquido - acumulado).toFixed(2));
+    // Buscar promissórias registradas para usar datas e valores definidos no formulário
+    const promissoriasQ = await database.query({
+      text: `SELECT * FROM promissorias WHERE pedido_id = $1 ORDER BY seq`,
+      values: [id],
+    });
+    let parcelas = [];
+    if (promissoriasQ.rows && promissoriasQ.rows.length) {
+      parcelas = promissoriasQ.rows.map((p) => ({
+        seq: p.seq,
+        totalSeq: promissoriasQ.rows.length,
+        amount: Number(p.valor),
+        dueDate: p.due_date,
+      }));
+    } else {
+      // Fallback: cronograma automático
+      let acumulado = 0;
+      for (let i = 0; i < Math.max(1, n); i++) {
+        const due = addMonths(firstDate, i);
+        let amount = Number(baseAmount.toFixed(2));
+        if (i < n - 1) {
+          acumulado += amount;
+        } else {
+          amount = Number((totalLiquido - acumulado).toFixed(2));
+        }
+        parcelas.push({
+          seq: i + 1,
+          totalSeq: Math.max(1, n),
+          amount,
+          dueDate: due,
+        });
       }
-      parcelas.push({
-        seq: i + 1,
-        totalSeq: Math.max(1, n),
-        amount,
-        dueDate: due,
-      });
     }
 
     // Enriquecer endereço (apenas exibição)
