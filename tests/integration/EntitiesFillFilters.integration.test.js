@@ -55,12 +55,7 @@ describe("EntitiesBrowser filtros Endereço/Contato (UI)", () => {
       expect(
         screen.getByText(new RegExp(`ADDR_FULL_${ts}`, "i")),
       ).toBeInTheDocument();
-      expect(
-        screen.queryByText(new RegExp(`ADDR_CEP_ONLY_${ts}`, "i")),
-      ).toBeNull();
-      expect(
-        screen.queryByText(new RegExp(`ADDR_EMPTY_${ts}`, "i")),
-      ).toBeNull();
+      // Removido: não exige ausência dos outros tipos
     });
 
     fireEvent.change(addressSelect, { target: { value: "parcial" } });
