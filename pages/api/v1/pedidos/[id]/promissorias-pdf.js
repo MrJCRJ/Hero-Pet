@@ -97,7 +97,7 @@ async function getPromissoriasPDF(req, res) {
       parcelas = promissoriasQ.rows.map((p) => ({
         seq: p.seq,
         totalSeq: promissoriasQ.rows.length,
-        amount: Number(p.valor),
+        amount: Number(p.amount),
         dueDate: p.due_date,
       }));
     } else {
