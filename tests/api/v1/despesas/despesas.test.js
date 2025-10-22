@@ -195,6 +195,26 @@ describe("PUT /api/v1/despesas/:id", () => {
     // A data vem no formato ISO do banco
     expect(result.data_pagamento).toContain("2025-01-24");
   });
+
+  test("Formatos de data são consistentes", async () => {
+    const getResponse = await fetch(
+      `http://localhost:3000/api/v1/despesas/${despesaId}`,
+    );
+    expect(getResponse.status).toBe(200);
+    const despesa = await getResponse.json();
+
+    // Verifica que as datas existem e são strings válidas
+    expect(despesa.data_vencimento).toBeTruthy();
+    expect(typeof despesa.data_vencimento).toBe("string");
+    expect(despesa.data_pagamento).toBeTruthy();
+    expect(typeof despesa.data_pagamento).toBe("string");
+
+    // Verifica que podem ser parseadas como datas válidas
+    const dataVenc = new Date(despesa.data_vencimento);
+    const dataPag = new Date(despesa.data_pagamento);
+    expect(dataVenc.toString()).not.toBe("Invalid Date");
+    expect(dataPag.toString()).not.toBe("Invalid Date");
+  });
 });
 
 describe("DELETE /api/v1/despesas/:id", () => {

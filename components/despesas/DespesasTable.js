@@ -31,8 +31,22 @@ export function DespesasTable({
 }) {
   const formatDate = (dateString) => {
     if (!dateString) return "-";
-    const date = new Date(dateString + "T00:00:00");
-    return date.toLocaleDateString("pt-BR");
+    try {
+      // Se já tem timestamp ISO, usa direto; senão adiciona horário
+      const date = dateString.includes("T")
+        ? new Date(dateString)
+        : new Date(dateString + "T00:00:00");
+
+      // Verifica se a data é válida
+      if (isNaN(date.getTime())) return "-";
+
+      return date.toLocaleDateString("pt-BR", {
+        timeZone: "UTC",
+      });
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return "-";
+    }
   };
 
   const formatCurrency = (value) => {
