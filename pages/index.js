@@ -9,12 +9,14 @@ import { EntitiesManager } from "components/entities";
 // import { PedidoForm } from "../components/PedidoForm";
 import { PedidoListManager } from "../components/pedidos/list";
 import { ProductsManager } from "../components/products";
+import { DespesasManager } from "../components/despesas";
 import { Button } from "../components/ui/Button";
 
 const formConfig = {
   entities: { label: "Cliente / Fornecedor", Component: EntitiesManager },
   products: { label: "Produtos", Component: ProductsManager },
   orders: { label: "Pedidos", Component: PedidoListManager },
+  expenses: { label: "Despesas", Component: DespesasManager },
 };
 
 function Home() {

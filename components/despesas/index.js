@@ -1,0 +1,1 @@
+export { DespesasManager } from "./DespesasManager";
