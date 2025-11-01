@@ -73,7 +73,14 @@ function getSSLValues() {
     };
   }
 
-  return process.env.NODE_ENV === "production" ? true : false;
+  // Força SSL para bancos externos (como Neon) ou produção
+  const isExternalDB =
+    process.env.POSTGRES_HOST &&
+    (process.env.POSTGRES_HOST.includes("neon.tech") ||
+      process.env.POSTGRES_HOST.includes("aws") ||
+      process.env.POSTGRES_HOST !== "localhost");
+
+  return process.env.NODE_ENV === "production" || isExternalDB ? true : false;
 }
 
 // retorna client do pool (para transações) já conectado

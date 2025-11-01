@@ -4,7 +4,8 @@
   "description": "Um Site para eu analisar os Dados da minha empresa Hero-Pet",
   "main": "index.js",
   "scripts": {
-    "dev": "npm run services:up && npm run wait-for-postgres && npm run migration:up && next dev",
+    "dev": "npm run services:up && npm run wait-for-postgres && next dev",
+    "dev:with-migrations": "npm run services:up && npm run wait-for-postgres && npm run migration:up && next dev",
     "build": "next build",
     "start": "NODE_ENV=production next start",
     "lint:prettier:check": "prettier --check .",
@@ -23,9 +24,11 @@
     "services:prune": "docker system prune -a",
     "migration:create": "node-pg-migrate -m infra/migrations create",
     "migration:up": "node-pg-migrate -m infra/migrations --envPath .env.development up",
+    "migration:up:prod": "node-pg-migrate -m infra/migrations --envPath .env.production up",
     "wait-for-postgres": "node infra/scripts/wait-for-postgres.js",
     "import:orders": "node scripts/import-orders.js",
-    "seed:demo": "node scripts/seed-demo-data.js",
+    "switch:dev": "node scripts/switch-env.js development",
+    "switch:prod": "node scripts/switch-env.js production",
     "lint:forms": "node scripts/check-large-forms.js",
     "lint:components": "node scripts/check-large-components.js",
     "lint:hooks": "node scripts/check-large-hooks.js"

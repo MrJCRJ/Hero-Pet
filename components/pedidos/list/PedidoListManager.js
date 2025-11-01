@@ -3,11 +3,13 @@ import { Button } from "components/ui/Button";
 import { PedidoForm } from "components/PedidoForm";
 import { PedidoListBrowser } from "./PedidoListBrowser";
 import OrdersDashboard from "components/pedidos/orders/dashboard/OrdersDashboard";
+import ComissoesModal from "components/pedidos/ComissoesModal";
 
 export function PedidoListManager({ limit = 20 }) {
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [editing, setEditing] = useState(null);
+  const [showComissoesModal, setShowComissoesModal] = useState(false);
   const bump = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const handleEdit = async (row) => {
@@ -26,26 +28,42 @@ export function PedidoListManager({ limit = 20 }) {
 
   if (!showForm) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center gap-4 flex-wrap">
-          <h2 className="text-lg font-semibold flex items-center gap-3">
-            Pedidos
-          </h2>
-          <Button
-            onClick={() => setShowForm(true)}
-            variant="primary"
-            fullWidth={false}
-          >
-            Adicionar
-          </Button>
+      <>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center gap-4 flex-wrap">
+            <h2 className="text-lg font-semibold flex items-center gap-3">
+              Pedidos
+            </h2>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowComissoesModal(true)}
+                variant="secondary"
+                fullWidth={false}
+                title="Gerar relatório de comissões de vendas"
+              >
+                Comissões
+              </Button>
+              <Button
+                onClick={() => setShowForm(true)}
+                variant="primary"
+                fullWidth={false}
+              >
+                Adicionar
+              </Button>
+            </div>
+          </div>
+          <OrdersDashboard />
+          <PedidoListBrowser
+            limit={limit}
+            refreshTick={refreshKey}
+            onEdit={handleEdit}
+          />
         </div>
-        <OrdersDashboard />
-        <PedidoListBrowser
-          limit={limit}
-          refreshTick={refreshKey}
-          onEdit={handleEdit}
+        <ComissoesModal
+          isOpen={showComissoesModal}
+          onClose={() => setShowComissoesModal(false)}
         />
-      </div>
+      </>
     );
   }
 
