@@ -56,6 +56,43 @@ curl -X POST http://localhost:3000/api/v1/migrations
 npm test
 ```
 
+### Configuração para Produção
+
+Para conectar ao banco de dados em produção:
+
+1. **Configure as variáveis de ambiente** em `.env.production`:
+
+```env
+POSTGRES_HOST=seu-host-de-producao.com
+POSTGRES_PORT=5432
+POSTGRES_USER=seu_usuario_producao
+POSTGRES_PASSWORD=sua_senha_producao
+POSTGRES_DB=nome_do_banco_producao
+DATABASE_URL=postgresql://usuario:senha@host:porta/banco?sslmode=require
+MIGRATIONS_AUTO_APPLY=1
+```
+
+2. **Teste a conexão** com o banco de produção:
+
+```bash
+npm run test:prod-connection
+```
+
+3. **Aplique as migrações** no banco de produção:
+
+```bash
+npm run migration:up:prod
+```
+
+4. **Execute a aplicação** em modo produção:
+
+```bash
+npm run build
+npm start
+```
+
+**Nota:** Certifique-se de que o banco de produção permite conexões SSL (recomendado para segurança).
+
 ### Testes em CI / Ambientes sem login no Docker
 
 - Se o pull do Postgres no Docker Hub exigir autenticação (erro "unauthorized: authentication required"), há três opções:

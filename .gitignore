@@ -2,3 +2,7 @@ node_modules
 .next
 scripts
 coverage
+.env
+.env.local
+.env.development
+.env.production
