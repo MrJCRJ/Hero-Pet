@@ -7,7 +7,8 @@ export type ViewMode = "chart" | "table" | "both";
 
 export interface ViewModeToggleProps {
   value: ViewMode;
-  onChange: (mode: ViewMode) => void;
+  // eslint-disable-next-line no-unused-vars -- callback type: param required by signature
+  onChange: (value: ViewMode) => void;
 }
 
 export function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {

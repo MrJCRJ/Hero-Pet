@@ -75,7 +75,7 @@ export default function FilterBar({ filters, onChange, onReload }) {
       /* ignore */
     }
     atualizarUrl(filters);
-  }, [filters.tipo, filters.q, filters.from, filters.to, filters.partner, atualizarUrl]);
+  }, [filters, atualizarUrl]);
 
   const handleChange = (novo) => {
     onChange({ ...filters, ...novo });

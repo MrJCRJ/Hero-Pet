@@ -134,7 +134,7 @@ export function EntitiesManager({
     });
   };
 
-  const [conflictEntityId, setConflictEntityId] = useState(null);
+  const [conflictEntityId, setConflictEntityId] = useState<number | null>(null);
   const handleSubmit = async (e) => {
     e.preventDefault();
     setConflictEntityId(null);

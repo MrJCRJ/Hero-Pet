@@ -23,10 +23,11 @@ export function isValidEmail(raw: string | null | undefined): boolean {
 export type AddressClass = "completo" | "parcial" | "vazio";
 
 export function classifyAddress(
-  row: { cep?: string; numero?: string } | null | undefined
+  row: Record<string, unknown> | { cep?: string; numero?: string } | null | undefined
 ): AddressClass {
-  const hasCep = !!row?.cep;
-  const hasNumero = !!row?.numero;
+  const r = row as { cep?: string; numero?: string } | null | undefined;
+  const hasCep = !!r?.cep;
+  const hasNumero = !!r?.numero;
   if (hasCep && hasNumero) return "completo";
   if (hasCep || hasNumero) return "parcial";
   return "vazio";
@@ -35,10 +36,11 @@ export function classifyAddress(
 export type ContactClass = "completo" | "parcial" | "vazio";
 
 export function classifyContact(
-  row: { telefone?: string; email?: string } | null | undefined
+  row: Record<string, unknown> | { telefone?: string; email?: string } | null | undefined
 ): ContactClass {
-  const tel = row?.telefone || "";
-  const email = row?.email || "";
+  const r = row as { telefone?: string; email?: string } | null | undefined;
+  const tel = r?.telefone || "";
+  const email = r?.email || "";
   const hasAny = normalizePhone(tel).length > 0 || email.trim().length > 0;
   const validTel = isValidPhone(tel);
   const validEmail = isValidEmail(email);

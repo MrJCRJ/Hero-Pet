@@ -359,14 +359,22 @@ export function EntitiesBrowser({
         </div>
       )}
       <EntitiesTable
-        rows={entityRows.filter((r) => !localRemovedIds.includes(r.id))}
+        rows={
+          entityRows.filter((r) => !localRemovedIds.includes(r.id)) as unknown as Array<
+            Record<string, unknown> & { id: number; entity_type?: string; orders_count?: number }
+          >
+        }
         loading={loading}
         compact={compact}
         deletingId={deletingId}
         onRowClick={handleEdit}
         highlightId={highlightId}
         onRequestDelete={handleDeleteClick}
-        onRequestDuplicate={onDuplicate ? (e, row) => handleDuplicateClick(e, row) : undefined}
+        onRequestDuplicate={
+          onDuplicate
+            ? (e, row) => handleDuplicateClick(e, row as unknown as Entity)
+            : undefined
+        }
         duplicatingId={duplicatingId}
         onCopySuccess={() => push("Copiado para a área de transferência.", { type: "success", timeout: 2000 })}
         currentPage={currentPage}

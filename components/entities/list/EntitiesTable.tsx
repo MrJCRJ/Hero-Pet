@@ -41,11 +41,10 @@ function Th({ children }) {
 function Td({ children }) {
   return <td className="px-3 py-2 whitespace-nowrap align-top">{children}</td>;
 }
-function StatusBadge({ status }: { status: string }) {
-  const label = STATUS_LABEL[status] ?? status;
-  return (
-    <span className={STATUS_CLASS[status] || "badge"}>{label}</span>
-  );
+function StatusBadge({ status }: { status?: string }) {
+  const s = status ?? "";
+  const label = STATUS_LABEL[s] ?? (s || "—");
+  return <span className={STATUS_CLASS[s] || "badge"}>{label}</span>;
 }
 
 function formatDocumentDigits(row) {
@@ -60,7 +59,7 @@ function getProfileLabel(entity_type) {
   return "—";
 }
 
-function ProfileIcon({ entity_type }: { entity_type: string }) {
+function ProfileIcon({ entity_type }: { entity_type?: string }) {
   if (entity_type === "PF")
     return <User className="h-4 w-4" aria-hidden />;
   if (entity_type === "PJ")
@@ -119,13 +118,29 @@ export function EntitiesTable({
   onNextPage,
   onPrevPage,
 }: {
-  rows: Array<Record<string, unknown> & { id: number; entity_type?: string; orders_count?: number }>;
+  rows: Array<
+    Record<string, unknown> & {
+      id: number;
+      name?: string;
+      entity_type?: string;
+      document_status?: string;
+      document_digits?: string | null;
+      document_pending?: boolean;
+      orders_count?: number;
+      telefone?: string | null;
+      email?: string | null;
+      ativo?: boolean;
+    }
+  >;
   loading: boolean;
   compact?: boolean;
   deletingId: number | null;
+  // eslint-disable-next-line no-unused-vars -- callback type
   onRowClick?: (row: Record<string, unknown>) => void;
   highlightId?: number | string | null;
+  // eslint-disable-next-line no-unused-vars -- callback type
   onRequestDelete: (e: React.MouseEvent, row: Record<string, unknown>) => void;
+  // eslint-disable-next-line no-unused-vars -- callback type
   onRequestDuplicate?: (e: React.MouseEvent, row: Record<string, unknown>) => void;
   duplicatingId?: number | null;
   onCopySuccess?: () => void;
@@ -133,6 +148,7 @@ export function EntitiesTable({
   totalPages: number;
   hasNextPage: boolean;
   hasPrevPage: boolean;
+  // eslint-disable-next-line no-unused-vars -- callback type
   onGoToPage: (page: number) => void;
   onNextPage: () => void;
   onPrevPage: () => void;

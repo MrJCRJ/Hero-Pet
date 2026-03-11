@@ -4,7 +4,7 @@ import { MSG } from "components/common/messages";
 // Responsável por enviar payload de entidade (create/update) e reportar estado
 export function useEntitySubmit({ push }) {
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   const submit = useCallback(
     async ({ form, editingId }) => {

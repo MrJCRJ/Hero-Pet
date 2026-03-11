@@ -17,7 +17,8 @@ import { ViewModeToggle, type ViewMode } from "./shared/ViewModeToggle";
 export interface RankingViewProps {
   ranking: Array<Record<string, unknown>>;
   tipo: "vendas" | "fornecedores";
-  onTipoChange: (t: "vendas" | "fornecedores") => void;
+  // eslint-disable-next-line no-unused-vars -- callback type: param required by signature
+  onTipoChange: (tipo: "vendas" | "fornecedores") => void;
   mes: number;
   ano: number;
 }
