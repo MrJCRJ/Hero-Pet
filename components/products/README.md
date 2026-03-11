@@ -36,6 +36,15 @@ toastError(push, errorLike, fallbackMsg?)
 4. Erros específicos do backend: tentar exibir texto retornado, caso vazio usar fallback.
 5. Em operações críticas (hard delete) confirmar pré-condições antes de chamar API (ex.: senha).
 
+## Hooks (hooks/api/)
+
+| Hook | Uso |
+|------|-----|
+| `useProducts` | Lista com filtros (TanStack Query) |
+| `useCreateProduct` | Criar produto |
+| `useUpdateProduct` | Atualizar produto |
+| `useDeleteProduct` | Excluir produto |
+
 ## Estrutura Atual
 
 - `ProductsManager`: Lista, filtros, modais de ações, ranking Top Produtos, toggles de ativo e hard delete.

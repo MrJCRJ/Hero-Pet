@@ -15,8 +15,7 @@ jest.setTimeout(40000);
 describe("EntitiesManager novos campos (numero/complemento/ativo)", () => {
   test("Fluxo criar -> editar campos novos refletidos na lista", async () => {
     const user = userEvent.setup();
-    // Bypass auth
-    window.localStorage.setItem("adminAuthenticated", "true");
+    // Bypass auth (legacy localStorage ignorado; auth agora é server-side)
     render(
       <ThemeProvider>
         <ToastProvider>

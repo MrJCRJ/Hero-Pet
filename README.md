@@ -4,7 +4,14 @@
   <img alt="Act Warnings" src="https://github.com/MrJCRJ/Hero-Pet/actions/workflows/act-warnings.yml/badge.svg" />
 </p>
 
-Sistema de gestão (Entidades, Produtos e Estoque) em Next.js + Node.js com TailwindCSS e Jest. O backend expõe rotas versionadas em `pages/api/v1/*` e usa Postgres via Docker e migrações em `infra/migrations/`.
+## Sobre o Projeto
+
+**Hero-Pet** é um sistema de gestão empresarial para análise de dados de uma pet shop, desenvolvido em stack moderna. O sistema permite gerenciar **Entidades** (clientes e fornecedores), **Produtos**, **Pedidos** (compras e vendas), **Estoque** (com FIFO) e **Despesas**, além de dashboards com métricas, gráficos de evolução e controle de promissórias.
+
+- **Frontend**: Next.js 15, React 19, TailwindCSS 4, Framer Motion
+- **Backend**: API Routes versionadas em `pages/api/v1/*`, PostgreSQL
+- **Infra**: Docker Compose (Postgres 16), migrações com node-pg-migrate
+- **Testes**: Jest, Testing Library, CI com verificação de warnings de `act()`
 
 ## Sumário rápido
 
@@ -30,6 +37,9 @@ POSTGRES_DB=hero_pet
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/hero_pet
+AUTH_SECRET=uma-chave-secreta-aleatoria-min-32-chars
+# Para testes de NF-e: NFE_PROVIDER=test (simula emissão)
+# NFE_PROVIDER=test
 ```
 
 3. Subir Postgres (opcional em dev, os testes sobem/param automaticamente)
@@ -44,10 +54,18 @@ docker compose -f infra/compose.yaml up -d
 npm run dev
 ```
 
-5. Aplicar migrações (manual)
+**Sem Docker** (Postgres em outro host ou ambiente):
 
 ```bash
+npm run dev:standalone
+```
+
+5. Aplicar migrações e criar usuário
+
+```bash
+# Aplicar migrações
 curl -X POST http://localhost:3000/api/v1/migrations
+# Na primeira execução, acesse /setup para criar o administrador inicial
 ```
 
 6. Rodar testes
@@ -71,6 +89,8 @@ POSTGRES_DB=nome_do_banco_producao
 DATABASE_URL=postgresql://usuario:senha@host:porta/banco?sslmode=require
 MIGRATIONS_AUTO_APPLY=1
 ```
+
+**Migrations automáticas:** Se `POSTGRES_HOST` contiver `neon.tech`, as migrations automáticas são desabilitadas (para evitar overhead em bancos remotos como Neon). Use `MIGRATIONS_AUTO_APPLY=0` ou conecte a um host Neon para pular o auto-apply.
 
 2. **Teste a conexão** com o banco de produção:
 
@@ -122,6 +142,16 @@ Veja `.env.ci.sample` para variáveis mínimas de conexão.
 
 Regras de documento, máscaras e validação agrupadas em `components/entity/utils.js` e compartilhadas na API.
 
+### Usuários (apenas admin)
+
+- GET `/api/v1/users` — lista usuários (role admin).
+- POST `/api/v1/users` — cria usuário (`nome`, `email`, `senha`, `role`).
+- GET `/api/v1/users/:id` — detalhe.
+- PUT `/api/v1/users/:id` — atualiza (`nome`, `email`, `senha?`, `role`, `must_change_password`).
+- DELETE `/api/v1/users/:id` — exclui.
+
+A interface administrativa está em `/admin/usuarios` (link visível apenas para usuários com role admin).
+
 ### Produtos
 
 - POST `/api/v1/produtos` — cria produto; valida fornecedor (somente PJ) e `codigo_barras` único (parcial: apenas quando não nulo).
@@ -144,14 +174,25 @@ Schema relevante em `infra/migrations`:
 - `1758200000000_create_produtos_table.js`
 - `1758201000000_create_movimento_estoque_table.js`
 
+## Documentação Adicional
+
+- [`docs/pedido-controller-split.md`](docs/pedido-controller-split.md) — Arquitetura do split do controller de pedido em hooks especializados
+- [`components/pedidos/README.md`](components/pedidos/README.md) — Módulo unificado de pedidos (dashboard + formulário)
+- [`components/pedidos/orders/README.md`](components/pedidos/orders/README.md) — Componentes do dashboard e refatoração Orders
+- [`tests/README.md`](tests/README.md) — Guia de testes (renderAndFlush, act warnings)
+
 ## Estrutura do projeto
 
-- `components/` — UI (inclui `components/entities/*` com fluxo refatorado PF/PJ)
-- `hooks/` — Hooks (ex.: `usePaginatedEntities`, `useStatus`, `useAuth`)
+- `app/` — App Router (layout, página inicial) — em migração para Next.js 15
+- `components/` — UI por domínio (entities, pedidos, products, despesas, etc.)
+- `hooks/` — Hooks globais (`usePaginatedEntities`, `useStatus`, `useAuth`)
+- `contexts/` — Contextos React (ThemeContext, etc.)
 - `infra/` — Docker, DB e migrações (porta 5433 mapeada no host)
-- `lib/` — Utilidades (erros, validações compartilhadas em `lib/validation/*`)
-- `pages/` — Next pages e API routes (`pages/api/v1/*`)
-- `tests/` — Jest (UI e API), com servidor Next inicializado uma vez (`globalSetup`)
+- `lib/` — Utilidades (erros, validações em `lib/validation/*`)
+- `pages/` — API routes (`pages/api/v1/*`), `_app` e fallbacks durante migração
+- `tests/` — Jest (UI e API), servidor Next em `globalSetup`
+
+Path aliases: `@/components`, `@/hooks`, `@/lib`, `@/contexts`. Ver [docs/MIGRATION_APP_ROUTER.md](docs/MIGRATION_APP_ROUTER.md) para o plano de migração.
 
 ## Padrões de testes
 
@@ -205,7 +246,7 @@ Políticas de tamanho e modularização:
 
 Refactors estruturais em andamento / plano:
 
-- Split do controller de pedido documentado em `docs/pedido-controller-split.md` (divide em: usePedidoTipoParceiro, usePedidoItens, usePedidoPromissorias, usePedidoTotals, usePedidoSideEffects...).
+- Split do controller de pedido documentado em [`docs/pedido-controller-split.md`](docs/pedido-controller-split.md) (divide em: usePedidoTipoParceiro, usePedidoItens, usePedidoPromissorias, usePedidoTotals, usePedidoSideEffects...).
 
 Checklist antes de criar/alterar grande bloco:
 
@@ -227,6 +268,10 @@ npm test -- tests/api/v1/produtos/pagination-meta.test.js
 - Erros 503 (schema): rode `POST /api/v1/migrations` antes de usar novos endpoints/colunas.
 - Conflito de `codigo_barras`: a API retorna 409 quando duplicado (parcial único quando não nulo).
 - Flakiness nos testes: confie no `globalSetup` que inicia apenas um servidor Next para toda a suíte.
+
+## Versão para Portfólio
+
+Para uma descrição resumida e adequada a portfólio, consulte [`PORTFOLIO.md`](PORTFOLIO.md).
 
 ## Licença
 

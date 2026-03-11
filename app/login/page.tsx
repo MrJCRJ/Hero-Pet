@@ -1,0 +1,109 @@
+"use client";
+
+import React, { useState, useEffect, Suspense } from "react";
+import { signIn } from "next-auth/react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+function LoginForm() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams?.get("callbackUrl") || "/";
+
+  useEffect(() => {
+    fetch("/api/v1/setup")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.setupNeeded) router.replace("/setup");
+      })
+      .catch(() => {});
+  }, [router]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const result = await signIn("credentials", {
+        email: email.trim().toLowerCase(),
+        password,
+        redirect: false,
+        callbackUrl,
+      });
+      if (result?.error) {
+        setError("Email ou senha incorretos. Tente novamente.");
+        setLoading(false);
+        return;
+      }
+      if (result?.ok) {
+        window.location.href = callbackUrl;
+        return;
+      }
+    } catch {
+      setError("Erro ao realizar login. Tente novamente.");
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 sm:p-8 transition-colors">
+      <div className="w-full max-w-md mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">
+            Hero-Pet
+          </h1>
+        </div>
+        <div className="card p-6 max-w-sm mx-auto text-center">
+          <h2 className="text-lg font-semibold mb-2 text-[var(--color-text-primary)]">
+            Acesso ao Sistema
+          </h2>
+          <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+            Entre com seu email e senha:
+          </p>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              autoComplete="email"
+              required
+              aria-label="Email"
+              className="w-full border border-[var(--color-border)] rounded-lg px-4 py-2.5 text-sm bg-[var(--color-bg-primary)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-shadow"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Senha"
+              autoComplete="current-password"
+              required
+              aria-label="Senha"
+              className="w-full border border-[var(--color-border)] rounded-lg px-4 py-2.5 text-sm bg-[var(--color-bg-primary)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-shadow"
+            />
+            <Button type="submit" variant="primary" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar"}
+            </Button>
+          </form>
+          {error && (
+            <p className="text-red-500 mt-3 text-sm">{error}</p>
+          )}
+        </div>
+        <p className="mt-4 text-center text-xs text-[var(--color-text-secondary)]">
+          Se for o primeiro acesso, você será redirecionado para criar o administrador.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+      <LoginForm />
+    </Suspense>
+  );
+}

@@ -11,6 +11,7 @@ const createJestConfig = nextJest({
 });
 const jestConfig = createJestConfig({
   moduleDirectories: ["node_modules", "<rootDir>"],
+  moduleFileExtensions: ["tsx", "ts", "js", "jsx", "json"],
   testTimeout: 60000,
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/tests/setupTests.js"],

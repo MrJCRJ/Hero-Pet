@@ -10,7 +10,7 @@ import { MSG } from "components/common/messages";
 export function usePaginatedPedidos(initialFilters = {}, limit = 20) {
   return usePaginatedResource({
     baseUrl: "/api/v1/pedidos",
-    initialFilters: { tipo: "", q: "", from: "", to: "", ...initialFilters },
+    initialFilters: { tipo: "", q: "", from: "", to: "", partner: "", ...initialFilters },
     limit,
     buildParams: (filters) => {
       const p = new URLSearchParams();
@@ -18,6 +18,7 @@ export function usePaginatedPedidos(initialFilters = {}, limit = 20) {
       if (filters.q) p.set("q", filters.q);
       if (filters.from) p.set("from", filters.from);
       if (filters.to) p.set("to", filters.to);
+      if (filters.partner) p.set("partner", filters.partner);
       return p;
     },
     errorFallback: MSG.PEDIDOS_LOAD_ERROR,

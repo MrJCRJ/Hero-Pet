@@ -3,19 +3,18 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 /**
  * Hook de paginação e filtros para entities.
  * Responsabilidades:
- * - Gerenciar filtros (status, pending)
- * - Paginação incremental por offset (limit fixo configurable)
- * - Fetch incremental e inicial com abort controller
- * - Summary paralelo (carregado uma vez; opcional refresh manual)
+ * - Gerenciar filtros (status, profile, search, address_fill, contact_fill)
+ * - Paginação por offset
+ * - Summary paralelo
  */
 export function usePaginatedEntities({ limit = 20 } = {}) {
   const [statusFilter, setStatusFilter] = useState("");
-  // profileFilter: '' | 'client' | 'supplier'
   const [profileFilter, setProfileFilter] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
-  const [page, setPage] = useState(0); // zero-based
+  const [page, setPage] = useState(0);
   const [addressFillFilter, setAddressFillFilter] = useState("");
   const [contactFillFilter, setContactFillFilter] = useState("");
+  const [hasOrdersFilter, setHasOrdersFilter] = useState("");
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState(null);
@@ -31,6 +30,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     searchFilter,
     addressFillFilter,
     contactFillFilter,
+    hasOrdersFilter,
   });
   const [debouncedFilters, setDebouncedFilters] = useState(() => ({
     statusFilter,
@@ -38,6 +38,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     searchFilter,
     addressFillFilter,
     contactFillFilter,
+    hasOrdersFilter,
   }));
   useEffect(() => {
     const same =
@@ -45,7 +46,8 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
       lastFiltersRef.current.profileFilter === profileFilter &&
       lastFiltersRef.current.searchFilter === searchFilter &&
       lastFiltersRef.current.addressFillFilter === addressFillFilter &&
-      lastFiltersRef.current.contactFillFilter === contactFillFilter;
+      lastFiltersRef.current.contactFillFilter === contactFillFilter &&
+      lastFiltersRef.current.hasOrdersFilter === hasOrdersFilter;
     if (same) return; // nada mudou
     lastFiltersRef.current = {
       statusFilter,
@@ -53,6 +55,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
       searchFilter,
       addressFillFilter,
       contactFillFilter,
+      hasOrdersFilter,
     };
     if (process.env.NODE_ENV === "test") {
       setDebouncedFilters(lastFiltersRef.current);
@@ -68,6 +71,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     searchFilter,
     addressFillFilter,
     contactFillFilter,
+    hasOrdersFilter,
   ]);
 
   const queryString = useMemo(() => {
@@ -77,6 +81,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
       searchFilter: search,
       addressFillFilter: af,
       contactFillFilter: cf,
+      hasOrdersFilter: ho,
     } = debouncedFilters;
     const params = new URLSearchParams();
     if (sf) params.set("status", sf);
@@ -84,6 +89,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     if (search) params.set("q", search);
     if (af) params.set("address_fill", af);
     if (cf) params.set("contact_fill", cf);
+    if (ho) params.set("has_orders", ho);
     params.set("meta", "1");
     params.set("limit", String(limit));
     params.set("offset", String(page * limit));
@@ -99,6 +105,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     debouncedFilters.searchFilter,
     debouncedFilters.addressFillFilter,
     debouncedFilters.contactFillFilter,
+    debouncedFilters.hasOrdersFilter,
   ]);
 
   // Carregamento principal
@@ -197,6 +204,25 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     setPage(0); // triggers reload
   }, []);
 
+  const clearFilters = useCallback(() => {
+    setStatusFilter("");
+    setProfileFilter("");
+    setSearchFilter("");
+    setAddressFillFilter("");
+    setContactFillFilter("");
+    setHasOrdersFilter("");
+    setPage(0);
+    lastFiltersRef.current = {
+      statusFilter: "",
+      profileFilter: "",
+      searchFilter: "",
+      addressFillFilter: "",
+      contactFillFilter: "",
+      hasOrdersFilter: "",
+    };
+    setDebouncedFilters(lastFiltersRef.current);
+  }, []);
+
   // Reload força recarregar página atual (mantendo offset) ou opcionalmente reset
   const reload = useCallback((opts = { reset: false }) => {
     if (opts.reset) setPage(0);
@@ -231,6 +257,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     searchFilter,
     addressFillFilter,
     contactFillFilter,
+    hasOrdersFilter,
     canLoadMore,
     currentPage,
     totalPages,
@@ -242,6 +269,7 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     setSearchFilter,
     setAddressFillFilter,
     setContactFillFilter,
+    setHasOrdersFilter,
     loadMore,
     goToPage,
     nextPage,
@@ -249,5 +277,6 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     refresh,
     reload,
     loadSummary,
+    clearFilters,
   };
 }

@@ -35,6 +35,12 @@ beforeAll(async () => {
       document_digits: "12345",
       document_pending: false,
     },
+    {
+      name: "Forn1",
+      entity_type: "PJ",
+      document_digits: "12345678000190",
+      document_pending: false,
+    },
   ];
   for (const r of registros) {
     await fetch("http://localhost:3000/api/v1/entities", {
@@ -50,14 +56,16 @@ describe("GET /api/v1/entities/summary", () => {
     const res = await fetch("http://localhost:3000/api/v1/entities/summary");
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toHaveProperty("total", 3);
+    expect(body).toHaveProperty("total", 4);
     expect(body).toHaveProperty("by_status");
     expect(body).toHaveProperty("by_pending");
     expect(body).toHaveProperty("by_address_fill");
     expect(body).toHaveProperty("by_contact_fill");
     expect(body).toHaveProperty("percent_address_fill");
     expect(body).toHaveProperty("percent_contact_fill");
-    expect(Object.values(body.by_status).reduce((a, b) => a + b, 0)).toBe(3);
+    expect(body).toHaveProperty("count_pf", 3);
+    expect(body).toHaveProperty("count_pj", 1);
+    expect(Object.values(body.by_status).reduce((a, b) => a + b, 0)).toBe(4);
     // Como não criamos dados de endereço/contato, tudo deve cair em 'vazio'
     // (somatório deve bater com total)
     const addrSum = Object.values(body.by_address_fill).reduce(
@@ -68,8 +76,8 @@ describe("GET /api/v1/entities/summary", () => {
       (a, b) => a + b,
       0,
     );
-    expect(addrSum).toBe(3);
-    expect(contactSum).toBe(3);
+    expect(addrSum).toBe(4);
+    expect(contactSum).toBe(4);
     // Percentuais consistentes: soma pode não ser 100 por arredondamento, mas cada chave deve estar entre 0 e 100
     Object.values(body.percent_address_fill).forEach((p) =>
       expect(p).toBeGreaterThanOrEqual(0),

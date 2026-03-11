@@ -133,6 +133,10 @@ let MIGRATIONS_ENSURED = false;
 let MIGRATIONS_ENSURING = null;
 
 async function ensureMigrationsIfEnabledOnce(client) {
+  const host = process.env.POSTGRES_HOST || "";
+  if (host.includes("neon.tech")) {
+    return;
+  }
   const flag = String(process.env.MIGRATIONS_AUTO_APPLY || "").trim();
   if (!flag || flag === "0" || flag.toLowerCase() === "false") return;
   if (MIGRATIONS_ENSURED) return;
