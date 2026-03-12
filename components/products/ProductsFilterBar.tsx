@@ -1,18 +1,26 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "components/ui/Button";
 
 export default function ProductsFilterBar({
   query,
   setQ,
   setCategoria,
+  setSupplierId,
   setAtivo,
-  onlyBelowMin,
-  setOnlyBelowMin,
   linkSupplierId,
   openNew,
   refresh,
   searchInputRef,
 }) {
+  const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/v1/entities?entity_type=PJ&ativo=true&limit=200", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((arr) => (Array.isArray(arr) ? arr : []))
+      .then((rows) => setSuppliers(rows as { id: number; name: string }[]))
+      .catch(() => setSuppliers([]));
+  }, []);
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
@@ -31,6 +39,18 @@ export default function ProductsFilterBar({
         />
         <select
           className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+          value={query.supplier_id ?? ""}
+          onChange={(e) => setSupplierId(e.target.value)}
+        >
+          <option value="">Fornecedor: Todos</option>
+          {suppliers.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
           value={query.ativo}
           onChange={(e) => setAtivo(e.target.value)}
         >
@@ -38,14 +58,6 @@ export default function ProductsFilterBar({
           <option value="true">Somente ativos</option>
           <option value="false">Somente inativos</option>
         </select>
-        <label className="flex items-center gap-2 text-sm px-1">
-          <input
-            type="checkbox"
-            checked={onlyBelowMin}
-            onChange={(e) => setOnlyBelowMin(e.target.checked)}
-          />
-          Abaixo do mínimo
-        </label>
       </div>
 
       <div className="flex justify-between items-center gap-2">

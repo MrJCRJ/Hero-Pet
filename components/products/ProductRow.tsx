@@ -15,6 +15,20 @@ export default function ProductRow({
       title="Clique na linha para editar"
       tabIndex={0}
     >
+      <td className="p-2 w-12">
+        {p.foto_url ? (
+          <img
+            src={p.foto_url}
+            alt=""
+            className="h-10 w-10 object-cover rounded border border-[var(--color-border)]"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : (
+          <div className="h-10 w-10 rounded border border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center justify-center text-[10px] text-[var(--color-text-secondary)]">
+            —
+          </div>
+        )}
+      </td>
       <td className="p-2">
         <div className="flex items-center gap-2">
           <span
@@ -25,9 +39,10 @@ export default function ProductRow({
         </div>
       </td>
       <td className="p-2">{p.categoria || "-"}</td>
-      <td className="p-2 text-xs align-top w-[160px] max-w-[160px]">
+      <td className="p-2">{p.fabricante || "-"}</td>
+      <td className="p-2 text-xs align-top w-[200px] max-w-[200px]">
         <div
-          className="max-w-[160px] truncate whitespace-nowrap"
+          className="max-w-[200px] truncate whitespace-nowrap"
           title={
             Array.isArray(p.supplier_labels) && p.supplier_labels.length
               ? p.supplier_labels

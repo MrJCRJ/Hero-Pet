@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { FileText, TrendingUp, BarChart3, Award, Download, Wallet } from "lucide-react";
+import { FileText, TrendingUp, BarChart3, Award, Download, Wallet, History } from "lucide-react";
 import { DREView } from "./components/DREView";
 import { FluxoView } from "./components/FluxoView";
 import { MargemView } from "./components/MargemView";
 import { RankingView } from "./components/RankingView";
 import { TopLucroView } from "./components/TopLucroView";
+import { HistoricocustoView } from "./components/HistoricocustoView";
 
-type TabId = "dre" | "fluxo" | "margem" | "ranking" | "top-lucro";
+type TabId = "dre" | "fluxo" | "margem" | "ranking" | "top-lucro" | "historico-custo";
 
 const DOWNLOAD_TIMEOUT_MS = 60_000;
 
@@ -17,15 +18,17 @@ function getReportPath(tab: TabId) {
   if (tab === "fluxo") return "fluxo-caixa";
   if (tab === "margem") return "margem-produto";
   if (tab === "ranking") return "ranking";
+  if (tab === "historico-custo") return "top-lucro"; // sem export
   return "top-lucro";
 }
 
 function isTabWithExport(tab: TabId) {
-  return tab !== "top-lucro";
+  return tab !== "top-lucro" && tab !== "historico-custo";
 }
 
 export default function RelatoriosPage() {
   const [tab, setTab] = useState<TabId>("dre");
+  const skipDataFetch = tab === "historico-custo";
   const [tipoRanking, setTipoRanking] = useState<"vendas" | "fornecedores">("vendas");
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [ano, setAno] = useState(new Date().getFullYear());
@@ -87,6 +90,12 @@ export default function RelatoriosPage() {
   );
 
   useEffect(() => {
+    if (skipDataFetch) {
+      setLoading(false);
+      setError(null);
+      setData(null);
+      return;
+    }
     setLoading(true);
     setError(null);
     const monthStr = `${ano}-${String(mes).padStart(2, "0")}`;
@@ -106,7 +115,7 @@ export default function RelatoriosPage() {
         setData(null);
       })
       .finally(() => setLoading(false));
-  }, [tab, mes, ano, tipoRanking]);
+  }, [tab, mes, ano, tipoRanking, skipDataFetch]);
 
   const tabs = [
     { id: "dre" as TabId, label: "DRE", icon: FileText },
@@ -114,6 +123,7 @@ export default function RelatoriosPage() {
     { id: "margem" as TabId, label: "Margem por Produto", icon: BarChart3 },
     { id: "ranking" as TabId, label: "Ranking Vendas", icon: Award },
     { id: "top-lucro" as TabId, label: "Top Lucro", icon: Wallet },
+    { id: "historico-custo" as TabId, label: "Histórico Custo", icon: History },
   ];
 
   return (
@@ -204,7 +214,12 @@ export default function RelatoriosPage() {
         </p>
       )}
 
-      {!loading && !error && data && (
+      {tab === "historico-custo" && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-sm">
+          <HistoricocustoView />
+        </div>
+      )}
+      {!loading && !error && data && tab !== "historico-custo" && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-sm">
           {tab === "dre" && "dre" in data && (
             <DREView

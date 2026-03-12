@@ -12,6 +12,8 @@ export const productSchema = z
     descricao: z.string().optional().nullable(),
     codigo_barras: z.string().optional().nullable(),
     categoria: z.string().optional().nullable(),
+    fabricante: z.string().optional().nullable(),
+    foto_url: z.string().optional().nullable(),
     fornecedor_id: z
       .union([z.number(), z.string()])
       .optional()

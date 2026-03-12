@@ -8,9 +8,13 @@ export function useProducts() {
   const [total, setTotal] = useState(null);
   const [q, setQ] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [supplierId, setSupplierId] = useState("");
   const [ativo, setAtivo] = useState("true"); // default: somente ativos
   const [loading, setLoading] = useState(false);
-  const query = useMemo(() => ({ q, categoria, ativo }), [q, categoria, ativo]);
+  const query = useMemo(
+    () => ({ q, categoria, supplier_id: supplierId, ativo }),
+    [q, categoria, supplierId, ativo]
+  );
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -18,6 +22,7 @@ export function useProducts() {
       const params = new URLSearchParams();
       if (q) params.set("q", q);
       if (categoria) params.set("categoria", categoria);
+      if (supplierId) params.set("supplier_id", supplierId);
       if (ativo !== "") params.set("ativo", ativo);
       params.set("limit", String(LIST_LIMIT));
       params.set("meta", "1");
@@ -33,7 +38,7 @@ export function useProducts() {
     } finally {
       setLoading(false);
     }
-  }, [q, categoria, ativo]);
+  }, [q, categoria, supplierId, ativo]);
 
   const refresh = useCallback(() => {
     fetchList();
@@ -46,6 +51,7 @@ export function useProducts() {
     query,
     setQ,
     setCategoria,
+    setSupplierId,
     setAtivo,
     refresh,
   };

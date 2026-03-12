@@ -2,7 +2,6 @@ import React from "react";
 import type { Product } from "@/types";
 import { MSG } from "components/common/messages";
 import { useProducts } from "components/products/hooks";
-import useProductCosts from "components/products/useProductCosts";
 import { useProductHardDelete } from "./useProductHardDelete";
 import { useProductToggle } from "./useProductToggle";
 import { useHighlightEntityLoad } from "hooks/useHighlightEntityLoad";
@@ -10,21 +9,12 @@ import { toastError } from "components/entities/shared/toast";
 import { useToast } from "components/entities/shared";
 
 export function useProductsManagerLogic() {
-  const { rows, loading, query, setQ, setCategoria, setAtivo, refresh } =
+  const { rows, loading, query, setQ, setCategoria, setSupplierId, setAtivo, refresh } =
     useProducts();
   const { push } = useToast();
   const [showModal, setShowModal] = React.useState(false);
   const [editing, setEditing] = React.useState<Product | null>(null);
-  const [actionTarget, setActionTarget] = React.useState<Product | null>(null);
-  const [showActionsModal, setShowActionsModal] = React.useState(false);
-  const [detailTarget, setDetailTarget] = React.useState<Product | null>(null);
-  const [showDetailModal, setShowDetailModal] = React.useState(false);
-  const [detailLoading, setDetailLoading] = React.useState(false);
-  const [costHistory, setCostHistory] = React.useState<
-    Array<{ month?: string | number; avg_cost?: number }>
-  >([]);
   const [submitting, setSubmitting] = React.useState(false);
-  const [onlyBelowMin, setOnlyBelowMin] = React.useState(false);
 
   const {
     hardDeleteTarget,
@@ -46,7 +36,7 @@ export function useProductsManagerLogic() {
   React.useEffect(() => {
     const id = setTimeout(() => refresh(), 250);
     return () => clearTimeout(id);
-  }, [query.q, query.categoria, query.ativo, refresh]);
+  }, [query.q, query.categoria, query.supplier_id, query.ativo, refresh]);
 
   const searchInputRef = React.useRef<HTMLInputElement | null>(null);
   React.useEffect(() => {
@@ -85,21 +75,6 @@ export function useProductsManagerLogic() {
       window.removeEventListener("inventory-changed", onInventoryChanged);
   }, [rows, refresh]);
 
-  const { costMap } = useProductCosts(rows);
-
-  const visibleRows = onlyBelowMin
-    ? rows.filter((p) => {
-        const saldo = costMap[p.id]?.saldo;
-        const minConfigured =
-          p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
-        const minHint = costMap[p.id]?.min_hint ?? null;
-        const minimo = minConfigured != null ? minConfigured : minHint;
-        return (
-          Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo
-        );
-      })
-    : rows;
-
   function openNew(prefill) {
     setEditing(prefill || null);
     setShowModal(true);
@@ -107,39 +82,6 @@ export function useProductsManagerLogic() {
   function openEdit(item) {
     setEditing(item);
     setShowModal(true);
-  }
-  function openActions(item) {
-    setActionTarget(item);
-    setShowActionsModal(true);
-  }
-  function openDetails(item) {
-    setDetailTarget(item);
-    setShowActionsModal(false);
-    setShowDetailModal(true);
-    fetchCostHistory(item.id);
-  }
-
-  async function fetchCostHistory(produtoId) {
-    try {
-      setDetailLoading(true);
-      const resp = await fetch(
-        `/api/v1/produtos/${produtoId}/custos_historicos?months=12`,
-      );
-      if (!resp.ok) {
-        setCostHistory([]);
-        return;
-      }
-      const json = await resp.json();
-      let items: Array<{ month?: string | number; avg_cost?: number }> = [];
-      if (Array.isArray(json)) items = json as typeof items;
-      else if (Array.isArray(json?.data)) items = json.data as typeof items;
-      items = items
-        .slice()
-        .sort((a, b) => String(a.month).localeCompare(String(b.month)));
-      setCostHistory(items);
-    } finally {
-      setDetailLoading(false);
-    }
   }
 
   const highlightId =
@@ -207,23 +149,14 @@ export function useProductsManagerLogic() {
     query,
     setQ,
     setCategoria,
+    setSupplierId,
     setAtivo,
     refresh,
     showModal,
     setShowModal,
     editing,
     setEditing,
-    actionTarget,
-    showActionsModal,
-    setShowActionsModal,
-    detailTarget,
-    showDetailModal,
-    setShowDetailModal,
-    detailLoading,
-    costHistory,
     submitting,
-    onlyBelowMin,
-    setOnlyBelowMin,
     hardDeleteTarget,
     hardDeletePwd,
     hardDeleting,
@@ -236,16 +169,13 @@ export function useProductsManagerLogic() {
     openReactivate,
     cancelToggle,
     confirmToggle,
-    costMap,
-    visibleRows,
+    visibleRows: rows,
     searchInputRef,
     highlightId,
     loadingHighlight,
     errorHighlight,
     openNew,
     openEdit,
-    openActions,
-    openDetails,
     handleSubmit,
   };
 }

@@ -91,6 +91,8 @@ async function putProduto(
     if (b.codigo_barras !== undefined)
       set("codigo_barras", b.codigo_barras || null);
     if (b.categoria !== undefined) set("categoria", b.categoria || null);
+    if (b.fabricante !== undefined) set("fabricante", b.fabricante || null);
+    if (b.foto_url !== undefined) set("foto_url", b.foto_url || null);
     if (fornecedorId !== undefined) set("fornecedor_id", fornecedorId);
     if (b.preco_tabela !== undefined)
       set("preco_tabela", b.preco_tabela === null ? null : b.preco_tabela);
@@ -122,7 +124,7 @@ async function putProduto(
 
     const query = {
       text: `UPDATE produtos SET ${sets.join(", ")} WHERE id = $${values.length + 1}
-             RETURNING id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,
+             RETURNING id, nome, descricao, codigo_barras, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,
       values: [...values, id],
     };
     const r = await database.query(query);
@@ -277,7 +279,7 @@ async function deleteProduto(
     } else {
       const q = {
         text: `UPDATE produtos SET ativo = false, updated_at = NOW() WHERE id = $1
-               RETURNING id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,
+               RETURNING id, nome, descricao, codigo_barras, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,
         values: [id],
       };
       const r = await database.query(q);

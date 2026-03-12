@@ -78,19 +78,21 @@ async function postProduto(
 
     const nowFields = `NOW(), NOW()`;
     const insert = {
-      text: `INSERT INTO produtos (nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, ${nowFields})
-             RETURNING id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,
+      text: `INSERT INTO produtos (nome, descricao, codigo_barras, categoria, fabricante, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, foto_url, created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, ${nowFields})
+             RETURNING id, nome, descricao, codigo_barras, categoria, fabricante, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, foto_url, created_at, updated_at`,
       values: [
         nome,
         b.descricao || null,
         codigo_barras,
         b.categoria || null,
+        b.fabricante ?? null,
         fornecedorId,
         b.preco_tabela ?? null,
         b.markup_percent_default ?? null,
         b.estoque_minimo ?? null,
         b.ativo === false ? false : true,
+        b.foto_url ?? null,
       ],
     };
     const r = await database.query(insert);
@@ -194,10 +196,12 @@ async function getProdutos(
       0
     );
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-    const baseSelect =
-      String(fields) === "id-nome"
-        ? `SELECT id, nome FROM produtos`
-        : `SELECT id, nome, descricao, codigo_barras, categoria, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at FROM produtos`;
+    let baseSelect: string;
+    if (String(fields) === "id-nome") {
+      baseSelect = `SELECT id, nome FROM produtos`;
+    } else {
+      baseSelect = `SELECT id, nome, descricao, codigo_barras, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at FROM produtos`;
+    }
     const listQuery = {
       text: `${baseSelect} ${where} ORDER BY created_at DESC LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`,
       values,
