@@ -24,31 +24,21 @@ export default function OrdersDashboard({
   const [showHelp, setShowHelp] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null); // string key
 
-  const { month, setMonth } = useMonthState(monthProp);
-
-  // Persistência local do mês selecionado
-  useEffect(() => {
-    // Hidrata somente no primeiro render se existir valor salvo
-    try {
-      const saved = window.localStorage.getItem("orders.dashboard.month");
-      if (saved && /\d{4}-\d{2}/.test(saved)) {
-        setMonth(saved);
-      }
-    } catch (_) {
-      /* ignore */
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const internal = useMonthState(monthProp);
+  const isControlled = monthProp != null && onMonthPersist != null;
+  const month = isControlled ? monthProp : internal.month;
+  const setMonth = isControlled
+    ? (m: string) => onMonthPersist!(m)
+    : internal.setMonth;
 
   useEffect(() => {
     if (!month) return;
     try {
       window.localStorage.setItem("orders.dashboard.month", month);
-      onMonthPersist?.(month);
     } catch (_) {
       /* ignore */
     }
-  }, [month, onMonthPersist]);
+  }, [month]);
   const { data, loading, error } = useDashboardData(month);
 
   const label = useMemo(() => monthToLabel(month), [month]);

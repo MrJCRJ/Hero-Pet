@@ -4,6 +4,7 @@ import { ConfirmDialog } from "components/common/ConfirmDialog";
 import { useToast } from "components/entities/shared/toast";
 import { deleteOrder as deleteOrderService } from "components/pedidos/service";
 import FilterBar from "components/pedidos/orders/FilterBar";
+import { boundsFromYYYYMM } from "components/pedidos/orders/shared/utils";
 import { usePaginatedPedidos } from "hooks/usePaginatedPedidos";
 import { MSG } from "components/common/messages";
 import PedidoListRow from "./PedidoListRow";
@@ -13,20 +14,18 @@ interface PedidoListBrowserProps {
   limit?: number;
   refreshTick?: number;
   onEdit?: (_row: Record<string, unknown>) => void;
+  monthFilter?: string | null;
 }
 
 export function PedidoListBrowser({
   limit = 20,
   refreshTick = 0,
   onEdit,
+  monthFilter,
 }: PedidoListBrowserProps) {
-  const [filters, setFilters] = React.useState({
-    tipo: "",
-    q: "",
-    from: "",
-    to: "",
-  });
   const {
+    filters,
+    setFilters,
     rows,
     loading,
     reload,
@@ -37,13 +36,31 @@ export function PedidoListBrowser({
     total,
     limit: effLimit,
     error,
-  } = usePaginatedPedidos(filters, limit);
+  } = usePaginatedPedidos({ tipo: "", q: "", from: "", to: "" }, limit);
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
   const { push } = useToast();
 
   React.useEffect(() => {
     reload();
   }, [refreshTick, reload]);
+
+  React.useEffect(() => {
+    const onSetFilters = (e: Event) => {
+      const detail = ((e as CustomEvent)?.detail || {}) as Record<string, string>;
+      setFilters((prev: Record<string, string>) => ({ ...prev, ...detail }));
+    };
+    window.addEventListener("orders:set-filters", onSetFilters);
+    return () => window.removeEventListener("orders:set-filters", onSetFilters);
+  }, [setFilters]);
+
+  React.useEffect(() => {
+    if (monthFilter && /^\d{4}-\d{2}$/.test(monthFilter)) {
+      const { from, to } = boundsFromYYYYMM(monthFilter) || {};
+      if (from && to) {
+        setFilters((prev) => ({ ...prev, from, to }));
+      }
+    }
+  }, [monthFilter, setFilters]);
 
   React.useEffect(() => {
     const el = tableContainerRef.current;

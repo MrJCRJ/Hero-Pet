@@ -31,12 +31,32 @@ export default function ComissoesModal({ isOpen, onClose }: ComissoesModalProps)
     anos.push(i);
   }
 
-  const handleGerar = () => {
-    window.open(
-      `/api/v1/pedidos/comissoes-vendas?mes=${mes}&ano=${ano}`,
-      "_blank",
-    );
-    onClose();
+  const [gerando, setGerando] = useState(false);
+  const handleGerar = async () => {
+    setGerando(true);
+    try {
+      const res = await fetch(
+        `/api/v1/pedidos/comissoes-vendas?mes=${mes}&ano=${ano}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Erro ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Comissoes-Vendas-${ano}-${String(mes).padStart(2, "0")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } catch (e) {
+      console.error(e);
+      alert((e as Error).message || "Erro ao gerar PDF");
+    } finally {
+      setGerando(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -108,7 +128,7 @@ export default function ComissoesModal({ isOpen, onClose }: ComissoesModalProps)
           <Button onClick={onClose} variant="secondary" fullWidth={false}>
             Cancelar
           </Button>
-          <Button onClick={handleGerar} variant="primary" fullWidth={false}>
+          <Button onClick={handleGerar} variant="primary" fullWidth={false} loading={gerando} disabled={gerando}>
             Gerar PDF
           </Button>
         </div>

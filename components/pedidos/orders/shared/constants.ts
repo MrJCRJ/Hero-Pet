@@ -13,38 +13,8 @@ export const CARD_TITLES = {
   carry_over: "Vieram de meses anteriores",
 };
 
-// Configuração dos cards do dashboard
+// Configuração dos cards do dashboard (Crescimento, Lucro bruto, Compras do mês movidos para Relatórios > Resumo)
 export const DASHBOARD_CARDS = [
-  {
-    key: "crescimento_mom",
-    title: "Crescimento (MoM)",
-    getValue: (data) =>
-      data.crescimentoMoMPerc == null
-        ? "—"
-        : `${Number(data.crescimentoMoMPerc).toFixed(2)}%`,
-    getSubtitle: (data) =>
-      data.vendasMesAnterior != null
-        ? `Receita: ${data.vendasMes} · Receita anterior: ${data.vendasMesAnterior}`
-        : `Receita: ${data.vendasMes}`,
-    formatSubtitle: true, // indica que precisa formatar valores monetários
-  },
-  {
-    key: "lucro_bruto",
-    title: "Lucro bruto",
-    getValue: (data) =>
-      `${data.lucroBrutoMes} (${data.margemBrutaPerc?.toFixed?.(2) ?? Number(data.margemBrutaPerc || 0).toFixed(2)}%)`,
-    getSubtitle: (data) =>
-      `Receita: ${data.vendasMes} · COGS: ${data.cogsReal}`,
-    formatValue: true,
-    formatSubtitle: true,
-  },
-  {
-    key: "comprasMes",
-    title: "Compras do mês",
-    getValue: (data) => data.comprasMes,
-    getSubtitle: () => null,
-    formatValue: true,
-  },
   {
     key: "promissorias_pendentes",
     title: "Promissórias pendentes (mês)",

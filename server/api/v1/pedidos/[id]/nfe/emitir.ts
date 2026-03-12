@@ -56,7 +56,7 @@ export default async function emitirNFeHandler(
     }
 
     const itensResult = await database.query({
-      text: `SELECT pi.descricao, pi.quantidade, pi.preco_unitario, pi.total_item, p.nome AS produto_nome
+      text: `SELECT pi.quantidade, pi.preco_unitario, pi.total_item, p.nome AS produto_nome
              FROM pedido_itens pi
              LEFT JOIN produtos p ON p.id = pi.produto_id
              WHERE pi.pedido_id = $1
@@ -66,7 +66,7 @@ export default async function emitirNFeHandler(
 
     const doc = String(pedido.partner_document || pedido.document_digits || "").replace(/\D/g, "");
     const itens = (itensResult.rows as Array<Record<string, unknown>>).map((i) => ({
-      descricao: String(i.descricao || i.produto_nome || "Produto"),
+      descricao: String(i.produto_nome || "Produto"),
       ncm: "23099090",
       cfop: "5102",
       quantidade: Number(i.quantidade || 0),

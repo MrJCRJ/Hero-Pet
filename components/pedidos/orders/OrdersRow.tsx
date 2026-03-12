@@ -9,6 +9,18 @@ import PromissoriasDots from "./PromissoriasDots";
 
 type PedidoRecord = Record<string, unknown>;
 
+async function downloadPdf(url: string, filename: string) {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(await res.text().catch(() => `Erro ${res.status}`));
+  const blob = await res.blob();
+  const u = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = u;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(u);
+}
+
 interface OrdersRowProps {
   p: PedidoRecord;
   onEdit?: (p: PedidoRecord) => void;
@@ -25,6 +37,8 @@ export default function OrdersRow({
   expandCell,
 }: OrdersRowProps) {
   const [nfeLoading, setNfeLoading] = useState(false);
+  const [nfPdfLoading, setNfPdfLoading] = useState(false);
+  const [duplicatasPdfLoading, setDuplicatasPdfLoading] = useState(false);
   return (
     <tr
       className={`${ROW_HOVER} text-[12px]`}
@@ -53,10 +67,19 @@ export default function OrdersRow({
               size="sm"
               variant="outline"
               fullWidth={false}
+              loading={nfPdfLoading}
+              disabled={nfPdfLoading}
               className="rounded-full text-sm !px-2 !py-1 leading-none bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation();
-                window.open(`/api/v1/pedidos/${p.id}/nf`, "_blank", "noopener");
+                setNfPdfLoading(true);
+                try {
+                  await downloadPdf(`/api/v1/pedidos/${p.id}/nf`, `NF-${p.id}.pdf`);
+                } catch (err) {
+                  alert((err as Error).message || "Erro ao baixar NF");
+                } finally {
+                  setNfPdfLoading(false);
+                }
               }}
               title="Baixar NF (PDF)"
             >
@@ -101,26 +124,33 @@ export default function OrdersRow({
         </div>
       </td>
       <td className="px-3 py-1.5 text-center">
-        {p.tipo === "VENDA" && Number(p.numero_promissorias) >= 1 ? (
-          <Button
-            size="sm"
-            variant="outline"
-            fullWidth={false}
-            className="rounded-full text-sm !px-2 !py-1 leading-none bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200 focus-visible:ring-amber-500 shadow-sm"
-            onClick={(e) => {
-              e.stopPropagation();
-
-              window.open(
-                `/api/v1/pedidos/${p.id}/promissorias-pdf`,
-                "_blank",
-                "noopener",
-              );
-            }}
-            title="Baixar Duplicadas (PDF)"
-          >
-            📝
-          </Button>
-        ) : (
+          {p.tipo === "VENDA" && Number(p.numero_promissorias) >= 1 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              fullWidth={false}
+              loading={duplicatasPdfLoading}
+              disabled={duplicatasPdfLoading}
+              className="rounded-full text-sm !px-2 !py-1 leading-none bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200 focus-visible:ring-amber-500 shadow-sm"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setDuplicatasPdfLoading(true);
+                try {
+                  await downloadPdf(
+                    `/api/v1/pedidos/${p.id}/promissorias-pdf`,
+                    `Duplicatas-${p.id}.pdf`,
+                  );
+                } catch (err) {
+                  alert((err as Error).message || "Erro ao baixar Duplicatas");
+                } finally {
+                  setDuplicatasPdfLoading(false);
+                }
+              }}
+              title="Baixar Duplicadas (PDF)"
+            >
+              📝
+            </Button>
+          ) : (
           <span className="text-gray-400">-</span>
         )}
       </td>

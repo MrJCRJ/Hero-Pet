@@ -9,6 +9,8 @@ export function useMonthState(monthProp?: string | null) {
     if (monthProp) return monthProp;
     if (typeof window !== "undefined") {
       try {
+        const dashboard = window.localStorage.getItem("orders.dashboard.month");
+        if (dashboard && /^\d{4}-\d{2}$/.test(dashboard)) return dashboard;
         const stored = window.localStorage.getItem("orders:month");
         if (stored && /^\d{4}-\d{2}$/.test(stored)) return stored;
       } catch (_) {
@@ -23,6 +25,7 @@ export function useMonthState(monthProp?: string | null) {
     try {
       if (month && /^\d{4}-\d{2}$/.test(month)) {
         window.localStorage.setItem("orders:month", month);
+        window.localStorage.setItem("orders.dashboard.month", month);
       }
     } catch (_) {
       /* noop */

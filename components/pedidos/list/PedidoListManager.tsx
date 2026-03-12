@@ -5,6 +5,7 @@ import { PedidoForm } from "components/PedidoForm";
 import { PedidoListBrowser } from "./PedidoListBrowser";
 import OrdersDashboard from "components/pedidos/orders/dashboard/OrdersDashboard";
 import ComissoesModal from "components/pedidos/ComissoesModal";
+import { useMonthState } from "components/pedidos/orders/shared/hooks";
 
 interface PedidoListManagerProps {
   limit?: number;
@@ -16,6 +17,7 @@ export function PedidoListManager({ limit = 20 }: PedidoListManagerProps) {
   const [editing, setEditing] = useState<Order | null>(null);
   const [showComissoesModal, setShowComissoesModal] = useState(false);
   const bump = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const { month, setMonth } = useMonthState();
 
   const handleEdit = async (row: { id: number }) => {
     try {
@@ -57,11 +59,12 @@ export function PedidoListManager({ limit = 20 }: PedidoListManagerProps) {
               </Button>
             </div>
           </div>
-          <OrdersDashboard month={undefined} onMonthPersist={undefined} />
+          <OrdersDashboard month={month} onMonthPersist={setMonth} />
           <PedidoListBrowser
             limit={limit}
             refreshTick={refreshKey}
             onEdit={handleEdit}
+            monthFilter={month}
           />
         </div>
         <ComissoesModal

@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { FileText, TrendingUp, BarChart3, Award, Download, Wallet, History } from "lucide-react";
+import { FileText, TrendingUp, BarChart3, Award, Download, Wallet, History, LayoutDashboard } from "lucide-react";
 import { DREView } from "./components/DREView";
 import { FluxoView } from "./components/FluxoView";
 import { MargemView } from "./components/MargemView";
 import { RankingView } from "./components/RankingView";
 import { TopLucroView } from "./components/TopLucroView";
 import { HistoricocustoView } from "./components/HistoricocustoView";
+import { ResumoView } from "./components/ResumoView";
 
-type TabId = "dre" | "fluxo" | "margem" | "ranking" | "top-lucro" | "historico-custo";
+type TabId = "dre" | "fluxo" | "margem" | "ranking" | "top-lucro" | "historico-custo" | "resumo";
 
 const DOWNLOAD_TIMEOUT_MS = 60_000;
 
@@ -23,12 +24,13 @@ function getReportPath(tab: TabId) {
 }
 
 function isTabWithExport(tab: TabId) {
-  return tab !== "top-lucro" && tab !== "historico-custo";
+  return tab !== "top-lucro" && tab !== "historico-custo" && tab !== "resumo";
 }
 
 export default function RelatoriosPage() {
-  const [tab, setTab] = useState<TabId>("dre");
+  const [tab, setTab] = useState<TabId>("resumo");
   const skipDataFetch = tab === "historico-custo";
+  const isResumoTab = tab === "resumo";
   const [tipoRanking, setTipoRanking] = useState<"vendas" | "fornecedores">("vendas");
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [ano, setAno] = useState(new Date().getFullYear());
@@ -90,7 +92,7 @@ export default function RelatoriosPage() {
   );
 
   useEffect(() => {
-    if (skipDataFetch) {
+    if (skipDataFetch && !isResumoTab) {
       setLoading(false);
       setError(null);
       setData(null);
@@ -100,7 +102,9 @@ export default function RelatoriosPage() {
     setError(null);
     const monthStr = `${ano}-${String(mes).padStart(2, "0")}`;
     let url: string;
-    if (tab === "top-lucro") {
+    if (tab === "resumo") {
+      url = `/api/v1/pedidos/summary?month=${monthStr}`;
+    } else if (tab === "top-lucro") {
       url = `/api/v1/produtos/top?month=${monthStr}&topN=15&productMonths=6`;
     } else {
       const base = { dre: "/api/v1/relatorios/dre", fluxo: "/api/v1/relatorios/fluxo-caixa", margem: "/api/v1/relatorios/margem-produto", ranking: "/api/v1/relatorios/ranking" };
@@ -115,9 +119,10 @@ export default function RelatoriosPage() {
         setData(null);
       })
       .finally(() => setLoading(false));
-  }, [tab, mes, ano, tipoRanking, skipDataFetch]);
+  }, [tab, mes, ano, tipoRanking, skipDataFetch, isResumoTab]);
 
   const tabs = [
+    { id: "resumo" as TabId, label: "Resumo", icon: LayoutDashboard },
     { id: "dre" as TabId, label: "DRE", icon: FileText },
     { id: "fluxo" as TabId, label: "Fluxo de Caixa", icon: TrendingUp },
     { id: "margem" as TabId, label: "Margem por Produto", icon: BarChart3 },
@@ -221,6 +226,9 @@ export default function RelatoriosPage() {
       )}
       {!loading && !error && data && tab !== "historico-custo" && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-sm">
+          {tab === "resumo" && (
+            <ResumoView data={data as Record<string, unknown>} mes={mes} ano={ano} />
+          )}
           {tab === "dre" && "dre" in data && (
             <DREView
               dre={(data as { dre: Record<string, number> }).dre}
