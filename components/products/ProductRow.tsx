@@ -1,85 +1,8 @@
 import React from "react";
 import { ROW_HOVER, ACTION_BTN_HIDDEN } from "components/common/tableStyles";
-import { formatBRL, formatQtyBR } from "components/common/format";
-
-function PrecoCell({ p, costMap }) {
-  const cm = costMap[p.id]?.custo_medio ?? null;
-  const uc = costMap[p.id]?.ultimo_custo ?? null;
-  const vendaTabela = p.preco_tabela != null ? Number(p.preco_tabela) : null;
-  let venda = vendaTabela;
-  if (!(venda != null && Number.isFinite(venda) && venda > 0)) {
-    const base =
-      Number.isFinite(cm) && cm > 0
-        ? cm
-        : Number.isFinite(uc) && uc > 0
-          ? uc
-          : null;
-    let mk = Number(p.markup_percent_default);
-    if (!Number.isFinite(mk) || mk <= 0) mk = 30;
-    venda = base == null ? null : Number((base * (1 + mk / 100)).toFixed(2));
-  }
-  return (
-    <div className="text-xs">
-      <div
-        className="flex items-center justify-between"
-        title="Média ponderada de compras"
-      >
-        <span className="opacity-70">Compra</span>
-        <span>{Number.isFinite(cm) && cm > 0 ? formatBRL(cm) : "-"}</span>
-      </div>
-      <div
-        className="flex items-center justify-between mt-0.5"
-        title="Preço de venda (tabela ou custo×markup)"
-      >
-        <span className="opacity-70">Venda</span>
-        <span>
-          {venda != null && Number.isFinite(venda) && venda > 0 ? formatBRL(venda) : "-"}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function EstoqueCell({ p, costMap }) {
-  const saldo = costMap[p.id]?.saldo;
-  const minConfigured =
-    p.estoque_minimo != null ? Number(p.estoque_minimo) : null;
-  const minHint = costMap[p.id]?.min_hint ?? null;
-  const minimo = minConfigured != null ? minConfigured : minHint;
-  const below =
-    Number.isFinite(saldo) && Number.isFinite(minimo) && saldo < minimo;
-  return (
-    <div className="text-xs">
-      <div
-        className="flex items-center justify-between"
-        title="Estoque atual do produto"
-      >
-        <span className="opacity-70">Atual</span>
-        <span
-          className={below ? "text-red-500 font-medium" : ""}
-          title={below ? "Abaixo do estoque mínimo" : undefined}
-        >
-          {Number.isFinite(saldo) ? formatQtyBR(saldo) : "-"}
-        </span>
-      </div>
-      <div
-        className="flex items-center justify-between mt-0.5"
-        title={
-          minConfigured != null
-            ? "Estoque mínimo cadastrado"
-            : "Estoque mínimo sugerido (30 dias de consumo)"
-        }
-      >
-        <span className="opacity-70">Mínimo</span>
-        <span>{Number.isFinite(minimo) ? minimo.toFixed(0) : "-"}</span>
-      </div>
-    </div>
-  );
-}
 
 export default function ProductRow({
   p,
-  costMap,
   onEdit,
   onInactivate,
   onReactivate,
@@ -130,12 +53,6 @@ export default function ProductRow({
               })()
             : "-"}
         </div>
-      </td>
-      <td className="p-2">
-        <PrecoCell p={p} costMap={costMap} />
-      </td>
-      <td className="p-2">
-        <EstoqueCell p={p} costMap={costMap} />
       </td>
       <td className="p-2">
         <div className="flex items-center gap-2">

@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { FileText, TrendingUp, BarChart3, Award, Download } from "lucide-react";
+import { FileText, TrendingUp, BarChart3, Award, Download, Wallet } from "lucide-react";
 import { DREView } from "./components/DREView";
 import { FluxoView } from "./components/FluxoView";
 import { MargemView } from "./components/MargemView";
 import { RankingView } from "./components/RankingView";
+import { TopLucroView } from "./components/TopLucroView";
 
-type TabId = "dre" | "fluxo" | "margem" | "ranking";
+type TabId = "dre" | "fluxo" | "margem" | "ranking" | "top-lucro";
 
 const DOWNLOAD_TIMEOUT_MS = 60_000;
 
@@ -15,7 +16,12 @@ function getReportPath(tab: TabId) {
   if (tab === "dre") return "dre";
   if (tab === "fluxo") return "fluxo-caixa";
   if (tab === "margem") return "margem-produto";
-  return "ranking";
+  if (tab === "ranking") return "ranking";
+  return "top-lucro";
+}
+
+function isTabWithExport(tab: TabId) {
+  return tab !== "top-lucro";
 }
 
 export default function RelatoriosPage() {
@@ -31,6 +37,7 @@ export default function RelatoriosPage() {
 
   const handleDownload = useCallback(
     async (format: "pdf" | "xlsx") => {
+      if (!isTabWithExport(tab)) return;
       setDownloadError(null);
       setDownloading(format);
       const path = getReportPath(tab);
@@ -82,8 +89,14 @@ export default function RelatoriosPage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const base = { dre: "/api/v1/relatorios/dre", fluxo: "/api/v1/relatorios/fluxo-caixa", margem: "/api/v1/relatorios/margem-produto", ranking: "/api/v1/relatorios/ranking" };
-    const url = `${base[tab]}?mes=${mes}&ano=${ano}`;
+    const monthStr = `${ano}-${String(mes).padStart(2, "0")}`;
+    let url: string;
+    if (tab === "top-lucro") {
+      url = `/api/v1/produtos/top?month=${monthStr}&topN=15&productMonths=6`;
+    } else {
+      const base = { dre: "/api/v1/relatorios/dre", fluxo: "/api/v1/relatorios/fluxo-caixa", margem: "/api/v1/relatorios/margem-produto", ranking: "/api/v1/relatorios/ranking" };
+      url = `${base[tab]}?mes=${mes}&ano=${ano}`;
+    }
     const finalUrl = tab === "ranking" ? `${url}&tipo=${tipoRanking}` : url;
     fetch(finalUrl)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.statusText))))
@@ -100,6 +113,7 @@ export default function RelatoriosPage() {
     { id: "fluxo" as TabId, label: "Fluxo de Caixa", icon: TrendingUp },
     { id: "margem" as TabId, label: "Margem por Produto", icon: BarChart3 },
     { id: "ranking" as TabId, label: "Ranking Vendas", icon: Award },
+    { id: "top-lucro" as TabId, label: "Top Lucro", icon: Wallet },
   ];
 
   return (
@@ -151,7 +165,7 @@ export default function RelatoriosPage() {
             ))}
           </select>
         </div>
-        {!loading && data && (
+        {!loading && data && isTabWithExport(tab) && (
           <div className="flex flex-col gap-1">
             <div className="flex gap-2">
               <button
@@ -219,6 +233,13 @@ export default function RelatoriosPage() {
               ranking={(data as { ranking: Array<Record<string, unknown>> }).ranking}
               tipo={tipoRanking}
               onTipoChange={setTipoRanking}
+              mes={mes}
+              ano={ano}
+            />
+          )}
+          {tab === "top-lucro" && (
+            <TopLucroView
+              data={data as { top?: Record<string, unknown>[]; history?: Record<string, unknown>[]; meta?: Record<string, unknown> }}
               mes={mes}
               ano={ano}
             />

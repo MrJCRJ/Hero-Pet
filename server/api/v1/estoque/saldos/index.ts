@@ -59,6 +59,14 @@ export default async function handler(
         Number(row.valor_total) / Number(row.quantidade || 1);
     }
 
+    const minHintRes = await database.query({
+      text: `SELECT COALESCE(SUM(quantidade), 0) AS total FROM movimento_estoque
+             WHERE produto_id = $1 AND tipo = 'SAIDA'
+             AND data_movimento >= NOW() - INTERVAL '30 days'`,
+      values: [produtoId],
+    });
+    const minHint = Number((minHintRes.rows[0] as Record<string, unknown>).total ?? 0);
+
     res.status(200).json({
       produto_id: produtoId,
       saldo: Number((saldoRes.rows[0] as Record<string, unknown>).saldo).toFixed(
@@ -66,6 +74,7 @@ export default async function handler(
       ),
       custo_medio: custo_medio.toFixed(2),
       ultimo_custo: ultimo.toFixed(2),
+      min_hint: minHint,
     });
   } catch (e) {
     console.error("GET /estoque/saldos error", e);

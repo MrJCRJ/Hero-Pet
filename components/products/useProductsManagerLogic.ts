@@ -3,7 +3,6 @@ import type { Product } from "@/types";
 import { MSG } from "components/common/messages";
 import { useProducts } from "components/products/hooks";
 import useProductCosts from "components/products/useProductCosts";
-import { useProductRanking } from "./useProductRanking";
 import { useProductHardDelete } from "./useProductHardDelete";
 import { useProductToggle } from "./useProductToggle";
 import { useHighlightEntityLoad } from "hooks/useHighlightEntityLoad";
@@ -27,14 +26,6 @@ export function useProductsManagerLogic() {
   const [submitting, setSubmitting] = React.useState(false);
   const [onlyBelowMin, setOnlyBelowMin] = React.useState(false);
 
-  const {
-    topData,
-    topLoading,
-    showTopModal,
-    openTopModal,
-    closeTopModal,
-    fetchTopProdutos,
-  } = useProductRanking();
   const {
     hardDeleteTarget,
     hardDeletePwd,
@@ -233,12 +224,6 @@ export function useProductsManagerLogic() {
     submitting,
     onlyBelowMin,
     setOnlyBelowMin,
-    topData,
-    topLoading,
-    showTopModal,
-    openTopModal,
-    closeTopModal,
-    fetchTopProdutos,
     hardDeleteTarget,
     hardDeletePwd,
     hardDeleting,

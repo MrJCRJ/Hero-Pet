@@ -88,7 +88,24 @@ POSTGRES_PASSWORD=sua_senha_producao
 POSTGRES_DB=nome_do_banco_producao
 DATABASE_URL=postgresql://usuario:senha@host:porta/banco?sslmode=require
 MIGRATIONS_AUTO_APPLY=1
+AUTH_SECRET=uma-chave-secreta-aleatoria-min-32-chars  # obrigatório para NextAuth
 ```
+
+**Importante:** `AUTH_SECRET` é **obrigatório** para o NextAuth funcionar. Sem ele, `/api/auth/*` retorna 500 (MissingSecret). Gere um valor seguro com: `npx auth secret` ou `openssl rand -base64 32`.
+
+### Deploy na Vercel
+
+Na Vercel, configure as **Environment Variables** em **Project Settings → Environment Variables**:
+
+| Variável       | Obrigatório | Descrição                                                  |
+|----------------|-------------|------------------------------------------------------------|
+| `AUTH_SECRET`  | Sim         | Chave secreta para JWT/sessão. Gere com `npx auth secret` |
+| `DATABASE_URL` | Sim         | URL de conexão PostgreSQL (ex.: Neon, Supabase)           |
+| `POSTGRES_*`   | Sim*        | Alternativa ao DATABASE_URL: HOST, PORT, USER, PASSWORD, DB |
+
+\* Use `DATABASE_URL` ou as variáveis `POSTGRES_*` individualmente.
+
+Após adicionar `AUTH_SECRET`, faça um novo deploy (ou **Redeploy** no painel da Vercel).
 
 **Migrations automáticas:** Se `POSTGRES_HOST` contiver `neon.tech`, as migrations automáticas são desabilitadas (para evitar overhead em bancos remotos como Neon). Use `MIGRATIONS_AUTO_APPLY=0` ou conecte a um host Neon para pular o auto-apply.
 

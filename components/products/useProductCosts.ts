@@ -23,12 +23,14 @@ export default function useProductCosts(rows) {
               const cm = Number(data?.custo_medio);
               const uc = Number(data?.ultimo_custo);
               const sd = Number(data?.saldo);
+              const mh = Number(data?.min_hint);
               setCostMap((prev) => ({
                 ...prev,
                 [id]: {
                   saldo: Number.isFinite(sd) ? sd : null,
                   custo_medio: Number.isFinite(cm) ? cm : null,
                   ultimo_custo: Number.isFinite(uc) ? uc : null,
+                  min_hint: Number.isFinite(mh) ? mh : null,
                 },
               }));
             } else {
@@ -41,51 +43,6 @@ export default function useProductCosts(rows) {
             setCostMap((prev) => ({
               ...prev,
               [id]: { saldo: null, custo_medio: null, ultimo_custo: null },
-            }));
-          }
-        }),
-      );
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows]);
-
-  // Busca min_hint (30 dias) para produtos sem mínimo cadastrado
-  useEffect(() => {
-    const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const missing = rows
-      .filter(
-        (p) =>
-          p.estoque_minimo == null &&
-          !(
-            costMap[p.id] &&
-            Object.prototype.hasOwnProperty.call(costMap[p.id], "min_hint")
-          ),
-      )
-      .map((p) => p.id);
-    if (!missing.length) return;
-    (async () => {
-      await Promise.all(
-        missing.map(async (id) => {
-          try {
-            const url = `/api/v1/estoque/movimentos?produto_id=${id}&tipo=SAIDA&from=${encodeURIComponent(from)}&limit=200`;
-            const res = await fetch(url, { cache: "no-store" });
-            const data = await res.json();
-            let hint: number | null = null;
-            if (res.ok && Array.isArray(data)) {
-              const totalSaida = data.reduce(
-                (acc, mv) => acc + (Number(mv.quantidade) || 0),
-                0,
-              );
-              hint = Math.max(0, Math.ceil(totalSaida));
-            }
-            setCostMap((prev) => ({
-              ...prev,
-              [id]: { ...(prev[id] || {}), min_hint: hint },
-            }));
-          } catch (_) {
-            setCostMap((prev) => ({
-              ...prev,
-              [id]: { ...(prev[id] || {}), min_hint: null },
             }));
           }
         }),

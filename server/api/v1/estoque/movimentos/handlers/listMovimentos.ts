@@ -30,7 +30,7 @@ export async function listMovimentos(
     const clauses: string[] = [];
     const values: unknown[] = [];
     if (Number.isFinite(produtoId)) {
-      clauses.push("produto_id = $1");
+      clauses.push("m.produto_id = $1");
       values.push(produtoId);
     }
     if (tipo) {
@@ -39,23 +39,25 @@ export async function listMovimentos(
         return;
       }
       values.push(tipo);
-      clauses.push(`tipo = $${values.length}`);
+      clauses.push(`m.tipo = $${values.length}`);
     }
     if (from) {
       values.push(from);
-      clauses.push(`data_movimento >= $${values.length}`);
+      clauses.push(`m.data_movimento >= $${values.length}`);
     }
     if (to) {
       values.push(to);
-      clauses.push(`data_movimento <= $${values.length}`);
+      clauses.push(`m.data_movimento <= $${values.length}`);
     }
 
     const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const listQ = {
-      text: `SELECT id, produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, data_movimento
-             FROM movimento_estoque
+      text: `SELECT m.id, m.produto_id, m.tipo, m.quantidade, m.valor_unitario, m.frete, m.outras_despesas, m.valor_total, m.documento, m.observacao, m.data_movimento,
+             p.nome AS produto_nome
+             FROM movimento_estoque m
+             LEFT JOIN produtos p ON p.id = m.produto_id
              ${where}
-             ORDER BY data_movimento DESC, id DESC
+             ORDER BY m.data_movimento DESC, m.id DESC
              LIMIT ${effLimit} OFFSET ${effOffset}`,
       values,
     };
@@ -63,7 +65,7 @@ export async function listMovimentos(
 
     if (String(meta) === "1") {
       const countQ = {
-        text: `SELECT COUNT(*)::int AS total FROM movimento_estoque ${where}`,
+        text: `SELECT COUNT(*)::int AS total FROM movimento_estoque m ${where}`,
         values,
       };
       const c = await database.query(countQ);

@@ -2,8 +2,11 @@ import database from "infra/database";
 import { isConnectionError, isRelationMissing } from "lib/errors";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
-/** Dias para considerar "sem movimento" */
+/** Dias para considerar "sem movimento" e para min_hint (consumo 30d) */
 const DIAS_SEM_MOVIMENTO = 30;
+
+const MIN_HINT_SUB = `(SELECT COALESCE(SUM(m2.quantidade), 0)::numeric FROM movimento_estoque m2 WHERE m2.produto_id = p.id AND m2.tipo = 'SAIDA' AND m2.data_movimento >= NOW() - INTERVAL '30 days')`;
+const MINIMO_EFETIVO = `COALESCE(p.estoque_minimo, ${MIN_HINT_SUB})`;
 
 export default async function handler(
   req: ApiReqLike,
@@ -19,9 +22,10 @@ export default async function handler(
         text: `SELECT COUNT(*)::int AS n FROM (
           SELECT p.id FROM produtos p
           LEFT JOIN movimento_estoque m ON m.produto_id = p.id
-          WHERE p.ativo = true AND p.estoque_minimo IS NOT NULL
+          WHERE p.ativo = true
           GROUP BY p.id
-          HAVING COALESCE(SUM(CASE WHEN m.tipo='ENTRADA' THEN m.quantidade WHEN m.tipo='SAIDA' THEN -m.quantidade ELSE m.quantidade END), 0) < p.estoque_minimo
+          HAVING ${MINIMO_EFETIVO} IS NOT NULL AND ${MINIMO_EFETIVO} > 0
+            AND COALESCE(SUM(CASE WHEN m.tipo='ENTRADA' THEN m.quantidade WHEN m.tipo='SAIDA' THEN -m.quantidade ELSE m.quantidade END), 0) < ${MINIMO_EFETIVO}
         ) sub`,
       }),
       database.query({

@@ -20,8 +20,11 @@ export interface SaldoRow {
   codigo_barras: string | null;
   categoria: string | null;
   estoque_minimo: number | null;
+  min_hint?: number | null;
+  minimo_efetivo?: number | null;
   saldo: number;
   custo_medio: number | null;
+  preco_tabela?: number | null;
 }
 
 interface EstoqueSaldosTableProps {
@@ -58,10 +61,9 @@ export function EstoqueSaldosTable({
           <tr className={THEAD_ROW}>
             <th className={TH_BASE}>Produto</th>
             <th className={TH_BASE}>Categoria</th>
-            <th className="text-right px-3 py-1.5 font-semibold">Saldo</th>
-            <th className="text-right px-3 py-1.5 font-semibold">
-              Custo médio
-            </th>
+            <th className="text-right px-3 py-1.5 font-semibold">Preço compra</th>
+            <th className="text-right px-3 py-1.5 font-semibold">Preço venda</th>
+            <th className="text-right px-3 py-1.5 font-semibold">Saldo atual</th>
             <th className="text-right px-3 py-1.5 font-semibold">Mínimo</th>
             <th className={ACTION_TH}>Ação</th>
           </tr>
@@ -79,25 +81,48 @@ export function EstoqueSaldosTable({
                 <div className="mt-1">
                   <EstoqueAlertaBadge
                     saldo={row.saldo}
-                    estoqueMinimo={row.estoque_minimo}
+                    estoqueMinimo={row.minimo_efetivo ?? row.estoque_minimo}
                   />
                 </div>
               </td>
               <td className="px-3 py-2 text-[var(--color-text-secondary)]">
                 {row.categoria ?? "-"}
               </td>
-              <td className="px-3 py-2 text-right font-medium">
-                {formatQtyBR(row.saldo)}
-              </td>
               <td className="px-3 py-2 text-right">
-                {row.custo_medio != null
+                {row.custo_medio != null && Number.isFinite(row.custo_medio)
                   ? formatBRL(row.custo_medio)
                   : "-"}
               </td>
               <td className="px-3 py-2 text-right">
-                {row.estoque_minimo != null
-                  ? formatQtyBR(row.estoque_minimo)
-                  : "-"}
+                {(() => {
+                  const pv = row.preco_tabela;
+                  const cm = row.custo_medio;
+                  if (pv != null && Number.isFinite(pv) && pv >= 0)
+                    return formatBRL(pv);
+                  if (cm != null && Number.isFinite(cm) && cm > 0)
+                    return <span title="Estimado (custo + 20%)">{formatBRL(cm * 1.2)}</span>;
+                  return "-";
+                })()}
+              </td>
+              <td className="px-3 py-2 text-right font-medium">
+                {formatQtyBR(row.saldo)}
+              </td>
+              <td className="px-3 py-2 text-right">
+                {(() => {
+                  const min = row.minimo_efetivo ?? row.estoque_minimo;
+                  if (min != null && Number.isFinite(min)) {
+                    const isSugerido = row.estoque_minimo == null;
+                    return (
+                      <span title={isSugerido ? "Sugerido (consumo 30 dias)" : undefined}>
+                        {formatQtyBR(min)}
+                        {isSugerido && (
+                          <span className="text-[10px] opacity-60 ml-1">(30d)</span>
+                        )}
+                      </span>
+                    );
+                  }
+                  return "-";
+                })()}
               </td>
               <td className="px-3 py-2 text-center">
                 <button

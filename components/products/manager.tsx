@@ -5,13 +5,11 @@ import { ProductForm } from "./ProductForm";
 import ProductsHeader from "./ProductsHeader";
 import ProductRow from "./ProductRow";
 import ProductsFilterBar from "./ProductsFilterBar";
-import { TopProdutosRanking } from "./TopProdutosRanking";
 import { ProductActionsModal } from "./ProductActionsModal";
 import { ProductDetailModal } from "./ProductDetailModal";
 import ProductCostHistoryChart from "./ProductCostHistoryChart";
 import { ProductHardDeleteDialog } from "./ProductHardDeleteDialog";
 import { useProductsManagerLogic } from "./useProductsManagerLogic";
-import { MSG } from "components/common/messages";
 import type { Product } from "@/types";
 
 export function ProductsManager({ linkSupplierId = undefined } = {}) {
@@ -37,12 +35,6 @@ export function ProductsManager({ linkSupplierId = undefined } = {}) {
     submitting,
     onlyBelowMin,
     setOnlyBelowMin,
-    topData,
-    topLoading,
-    showTopModal,
-    openTopModal,
-    closeTopModal,
-    fetchTopProdutos,
     hardDeleteTarget,
     hardDeletePwd,
     hardDeleting,
@@ -55,7 +47,6 @@ export function ProductsManager({ linkSupplierId = undefined } = {}) {
     openReactivate,
     cancelToggle,
     confirmToggle,
-    costMap,
     visibleRows,
     searchInputRef,
     highlightId,
@@ -83,15 +74,6 @@ export function ProductsManager({ linkSupplierId = undefined } = {}) {
         searchInputRef={searchInputRef}
       />
 
-      <ProductsInsightsButton
-        loading={topLoading}
-        hasData={!!topData}
-        onClick={() => {
-          if (!topData && !topLoading) fetchTopProdutos();
-          openTopModal();
-        }}
-      />
-
       <div className="border border-[var(--color-border)] rounded-md overflow-hidden">
         <table className="w-full text-left">
           <ProductsHeader />
@@ -100,7 +82,6 @@ export function ProductsManager({ linkSupplierId = undefined } = {}) {
               <ProductRow
                 key={p.id}
                 p={p}
-                costMap={costMap}
                 // Agora clique abre modal de ações
                 onEdit={openActions}
                 onInactivate={openInactivate}
@@ -111,7 +92,7 @@ export function ProductsManager({ linkSupplierId = undefined } = {}) {
             {!rows.length && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={4}
                   className="p-4 text-center text-[var(--color-text-secondary)]"
                 >
                   {loading ? "Carregando..." : "Nenhum produto encontrado."}
@@ -189,45 +170,6 @@ export function ProductsManager({ linkSupplierId = undefined } = {}) {
           onConfirm={confirmToggle}
         />
       )}
-      {showTopModal && (
-        <Modal onClose={closeTopModal} title="Ranking de Produtos por Lucro">
-          {topLoading && (
-            <div className="text-sm opacity-70">Carregando ranking...</div>
-          )}
-          {!topLoading && topData && (
-            <TopProdutosRanking
-              data={topData}
-              onNavigate={(id) => {
-                closeTopModal();
-                setQ(`#${id}`);
-                setTimeout(() => searchInputRef.current?.focus(), 30);
-              }}
-            />
-          )}
-          {!topLoading && !topData && (
-            <div className="text-sm text-red-500">{MSG.GENERIC_ERROR}</div>
-          )}
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// Botão de Insights extraído para reduzir o escopo do manager
-function ProductsInsightsButton({ onClick, loading, hasData }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={onClick}
-        className="text-left flex-1 min-w-[200px] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md p-3 hover:bg-[var(--color-bg-primary)] transition-colors"
-      >
-        <div className="text-xs opacity-70">Insights</div>
-        <div className="text-sm font-semibold">Top produtos por lucro</div>
-        <div className="text-[11px] opacity-60 mt-1">
-          {loading && !hasData ? "Carregando..." : "Clique para ver ranking"}
-        </div>
-      </button>
     </div>
   );
 }
