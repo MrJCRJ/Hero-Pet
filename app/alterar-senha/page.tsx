@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/Button";
 export default function AlterarSenhaPage() {
   const router = useRouter();
@@ -39,8 +40,8 @@ export default function AlterarSenhaPage() {
         setLoading(false);
         return;
       }
-      router.replace("/");
-      router.refresh();
+      await signOut({ redirect: false });
+      router.replace("/login?message=senha_alterada");
     } catch {
       setError("Erro ao conectar. Tente novamente.");
       setLoading(false);

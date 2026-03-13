@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Users, Package, ShoppingCart, BarChart3, FileText, Banknote, HelpCircle, UserCog } from "lucide-react";
+import { Users, Package, ShoppingCart, BarChart3, FileText, Banknote, UserCog } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
@@ -12,7 +12,6 @@ const navItems = [
   { href: "/orders", label: "Pedidos", icon: ShoppingCart },
   { href: "/financeiro", label: "Financeiro", icon: Banknote },
   { href: "/relatorios", label: "Relatórios", icon: FileText },
-  { href: "/ajuda", label: "Ajuda", icon: HelpCircle },
 ];
 
 const baseLinkClass =

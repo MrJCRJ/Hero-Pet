@@ -1,17 +1,10 @@
 import database from "infra/database.js";
 import { gerarDREPDF } from "@/lib/relatorios/exportPDF";
 import { gerarDREExcel } from "@/lib/relatorios/exportExcel";
+import { getReportBounds, periodoFilename } from "@/lib/relatorios/dateBounds";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 type ResWithHeaders = ApiResLike & { setHeader: (name: string, value: string) => void; end: (chunk?: unknown) => void };
-
-function monthBounds(mes: number, ano: number) {
-  const firstDay = `${ano}-${String(mes).padStart(2, "0")}-01`;
-  const nextMes = mes === 12 ? 1 : mes + 1;
-  const nextAno = mes === 12 ? ano + 1 : ano;
-  const lastDay = `${nextAno}-${String(nextMes).padStart(2, "0")}-01`;
-  return { firstDay, lastDay };
-}
 
 export default async function dreHandler(
   req: ApiReqLike,
@@ -24,9 +17,9 @@ export default async function dreHandler(
 
   try {
     const now = new Date();
-    const mes = Number(req.query?.mes) || now.getMonth() + 1;
-    const ano = Number(req.query?.ano) || now.getFullYear();
-    const { firstDay, lastDay } = monthBounds(mes, ano);
+    const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
+    const ano = Number(req.query?.ano) ?? now.getFullYear();
+    const { firstDay, lastDay } = getReportBounds(mes, ano);
 
     const [vendasR, cogsR, despesasR] = await Promise.all([
       database.query({
@@ -61,12 +54,12 @@ export default async function dreHandler(
 
     const format = (req.query?.format as string) || "json";
 
-    // Buscar dados do mês anterior (apenas para JSON)
+    // Buscar dados do mês anterior (apenas para JSON, não quando ano/mês todo)
     let dreAnterior: Record<string, number> | null = null;
-    if (format === "json") {
+    if (format === "json" && mes > 0 && ano > 0) {
       const mesAnt = mes === 1 ? 12 : mes - 1;
       const anoAnt = mes === 1 ? ano - 1 : ano;
-      const { firstDay: fda, lastDay: lda } = monthBounds(mesAnt, anoAnt);
+      const { firstDay: fda, lastDay: lda } = getReportBounds(mesAnt, anoAnt);
       const [va, ca, da] = await Promise.all([
         database.query({
           text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
@@ -127,7 +120,7 @@ export default async function dreHandler(
     if (format === "xlsx") {
       const buffer = await gerarDREExcel(payload);
       (res as ResWithHeaders).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="DRE-${ano}-${String(mes).padStart(2, "0")}.xlsx"`);
+      (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="DRE-${periodoFilename(mes, ano)}.xlsx"`);
       (res as ResWithHeaders).status(200);
       (res as ResWithHeaders).end(buffer);
       return;

@@ -17,8 +17,8 @@ export function DespesasManager() {
 
   const [categoria, setCategoria] = useState("");
   const [status, setStatus] = useState("");
-  const [mes, setMes] = useState(new Date().getMonth() + 1);
-  const [ano, setAno] = useState(new Date().getFullYear());
+  const [mes, setMes] = useState(0);
+  const [ano, setAno] = useState(0);
 
   const fetchDespesas = useCallback(async () => {
     setLoading(true);
@@ -26,9 +26,9 @@ export function DespesasManager() {
       const params = new URLSearchParams();
       if (categoria) params.set("categoria", categoria);
       if (status) params.set("status", status);
-      if (mes) params.set("mes", mes.toString());
-      if (ano) params.set("ano", ano.toString());
-      params.set("limit", "100");
+      if (mes) params.set("mes", String(mes));
+      if (ano) params.set("ano", String(ano));
+      params.set("limit", mes || ano ? "100" : "500");
 
       const response = await fetch(`/api/v1/despesas?${params.toString()}`);
       if (response.ok) {

@@ -32,8 +32,8 @@ export default function RelatoriosPage() {
   const skipDataFetch = tab === "historico-custo";
   const isResumoTab = tab === "resumo";
   const [tipoRanking, setTipoRanking] = useState<"vendas" | "fornecedores">("vendas");
-  const [mes, setMes] = useState(new Date().getMonth() + 1);
-  const [ano, setAno] = useState(new Date().getFullYear());
+  const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
+  const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,8 @@ export default function RelatoriosPage() {
       const url = `/api/v1/relatorios/${path}?${params}`;
       const slug = path.replace(/-/g, "_");
       const tipoSuffix = tab === "ranking" ? `_${tipoRanking}` : "";
-      const filename = `${slug}${tipoSuffix}_${ano}-${String(mes).padStart(2, "0")}.${ext}`;
+      const periodSuffix = ano === 0 ? "todos" : mes === 0 ? `${ano}` : `${ano}-${String(mes).padStart(2, "0")}`;
+      const filename = `${slug}${tipoSuffix}_${periodSuffix}.${ext}`;
       try {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
@@ -100,7 +101,7 @@ export default function RelatoriosPage() {
     }
     setLoading(true);
     setError(null);
-    const monthStr = `${ano}-${String(mes).padStart(2, "0")}`;
+    const monthStr = mes === 0 ? (ano === 0 ? "all" : String(ano)) : `${ano}-${String(mes).padStart(2, "0")}`;
     let url: string;
     if (tab === "resumo") {
       url = `/api/v1/pedidos/summary?month=${monthStr}`;
@@ -162,6 +163,7 @@ export default function RelatoriosPage() {
             onChange={(e) => setMes(Number(e.target.value))}
             className="rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1 text-sm"
           >
+            <option value={0}>Todos os meses</option>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
               <option key={m} value={m}>
                 {new Date(2000, m - 1).toLocaleString("pt-BR", { month: "long" })}
@@ -173,7 +175,8 @@ export default function RelatoriosPage() {
             onChange={(e) => setAno(Number(e.target.value))}
             className="rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1 text-sm"
           >
-            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+            <option value={0}>Ano todo</option>
+            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>

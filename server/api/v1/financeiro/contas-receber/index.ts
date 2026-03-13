@@ -2,6 +2,9 @@ import database from "infra/database.js";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 function monthBounds(month?: string) {
+  if (month === "all" || month === "") {
+    return { startYMD: null as string | null, nextYMD: null as string | null, all: true };
+  }
   let refDate = new Date();
   if (typeof month === "string" && /^\d{4}-\d{2}$/.test(month)) {
     const [y, m] = month.split("-").map(Number);
@@ -11,7 +14,7 @@ function monthBounds(month?: string) {
   const next = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 1);
   const ymd = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  return { startYMD: ymd(start), nextYMD: ymd(next) };
+  return { startYMD: ymd(start), nextYMD: ymd(next), all: false };
 }
 
 export default async function contasReceberHandler(
@@ -26,17 +29,28 @@ export default async function contasReceberHandler(
   try {
     const month = req.query?.month as string | undefined;
     const status = (req.query?.status as string) || "pendentes";
-    const { startYMD, nextYMD } = monthBounds(month);
+    const { startYMD, nextYMD, all } = monthBounds(month);
 
     let whereClause = `p.tipo = 'VENDA'`;
-    const values: unknown[] = [startYMD, nextYMD];
+    const values: unknown[] = [];
 
-    if (status === "pendentes") {
-      whereClause += ` AND pp.paid_at IS NULL AND pp.due_date >= CURRENT_DATE AND pp.due_date >= $1 AND pp.due_date < $2`;
-    } else if (status === "atrasadas") {
-      whereClause += ` AND pp.paid_at IS NULL AND pp.due_date < CURRENT_DATE AND pp.due_date >= $1 AND pp.due_date < $2`;
+    if (all) {
+      if (status === "pendentes") {
+        whereClause += ` AND pp.paid_at IS NULL AND pp.due_date >= CURRENT_DATE`;
+      } else if (status === "atrasadas") {
+        whereClause += ` AND pp.paid_at IS NULL AND pp.due_date < CURRENT_DATE`;
+      } else {
+        whereClause += ` AND pp.paid_at IS NOT NULL`;
+      }
     } else {
-      whereClause += ` AND pp.paid_at IS NOT NULL AND pp.due_date >= $1 AND pp.due_date < $2`;
+      values.push(startYMD, nextYMD);
+      if (status === "pendentes") {
+        whereClause += ` AND pp.paid_at IS NULL AND pp.due_date >= CURRENT_DATE AND pp.due_date >= $1 AND pp.due_date < $2`;
+      } else if (status === "atrasadas") {
+        whereClause += ` AND pp.paid_at IS NULL AND pp.due_date < CURRENT_DATE AND pp.due_date >= $1 AND pp.due_date < $2`;
+      } else {
+        whereClause += ` AND pp.paid_at IS NOT NULL AND pp.due_date >= $1 AND pp.due_date < $2`;
+      }
     }
 
     const result = await database.query({
@@ -59,7 +73,7 @@ export default async function contasReceberHandler(
     const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
 
     res.status(200).json({
-      periodo: { month: month || null, startYMD, nextYMD },
+      periodo: { month: all ? "all" : (month || null), startYMD, nextYMD },
       status,
       itens: rows,
       total: Number(total.toFixed(2)),

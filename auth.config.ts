@@ -12,6 +12,24 @@ export const authConfig: NextAuthConfig = {
     maxAge: 30 * 24 * 60 * 60,
   },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = (user as { role?: string }).role;
+        token.id = user.id;
+        token.must_change_password = (user as { must_change_password?: boolean })
+          .must_change_password;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as { id?: string }).id = token.id as string;
+        (session.user as { role?: string }).role = token.role as string;
+        (session.user as { must_change_password?: boolean }).must_change_password =
+          !!token.must_change_password;
+      }
+      return session;
+    },
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isAuthPage = nextUrl.pathname.startsWith("/login");
@@ -31,7 +49,10 @@ export const authConfig: NextAuthConfig = {
             // eslint-disable-next-line no-console
             console.log("[auth] Redirecionamento /admin: role=%s, path=%s", role ?? "(ausente)", nextUrl.pathname);
           }
-          return Response.redirect(new URL("/entities", nextUrl));
+          const loginUrl = new URL("/login", nextUrl);
+          loginUrl.searchParams.set("error", "role_missing");
+          loginUrl.searchParams.set("callbackUrl", nextUrl.pathname);
+          return Response.redirect(loginUrl);
         }
         const mustChange = (auth.user as { must_change_password?: boolean })
           ?.must_change_password;

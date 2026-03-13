@@ -1,5 +1,17 @@
 import PDFDocument from "pdfkit";
 import type { ApiResLike } from "@/server/api/v1/types";
+import { periodoFilename } from "@/lib/relatorios/dateBounds";
+
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+function periodoLabel(mes: number, ano: number): string {
+  if (ano === 0) return "Histórico completo";
+  if (mes === 0 || !mes) return `Ano ${ano} (todos os meses)`;
+  return `${MESES[mes - 1]} de ${ano}`;
+}
 
 function fmt(n: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -19,17 +31,13 @@ export function gerarDREPDF(
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="DRE-${data.periodo.ano}-${String(data.periodo.mes).padStart(2, "0")}.pdf"`
+    `attachment; filename="DRE-${periodoFilename(data.periodo.mes, data.periodo.ano)}.pdf"`
   );
   const doc = new PDFDocument({ margin: 50 }) as InstanceType<typeof PDFDocument>;
   doc.pipe(res as unknown as import("stream").Writable);
-  const mesNome = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-  ][data.periodo.mes - 1];
   doc.fontSize(18).font("Helvetica-Bold").text("DRE — Demonstração do Resultado", { align: "center" });
   doc.moveDown(0.5);
-  doc.fontSize(12).font("Helvetica").text(`${mesNome} de ${data.periodo.ano}`, { align: "center" });
+  doc.fontSize(12).font("Helvetica").text(periodoLabel(data.periodo.mes, data.periodo.ano), { align: "center" });
   doc.moveDown(1);
   const d = data.dre;
   doc.fontSize(10).font("Helvetica");
@@ -55,17 +63,13 @@ export function gerarFluxoCaixaPDF(
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="Fluxo-Caixa-${data.periodo.ano}-${String(data.periodo.mes).padStart(2, "0")}.pdf"`
+    `attachment; filename="Fluxo-Caixa-${periodoFilename(data.periodo.mes, data.periodo.ano)}.pdf"`
   );
   const doc = new PDFDocument({ margin: 50 }) as InstanceType<typeof PDFDocument>;
   doc.pipe(res as unknown as import("stream").Writable);
-  const mesNome = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-  ][data.periodo.mes - 1];
   doc.fontSize(18).font("Helvetica-Bold").text("Fluxo de Caixa", { align: "center" });
   doc.moveDown(0.5);
-  doc.fontSize(12).font("Helvetica").text(`${mesNome} de ${data.periodo.ano}`, { align: "center" });
+  doc.fontSize(12).font("Helvetica").text(periodoLabel(data.periodo.mes, data.periodo.ano), { align: "center" });
   doc.moveDown(1);
   const e = data.fluxo.entradas;
   const s = data.fluxo.saidas;
@@ -96,17 +100,13 @@ export function gerarMargemPDF(
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="Margem-Produto-${data.periodo.ano}-${String(data.periodo.mes).padStart(2, "0")}.pdf"`
+    `attachment; filename="Margem-Produto-${periodoFilename(data.periodo.mes, data.periodo.ano)}.pdf"`
   );
   const doc = new PDFDocument({ margin: 50 }) as InstanceType<typeof PDFDocument>;
   doc.pipe(res as unknown as import("stream").Writable);
-  const mesNome = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-  ][data.periodo.mes - 1];
   doc.fontSize(18).font("Helvetica-Bold").text("Margem por Produto", { align: "center" });
   doc.moveDown(0.5);
-  doc.fontSize(12).font("Helvetica").text(`${mesNome} de ${data.periodo.ano}`, { align: "center" });
+  doc.fontSize(12).font("Helvetica").text(periodoLabel(data.periodo.mes, data.periodo.ano), { align: "center" });
   doc.moveDown(1);
   const colW = [180, 80, 80, 80, 80, 60];
   doc.fontSize(9).font("Helvetica-Bold");
@@ -143,17 +143,13 @@ export function gerarRankingPDF(
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="Ranking-${data.tipo}-${data.periodo.ano}-${String(data.periodo.mes).padStart(2, "0")}.pdf"`
+    `attachment; filename="Ranking-${data.tipo}-${periodoFilename(data.periodo.mes, data.periodo.ano)}.pdf"`
   );
   const doc = new PDFDocument({ margin: 50 }) as InstanceType<typeof PDFDocument>;
   doc.pipe(res as unknown as import("stream").Writable);
-  const mesNome = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-  ][data.periodo.mes - 1];
   doc.fontSize(18).font("Helvetica-Bold").text(`Ranking ${data.tipo === "vendas" ? "de Vendas (clientes)" : "de Fornecedores"}`, { align: "center" });
   doc.moveDown(0.5);
-  doc.fontSize(12).font("Helvetica").text(`${mesNome} de ${data.periodo.ano}`, { align: "center" });
+  doc.fontSize(12).font("Helvetica").text(periodoLabel(data.periodo.mes, data.periodo.ano), { align: "center" });
   doc.moveDown(1);
   doc.fontSize(9).font("Helvetica-Bold");
   doc.text("#", 50, doc.y);

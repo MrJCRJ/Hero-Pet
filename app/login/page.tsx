@@ -12,6 +12,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const callbackUrl = searchParams?.get("callbackUrl") || "/";
+  const errorParam = searchParams?.get("error");
+  const messageParam = searchParams?.get("message");
 
   useEffect(() => {
     fetch("/api/v1/setup")
@@ -63,6 +65,16 @@ function LoginForm() {
           <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
             Entre com seu email e senha:
           </p>
+          {errorParam === "role_missing" && (
+            <p className="mb-4 px-3 py-2 text-sm rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200">
+              Suas permissões precisam ser atualizadas. Faça login novamente para acessar a área administrativa.
+            </p>
+          )}
+          {messageParam === "senha_alterada" && (
+            <p className="mb-4 px-3 py-2 text-sm rounded bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200">
+              Senha alterada com sucesso. Faça login com sua nova senha.
+            </p>
+          )}
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input
               type="email"

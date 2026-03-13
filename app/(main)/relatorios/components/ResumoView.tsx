@@ -28,10 +28,17 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
       : "—";
   const comprasMes = data.comprasMes != null ? formatBrl(Number(data.comprasMes)) : "—";
 
+  const periodoLabel =
+    ano === 0
+      ? "Histórico completo"
+      : mes === 0
+        ? `Ano ${ano} (todos os meses)`
+        : `${new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long" })}/${ano}`;
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-        Resumo do mês — {new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long" })}/{ano}
+        Resumo — {periodoLabel}
       </h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">

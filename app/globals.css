@@ -213,3 +213,16 @@ select:-webkit-autofill:focus {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent-hover);
 }
+
+/* ============================= */
+/* 📊 Recharts Tooltip (evita fundo branco) */
+/* ============================= */
+.recharts-default-tooltip,
+.recharts-tooltip-wrapper {
+  background-color: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  color: var(--color-text-primary) !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+}

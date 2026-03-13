@@ -48,8 +48,15 @@ export function DespesasFilters({
   setAno,
 }: DespesasFiltersProps) {
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const years = [
+    { value: 0, label: "Todos os anos" },
+    ...Array.from({ length: 10 }, (_, i) => currentYear - i).map((y) => ({
+      value: y,
+      label: String(y),
+    })),
+  ];
   const months = [
+    { value: 0, label: "Todos os meses" },
     { value: 1, label: "Janeiro" },
     { value: 2, label: "Fevereiro" },
     { value: 3, label: "Março" },
@@ -120,8 +127,8 @@ export function DespesasFilters({
             className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-md bg-[var(--color-bg-primary)]"
           >
             {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
+              <option key={y.value} value={y.value}>
+                {y.label}
               </option>
             ))}
           </select>

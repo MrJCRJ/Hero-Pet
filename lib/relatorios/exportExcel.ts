@@ -1,5 +1,16 @@
 import ExcelJS from "exceljs";
 
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+function periodoLabel(mes: number, ano: number): string {
+  if (ano === 0) return "Histórico completo";
+  if (mes === 0 || !mes) return `Ano ${ano} (todos os meses)`;
+  return `${MESES[mes - 1]} de ${ano}`;
+}
+
 function fmt(n: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -13,11 +24,7 @@ export async function gerarDREExcel(data: {
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("DRE");
-  const mesNome = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-  ][data.periodo.mes - 1];
-  ws.addRow([`DRE — ${mesNome} de ${data.periodo.ano}`]).font = { bold: true };
+  ws.addRow([`DRE — ${periodoLabel(data.periodo.mes, data.periodo.ano)}`]).font = { bold: true };
   ws.addRow([]);
   const d = data.dre;
   ws.addRow(["Receitas (vendas)", fmt(d.receitas || 0)]);
@@ -35,11 +42,7 @@ export async function gerarFluxoCaixaExcel(data: {
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Fluxo de Caixa");
-  const mesNome = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-  ][data.periodo.mes - 1];
-  ws.addRow([`Fluxo de Caixa — ${mesNome} de ${data.periodo.ano}`]).font = { bold: true };
+  ws.addRow([`Fluxo de Caixa — ${periodoLabel(data.periodo.mes, data.periodo.ano)}`]).font = { bold: true };
   ws.addRow([]);
   const e = data.fluxo.entradas;
   const s = data.fluxo.saidas;
@@ -64,11 +67,7 @@ export async function gerarMargemExcel(data: {
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Margem");
-  const mesNome = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-  ][data.periodo.mes - 1];
-  ws.addRow([`Margem por Produto — ${mesNome} de ${data.periodo.ano}`]).font = { bold: true };
+  ws.addRow([`Margem por Produto — ${periodoLabel(data.periodo.mes, data.periodo.ano)}`]).font = { bold: true };
   ws.addRow([]);
   ws.addRow(["Produto", "Categoria", "Receita", "Custos", "Lucro", "Margem %"]).font = { bold: true };
   for (const r of data.itens) {
@@ -92,12 +91,8 @@ export async function gerarRankingExcel(data: {
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Ranking");
-  const mesNome = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-  ][data.periodo.mes - 1];
   const titulo = data.tipo === "vendas" ? "Ranking de Vendas (clientes)" : "Ranking de Fornecedores";
-  ws.addRow([`${titulo} — ${mesNome} de ${data.periodo.ano}`]).font = { bold: true };
+  ws.addRow([`${titulo} — ${periodoLabel(data.periodo.mes, data.periodo.ano)}`]).font = { bold: true };
   ws.addRow([]);
   ws.addRow(["#", "Nome", "Pedidos", "Total"]).font = { bold: true };
   data.ranking.forEach((r, i) => {

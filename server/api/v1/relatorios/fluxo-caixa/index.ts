@@ -1,17 +1,10 @@
 import database from "infra/database.js";
 import { gerarFluxoCaixaPDF } from "@/lib/relatorios/exportPDF";
 import { gerarFluxoCaixaExcel } from "@/lib/relatorios/exportExcel";
+import { getReportBounds, periodoFilename } from "@/lib/relatorios/dateBounds";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 type ResWithHeaders = ApiResLike & { setHeader: (name: string, value: string) => void; end: (chunk?: unknown) => void };
-
-function monthBounds(mes: number, ano: number) {
-  const firstDay = `${ano}-${String(mes).padStart(2, "0")}-01`;
-  const nextMes = mes === 12 ? 1 : mes + 1;
-  const nextAno = mes === 12 ? ano + 1 : ano;
-  const lastDay = `${nextAno}-${String(nextMes).padStart(2, "0")}-01`;
-  return { firstDay, lastDay };
-}
 
 export default async function fluxoCaixaHandler(
   req: ApiReqLike,
@@ -24,9 +17,9 @@ export default async function fluxoCaixaHandler(
 
   try {
     const now = new Date();
-    const mes = Number(req.query?.mes) || now.getMonth() + 1;
-    const ano = Number(req.query?.ano) || now.getFullYear();
-    const { firstDay, lastDay } = monthBounds(mes, ano);
+    const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
+    const ano = Number(req.query?.ano) ?? now.getFullYear();
+    const { firstDay, lastDay } = getReportBounds(mes, ano);
 
     const [vendasR, promPagosR, comprasR, despesasR] = await Promise.all([
       database.query({
@@ -80,7 +73,7 @@ export default async function fluxoCaixaHandler(
     if (format === "xlsx") {
       const buffer = await gerarFluxoCaixaExcel(payload);
       (res as ResWithHeaders).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="Fluxo-Caixa-${ano}-${String(mes).padStart(2, "0")}.xlsx"`);
+      (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="Fluxo-Caixa-${periodoFilename(mes, ano)}.xlsx"`);
       (res as ResWithHeaders).status(200);
       (res as ResWithHeaders).end(buffer);
       return;

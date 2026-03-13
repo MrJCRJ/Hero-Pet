@@ -5,7 +5,7 @@ import React from "react";
 export interface KPICardProps {
   label: string;
   value: string | number;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
 }
 
 export function KPICard({ label, value, subtitle }: KPICardProps) {

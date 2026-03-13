@@ -38,12 +38,37 @@ export async function getSummaryHandler(
   try {
     const month = req.query?.month;
     let refDate = new Date();
-    if (typeof month === "string" && /^\d{4}-\d{2}$/.test(month)) {
+    let startYMD: string;
+    let nextStartYMD: string;
+    let prevStartYMD: string;
+    let label: string;
+
+    if (typeof month === "string" && month === "all") {
+      startYMD = "2000-01-01";
+      nextStartYMD = "2031-01-01";
+      prevStartYMD = "2000-01-01";
+      label = "Todos";
+    } else if (typeof month === "string" && /^\d{4}$/.test(month)) {
+      const y = Number(month);
+      startYMD = `${y}-01-01`;
+      nextStartYMD = `${y + 1}-01-01`;
+      prevStartYMD = `${y - 1}-01-01`;
+      label = String(y);
+    } else if (typeof month === "string" && /^\d{4}-\d{2}$/.test(month)) {
       const [y, m] = month.split("-").map(Number);
       refDate = new Date(y, m - 1, 1);
+      const b = monthBounds(refDate);
+      startYMD = b.startYMD;
+      nextStartYMD = b.nextStartYMD;
+      prevStartYMD = b.prevStartYMD;
+      label = b.label;
+    } else {
+      const b = monthBounds(refDate);
+      startYMD = b.startYMD;
+      nextStartYMD = b.nextStartYMD;
+      prevStartYMD = b.prevStartYMD;
+      label = b.label;
     }
-    const { startYMD, nextStartYMD, prevStartYMD, label } =
-      monthBounds(refDate);
 
     const monthsParam = Math.min(
       24,
@@ -65,12 +90,26 @@ export async function getSummaryHandler(
       }
     }
 
-    const historyStart = new Date(
-      refDate.getFullYear(),
-      refDate.getMonth() - (monthsParam - 1),
-      1
-    );
-    const historyStartYMD = `${historyStart.getFullYear()}-${String(historyStart.getMonth() + 1).padStart(2, "0")}-01`;
+    let historyStartYMD: string;
+    let historyEndYMD: string;
+    if (typeof month === "string" && month === "all") {
+      const d = new Date();
+      const h = new Date(d.getFullYear(), d.getMonth() - monthsParam, 1);
+      historyStartYMD = `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-01`;
+      historyEndYMD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+    } else if (typeof month === "string" && /^\d{4}$/.test(month)) {
+      const y = Number(month);
+      historyStartYMD = `${y - 1}-01-01`;
+      historyEndYMD = startYMD;
+    } else {
+      const historyStart = new Date(
+        refDate.getFullYear(),
+        refDate.getMonth() - (monthsParam - 1),
+        1
+      );
+      historyStartYMD = `${historyStart.getFullYear()}-${String(historyStart.getMonth() + 1).padStart(2, "0")}-01`;
+      historyEndYMD = startYMD;
+    }
 
     const vendasHistoryQ = await database.query({
       text: `WITH series AS (
@@ -85,7 +124,7 @@ export async function getSummaryHandler(
               AND p.data_emissao < (s.mstart + interval '1 month')
              GROUP BY s.mstart
              ORDER BY s.mstart`,
-      values: [historyStartYMD, startYMD],
+      values: [historyStartYMD, historyEndYMD],
     });
 
     const comprasHistoryQ = await database.query({
@@ -101,7 +140,7 @@ export async function getSummaryHandler(
               AND p.data_emissao < (s.mstart + interval '1 month')
              GROUP BY s.mstart
              ORDER BY s.mstart`,
-      values: [historyStartYMD, startYMD],
+      values: [historyStartYMD, historyEndYMD],
     });
 
     const cogsHistoryQ = await database.query({
@@ -118,7 +157,7 @@ export async function getSummaryHandler(
              LEFT JOIN pedido_itens i ON i.pedido_id = p.id
              GROUP BY s.mstart
              ORDER BY s.mstart`,
-      values: [historyStartYMD, startYMD],
+      values: [historyStartYMD, historyEndYMD],
     });
 
     const vendasQ = await database.query({
@@ -213,12 +252,26 @@ export async function getSummaryHandler(
     let topProdutosHistory: Array<Record<string, unknown>> = [];
     if (topProdutosRows.length) {
       try {
-        const historyStartProd = new Date(
-          refDate.getFullYear(),
-          refDate.getMonth() - (productMonths - 1),
-          1
-        );
-        const historyStartProdYMD = `${historyStartProd.getFullYear()}-${String(historyStartProd.getMonth() + 1).padStart(2, "0")}-01`;
+        let historyStartProdYMD: string;
+        let historyEndProdYMD: string;
+        if (typeof month === "string" && month === "all") {
+          const d = new Date();
+          const h = new Date(d.getFullYear(), d.getMonth() - productMonths, 1);
+          historyStartProdYMD = `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-01`;
+          historyEndProdYMD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+        } else if (typeof month === "string" && /^\d{4}$/.test(month)) {
+          const y = Number(month);
+          historyStartProdYMD = `${y}-01-01`;
+          historyEndProdYMD = nextStartYMD;
+        } else {
+          const historyStartProd = new Date(
+            refDate.getFullYear(),
+            refDate.getMonth() - (productMonths - 1),
+            1
+          );
+          historyStartProdYMD = `${historyStartProd.getFullYear()}-${String(historyStartProd.getMonth() + 1).padStart(2, "0")}-01`;
+          historyEndProdYMD = startYMD;
+        }
         const idsList = topProdutosRows
           .map((r) => Number(r.produto_id))
           .filter((x) => !Number.isNaN(x));
@@ -237,7 +290,7 @@ export async function getSummaryHandler(
                    LEFT JOIN pedido_itens i ON i.pedido_id = p.id AND i.produto_id = ANY($3)
                    GROUP BY s.mstart, i.produto_id
                    ORDER BY s.mstart ASC`,
-            values: [historyStartProdYMD, startYMD, idsList],
+            values: [historyStartProdYMD, historyEndProdYMD, idsList],
           });
           const byProd = new Map<
             number,
