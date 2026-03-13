@@ -412,7 +412,7 @@ export default function FinanceiroPage() {
                   Tem certeza que deseja dar baixa nesta parcela?
                 </p>
                 <p className="text-sm text-[var(--color-text-secondary)]">
-                  Pedido #{itemParaBaixa.pedido_id} — Parcela #{itemParaBaixa.seq}
+                  Pedido #{String(itemParaBaixa.pedido_id ?? "")} — Parcela #{String(itemParaBaixa.seq ?? "")}
                   <br />
                   {String(itemParaBaixa.partner_name || "-")}
                   <br />
@@ -432,7 +432,7 @@ export default function FinanceiroPage() {
                 <p className="text-sm text-[var(--color-text-secondary)]">
                   {itemParaBaixa.tipo === "despesa"
                     ? `Despesa: ${String(itemParaBaixa.descricao || "-")}`
-                    : `Pedido #${itemParaBaixa.pedido_id} — Parcela #${itemParaBaixa.seq}`}
+                    : `Pedido #${String(itemParaBaixa.pedido_id ?? "")} — Parcela #${String(itemParaBaixa.seq ?? "")}`}
                   <br />
                   {String(itemParaBaixa.partner_name || "-")}
                   <br />
