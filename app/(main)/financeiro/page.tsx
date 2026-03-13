@@ -462,7 +462,7 @@ export default function FinanceiroPage() {
                 Tem certeza que deseja desfazer a baixa desta parcela? Ela voltará a constar como pendente.
               </p>
               <p className="text-sm text-[var(--color-text-secondary)]">
-                Pedido #{itemParaDesfazer.pedido_id} — Parcela #{itemParaDesfazer.seq}
+                Pedido #{String(itemParaDesfazer.pedido_id ?? "")} — Parcela #{String(itemParaDesfazer.seq ?? "")}
                 <br />
                 {String(itemParaDesfazer.partner_name || "-")}
                 <br />
