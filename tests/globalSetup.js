@@ -2,8 +2,38 @@ const axios = require("axios");
 const next = require("next");
 const http = require("http");
 const net = require("net");
+const path = require("path");
+const fs = require("fs");
+
+/** Bloqueia execução se testes usariam banco de prod/dev (muitos fazem DROP SCHEMA) */
+function guardDestructiveDb() {
+  const host = process.env.POSTGRES_HOST || "";
+  const db = process.env.POSTGRES_DB || "hero_pet";
+  const isCloud =
+    host.includes("neon.tech") ||
+    host.includes("aws") ||
+    host.includes("supabase") ||
+    (host && !host.includes("localhost") && !host.includes("127.0.0.1"));
+  const isTestDb = db.endsWith("_test") || db === "hero_pet_test";
+  if (isCloud && !isTestDb) {
+    const msg = [
+      "\n=== BLOQUEADO: Testes não podem rodar em banco de produção/cloud ===",
+      `Conectado a: ${host} / ${db}`,
+      "Os testes fazem DROP SCHEMA e APAGAM TODOS OS DADOS.",
+      "",
+      "Solução: crie .env.test com banco de testes separado.",
+      "  cp .env.test.sample .env.test",
+      "  Ajuste POSTGRES_DB=hero_pet_test (ou neondb_test no Neon)",
+      "",
+      "Depois rode: npm test",
+      "========================================\n",
+    ].join("\n");
+    throw new Error(msg);
+  }
+}
 
 module.exports = async () => {
+  guardDestructiveDb();
   const statusUrl = "http://localhost:3000/api/v1/status";
   const migrateUrl = "http://localhost:3000/api/v1/migrations";
 

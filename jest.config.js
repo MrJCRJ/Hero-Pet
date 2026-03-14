@@ -1,8 +1,14 @@
 const dotenv = require("dotenv");
+const path = require("path");
 
-dotenv.config({
-  path: ".env.development",
-});
+// Carrega .env.test para testes (banco separado). Se não existir, usa .env.development.
+const envTest = path.resolve(process.cwd(), ".env.test");
+const envDev = path.resolve(process.cwd(), ".env.development");
+if (require("fs").existsSync(envTest)) {
+  dotenv.config({ path: envTest });
+} else {
+  dotenv.config({ path: envDev });
+}
 
 const nextJest = require("next/jest");
 

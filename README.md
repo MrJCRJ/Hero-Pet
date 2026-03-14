@@ -70,9 +70,15 @@ curl -X POST http://localhost:3000/api/v1/migrations
 
 6. Rodar testes
 
+**IMPORTANTE:** Os testes fazem `DROP SCHEMA` e **apagam todos os dados** do banco. Use um banco **separado** para testes:
+
 ```bash
+cp .env.test.sample .env.test
+# Edite .env.test: POSTGRES_DB=hero_pet_test (ou neondb_test no Neon)
 npm test
 ```
+
+Com Neon/cloud: crie um banco de testes e configure em `.env.test`. O Jest bloqueia execução em banco de produção.
 
 ### Configuração para Produção
 
