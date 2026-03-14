@@ -13,8 +13,9 @@ export default async function handler(
 
 async function deleteAporte(req: ApiReqLike, res: ApiResLike): Promise<void> {
   try {
-    const id = req.query?.id;
-    if (!id) {
+    const idRaw = req.query?.id;
+    const id = Array.isArray(idRaw) ? idRaw[0] : idRaw;
+    if (!id || typeof id !== "string") {
       res.status(400).json({ error: "ID obrigatório" });
       return;
     }
@@ -29,7 +30,8 @@ async function deleteAporte(req: ApiReqLike, res: ApiResLike): Promise<void> {
       return;
     }
 
-    res.status(204).end();
+    const r = res.status(204);
+    if (r.end) r.end();
   } catch (error) {
     console.error("DELETE /aportes/:id error", error);
     res.status(500).json({ error: "Erro ao excluir aporte" });

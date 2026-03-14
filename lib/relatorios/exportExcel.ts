@@ -38,7 +38,13 @@ export async function gerarDREExcel(data: {
 
 export async function gerarFluxoCaixaExcel(data: {
   periodo: { mes: number; ano: number };
-  fluxo: { entradas: Record<string, number>; saidas: Record<string, number>; saldo: number };
+  fluxo: {
+    entradas: Record<string, number>;
+    saidas: Record<string, number>;
+    saldo: number;
+    valorEstoque?: number;
+    valorPresumidoVendaEstoque?: number;
+  };
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Fluxo de Caixa");
@@ -61,8 +67,8 @@ export async function gerarFluxoCaixaExcel(data: {
   ws.addRow([]);
   ws.addRow(["Saldo do período", fmt(data.fluxo.saldo)]).font = { bold: true };
   ws.addRow([]);
-  ws.addRow(["Valor em estoque (custo)", fmt((data.fluxo as Record<string, number>).valorEstoque ?? 0)]);
-  ws.addRow(["Valor presumido de venda do estoque", fmt((data.fluxo as Record<string, number>).valorPresumidoVendaEstoque ?? 0)]);
+  ws.addRow(["Valor em estoque (custo)", fmt(data.fluxo.valorEstoque ?? 0)]);
+  ws.addRow(["Valor presumido de venda do estoque", fmt(data.fluxo.valorPresumidoVendaEstoque ?? 0)]);
   ws.getColumn(2).width = 18;
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

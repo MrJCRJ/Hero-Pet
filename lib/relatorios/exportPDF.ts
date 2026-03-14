@@ -55,7 +55,13 @@ export function gerarDREPDF(
 export function gerarFluxoCaixaPDF(
   data: {
     periodo: { mes: number; ano: number };
-    fluxo: { entradas: Record<string, number>; saidas: Record<string, number>; saldo: number };
+    fluxo: {
+      entradas: Record<string, number>;
+      saidas: Record<string, number>;
+      saldo: number;
+      valorEstoque?: number;
+      valorPresumidoVendaEstoque?: number;
+    };
   },
   // eslint-disable-next-line no-unused-vars -- params são parte da assinatura
   res: ApiResLike & { setHeader: (key: string, val: string) => void }
@@ -89,8 +95,8 @@ export function gerarFluxoCaixaPDF(
   doc.text(`Total: ${fmt(s?.total || 0)}`, { indent: 20 });
   doc.moveDown(0.5);
   doc.font("Helvetica-Bold").text(`Saldo do período: ${fmt(data.fluxo.saldo)}`);
-  const valorEstoque = (data.fluxo as Record<string, number>).valorEstoque ?? 0;
-  const valorPresumidoVenda = (data.fluxo as Record<string, number>).valorPresumidoVendaEstoque ?? 0;
+  const valorEstoque = data.fluxo.valorEstoque ?? 0;
+  const valorPresumidoVenda = data.fluxo.valorPresumidoVendaEstoque ?? 0;
   doc.moveDown(0.3);
   doc.font("Helvetica").text(`Valor em estoque (custo): ${fmt(valorEstoque)}`, { indent: 20 });
   doc.text(`Valor presumido de venda do estoque: ${fmt(valorPresumidoVenda)}`, { indent: 20 });
