@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   BarChart,
   Bar,
@@ -16,7 +16,8 @@ import {
 import { formatBrl } from "./shared/utils";
 import { ChartCard } from "./shared/ChartCard";
 import { KPICard } from "./shared/KPICard";
-import { AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
+import { DrillDownPanel, type DrillDownTipo } from "./DrillDownPanel";
+import { AlertTriangle, TrendingUp, TrendingDown, Search } from "lucide-react";
 
 export interface GrowthHistoryItem {
   month: string;
@@ -92,7 +93,14 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
   const prom = data.promissorias;
   const topProduto = data.topProdutoLucro;
 
-  const alertas: Array<{ msg: string; tipo?: "erro" | "aviso" }> = [];
+  const [drillDown, setDrillDown] = useState<{
+    tipo: DrillDownTipo;
+    mes: number;
+    ano: number;
+    monthStr?: string;
+  } | null>(null);
+
+  const alertas: Array<{ msg: string; tipo?: "erro" | "aviso"; drillTipo?: DrillDownTipo }> = [];
   if (data.lucroOperacionalMes != null && data.lucroOperacionalMes < 0) {
     alertas.push({ msg: "Lucro operacional negativo no período.", tipo: "erro" });
   }
@@ -104,18 +112,21 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
     alertas.push({
       msg: "Margem bruta abaixo de 15% nos últimos dois meses consecutivos.",
       tipo: "aviso",
+      drillTipo: "margem",
     });
   }
   if (prom?.mesAtual?.atrasados && prom.mesAtual.atrasados.count > 0) {
     alertas.push({
       msg: `Há ${formatBrl(prom.mesAtual.atrasados.valor)} em ${prom.mesAtual.atrasados.count} promissória(s) atrasada(s).`,
       tipo: "aviso",
+      drillTipo: "promissorias",
     });
   }
   if (data.crescimentoMoMPerc != null && data.crescimentoMoMPerc < 0) {
     alertas.push({
       msg: "Queda nas vendas em relação ao mês anterior.",
       tipo: "aviso",
+      drillTipo: "vendas",
     });
   }
   if (
@@ -123,8 +134,17 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
     data.lucroBrutoMes != null &&
     data.despesasMes > data.lucroBrutoMes
   ) {
-    alertas.push({ msg: "Despesas superam o lucro bruto.", tipo: "erro" });
+    alertas.push({
+      msg: "Despesas superam o lucro bruto.",
+      tipo: "erro",
+      drillTipo: "despesas",
+    });
   }
+
+  const effMes = mes || new Date().getMonth() + 1;
+  const effAno = ano || new Date().getFullYear();
+  const monthStr =
+    ano > 0 && mes > 0 ? `${ano}-${String(mes).padStart(2, "0")}` : undefined;
 
   const totalReceber =
     prom
@@ -178,6 +198,16 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
               ? `${formatBrl(data.lucroBrutoMes)} (${Number(data.margemBrutaPerc).toFixed(2)}%)`
               : "—"}
           </p>
+          <button
+            type="button"
+            onClick={() =>
+              setDrillDown({ tipo: "margem", mes: effMes, ano: effAno, monthStr })
+            }
+            className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+          >
+            <Search className="h-3 w-3" aria-hidden />
+            Ver detalhes
+          </button>
         </div>
 
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
@@ -187,6 +217,16 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
           <p className="text-xl font-semibold text-[var(--color-text-primary)]">
             {data.despesasMes != null ? formatBrl(data.despesasMes) : "—"}
           </p>
+          <button
+            type="button"
+            onClick={() =>
+              setDrillDown({ tipo: "despesas", mes: effMes, ano: effAno, monthStr })
+            }
+            className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+          >
+            <Search className="h-3 w-3" aria-hidden />
+            Ver detalhes
+          </button>
         </div>
 
         {!isHistorioCompleto && data.crescimentoMoMPerc != null && (
@@ -254,11 +294,40 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
           <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-300">
             {alertas.map((a, i) => (
               <li key={i} className={a.tipo === "erro" ? "font-medium" : ""}>
-                {a.msg}
+                {a.drillTipo ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDrillDown({
+                        tipo: a.drillTipo!,
+                        mes: effMes,
+                        ano: effAno,
+                        monthStr,
+                      })
+                    }
+                    className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-left transition-colors hover:bg-amber-200/60 dark:hover:bg-amber-900/40"
+                  >
+                    <Search className="h-3.5 w-3.5 shrink-0 opacity-75" aria-hidden />
+                    {a.msg}
+                  </button>
+                ) : (
+                  a.msg
+                )}
               </li>
             ))}
           </ul>
         </div>
+      )}
+
+      {drillDown && (
+        <DrillDownPanel
+          tipo={drillDown.tipo}
+          mes={drillDown.mes}
+          ano={drillDown.ano}
+          monthStr={drillDown.monthStr}
+          growthHistory={growthHistory}
+          onClose={() => setDrillDown(null)}
+        />
       )}
 
       {prom && (
