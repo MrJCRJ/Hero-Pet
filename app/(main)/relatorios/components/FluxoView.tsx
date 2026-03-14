@@ -26,6 +26,8 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
   const entradas = fluxo.entradas as Record<string, number>;
   const saidas = fluxo.saidas as Record<string, number>;
   const saldo = fluxo.saldo as number;
+  const valorEstoque = (fluxo.valorEstoque as number) ?? 0;
+  const valorPresumidoVendaEstoque = (fluxo.valorPresumidoVendaEstoque as number) ?? 0;
 
   const [viewMode, setViewMode] = useState<ViewMode>("both");
   const chartData = useMemo(
@@ -46,7 +48,7 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
         <ViewModeToggle value={viewMode} onChange={setViewMode} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         <KPICard
           label="Saldo final"
           value={formatBrl(saldo)}
@@ -54,6 +56,16 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
         />
         <KPICard label="Total entradas" value={formatBrl(entradas?.total || 0)} />
         <KPICard label="Total saídas" value={formatBrl(saidas?.total || 0)} />
+        <KPICard
+          label="Valor em estoque"
+          value={formatBrl(valorEstoque)}
+          subtitle="Custo médio × saldo"
+        />
+        <KPICard
+          label="Valor presumido venda"
+          value={formatBrl(valorPresumidoVendaEstoque)}
+          subtitle="Preço tabela ou custo+markup × saldo"
+        />
       </div>
 
       {(viewMode === "chart" || viewMode === "both") && (
@@ -93,6 +105,9 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
               {" "}{formatBrl(entradas?.vendas || 0)}
             </li>
             <li>Promissórias recebidas: {formatBrl(entradas?.promissoriasRecebidas || 0)}</li>
+            {(entradas?.aportesCapital ?? 0) > 0 && (
+              <li>Aportes de capital: {formatBrl(entradas?.aportesCapital || 0)}</li>
+            )}
             <li className="font-medium">Total: {formatBrl(entradas?.total || 0)}</li>
           </ul>
         </div>
@@ -106,10 +121,14 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
         </div>
       </div>
       )}
-      <div className="border-t border-[var(--color-border)] pt-4">
+      <div className="border-t border-[var(--color-border)] pt-4 space-y-2">
         <p className={`text-lg font-bold ${saldo >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
           Saldo do período: {formatBrl(saldo)}
         </p>
+        <div className="flex flex-wrap gap-4 text-sm text-[var(--color-text-secondary)]">
+          <span>Valor em estoque (custo): {formatBrl(valorEstoque)}</span>
+          <span>Valor presumido de venda do estoque: {formatBrl(valorPresumidoVendaEstoque)}</span>
+        </div>
       </div>
     </div>
   );

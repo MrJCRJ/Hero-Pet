@@ -340,14 +340,15 @@ export async function getSummaryHandler(
 
     const promMesQ = await database.query({
       text: `SELECT
-                SUM(CASE WHEN paid_at IS NOT NULL THEN 1 ELSE 0 END)::int AS pagos_count,
-                COALESCE(SUM(CASE WHEN paid_at IS NOT NULL THEN amount ELSE 0 END),0)::numeric(14,2) AS pagos_valor,
-                SUM(CASE WHEN paid_at IS NULL AND due_date >= CURRENT_DATE THEN 1 ELSE 0 END)::int AS pendentes_count,
-                COALESCE(SUM(CASE WHEN paid_at IS NULL AND due_date >= CURRENT_DATE THEN amount ELSE 0 END),0)::numeric(14,2) AS pendentes_valor,
-                SUM(CASE WHEN paid_at IS NULL AND due_date < CURRENT_DATE THEN 1 ELSE 0 END)::int AS atrasados_count,
-                COALESCE(SUM(CASE WHEN paid_at IS NULL AND due_date < CURRENT_DATE THEN amount ELSE 0 END),0)::numeric(14,2) AS atrasados_valor
-             FROM pedido_promissorias
-             WHERE due_date >= $1 AND due_date < $2`,
+                SUM(CASE WHEN pp.paid_at IS NOT NULL THEN 1 ELSE 0 END)::int AS pagos_count,
+                COALESCE(SUM(CASE WHEN pp.paid_at IS NOT NULL THEN pp.amount ELSE 0 END),0)::numeric(14,2) AS pagos_valor,
+                SUM(CASE WHEN pp.paid_at IS NULL AND pp.due_date >= CURRENT_DATE THEN 1 ELSE 0 END)::int AS pendentes_count,
+                COALESCE(SUM(CASE WHEN pp.paid_at IS NULL AND pp.due_date >= CURRENT_DATE THEN pp.amount ELSE 0 END),0)::numeric(14,2) AS pendentes_valor,
+                SUM(CASE WHEN pp.paid_at IS NULL AND pp.due_date < CURRENT_DATE THEN 1 ELSE 0 END)::int AS atrasados_count,
+                COALESCE(SUM(CASE WHEN pp.paid_at IS NULL AND pp.due_date < CURRENT_DATE THEN pp.amount ELSE 0 END),0)::numeric(14,2) AS atrasados_valor
+             FROM pedido_promissorias pp
+             JOIN pedidos p ON p.id = pp.pedido_id AND p.tipo = 'VENDA'
+             WHERE pp.due_date >= $1 AND pp.due_date < $2`,
       values: [startYMD, nextStartYMD],
     });
 
@@ -355,16 +356,18 @@ export async function getSummaryHandler(
       new Date(refDate.getFullYear(), refDate.getMonth() + 1, 1)
     );
     const promNext = await database.query({
-      text: `SELECT COUNT(*)::int AS count, COALESCE(SUM(amount),0)::numeric(14,2) AS valor
-             FROM pedido_promissorias
-             WHERE paid_at IS NULL AND due_date >= $1 AND due_date < $2`,
+      text: `SELECT COUNT(*)::int AS count, COALESCE(SUM(pp.amount),0)::numeric(14,2) AS valor
+             FROM pedido_promissorias pp
+             JOIN pedidos p ON p.id = pp.pedido_id AND p.tipo = 'VENDA'
+             WHERE pp.paid_at IS NULL AND pp.due_date >= $1 AND pp.due_date < $2`,
       values: [nextMonthBounds.startYMD, nextMonthBounds.nextStartYMD],
     });
 
     const promCarry = await database.query({
-      text: `SELECT COUNT(*)::int AS count, COALESCE(SUM(amount),0)::numeric(14,2) AS valor
-             FROM pedido_promissorias
-             WHERE paid_at IS NULL AND due_date < $1`,
+      text: `SELECT COUNT(*)::int AS count, COALESCE(SUM(pp.amount),0)::numeric(14,2) AS valor
+             FROM pedido_promissorias pp
+             JOIN pedidos p ON p.id = pp.pedido_id AND p.tipo = 'VENDA'
+             WHERE pp.paid_at IS NULL AND pp.due_date < $1`,
       values: [startYMD],
     });
 

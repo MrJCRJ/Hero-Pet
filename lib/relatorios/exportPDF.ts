@@ -77,6 +77,9 @@ export function gerarFluxoCaixaPDF(
   doc.font("Helvetica");
   doc.text(`Vendas: ${fmt(e?.vendas || 0)}`, { indent: 20 });
   doc.text(`Promissórias recebidas: ${fmt(e?.promissoriasRecebidas || 0)}`, { indent: 20 });
+  if ((e?.aportesCapital ?? 0) > 0) {
+    doc.text(`Aportes de capital: ${fmt(e?.aportesCapital || 0)}`, { indent: 20 });
+  }
   doc.text(`Total: ${fmt(e?.total || 0)}`, { indent: 20 });
   doc.moveDown(0.5);
   doc.font("Helvetica-Bold").text("Saídas");
@@ -86,6 +89,11 @@ export function gerarFluxoCaixaPDF(
   doc.text(`Total: ${fmt(s?.total || 0)}`, { indent: 20 });
   doc.moveDown(0.5);
   doc.font("Helvetica-Bold").text(`Saldo do período: ${fmt(data.fluxo.saldo)}`);
+  const valorEstoque = (data.fluxo as Record<string, number>).valorEstoque ?? 0;
+  const valorPresumidoVenda = (data.fluxo as Record<string, number>).valorPresumidoVendaEstoque ?? 0;
+  doc.moveDown(0.3);
+  doc.font("Helvetica").text(`Valor em estoque (custo): ${fmt(valorEstoque)}`, { indent: 20 });
+  doc.text(`Valor presumido de venda do estoque: ${fmt(valorPresumidoVenda)}`, { indent: 20 });
   doc.end();
 }
 

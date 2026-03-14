@@ -49,6 +49,9 @@ export async function gerarFluxoCaixaExcel(data: {
   ws.addRow(["Entradas"]);
   ws.addRow(["Vendas", fmt(e?.vendas || 0)]);
   ws.addRow(["Promissórias recebidas", fmt(e?.promissoriasRecebidas || 0)]);
+  if ((e?.aportesCapital ?? 0) > 0) {
+    ws.addRow(["Aportes de capital", fmt(e?.aportesCapital || 0)]);
+  }
   ws.addRow(["Total entradas", fmt(e?.total || 0)]).font = { bold: true };
   ws.addRow([]);
   ws.addRow(["Saídas"]);
@@ -57,6 +60,9 @@ export async function gerarFluxoCaixaExcel(data: {
   ws.addRow(["Total saídas", fmt(s?.total || 0)]).font = { bold: true };
   ws.addRow([]);
   ws.addRow(["Saldo do período", fmt(data.fluxo.saldo)]).font = { bold: true };
+  ws.addRow([]);
+  ws.addRow(["Valor em estoque (custo)", fmt((data.fluxo as Record<string, number>).valorEstoque ?? 0)]);
+  ws.addRow(["Valor presumido de venda do estoque", fmt((data.fluxo as Record<string, number>).valorPresumidoVendaEstoque ?? 0)]);
   ws.getColumn(2).width = 18;
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

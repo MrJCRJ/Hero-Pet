@@ -2,8 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowDownCircle, ArrowUpCircle, Search, Wallet } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, HandCoins, Search, Wallet } from "lucide-react";
 import { DespesasManager } from "@/components/despesas";
+import { AportesManager } from "@/components/aportes/AportesManager";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 function formatBrl(n: number) {
@@ -13,10 +14,11 @@ function formatBrl(n: number) {
   }).format(n);
 }
 
-type TabId = "despesas" | "receber" | "pagar";
+type TabId = "despesas" | "aportes" | "receber" | "pagar";
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "despesas", label: "Despesas", icon: Wallet },
+  { id: "aportes", label: "Aportes de Capital", icon: HandCoins },
   { id: "receber", label: "Contas a Receber", icon: ArrowDownCircle },
   { id: "pagar", label: "Contas a Pagar", icon: ArrowUpCircle },
 ];
@@ -24,12 +26,12 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
 export default function FinanceiroPage() {
   const searchParams = useSearchParams();
   const tabParam = (searchParams?.get("tab") || "despesas") as TabId;
-  const initialTab: TabId = ["despesas", "receber", "pagar"].includes(tabParam) ? tabParam : "despesas";
+  const initialTab: TabId = ["despesas", "aportes", "receber", "pagar"].includes(tabParam) ? tabParam : "despesas";
   const [tab, setTab] = useState<TabId>(initialTab);
 
   useEffect(() => {
     const t = (searchParams?.get("tab") || "despesas") as TabId;
-    if (["despesas", "receber", "pagar"].includes(t)) {
+    if (["despesas", "aportes", "receber", "pagar"].includes(t)) {
       setTab(t);
     }
   }, [searchParams]);
@@ -54,6 +56,11 @@ export default function FinanceiroPage() {
   const [buscaId, setBuscaId] = useState("");
 
   useEffect(() => {
+    if (tab === "despesas" || tab === "aportes") {
+      setLoading(false);
+      setData(null);
+      return;
+    }
     setLoading(true);
     setError(null);
     const base = tab === "receber" ? "/api/v1/financeiro/contas-receber" : "/api/v1/financeiro/contas-pagar";
@@ -260,7 +267,7 @@ export default function FinanceiroPage() {
             </button>
           ))}
         </div>
-        {tab !== "despesas" && (
+        {(tab === "receber" || tab === "pagar") && (
         <select
           value={month}
           onChange={(e) => setMonth(e.target.value)}
@@ -273,7 +280,7 @@ export default function FinanceiroPage() {
           ))}
         </select>
         )}
-        {tab !== "despesas" && (
+        {(tab === "receber" || tab === "pagar") && (
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
@@ -284,7 +291,7 @@ export default function FinanceiroPage() {
           <option value="pagas">Pagas/Recebidas</option>
         </select>
         )}
-        {tab !== "despesas" && (
+        {(tab === "receber" || tab === "pagar") && (
         <div className="relative flex items-center">
           <Search className="absolute left-2 h-4 w-4 text-[var(--color-text-secondary)]" />
           <input
@@ -300,15 +307,16 @@ export default function FinanceiroPage() {
       </div>
 
       {tab === "despesas" && <DespesasManager />}
+      {tab === "aportes" && <AportesManager />}
 
-      {tab !== "despesas" && loading && <p className="text-[var(--color-text-secondary)]">Carregando...</p>}
-      {error && (
+      {(tab === "receber" || tab === "pagar") && loading && <p className="text-[var(--color-text-secondary)]">Carregando...</p>}
+      {(tab === "receber" || tab === "pagar") && error && (
         <p className="rounded border border-red-200 bg-red-50 p-3 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
           {error}
         </p>
       )}
 
-      {tab !== "despesas" && !loading && !error && data && (
+      {(tab === "receber" || tab === "pagar") && !loading && !error && data && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-sm">
           <p className="mb-4 font-medium">
             Total: {formatBrl(buscaId.trim() ? totalFiltrado : data.total)}
