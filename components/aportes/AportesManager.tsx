@@ -218,7 +218,7 @@ export function AportesManager() {
                       colSpan={4}
                       className="py-8 text-center text-[var(--color-text-secondary)]"
                     >
-                      Nenhum aporte registrado. Clique em "Novo aporte" para
+                      Nenhum aporte registrado. Clique em &quot;Novo aporte&quot; para
                       adicionar.
                     </td>
                   </tr>
