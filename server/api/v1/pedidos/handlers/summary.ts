@@ -119,7 +119,7 @@ export async function getSummaryHandler(
                     COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS vendas
              FROM series s
              LEFT JOIN pedidos p
-               ON p.tipo = 'VENDA'
+               ON p.tipo = 'VENDA' AND p.status = 'confirmado'
               AND p.data_emissao >= s.mstart
               AND p.data_emissao < (s.mstart + interval '1 month')
              GROUP BY s.mstart
@@ -135,7 +135,7 @@ export async function getSummaryHandler(
                     COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS compras
              FROM series s
              LEFT JOIN pedidos p
-               ON p.tipo = 'COMPRA'
+               ON p.tipo = 'COMPRA' AND p.status = 'confirmado'
               AND p.data_emissao >= s.mstart
               AND p.data_emissao < (s.mstart + interval '1 month')
              GROUP BY s.mstart
@@ -151,7 +151,7 @@ export async function getSummaryHandler(
                     COALESCE(SUM(i.custo_total_item),0)::numeric(14,2) AS cogs
              FROM series s
              LEFT JOIN pedidos p
-               ON p.tipo = 'VENDA'
+               ON p.tipo = 'VENDA' AND p.status = 'confirmado'
               AND p.data_emissao >= s.mstart
               AND p.data_emissao < (s.mstart + interval '1 month')
              LEFT JOIN pedido_itens i ON i.pedido_id = p.id
@@ -163,27 +163,27 @@ export async function getSummaryHandler(
     const vendasQ = await database.query({
       text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
              FROM pedidos
-             WHERE tipo = 'VENDA' AND data_emissao >= $1 AND data_emissao < $2`,
+             WHERE tipo = 'VENDA' AND status = 'confirmado' AND data_emissao >= $1 AND data_emissao < $2`,
       values: [startYMD, nextStartYMD],
     });
     const comprasQ = await database.query({
       text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
              FROM pedidos
-             WHERE tipo = 'COMPRA' AND data_emissao >= $1 AND data_emissao < $2`,
+             WHERE tipo = 'COMPRA' AND status = 'confirmado' AND data_emissao >= $1 AND data_emissao < $2`,
       values: [startYMD, nextStartYMD],
     });
 
     const comprasPrevQ = await database.query({
       text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
              FROM pedidos
-             WHERE tipo = 'COMPRA' AND data_emissao >= $1 AND data_emissao < $2`,
+             WHERE tipo = 'COMPRA' AND status = 'confirmado' AND data_emissao >= $1 AND data_emissao < $2`,
       values: [prevStartYMD, startYMD],
     });
 
     const vendasPrevQ = await database.query({
       text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
              FROM pedidos
-             WHERE tipo = 'VENDA' AND data_emissao >= $1 AND data_emissao < $2`,
+             WHERE tipo = 'VENDA' AND status = 'confirmado' AND data_emissao >= $1 AND data_emissao < $2`,
       values: [prevStartYMD, startYMD],
     });
 
@@ -191,7 +191,14 @@ export async function getSummaryHandler(
       text: `SELECT COALESCE(SUM(i.custo_total_item),0)::numeric(14,2) AS cogs
              FROM pedido_itens i
              JOIN pedidos p ON p.id = i.pedido_id
-             WHERE p.tipo = 'VENDA' AND p.data_emissao >= $1 AND p.data_emissao < $2`,
+             WHERE p.tipo = 'VENDA' AND p.status = 'confirmado' AND p.data_emissao >= $1 AND p.data_emissao < $2`,
+      values: [startYMD, nextStartYMD],
+    });
+
+    const despesasQ = await database.query({
+      text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total
+             FROM despesas
+             WHERE data_vencimento >= $1 AND data_vencimento < $2`,
       values: [startYMD, nextStartYMD],
     });
 
@@ -210,7 +217,7 @@ export async function getSummaryHandler(
                FROM pedido_itens i
                JOIN pedidos pdr ON pdr.id = i.pedido_id
                JOIN produtos p ON p.id = i.produto_id
-               WHERE pdr.tipo = 'VENDA'
+               WHERE pdr.tipo = 'VENDA' AND pdr.status = 'confirmado'
                  AND pdr.data_emissao >= $1 AND pdr.data_emissao < $2
                GROUP BY i.produto_id, p.nome
                HAVING COALESCE(SUM(i.total_item),0) > 0
@@ -286,7 +293,7 @@ export async function getSummaryHandler(
                           COALESCE(SUM(i.custo_total_item),0)::numeric(14,2) AS cogs,
                           (COALESCE(SUM(i.total_item),0) - COALESCE(SUM(i.custo_total_item),0))::numeric(14,2) AS lucro
                    FROM series s
-                   LEFT JOIN pedidos p ON p.tipo='VENDA' AND p.data_emissao >= s.mstart AND p.data_emissao < (s.mstart + interval '1 month')
+                   LEFT JOIN pedidos p ON p.tipo='VENDA' AND p.status='confirmado' AND p.data_emissao >= s.mstart AND p.data_emissao < (s.mstart + interval '1 month')
                    LEFT JOIN pedido_itens i ON i.pedido_id = p.id AND i.produto_id = ANY($3)
                    GROUP BY s.mstart, i.produto_id
                    ORDER BY s.mstart ASC`,
@@ -391,7 +398,17 @@ export async function getSummaryHandler(
     const cogsReal = Number(
       (cogsQ.rows[0] as Record<string, unknown>)?.cogs || 0
     );
+    const despesasMes = Number(
+      (despesasQ.rows[0] as Record<string, unknown>)?.total || 0
+    );
     const lucroBrutoMes = Number((vendasMes - cogsReal).toFixed(2));
+    const lucroOperacionalMes = Number(
+      (lucroBrutoMes - despesasMes).toFixed(2)
+    );
+    const margemOperacionalPerc =
+      vendasMes > 0
+        ? Number(((lucroOperacionalMes / vendasMes) * 100).toFixed(2))
+        : 0;
     const margemBrutaPerc =
       vendasMes > 0
         ? Number((((vendasMes - cogsReal) / vendasMes) * 100).toFixed(2))
@@ -467,7 +484,10 @@ export async function getSummaryHandler(
       comprasMesAnterior,
       crescimentoComprasMoMPerc,
       cogsReal,
+      despesasMes,
       lucroBrutoMes,
+      lucroOperacionalMes,
+      margemOperacionalPerc,
       margemBrutaPerc,
       growthHistory,
       comprasHistory,

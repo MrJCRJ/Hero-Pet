@@ -1,32 +1,84 @@
 "use client";
 
 import React from "react";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { formatBrl } from "./shared/utils";
+import { ChartCard } from "./shared/ChartCard";
+import { KPICard } from "./shared/KPICard";
+import { AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
+
+export interface GrowthHistoryItem {
+  month: string;
+  vendas: number;
+  cogs: number;
+  lucro: number;
+  margem: number;
+  crescimento: number | null;
+}
+
+export interface ComprasHistoryItem {
+  month: string;
+  compras: number;
+  crescimento: number | null;
+}
+
+export interface PromissoriasData {
+  mesAtual: {
+    pagos: { count: number; valor: number };
+    pendentes: { count: number; valor: number };
+    atrasados: { count: number; valor: number };
+  };
+  proximoMes: { pendentes: { count: number; valor: number } };
+  deMesesAnteriores: { emAberto: { count: number; valor: number } };
+}
+
+export interface TopProdutoLucro {
+  produto_id: number;
+  nome: string;
+  receita: number;
+  cogs: number;
+  lucro: number;
+  margem: number;
+  quantidade: number;
+}
 
 export interface ResumoViewProps {
   data: {
+    month?: string;
     crescimentoMoMPerc?: number | null;
+    crescimentoComprasMoMPerc?: number | null;
     vendasMes?: number;
     vendasMesAnterior?: number;
     lucroBrutoMes?: number;
+    lucroOperacionalMes?: number;
     margemBrutaPerc?: number;
+    margemOperacionalPerc?: number;
     cogsReal?: number;
+    despesasMes?: number;
     comprasMes?: number;
+    comprasMesAnterior?: number;
+    growthHistory?: GrowthHistoryItem[];
+    comprasHistory?: ComprasHistoryItem[];
+    promissorias?: PromissoriasData;
+    topProdutoLucro?: TopProdutoLucro | null;
   };
   mes: number;
   ano: number;
 }
 
 export function ResumoView({ data, mes, ano }: ResumoViewProps) {
-  const crescimento =
-    data.crescimentoMoMPerc != null
-      ? `${Number(data.crescimentoMoMPerc).toFixed(2)}%`
-      : "—";
-  const lucroBruto =
-    data.lucroBrutoMes != null && data.margemBrutaPerc != null
-      ? `${formatBrl(Number(data.lucroBrutoMes))} (${Number(data.margemBrutaPerc).toFixed(2)}%)`
-      : "—";
-  const comprasMes = data.comprasMes != null ? formatBrl(Number(data.comprasMes)) : "—";
+  const isHistorioCompleto = ano === 0 && mes === 0;
 
   const periodoLabel =
     ano === 0
@@ -35,43 +87,313 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
         ? `Ano ${ano} (todos os meses)`
         : `${new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long" })}/${ano}`;
 
+  const growthHistory = data.growthHistory ?? [];
+  const comprasHistory = data.comprasHistory ?? [];
+  const prom = data.promissorias;
+  const topProduto = data.topProdutoLucro;
+
+  const alertas: Array<{ msg: string; tipo?: "erro" | "aviso" }> = [];
+  if (data.lucroOperacionalMes != null && data.lucroOperacionalMes < 0) {
+    alertas.push({ msg: "Lucro operacional negativo no período.", tipo: "erro" });
+  }
+  const ultimos2MesesMargem = growthHistory.slice(-2);
+  const margemAbaixo15Por2Meses =
+    ultimos2MesesMargem.length >= 2 &&
+    ultimos2MesesMargem.every((h) => h.margem > 0 && h.margem < 15);
+  if (margemAbaixo15Por2Meses) {
+    alertas.push({
+      msg: "Margem bruta abaixo de 15% nos últimos dois meses consecutivos.",
+      tipo: "aviso",
+    });
+  }
+  if (prom?.mesAtual?.atrasados && prom.mesAtual.atrasados.count > 0) {
+    alertas.push({
+      msg: `Há ${formatBrl(prom.mesAtual.atrasados.valor)} em ${prom.mesAtual.atrasados.count} promissória(s) atrasada(s).`,
+      tipo: "aviso",
+    });
+  }
+  if (data.crescimentoMoMPerc != null && data.crescimentoMoMPerc < 0) {
+    alertas.push({
+      msg: "Queda nas vendas em relação ao mês anterior.",
+      tipo: "aviso",
+    });
+  }
+  if (
+    data.despesasMes != null &&
+    data.lucroBrutoMes != null &&
+    data.despesasMes > data.lucroBrutoMes
+  ) {
+    alertas.push({ msg: "Despesas superam o lucro bruto.", tipo: "erro" });
+  }
+
+  const totalReceber =
+    prom
+      ? (prom.mesAtual?.pendentes?.valor ?? 0) +
+        (prom.mesAtual?.atrasados?.valor ?? 0) +
+        (prom.deMesesAnteriores?.emAberto?.valor ?? 0)
+      : 0;
+
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
       <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
         Resumo — {periodoLabel}
       </h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-            Crescimento (MoM)
+
+      {isHistorioCompleto && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          Os indicadores de crescimento mês a mês não são exibidos no histórico completo. Selecione
+          um período específico para visualizá-los.
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm md:col-span-2 md:row-span-1">
+          <h3 className="mb-1 text-sm font-medium text-[var(--color-text-secondary)]">
+            Lucro operacional
           </h3>
-          <p className="text-xl font-semibold text-[var(--color-text-primary)]">{crescimento}</p>
-          {(data.vendasMes != null || data.vendasMesAnterior != null) && (
+          <p
+            className={`text-xl font-semibold ${
+              (data.lucroOperacionalMes ?? 0) >= 0
+                ? "text-[var(--color-text-primary)]"
+                : "text-red-600 dark:text-red-400"
+            }`}
+          >
+            {data.lucroOperacionalMes != null
+              ? formatBrl(data.lucroOperacionalMes)
+              : "—"}
+          </p>
+          {data.margemOperacionalPerc != null && (
             <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-              Receita: {formatBrl(Number(data.vendasMes || 0))} · Anterior:{" "}
-              {formatBrl(Number(data.vendasMesAnterior || 0))}
+              Margem operacional: {Number(data.margemOperacionalPerc).toFixed(2)}%
             </p>
           )}
         </div>
+
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+          <h3 className="mb-1 text-sm font-medium text-[var(--color-text-secondary)]">
             Lucro bruto
           </h3>
-          <p className="text-xl font-semibold text-[var(--color-text-primary)]">{lucroBruto}</p>
-          {(data.vendasMes != null || data.cogsReal != null) && (
-            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-              Receita: {formatBrl(Number(data.vendasMes || 0))} · COGS:{" "}
-              {formatBrl(Number(data.cogsReal || 0))}
-            </p>
-          )}
+          <p className="text-xl font-semibold text-[var(--color-text-primary)]">
+            {data.lucroBrutoMes != null && data.margemBrutaPerc != null
+              ? `${formatBrl(data.lucroBrutoMes)} (${Number(data.margemBrutaPerc).toFixed(2)}%)`
+              : "—"}
+          </p>
         </div>
+
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-            Compras do mês
+          <h3 className="mb-1 text-sm font-medium text-[var(--color-text-secondary)]">
+            Despesas
           </h3>
-          <p className="text-xl font-semibold text-[var(--color-text-primary)]">{comprasMes}</p>
+          <p className="text-xl font-semibold text-[var(--color-text-primary)]">
+            {data.despesasMes != null ? formatBrl(data.despesasMes) : "—"}
+          </p>
         </div>
+
+        {!isHistorioCompleto && data.crescimentoMoMPerc != null && (
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
+            <h3 className="mb-1 text-sm font-medium text-[var(--color-text-secondary)]">
+              Crescimento vendas (MoM)
+            </h3>
+            <p
+              className={`flex items-center gap-1 text-xl font-semibold ${
+                (data.crescimentoMoMPerc ?? 0) >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {(data.crescimentoMoMPerc ?? 0) >= 0 ? (
+                <TrendingUp className="h-5 w-5" />
+              ) : (
+                <TrendingDown className="h-5 w-5" />
+              )}
+              {Number(data.crescimentoMoMPerc).toFixed(2)}%
+            </p>
+            {(data.vendasMes != null || data.vendasMesAnterior != null) && (
+              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                Receita: {formatBrl(data.vendasMes ?? 0)} · Anterior:{" "}
+                {formatBrl(data.vendasMesAnterior ?? 0)}
+              </p>
+            )}
+          </div>
+        )}
+
+        {!isHistorioCompleto && data.crescimentoComprasMoMPerc != null && (
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
+            <h3 className="mb-1 text-sm font-medium text-[var(--color-text-secondary)]">
+              Crescimento compras (MoM)
+            </h3>
+            <p
+              className={`flex items-center gap-1 text-xl font-semibold ${
+                (data.crescimentoComprasMoMPerc ?? 0) >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {(data.crescimentoComprasMoMPerc ?? 0) >= 0 ? (
+                <TrendingUp className="h-5 w-5" />
+              ) : (
+                <TrendingDown className="h-5 w-5" />
+              )}
+              {Number(data.crescimentoComprasMoMPerc).toFixed(2)}%
+            </p>
+          </div>
+        )}
+
+        <KPICard
+          label="Compras do mês"
+          value={data.comprasMes != null ? formatBrl(data.comprasMes) : "—"}
+        />
       </div>
+
+      {alertas.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-200">
+            <AlertTriangle className="h-4 w-4" />
+            Atenção
+          </h3>
+          <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-300">
+            {alertas.map((a, i) => (
+              <li key={i} className={a.tipo === "erro" ? "font-medium" : ""}>
+                {a.msg}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {prom && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+            Promissórias
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <KPICard
+              label="Pagas (período)"
+              value={formatBrl(prom.mesAtual?.pagos?.valor ?? 0)}
+              subtitle={`${prom.mesAtual?.pagos?.count ?? 0} título(s)`}
+            />
+            <KPICard
+              label="Pendentes"
+              value={formatBrl(prom.mesAtual?.pendentes?.valor ?? 0)}
+              subtitle={`${prom.mesAtual?.pendentes?.count ?? 0} título(s)`}
+            />
+            <KPICard
+              label="Atrasadas"
+              value={formatBrl(prom.mesAtual?.atrasados?.valor ?? 0)}
+              subtitle={`${prom.mesAtual?.atrasados?.count ?? 0} título(s)`}
+            />
+            <KPICard
+              label="Total a receber"
+              value={formatBrl(totalReceber)}
+              subtitle="Pendentes + atrasadas + meses anteriores"
+            />
+          </div>
+          <div className="mt-2 flex flex-wrap gap-4 text-xs text-[var(--color-text-secondary)]">
+            <span>
+              Próximo mês: {formatBrl(prom.proximoMes?.pendentes?.valor ?? 0)} (
+              {prom.proximoMes?.pendentes?.count ?? 0} título(s))
+            </span>
+            <span>
+              Em aberto (meses anteriores):{" "}
+              {formatBrl(prom.deMesesAnteriores?.emAberto?.valor ?? 0)} (
+              {prom.deMesesAnteriores?.emAberto?.count ?? 0} título(s))
+            </span>
+          </div>
+        </div>
+      )}
+
+      {topProduto && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
+          <h3 className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">
+            Top produto por lucro
+          </h3>
+          <p className="font-medium text-[var(--color-text-primary)]">{topProduto.nome}</p>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Lucro: {formatBrl(topProduto.lucro)} · Margem: {Number(topProduto.margem).toFixed(2)}%
+          </p>
+        </div>
+      )}
+
+      {growthHistory.length > 0 && (
+        <ChartCard title="Evolução de vendas e lucro" exportFilename={`resumo-vendas-${mes}-${ano}`}>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart
+              data={growthHistory.map((r) => ({
+                ...r,
+                vendasFmt: formatBrl(r.vendas),
+                lucroFmt: formatBrl(r.lucro),
+              }))}
+              margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tickFormatter={(v) => formatBrl(v)} tick={{ fontSize: 10 }} width={75} />
+              <Tooltip
+                formatter={(v: number) => formatBrl(v)}
+                contentStyle={{ fontSize: 12 }}
+                labelFormatter={(l) => `Mês: ${l}`}
+              />
+              <Legend />
+              <Line type="monotone" dataKey="vendas" name="Vendas" stroke="#22c55e" strokeWidth={2} />
+              <Line type="monotone" dataKey="lucro" name="Lucro" stroke="#3b82f6" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      )}
+
+      {comprasHistory.length > 0 && (
+        <ChartCard title="Evolução de compras" exportFilename={`resumo-compras-${mes}-${ano}`}>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart
+              data={comprasHistory}
+              margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tickFormatter={(v) => formatBrl(v)} tick={{ fontSize: 10 }} width={75} />
+              <Tooltip
+                formatter={(v: number) => formatBrl(v)}
+                contentStyle={{ fontSize: 12 }}
+              />
+              <Bar dataKey="compras" name="Compras" fill="#f97316" />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      )}
+
+      {growthHistory.length > 0 && (
+        <ChartCard
+          title="Margem bruta ao longo do tempo"
+          exportFilename={`resumo-margem-${mes}-${ano}`}
+        >
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart
+              data={growthHistory}
+              margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis
+                tickFormatter={(v) => `${v}%`}
+                domain={[0, 100]}
+                tick={{ fontSize: 10 }}
+                width={45}
+              />
+              <Tooltip
+                formatter={(v: number) => `${Number(v).toFixed(2)}%`}
+                contentStyle={{ fontSize: 12 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="margem"
+                name="Margem %"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      )}
     </div>
   );
 }

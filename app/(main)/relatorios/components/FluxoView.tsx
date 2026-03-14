@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { HelpCircle } from "lucide-react";
 import { formatBrl } from "./shared/utils";
 import { ChartCard } from "./shared/ChartCard";
 import { KPICard } from "./shared/KPICard";
@@ -76,8 +77,21 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <h3 className="mb-2 font-medium text-green-600 dark:text-green-400">Entradas</h3>
+          <p className="mb-2 text-xs text-[var(--color-text-secondary)]">
+            Vendas à vista. Parceladas entram em Promissórias recebidas.
+          </p>
           <ul className="space-y-1 text-sm">
-            <li>Vendas: {formatBrl(entradas?.vendas || 0)}</li>
+            <li className="flex items-center gap-1">
+              Vendas:
+              <span
+                title="Vendas à vista – vendas parceladas são registradas em Promissórias recebidas quando pagas."
+                aria-label="Vendas à vista – vendas parceladas são registradas em Promissórias recebidas quando pagas."
+                className="cursor-help text-[var(--color-text-secondary)]"
+              >
+                <HelpCircle className="inline h-3.5 w-3.5" />
+              </span>
+              {" "}{formatBrl(entradas?.vendas || 0)}
+            </li>
             <li>Promissórias recebidas: {formatBrl(entradas?.promissoriasRecebidas || 0)}</li>
             <li className="font-medium">Total: {formatBrl(entradas?.total || 0)}</li>
           </ul>

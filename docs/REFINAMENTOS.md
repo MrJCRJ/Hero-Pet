@@ -14,10 +14,13 @@ Documentação dos refinamentos implementados após as 6 fases do Hero-Pet.
 
 ## Correções
 
-- **Fluxo de caixa**: Entradas = vendas à vista (`parcelado = false`) + promissórias recebidas. Evita dupla contagem.
+- **Fluxo de caixa**: Entradas = vendas à vista (`parcelado = false`) + promissórias recebidas. Evita dupla contagem. O valor "Vendas" no fluxo refere-se apenas a vendas à vista; vendas parceladas entram em "Promissórias recebidas" quando pagas (regime de caixa).
+- **Summary (Resumo) alinhado ao DRE**: Todas as queries de pedidos no endpoint `/api/v1/pedidos/summary` utilizam `status = 'confirmado'`, excluindo rascunhos e cancelados. Isso garante consistência com DRE e Fluxo de Caixa.
+- **Despesas no Resumo**: O Summary inclui `despesasMes`, `lucroOperacionalMes` e `margemOperacionalPerc`, calculados com base em despesas com `data_vencimento` no período (mesmo critério do DRE). O índice `despesas_vencimento_idx` em `data_vencimento` já existe (migration `create_despesas_table`).
 
 ## Funcionalidades
 
+- **Resumo gerencial (Relatórios)**: KPIs (lucro operacional, despesas, crescimento MoM), alertas (lucro negativo, margem baixa por 2 meses consecutivos, promissórias atrasadas), gráficos de evolução (vendas, compras, margem), bloco de promissórias e top produto por lucro. Período "Histórico completo" oculta indicadores MoM. Layout responsivo com grid adaptativo.
 - **Exportação relatórios**: `?format=json|pdf|xlsx` em DRE, fluxo-caixa, margem-produto, ranking.
 - **Histórico de movimentações**: Seção na página de estoque com paginação.
 - **NF-e teste**: `NFE_PROVIDER=test` simula emissão bem-sucedida.
