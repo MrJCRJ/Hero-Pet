@@ -72,14 +72,13 @@ export default async function fluxoCaixaHandler(
                    COALESCE(SUM(CASE WHEN m.tipo='ENTRADA' THEN m.quantidade WHEN m.tipo='SAIDA' THEN -m.quantidade ELSE m.quantidade END), 0)::numeric(14,3) AS saldo,
                    COALESCE(
                      NULLIF(p.preco_tabela, 0),
-                     (SELECT COALESCE(SUM(valor_total),0)/NULLIF(SUM(quantidade),0) FROM movimento_estoque me WHERE me.produto_id = p.id AND me.tipo = 'ENTRADA')::numeric(14,2)
-                       * (1 + COALESCE(NULLIF(p.markup_percent_default, 0), 0)::numeric / 100),
+                     (SELECT COALESCE(SUM(valor_total),0)/NULLIF(SUM(quantidade),0) FROM movimento_estoque me WHERE me.produto_id = p.id AND me.tipo = 'ENTRADA')::numeric(14,2) * 1.2,
                      0
                    )::numeric(14,2) AS preco_venda
                  FROM produtos p
                  LEFT JOIN movimento_estoque m ON m.produto_id = p.id
                  WHERE p.ativo = true
-                 GROUP BY p.id, p.preco_tabela, p.markup_percent_default
+                 GROUP BY p.id, p.preco_tabela
                ) sub
                WHERE saldo > 0`,
       }).catch(() => ({ rows: [{ total: 0 }] })),

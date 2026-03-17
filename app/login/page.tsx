@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 function LoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,15 +13,6 @@ function LoginForm() {
   const callbackUrl = searchParams?.get("callbackUrl") || "/";
   const errorParam = searchParams?.get("error");
   const messageParam = searchParams?.get("message");
-
-  useEffect(() => {
-    fetch("/api/v1/setup")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.setupNeeded) router.replace("/setup");
-      })
-      .catch(() => {});
-  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -104,9 +94,6 @@ function LoginForm() {
             <p className="text-red-500 mt-3 text-sm">{error}</p>
           )}
         </div>
-        <p className="mt-4 text-center text-xs text-[var(--color-text-secondary)]">
-          Se for o primeiro acesso, você será redirecionado para criar o administrador.
-        </p>
       </div>
     </div>
   );
