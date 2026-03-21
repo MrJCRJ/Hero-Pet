@@ -142,7 +142,7 @@ async function postDespesa(
     const mesAnual = recorrencia_mes != null ? Number(recorrencia_mes) : new Date(String(data_vencimento)).getMonth() + 1;
     const inicio = new Date(String(data_vencimento));
 
-    const insertBase = {
+    const insertCompleto = {
       text: `
         INSERT INTO despesas (
           descricao, categoria, valor, data_vencimento,
@@ -152,6 +152,32 @@ async function postDespesa(
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `,
+    };
+
+    const insertBase = {
+      text: `
+        INSERT INTO despesas (
+          descricao, categoria, valor, data_vencimento,
+          data_pagamento, status, fornecedor_id, observacao
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `,
+    };
+
+    const tryInsertCompleto = async (vals: unknown[]) => {
+      try {
+        return await database.query({ text: insertCompleto.text, values: vals });
+      } catch (e: unknown) {
+        const err = e as { code?: string };
+        if (err?.code === "42703") {
+          return await database.query({
+            text: insertBase.text,
+            values: vals.slice(0, 8),
+          });
+        }
+        throw e;
+      }
     };
 
     if (isRecorrente) {
@@ -165,68 +191,65 @@ async function postDespesa(
       const forn = fornecedor_id || null;
       const obs = (observacao as string)?.trim() || null;
 
-      const firstResult = await database.query({
-        text: insertBase.text,
-        values: [
-          desc,
-          categoria,
-          val,
-          datas[0],
-          data_pagamento || null,
-          stat,
-          forn,
-          obs,
-          true,
-          freq,
-          dia,
-          freq === "anual" ? mesAnual : null,
-          null,
-        ],
-      });
-      const modeloId = (firstResult.rows[0] as Record<string, unknown>).id as number;
+      const firstResult = await tryInsertCompleto([
+        desc,
+        categoria,
+        val,
+        datas[0],
+        data_pagamento || null,
+        stat,
+        forn,
+        obs,
+        true,
+        freq,
+        dia,
+        freq === "anual" ? mesAnual : null,
+        null,
+      ]);
 
-      for (let i = 1; i < datas.length; i++) {
-        await database.query({
-          text: insertBase.text,
-          values: [
-            desc,
-            categoria,
-            val,
-            datas[i],
-            null,
-            stat,
-            forn,
-            obs,
-            false,
-            null,
-            null,
-            null,
-            modeloId,
-          ],
-        });
+      const hasRecorrenteCols = (firstResult.rows[0] as Record<string, unknown>).recorrente !== undefined;
+      if (hasRecorrenteCols) {
+        const modeloId = (firstResult.rows[0] as Record<string, unknown>).id as number;
+        for (let i = 1; i < datas.length; i++) {
+          await database.query({
+            text: insertCompleto.text,
+            values: [
+              desc,
+              categoria,
+              val,
+              datas[i],
+              null,
+              stat,
+              forn,
+              obs,
+              false,
+              null,
+              null,
+              null,
+              modeloId,
+            ],
+          });
+        }
       }
       res.status(201).json(firstResult.rows[0]);
       return;
     }
 
-    const result = await database.query({
-      text: insertBase.text,
-      values: [
-        (descricao as string).trim(),
-        categoria,
-        parseFloat(String(valor)),
-        data_vencimento,
-        data_pagamento || null,
-        (status as string) || "pendente",
-        fornecedor_id || null,
-        (observacao as string)?.trim() || null,
-        false,
-        null,
-        null,
-        null,
-        null,
-      ],
-    });
+    const result = await tryInsertCompleto([
+      (descricao as string).trim(),
+      categoria,
+      parseFloat(String(valor)),
+      data_vencimento,
+      data_pagamento || null,
+      (status as string) || "pendente",
+      fornecedor_id || null,
+      (observacao as string)?.trim() || null,
+      false,
+      null,
+      null,
+      null,
+      null,
+    ]);
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error("POST /despesas error", error);

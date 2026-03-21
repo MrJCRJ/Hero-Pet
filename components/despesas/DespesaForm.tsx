@@ -24,6 +24,31 @@ const STATUS_OPTIONS = [
   { value: "cancelado", label: "Cancelado" },
 ];
 
+/** Normaliza data para YYYY-MM-DD (formato exigido por input type="date") */
+function toDateInputValue(val: string | Date | null | undefined): string {
+  if (val == null) return "";
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (!trimmed) return "";
+    const m = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    const d = new Date(trimmed);
+    if (Number.isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${mo}-${day}`;
+  }
+  if (val instanceof Date) {
+    if (Number.isNaN(val.getTime())) return "";
+    const y = val.getFullYear();
+    const mo = String(val.getMonth() + 1).padStart(2, "0");
+    const day = String(val.getDate()).padStart(2, "0");
+    return `${y}-${mo}-${day}`;
+  }
+  return "";
+}
+
 export interface DespesaFormValues {
   descricao: string;
   categoria: string;
@@ -77,8 +102,8 @@ export function DespesaForm({
         descricao: initial.descricao || "",
         categoria: initial.categoria || "outros",
         valor: initial.valor ?? "",
-        data_vencimento: initial.data_vencimento || "",
-        data_pagamento: initial.data_pagamento || "",
+        data_vencimento: toDateInputValue(initial.data_vencimento),
+        data_pagamento: toDateInputValue(initial.data_pagamento),
         status: initial.status || "pendente",
         fornecedor_id: initial.fornecedor_id ?? "",
         observacao: initial.observacao || "",
