@@ -91,15 +91,27 @@ export function gerarDREPDF(
   doc.moveDown(0.5);
   writeCabecalhoPeriodo(doc, data.periodo);
   const d = data.dre;
+  const receitas = d.receitas || 0;
   doc.fontSize(10).font("Helvetica");
-  doc.text(`Receitas (vendas): ${fmt(d.receitas || 0)}`);
+  doc.text(`Receita bruta: ${fmt((d.receitaBruta ?? receitas) || 0)}`);
+  doc.text(`Receita líquida: ${fmt((d.receitaLiquida ?? receitas) || 0)}`);
   doc.text(`(-) Custos (COGS): -${fmt(d.custosVendas || 0)}`, { indent: 20 });
   doc.moveDown(0.3);
   doc.font("Helvetica-Bold").text(`Lucro bruto: ${fmt(d.lucroBruto || 0)} (${d.margemBruta || 0}%)`);
   doc.font("Helvetica");
-  doc.text(`(-) Despesas: -${fmt(d.despesas || 0)}`, { indent: 20 });
+  doc.text(`(-) Despesas operacionais: -${fmt(d.despesas || 0)}`, { indent: 20 });
   doc.moveDown(0.3);
-  doc.font("Helvetica-Bold").text(`Lucro operacional: ${fmt(d.lucroOperacional || 0)} (${d.margemOperacional || 0}%)`);
+  doc.font("Helvetica-Bold").text(`Lucro operacional (EBIT): ${fmt(d.lucroOperacional || 0)} (${d.margemOperacional || 0}%)`);
+  if (d.ebitda != null) {
+    doc.font("Helvetica").text(`EBITDA: ${fmt(d.ebitda)} (${d.margemEbitda ?? 0}%)`, { indent: 20 });
+  }
+  doc.moveDown(0.5);
+  doc.font("Helvetica-Bold").text("Indicadores de eficiência");
+  doc.font("Helvetica");
+  const custosPct = d.custosSobreReceita ?? (receitas > 0 ? ((d.custosVendas || 0) / receitas * 100) : 0);
+  const despPct = d.despesasSobreReceita ?? (receitas > 0 ? ((d.despesas || 0) / receitas * 100) : 0);
+  doc.text(`Custos / Receita: ${Number(custosPct).toFixed(1)}%`, { indent: 20 });
+  doc.text(`Despesas / Receita: ${Number(despPct).toFixed(1)}%`, { indent: 20 });
   doc.moveDown(1);
   doc.fontSize(9).font("Helvetica").fillColor("#555555");
   doc.text("Glossário:", { continued: false });
@@ -114,7 +126,7 @@ export function gerarDREPDF(
 export function gerarFluxoCaixaPDF(
   data: {
     periodo: { mes: number; ano: number; firstDay?: string; lastDay?: string };
-    fluxo: {
+      fluxo: {
       saldoInicial?: number;
       saldoFinal?: number;
       entradas: Record<string, number>;
@@ -124,6 +136,7 @@ export function gerarFluxoCaixaPDF(
       fluxoFinanciamento?: number;
       valorEstoque?: number;
       valorPresumidoVendaEstoque?: number;
+      evolucaoMensal?: Array<{ mes: string; entradas: number; saidas: number; saldoPeriodo: number; saldoAcumulado: number }>;
     };
   },
   // eslint-disable-next-line no-unused-vars -- params são parte da assinatura
@@ -174,6 +187,28 @@ export function gerarFluxoCaixaPDF(
   doc.moveDown(0.3);
   doc.font("Helvetica").text(`Valor em estoque (custo): ${fmt(valorEstoque)}`, { indent: 20 });
   doc.text(`Valor presumido de venda do estoque: ${fmt(valorPresumidoVenda)}`, { indent: 20 });
+  const evolucao = data.fluxo.evolucaoMensal ?? [];
+  if (evolucao.length > 0) {
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("Evolução mensal");
+    doc.font("Helvetica").fontSize(8);
+    doc.text("Mês", 50, doc.y);
+    doc.text("Entradas", 120, doc.y);
+    doc.text("Saídas", 180, doc.y);
+    doc.text("Saldo período", 240, doc.y);
+    doc.text("Saldo acum.", 320, doc.y);
+    doc.moveDown(0.3);
+    for (const r of evolucao) {
+      if (doc.y > doc.page.height - 60) doc.addPage();
+      doc.text(String(r.mes), 50, doc.y);
+      doc.text(fmt(r.entradas), 120, doc.y);
+      doc.text(fmt(r.saidas), 180, doc.y);
+      doc.text(fmt(r.saldoPeriodo), 240, doc.y);
+      doc.text(fmt(r.saldoAcumulado), 320, doc.y);
+      doc.moveDown(0.25);
+    }
+    doc.fontSize(10);
+  }
   doc.moveDown(1);
   doc.fontSize(9).fillColor("#555555");
   doc.text("Notas:", { continued: false });
@@ -189,6 +224,7 @@ export function gerarMargemPDF(
   data: {
     periodo: { mes: number; ano: number; firstDay?: string; lastDay?: string };
     itens: Array<Record<string, unknown>>;
+    totalReceita?: number;
   },
   // eslint-disable-next-line no-unused-vars -- params são parte da assinatura
   res: ApiResLike & { setHeader: (key: string, val: string) => void }
@@ -203,8 +239,7 @@ export function gerarMargemPDF(
   doc.fontSize(18).font("Helvetica-Bold").text("Margem por Produto", { align: "center" });
   doc.moveDown(0.5);
   writeCabecalhoPeriodo(doc, data.periodo);
-  const colW = [180, 80, 80, 80, 80, 60];
-  const totalReceita = data.itens.reduce((s, r) => s + Number(r.receita || 0), 0);
+  const totalReceita = data.totalReceita ?? data.itens.reduce((s, r) => s + Number(r.receita || 0), 0);
   const totalCustos = data.itens.reduce((s, r) => s + Number(r.cogs || 0), 0);
   const totalLucro = data.itens.reduce((s, r) => s + Number(r.lucro || 0), 0);
   const margemMediaPonderada =
@@ -215,26 +250,35 @@ export function gerarMargemPDF(
           return acc + (rec > 0 ? marg * rec : 0);
         }, 0) / totalReceita
       : 0;
+  const colW = [150, 70, 55, 70, 55, 55, 60];
   doc.fontSize(9).font("Helvetica");
-  doc.text(`${data.itens.length} produtos no relatório. Margem média ponderada: ${margemMediaPonderada.toFixed(1)}%`, { indent: 0 });
+  doc.text(`Total vendas: ${fmt(totalReceita)} | ${data.itens.length} produtos | Margem média ponderada: ${margemMediaPonderada.toFixed(1)}%`, { indent: 0 });
   doc.moveDown(0.4);
   doc.font("Helvetica-Bold");
   doc.text("Produto", 50, doc.y);
   doc.text("Receita", 50 + colW[0], doc.y);
-  doc.text("Custos", 50 + colW[0] + colW[1], doc.y);
-  doc.text("Lucro", 50 + colW[0] + colW[1] + colW[2], doc.y);
-  doc.text("Margem %", 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y);
+  doc.text("% Vend.", 50 + colW[0] + colW[1], doc.y);
+  doc.text("Custos", 50 + colW[0] + colW[1] + colW[2], doc.y);
+  doc.text("Lucro", 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y);
+  doc.text("Marg.%", 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y);
+  doc.text("Marg.unit", 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], doc.y);
   doc.moveDown(0.4);
   doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
   doc.moveDown(0.3);
   doc.font("Helvetica");
   for (const r of data.itens) {
     if (doc.y > doc.page.height - 80) doc.addPage();
-    doc.text(String(r.nome || "").slice(0, 28), 50, doc.y, { width: colW[0] });
-    doc.text(fmt(Number(r.receita || 0)), 50 + colW[0], doc.y - 12, { width: colW[1] });
-    doc.text(fmt(Number(r.cogs || 0)), 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
-    doc.text(fmt(Number(r.lucro || 0)), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
-    doc.text(`${Number(r.margem || 0).toFixed(1)}%`, 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12);
+    const rec = Number(r.receita || 0);
+    const qty = Number(r.quantidade || 1);
+    const pctVend = totalReceita > 0 ? ((rec / totalReceita) * 100).toFixed(1) : "0";
+    const margUnit = qty > 0 ? (Number(r.lucro || 0) / qty).toFixed(2) : "-";
+    doc.text(String(r.nome || "").slice(0, 24), 50, doc.y, { width: colW[0] });
+    doc.text(fmt(rec), 50 + colW[0], doc.y - 12, { width: colW[1] });
+    doc.text(`${pctVend}%`, 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
+    doc.text(fmt(Number(r.cogs || 0)), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
+    doc.text(fmt(Number(r.lucro || 0)), 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12, { width: colW[4] });
+    doc.text(`${Number(r.margem || 0).toFixed(1)}%`, 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y - 12, { width: colW[5] });
+    doc.text(margUnit === "-" ? "-" : fmt(Number(margUnit)), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], doc.y - 12);
     doc.moveDown(0.4);
   }
   doc.moveDown(0.3);
@@ -243,9 +287,10 @@ export function gerarMargemPDF(
   doc.font("Helvetica-Bold");
   doc.text("TOTAL", 50, doc.y);
   doc.text(fmt(totalReceita), 50 + colW[0], doc.y - 12, { width: colW[1] });
-  doc.text(fmt(totalCustos), 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
-  doc.text(fmt(totalLucro), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
-  doc.text(totalReceita > 0 ? `${((totalLucro / totalReceita) * 100).toFixed(1)}%` : "-", 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12);
+  doc.text("100%", 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
+  doc.text(fmt(totalCustos), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
+  doc.text(fmt(totalLucro), 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12, { width: colW[4] });
+  doc.text(totalReceita > 0 ? `${((totalLucro / totalReceita) * 100).toFixed(1)}%` : "-", 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y - 12);
   doc.end();
 }
 
@@ -254,6 +299,9 @@ export function gerarRankingPDF(
     periodo: { mes: number; ano: number; firstDay?: string; lastDay?: string };
     tipo: string;
     ranking: Array<Record<string, unknown>>;
+    totalGeral?: number;
+    totalPedidosGeral?: number;
+    ticketMedioGeral?: number;
   },
   // eslint-disable-next-line no-unused-vars -- params são parte da assinatura
   res: ApiResLike & { setHeader: (key: string, val: string) => void }
@@ -268,39 +316,57 @@ export function gerarRankingPDF(
   doc.fontSize(18).font("Helvetica-Bold").text(`Ranking ${data.tipo === "vendas" ? "de Vendas (clientes)" : "de Fornecedores"}`, { align: "center" });
   doc.moveDown(0.5);
   writeCabecalhoPeriodo(doc, data.periodo);
-  const totalGeral = data.ranking.reduce((s, r) => s + Number(r.total || 0), 0);
-  const totalPedidos = data.ranking.reduce((s, r) => s + Number(r.pedidos_count || 0), 0);
+  const totalGeral = data.totalGeral ?? data.ranking.reduce((s, r) => s + Number(r.total || 0), 0);
+  const totalPedidos = data.totalPedidosGeral ?? data.ranking.reduce((s, r) => s + Number(r.pedidos_count || 0), 0);
+  const ticketMedio = data.ticketMedioGeral ?? (totalPedidos > 0 ? totalGeral / totalPedidos : 0);
   const entidadeLabel = data.tipo === "vendas" ? "clientes" : "fornecedores";
   doc.fontSize(9).font("Helvetica");
-  doc.text(`Top ${data.ranking.length} ${entidadeLabel} no período. Total: ${fmt(totalGeral)} (${totalPedidos} pedidos)`, { indent: 0 });
+  doc.text(`Total vendas do período: ${fmt(totalGeral)} (${totalPedidos} pedidos) | Ticket médio: ${fmt(ticketMedio)}`, { indent: 0 });
+  doc.text(`Top ${data.ranking.length} ${entidadeLabel} no ranking.`, { indent: 0 });
   doc.moveDown(0.4);
+  const isVendas = data.tipo === "vendas";
+  const colW = isVendas ? [35, 160, 55, 80, 50, 65, 55] : [35, 200, 80, 100];
   doc.font("Helvetica-Bold");
   doc.text("#", 50, doc.y);
-  doc.text("Cliente/Fornecedor", 80, doc.y);
-  doc.text("Pedidos", 350, doc.y);
-  doc.text("Total", 420, doc.y);
-  doc.text("%", 500, doc.y);
+  doc.text("Cliente/Fornecedor", 50 + colW[0], doc.y);
+  doc.text("Pedidos", 50 + colW[0] + colW[1], doc.y);
+  doc.text("Total", 50 + colW[0] + colW[1] + colW[2], doc.y);
+  doc.text("%", 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y);
+  if (isVendas) {
+    doc.text("Ticket", 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y);
+    doc.text("Marg.%", 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], doc.y);
+  }
   doc.moveDown(0.4);
   doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
   doc.moveDown(0.3);
   doc.font("Helvetica");
   data.ranking.forEach((r, i) => {
     if (doc.y > doc.page.height - 80) doc.addPage();
-    const pct = totalGeral > 0 ? ((Number(r.total || 0) / totalGeral) * 100).toFixed(1) : "-";
+    const total = Number(r.total || 0);
+    const pct = totalGeral > 0 ? ((total / totalGeral) * 100).toFixed(1) : "-";
+    const ticket = Number(r.pedidos_count || 0) > 0 ? (total / Number(r.pedidos_count || 1)).toFixed(2) : "-";
+    const margem = Number(r.margemBruta ?? 0).toFixed(1);
     doc.text(String(i + 1), 50, doc.y);
-    doc.text(String(r.nome || "").slice(0, 45), 80, doc.y - 12, { width: 260 });
-    doc.text(String(r.pedidos_count || 0), 350, doc.y - 12);
-    doc.text(fmt(Number(r.total || 0)), 420, doc.y - 12);
-    doc.text(`${pct}%`, 500, doc.y - 12, { width: 50 });
+    doc.text(String(r.nome || "").slice(0, isVendas ? 28 : 38), 50 + colW[0], doc.y - 12, { width: colW[1] });
+    doc.text(String(r.pedidos_count || 0), 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
+    doc.text(fmt(total), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
+    doc.text(`${pct}%`, 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12, { width: colW[4] });
+    if (isVendas) {
+      doc.text(ticket === "-" ? "-" : fmt(Number(ticket)), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y - 12, { width: colW[5] });
+      doc.text(`${margem}%`, 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], doc.y - 12);
+    }
     doc.moveDown(0.4);
   });
   doc.moveDown(0.3);
   doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
   doc.moveDown(0.2);
   doc.font("Helvetica-Bold");
-  doc.text("TOTAL", 50, doc.y);
-  doc.text(String(totalPedidos), 350, doc.y - 12);
-  doc.text(fmt(totalGeral), 420, doc.y - 12);
-  doc.text("100%", 500, doc.y - 12, { width: 50 });
+  doc.text("TOTAL GERAL", 50, doc.y);
+  doc.text(String(totalPedidos), 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
+  doc.text(fmt(totalGeral), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
+  doc.text("100%", 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12);
+  if (isVendas) {
+    doc.text(fmt(ticketMedio), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y - 12);
+  }
   doc.end();
 }
