@@ -51,6 +51,9 @@ export interface PayloadConsolidado {
     }>;
     totalGeral: number;
   };
+  dreAnterior?: { receitas: number; lucroOperacional: number; margemBruta: number };
+  margemAnterior?: { totalReceita: number; margemMediaPonderada: number };
+  rankingAnterior?: { totalGeral: number };
 }
 
 export async function fetchDadosConsolidado(mes: number, ano: number): Promise<PayloadConsolidado> {
@@ -235,6 +238,62 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
 
   const indicadores = await computeIndicadores(firstDay, lastDay);
 
+  let dreAnterior: { receitas: number; lucroOperacional: number; margemBruta: number } | null = null;
+  let margemAnterior: { totalReceita: number; margemMediaPonderada: number } | null = null;
+  let rankingAnterior: { totalGeral: number } | null = null;
+  if (mes > 0 && ano > 0) {
+    const mesAnt = mes === 1 ? 12 : mes - 1;
+    const anoAnt = mes === 1 ? ano - 1 : ano;
+    const { firstDay: fa, lastDay: la } = getReportBounds(mesAnt, anoAnt);
+    const [vAnt, cAnt, dAnt, mAnt, rAnt] = await Promise.all([
+      database.query({
+        text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+             FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
+             AND data_emissao >= $1 AND data_emissao < $2`,
+        values: [fa, la],
+      }),
+      database.query({
+        text: `SELECT COALESCE(SUM(i.custo_total_item),0)::numeric(14,2) AS cogs
+             FROM pedido_itens i JOIN pedidos p ON p.id = i.pedido_id
+             WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
+             AND p.data_emissao >= $1 AND p.data_emissao < $2`,
+        values: [fa, la],
+      }),
+      database.query({
+        text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total
+             FROM despesas WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+        values: [fa, la],
+      }),
+      database.query({
+        text: `SELECT COALESCE(SUM(i.total_item),0)::numeric(14,2) AS receita,
+             (COALESCE(SUM(i.total_item),0) - COALESCE(SUM(i.custo_total_item),0))::numeric(14,2) AS lucro
+             FROM pedido_itens i JOIN pedidos pdr ON pdr.id = i.pedido_id
+             WHERE pdr.tipo = 'VENDA' AND pdr.status = 'confirmado'
+             AND pdr.data_emissao >= $1 AND pdr.data_emissao < $2`,
+        values: [fa, la],
+      }),
+      database.query({
+        text: `SELECT COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
+             FROM pedidos p WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
+             AND p.data_emissao >= $1 AND p.data_emissao < $2`,
+        values: [fa, la],
+      }),
+    ]);
+    const recAnt = Number((vAnt.rows[0] as Record<string, unknown>)?.total || 0);
+    const custAnt = Number((cAnt.rows[0] as Record<string, unknown>)?.cogs || 0);
+    const despAnt = Number((dAnt.rows[0] as Record<string, unknown>)?.total || 0);
+    const lucOpAnt = Number((recAnt - custAnt - despAnt).toFixed(2));
+    const margBrAnt = recAnt > 0 ? Number(((recAnt - custAnt) / recAnt * 100).toFixed(2)) : 0;
+    dreAnterior = { receitas: recAnt, lucroOperacional: lucOpAnt, margemBruta: margBrAnt };
+    const mRow = mAnt.rows[0] as Record<string, unknown>;
+    const totalRecAnt = Number(mRow?.receita || 0);
+    const lucroAnt = Number(mRow?.lucro || 0);
+    const margMediaAnt = totalRecAnt > 0 ? Number(((lucroAnt / totalRecAnt) * 100).toFixed(2)) : 0;
+    margemAnterior = { totalReceita: totalRecAnt, margemMediaPonderada: margMediaAnt };
+    const totalRankAnt = Number((rAnt.rows[0] as Record<string, unknown>)?.total || 0);
+    rankingAnterior = { totalGeral: totalRankAnt };
+  }
+
   const margemRows = margemR.rows as Array<Record<string, unknown>>;
   const totalReceita = margemRows.reduce((s, r) => s + Number(r.receita || 0), 0);
   const lucroTotal = margemRows.reduce((s, r) => s + Number(r.lucro || 0), 0);
@@ -296,6 +355,9 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     indicadores,
     margem: { itens: itensMargem, totalReceita, margemMediaPonderada },
     ranking: { itens: itensRanking, totalGeral },
+    ...(dreAnterior ? { dreAnterior } : {}),
+    ...(margemAnterior ? { margemAnterior } : {}),
+    ...(rankingAnterior ? { rankingAnterior } : {}),
   };
 }
 

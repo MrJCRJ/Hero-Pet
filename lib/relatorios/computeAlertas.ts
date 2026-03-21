@@ -47,7 +47,7 @@ export interface DadosParaAlertas {
     itens: Array<{
       entity_id?: string | number;
       nome: string;
-      total: number;
+      total?: number;
       margemBruta: number | null;
     }>;
     totalGeral: number;
@@ -159,6 +159,15 @@ export function computeAlertas(dados: DadosParaAlertas): Alerta[] {
   // 6. Cliente com margem muito baixa (no top 10 e margem < 15%)
   const rankingItens = dados.ranking?.itens ?? [];
   const top10 = rankingItens.slice(0, 10);
+  const clientesComMargem = rankingItens.filter((c) => c.margemBruta != null && (c.total ?? 0) > 0);
+  const totalVendasClientes = clientesComMargem.reduce((s, c) => s + (c.total ?? 0), 0);
+  const lucroClientes = clientesComMargem.reduce(
+    (s, c) => s + ((c.total ?? 0) * ((c.margemBruta ?? 0) / 100)),
+    0
+  );
+  const margemMediaClientes =
+    totalVendasClientes > 0 ? Number(((lucroClientes / totalVendasClientes) * 100).toFixed(1)) : null;
+
   for (let idx = 0; idx < top10.length; idx++) {
     const c = top10[idx];
     const margem = c.margemBruta;
@@ -169,6 +178,19 @@ export function computeAlertas(dados: DadosParaAlertas): Alerta[] {
         msg: `Cliente "${String(c.nome).slice(0, 30)}" com margem abaixo de 15%.`,
         valorAtual: `${margem.toFixed(1)}%`,
         acaoSugerida: "Verificar se compensa o volume; renegociar preço",
+      });
+    } else if (
+      margem != null &&
+      margemMediaClientes != null &&
+      margem < margemMediaClientes - 2 &&
+      margem >= 0
+    ) {
+      alertas.push({
+        id: `cliente-margem-abaixo-media-${c.entity_id ?? idx}`,
+        tipo: "aviso",
+        msg: `Cliente "${String(c.nome).slice(0, 30)}" com margem abaixo da média da empresa.`,
+        valorAtual: `${margem.toFixed(1)}% (média: ${margemMediaClientes}%)`,
+        acaoSugerida: "Verificar precificação; renegociar se necessário",
       });
     }
   }

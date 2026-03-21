@@ -1,4 +1,9 @@
 import ExcelJS from "exceljs";
+import {
+  fetchChartImage,
+  getEvolucaoSaldoChartUrl,
+  getParticipacaoChartUrl,
+} from "@/lib/relatorios/chartImages";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -255,6 +260,7 @@ export async function gerarRankingExcel(data: {
 export type PayloadConsolidadoExcel = {
   periodo: { mes: number; ano: number; firstDay?: string; lastDay?: string };
   dre: Record<string, number>;
+  dreAnterior?: { receitas: number; lucroOperacional: number; margemBruta: number };
   fluxo: {
     saldoInicial?: number;
     saldoFinal?: number;
@@ -290,6 +296,20 @@ export async function gerarConsolidadoExcel(data: PayloadConsolidadoExcel): Prom
   wsResumo.addRow(["PMR (dias)", ind?.pmr ?? "N/D"]);
   wsResumo.addRow(["PMP (dias)", ind?.pmp ?? "N/D"]);
   wsResumo.addRow(["DVE (dias)", ind?.dve ?? "N/D"]);
+  const dreAnt = data.dreAnterior;
+  if (dreAnt && dreAnt.receitas > 0) {
+    wsResumo.addRow([]);
+    wsResumo.addRow(["Comparação vs período anterior"]).font = { bold: true };
+    const varRec = ((d.receitas - dreAnt.receitas) / dreAnt.receitas) * 100;
+    wsResumo.addRow(["Variação receitas", `${varRec >= 0 ? "+" : ""}${Number(varRec).toFixed(1)}%`]);
+    wsResumo.addRow(["Receitas período ant.", fmt(dreAnt.receitas)]);
+    const varLucOp = dreAnt.lucroOperacional !== 0
+      ? ((d.lucroOperacional - dreAnt.lucroOperacional) / Math.abs(dreAnt.lucroOperacional)) * 100
+      : 0;
+    wsResumo.addRow(["Variação lucro operacional", `${varLucOp >= 0 ? "+" : ""}${Number(varLucOp).toFixed(1)}%`]);
+    const varMargem = d.margemBruta - dreAnt.margemBruta;
+    wsResumo.addRow(["Variação margem bruta (p.p.)", `${varMargem >= 0 ? "+" : ""}${Number(varMargem).toFixed(1)}`]);
+  }
   wsResumo.addRow([]);
   wsResumo.addRow(["Alertas"]).font = { bold: true };
   const alertas = data.alertas ?? [];
@@ -396,6 +416,42 @@ export async function gerarConsolidadoExcel(data: PayloadConsolidadoExcel): Prom
     }
   }
   wsEvol.getColumn(2).width = 18;
+
+  // Aba Gráficos (imagens via QuickChart)
+  const wsCharts = wb.addWorksheet("Gráficos");
+  wsCharts.addRow([titulo]).font = { bold: true };
+  wsCharts.addRow([]);
+  let chartRow = 3;
+  const evolucaoUrl = getEvolucaoSaldoChartUrl(evolucao);
+  if (evolucaoUrl) {
+    const imgBuf = await fetchChartImage(evolucaoUrl);
+    if (imgBuf) {
+      const imgId = wb.addImage({
+        buffer: imgBuf,
+        extension: "png",
+      });
+      wsCharts.addRow(["Evolução do saldo de caixa acumulado"]).font = { bold: true };
+      wsCharts.addImage(imgId, { tl: { col: 0, row: chartRow - 1 }, ext: { width: 520, height: 260 } });
+      chartRow += 18;
+    }
+  }
+  const itensProduto = (data.margem?.itens ?? []).slice(0, 10).map((r) => ({
+    name: String(r.nome ?? "").slice(0, 25),
+    value: Number(r.receita || 0),
+  }));
+  const participacaoProdUrl = getParticipacaoChartUrl(itensProduto, "Participação top produtos nas vendas");
+  if (participacaoProdUrl) {
+    const imgBuf = await fetchChartImage(participacaoProdUrl);
+    if (imgBuf) {
+      const imgId = wb.addImage({
+        buffer: imgBuf,
+        extension: "png",
+      });
+      wsCharts.addRow([]);
+      wsCharts.addRow(["Participação dos principais produtos"]).font = { bold: true };
+      wsCharts.addImage(imgId, { tl: { col: 0, row: chartRow - 1 }, ext: { width: 480, height: 260 } });
+    }
+  }
 
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

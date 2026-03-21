@@ -175,10 +175,9 @@ export function MargemView({ itens, totalReceita: totalReceitaProp, margemAnteri
                   cx="50%"
                   cy="50%"
                   outerRadius={90}
-                  label={(props) => {
-                    const p = props as { name?: string; payload?: { pct?: number } };
-                    return `${p.name ?? ""}: ${p.payload?.pct ?? 0}%`;
-                  }}
+                  label={(props: { name?: string; percent?: number }) =>
+                    `${props.name ?? ""}: ${((props.percent ?? 0) * 100).toFixed(1)}%`
+                  }
                   labelLine={false}
                 >
                   {pieParticipacao.map((_, i) => (
