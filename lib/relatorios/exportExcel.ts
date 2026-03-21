@@ -274,6 +274,18 @@ export type PayloadConsolidadoExcel = {
   margem: { itens: Array<Record<string, unknown>>; totalReceita: number; margemMediaPonderada?: number };
   ranking: { itens: Array<Record<string, unknown>>; totalGeral: number };
   alertas?: Array<{ id: string; tipo: string; msg: string; valorAtual?: string | number; referencia?: string; acaoSugerida?: string }>;
+  cenarioLiquidacao?: {
+    saldoCaixaAtual: number;
+    valorPresumidoVendaBruto: number;
+    comissaoPct: number;
+    comissaoValor: number;
+    vendaLiquidaEstoque: number;
+    promissoriasAReceber: number;
+    disponivelTotal: number;
+    saldoDevolverSocios: number;
+    resultadoFinal: number;
+    erro?: string;
+  };
 };
 
 export async function gerarConsolidadoExcel(data: PayloadConsolidadoExcel): Promise<Buffer> {
@@ -322,6 +334,29 @@ export async function gerarConsolidadoExcel(data: PayloadConsolidadoExcel): Prom
     }
   }
   wsResumo.getColumn(2).width = 22;
+
+  // Aba Cenário Liquidação
+  const cenario = data.cenarioLiquidacao;
+  const wsCenario = wb.addWorksheet("Cenário Liquidação");
+  wsCenario.addRow([`Cenário de Liquidação — ${periodoLabel(per.mes, per.ano)}`]).font = { bold: true };
+  wsCenario.addRow([]);
+  if (cenario?.erro) {
+    wsCenario.addRow(["Cálculo parcial ou indisponível:", cenario.erro]);
+  } else if (cenario) {
+    wsCenario.addRow(["Descrição", "Valor"]);
+    wsCenario.addRow(["Saldo de caixa atual", fmt(cenario.saldoCaixaAtual)]);
+    wsCenario.addRow(["Valor de venda do estoque (bruto)", fmt(cenario.valorPresumidoVendaBruto)]);
+    wsCenario.addRow([`Comissão (${cenario.comissaoPct}%)`, `-${fmt(cenario.comissaoValor)}`]);
+    wsCenario.addRow(["Venda líquida do estoque", fmt(cenario.vendaLiquidaEstoque)]);
+    wsCenario.addRow(["Promissórias a receber", fmt(cenario.promissoriasAReceber)]);
+    wsCenario.addRow(["Total disponível", fmt(cenario.disponivelTotal)]).font = { bold: true };
+    wsCenario.addRow(["Saldo a devolver aos sócios", `-${fmt(cenario.saldoDevolverSocios)}`]);
+    wsCenario.addRow(["Resultado final", fmt(cenario.resultadoFinal)]).font = { bold: true };
+  } else {
+    wsCenario.addRow(["Dados do cenário de liquidação não disponíveis."]);
+  }
+  wsCenario.getColumn(1).width = 35;
+  wsCenario.getColumn(2).width = 18;
 
   // Aba DRE
   const wsDRE = wb.addWorksheet("DRE");

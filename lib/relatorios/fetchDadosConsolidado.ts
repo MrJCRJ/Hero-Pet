@@ -2,6 +2,7 @@ import database from "infra/database.js";
 import { getReportBounds } from "@/lib/relatorios/dateBounds";
 import { computeIndicadores } from "@/lib/relatorios/computeIndicadores";
 import type { DadosParaAlertas } from "@/lib/relatorios/computeAlertas";
+import { computeCenarioLiquidacao, getConfigLiquidacao } from "@/lib/relatorios/computeCenarioLiquidacao";
 
 export interface PayloadConsolidado {
   periodo: { mes: number; ano: number; firstDay: string; lastDay: string };
@@ -54,6 +55,7 @@ export interface PayloadConsolidado {
   dreAnterior?: { receitas: number; lucroOperacional: number; margemBruta: number };
   margemAnterior?: { totalReceita: number; margemMediaPonderada: number };
   rankingAnterior?: { totalGeral: number };
+  cenarioLiquidacao?: import("@/lib/relatorios/computeCenarioLiquidacao").CenarioLiquidacaoResult & { erro?: string };
 }
 
 export async function fetchDadosConsolidado(mes: number, ano: number): Promise<PayloadConsolidado> {
@@ -77,6 +79,8 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     margemR,
     rankingR,
     totalGeralR,
+    estoqueVendaR,
+    promissoriasAReceberR,
   ] = await Promise.all([
     database.query({
       text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
@@ -193,6 +197,29 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
              AND p.data_emissao >= $1 AND p.data_emissao < $2`,
       values: [firstDay, lastDay],
     }),
+    database.query({
+      text: `SELECT COALESCE(SUM(saldo * preco_venda), 0)::numeric(14,2) AS total
+             FROM (
+               SELECT p.id,
+                 COALESCE(SUM(CASE WHEN m.tipo='ENTRADA' THEN m.quantidade WHEN m.tipo='SAIDA' THEN -m.quantidade ELSE m.quantidade END), 0)::numeric(14,3) AS saldo,
+                 COALESCE(
+                   NULLIF(p.preco_tabela, 0),
+                   (SELECT COALESCE(SUM(valor_total),0)/NULLIF(SUM(quantidade),0) FROM movimento_estoque me WHERE me.produto_id = p.id AND me.tipo = 'ENTRADA')::numeric(14,2) * 1.2,
+                   0
+                 )::numeric(14,2) AS preco_venda
+               FROM produtos p
+               LEFT JOIN movimento_estoque m ON m.produto_id = p.id
+               WHERE p.ativo = true
+               GROUP BY p.id, p.preco_tabela
+             ) sub
+             WHERE saldo > 0`,
+    }).catch(() => ({ rows: [{ total: 0 }] })),
+    database.query({
+      text: `SELECT COALESCE(SUM(pp.amount),0)::numeric(14,2) AS total
+             FROM pedido_promissorias pp
+             JOIN pedidos p ON p.id = pp.pedido_id AND p.tipo = 'VENDA'
+             WHERE pp.paid_at IS NULL`,
+    }).catch(() => ({ rows: [{ total: 0 }] })),
   ]);
 
   const receitas = Number((vendasR.rows[0] as Record<string, unknown>)?.total || 0);
@@ -314,6 +341,17 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     };
   });
 
+  const valorPresumidoVendaEstoque = Number((estoqueVendaR.rows[0] as Record<string, unknown>)?.total || 0);
+  const promissoriasAReceber = Number((promissoriasAReceberR.rows[0] as Record<string, unknown>)?.total || 0);
+  const config = getConfigLiquidacao();
+  const cenarioLiquidacao = computeCenarioLiquidacao({
+    saldoCaixaAtual: saldoFinal,
+    valorPresumidoVendaEstoque,
+    promissoriasAReceber,
+    comissaoPct: config.comissaoPct,
+    saldoDevolverSocios: config.saldoDevolverSocios,
+  });
+
   const rankingRows = rankingR.rows as Array<Record<string, unknown>>;
   const totalGeral = Number((totalGeralR.rows[0] as Record<string, unknown>)?.total || 0);
   const itensRanking = rankingRows.map((r) => {
@@ -358,6 +396,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     ...(dreAnterior ? { dreAnterior } : {}),
     ...(margemAnterior ? { margemAnterior } : {}),
     ...(rankingAnterior ? { rankingAnterior } : {}),
+    cenarioLiquidacao,
   };
 }
 

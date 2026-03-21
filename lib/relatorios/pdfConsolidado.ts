@@ -23,6 +23,18 @@ export type PayloadConsolidadoPDF = {
   margem: { itens: Array<Record<string, unknown>>; totalReceita: number; margemMediaPonderada?: number };
   ranking: { itens: Array<Record<string, unknown>>; totalGeral: number };
   alertas?: Array<{ id: string; tipo: string; msg: string; valorAtual?: string | number; referencia?: string; acaoSugerida?: string }>;
+  cenarioLiquidacao?: {
+    saldoCaixaAtual: number;
+    valorPresumidoVendaBruto: number;
+    comissaoPct: number;
+    comissaoValor: number;
+    vendaLiquidaEstoque: number;
+    promissoriasAReceber: number;
+    disponivelTotal: number;
+    saldoDevolverSocios: number;
+    resultadoFinal: number;
+    erro?: string;
+  };
 };
 
 export function gerarConsolidadoPDF(
@@ -78,8 +90,28 @@ export function gerarConsolidadoPDF(
   }
   doc.moveDown(1);
 
+  const cenario = data.cenarioLiquidacao;
+  if (doc.y > doc.page.height - 200) doc.addPage();
+  doc.fontSize(14).font("Helvetica-Bold").text("2. Cenário de Liquidação", { continued: false });
+  doc.fontSize(10).font("Helvetica");
+  if (cenario?.erro) {
+    doc.text(`Cálculo parcial ou indisponível: ${cenario.erro}`, { indent: 10 });
+  } else if (cenario) {
+    doc.text(`Saldo de caixa atual: ${fmt(cenario.saldoCaixaAtual)}`, { indent: 10 });
+    doc.text(`Valor de venda do estoque (bruto): ${fmt(cenario.valorPresumidoVendaBruto)}`, { indent: 10 });
+    doc.text(`Comissão (${cenario.comissaoPct}%): -${fmt(cenario.comissaoValor)}`, { indent: 10 });
+    doc.text(`Venda líquida do estoque: ${fmt(cenario.vendaLiquidaEstoque)}`, { indent: 10 });
+    doc.text(`Promissórias a receber: ${fmt(cenario.promissoriasAReceber)}`, { indent: 10 });
+    doc.font("Helvetica-Bold").text(`Total disponível: ${fmt(cenario.disponivelTotal)}`, { indent: 10 });
+    doc.font("Helvetica").text(`Saldo a devolver aos sócios: -${fmt(cenario.saldoDevolverSocios)}`, { indent: 10 });
+    doc.font("Helvetica-Bold").text(`Resultado final: ${fmt(cenario.resultadoFinal)}`, { indent: 10 });
+  } else {
+    doc.text("Dados do cenário de liquidação não disponíveis.", { indent: 10 });
+  }
+  doc.moveDown(1);
+
   if (doc.y > doc.page.height - 180) doc.addPage();
-  doc.fontSize(14).font("Helvetica-Bold").text("2. DRE e Fluxo de Caixa", { continued: false });
+  doc.fontSize(14).font("Helvetica-Bold").text("3. DRE e Fluxo de Caixa", { continued: false });
   doc.fontSize(10).font("Helvetica");
   doc.text(`Receitas: ${fmt(d.receitas ?? 0)} | Lucro bruto: ${fmt(d.lucroBruto ?? 0)} (${d.margemBruta ?? 0}%)`, { indent: 10 });
   doc.text(`Despesas: -${fmt(d.despesas ?? 0)} | Lucro operacional: ${fmt(d.lucroOperacional ?? 0)}`, { indent: 10 });
@@ -88,7 +120,7 @@ export function gerarConsolidadoPDF(
   doc.moveDown(1);
 
   if (doc.y > doc.page.height - 120) doc.addPage();
-  doc.fontSize(14).font("Helvetica-Bold").text("3. Top produtos (margem)", { continued: false });
+  doc.fontSize(14).font("Helvetica-Bold").text("4. Top produtos (margem)", { continued: false });
   doc.fontSize(9).font("Helvetica");
   const itensMargem = (data.margem?.itens ?? []).slice(0, 15);
   const totalRec = data.margem?.totalReceita ?? 0;
@@ -123,7 +155,7 @@ export function gerarConsolidadoPDF(
   doc.moveDown(1);
 
   if (doc.y > doc.page.height - 120) doc.addPage();
-  doc.fontSize(14).font("Helvetica-Bold").text("4. Top clientes", { continued: false });
+  doc.fontSize(14).font("Helvetica-Bold").text("5. Top clientes", { continued: false });
   doc.fontSize(9).font("Helvetica");
   const itensRanking = (data.ranking?.itens ?? []).slice(0, 20);
   const totalGeral = data.ranking?.totalGeral ?? 0;
@@ -153,7 +185,7 @@ export function gerarConsolidadoPDF(
   const evolucao = fluxo.evolucaoMensal ?? [];
   if (evolucao.length > 0) {
     if (doc.y > doc.page.height - 100) doc.addPage();
-    doc.fontSize(14).font("Helvetica-Bold").text("5. Evolução mensal", { continued: false });
+    doc.fontSize(14).font("Helvetica-Bold").text("6. Evolução mensal", { continued: false });
     doc.fontSize(8).font("Helvetica");
     const evColX = [50, 115, 180, 255, 330];
     doc.text("Mês", evColX[0], doc.y);
