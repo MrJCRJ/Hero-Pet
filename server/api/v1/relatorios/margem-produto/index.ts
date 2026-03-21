@@ -19,7 +19,9 @@ export default async function margemProdutoHandler(
     const now = new Date();
     const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
     const ano = Number(req.query?.ano) ?? now.getFullYear();
-    const limit = Math.min(100, Math.max(5, Number(req.query?.limit) || 50));
+    const format = (req.query?.format as string) || "json";
+    const defaultLimit = format === "pdf" || format === "xlsx" ? 100 : 50;
+    const limit = Math.min(100, Math.max(5, Number(req.query?.limit) || defaultLimit));
     const { firstDay, lastDay } = getReportBounds(mes, ano);
 
     const result = await database.query({
@@ -70,7 +72,6 @@ export default async function margemProdutoHandler(
       };
     });
 
-    const format = (req.query?.format as string) || "json";
     const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
     const incluirComparacao = (format === "json" && compare) || (format !== "json" && mes > 0 && ano > 0);
     let margemAnterior: { totalReceita: number; lucroTotal: number } | null = null;

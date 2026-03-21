@@ -20,7 +20,9 @@ export default async function rankingHandler(
     const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
     const ano = Number(req.query?.ano) ?? now.getFullYear();
     const tipo = (req.query?.tipo as string) || "vendas"; // vendas | fornecedores
-    const limit = Math.min(30, Math.max(5, Number(req.query?.limit) || 10));
+    const format = (req.query?.format as string) || "json";
+    const defaultLimit = format === "pdf" || format === "xlsx" ? 30 : 10;
+    const limit = Math.min(100, Math.max(5, Number(req.query?.limit) || defaultLimit));
     const { firstDay, lastDay } = getReportBounds(mes, ano);
 
     if (tipo === "fornecedores") {
@@ -50,7 +52,6 @@ export default async function rankingHandler(
         };
       });
 
-      const format = (req.query?.format as string) || "json";
       const payload = { periodo: { mes, ano, firstDay, lastDay }, tipo: "fornecedores", ranking };
       if (format === "pdf") {
         gerarRankingPDF(payload, res as ResWithHeaders);
@@ -69,21 +70,42 @@ export default async function rankingHandler(
     }
 
     // ranking de vendas (clientes) com margem bruta
+    // Usar CTE para evitar duplicação: LEFT JOIN pedido_itens multiplica linhas e inflava totais
     const [result, totalGeralR] = await Promise.all([
       database.query({
-        text: `SELECT
+        text: `WITH totais_por_entity AS (
+                 SELECT p.partner_entity_id,
+                   COUNT(DISTINCT p.id)::int AS pedidos_count,
+                   COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
+                 FROM pedidos p
+                 WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
+                   AND p.data_emissao >= $1 AND p.data_emissao < $2
+                   AND p.partner_entity_id IS NOT NULL
+                 GROUP BY p.partner_entity_id
+               ),
+               cogs_por_entity AS (
+                 SELECT p.partner_entity_id,
+                   COALESCE(SUM(pi.custo_total_item),0)::numeric(14,2) AS cogs
+                 FROM pedido_itens pi
+                 JOIN pedidos p ON p.id = pi.pedido_id
+                 WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
+                   AND p.data_emissao >= $1 AND p.data_emissao < $2
+                 GROUP BY p.partner_entity_id
+               )
+               SELECT
                  e.id AS entity_id,
                  COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), e.name) AS nome,
-                 COUNT(DISTINCT p.id)::int AS pedidos_count,
-                 COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total,
-                 COALESCE(SUM(pi.custo_total_item),0)::numeric(14,2) AS cogs
+                 t.pedidos_count,
+                 t.total,
+                 COALESCE(c.cogs, 0)::numeric(14,2) AS cogs
                FROM entities e
-               JOIN pedidos p ON p.partner_entity_id = e.id
-               LEFT JOIN pedido_itens pi ON pi.pedido_id = p.id
-               WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
+               JOIN totais_por_entity t ON t.partner_entity_id = e.id
+               LEFT JOIN cogs_por_entity c ON c.partner_entity_id = e.id
+               LEFT JOIN pedidos p ON p.partner_entity_id = e.id
+                 AND p.tipo = 'VENDA' AND p.status = 'confirmado'
                  AND p.data_emissao >= $1 AND p.data_emissao < $2
-               GROUP BY e.id, e.name
-               ORDER BY total DESC
+               GROUP BY e.id, e.name, t.pedidos_count, t.total, c.cogs
+               ORDER BY t.total DESC
                LIMIT $3`,
         values: [firstDay, lastDay, limit],
       }),
@@ -122,7 +144,6 @@ export default async function rankingHandler(
       };
     });
 
-    const format = (req.query?.format as string) || "json";
     const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
     const incluirComparacao = (format === "json" && compare) || (format !== "json" && mes > 0 && ano > 0);
     let rankingAnterior: { totalGeral: number } | null = null;

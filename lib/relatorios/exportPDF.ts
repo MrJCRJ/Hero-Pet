@@ -249,20 +249,38 @@ export function gerarFluxoCaixaPDF(
     doc.moveDown(0.5);
     doc.font("Helvetica-Bold").text("Evolução mensal");
     doc.font("Helvetica").fontSize(8);
-    doc.text("Mês", 50, doc.y);
-    doc.text("Entradas", 120, doc.y);
-    doc.text("Saídas", 180, doc.y);
-    doc.text("Saldo período", 240, doc.y);
-    doc.text("Saldo acum.", 320, doc.y);
-    doc.moveDown(0.3);
+    const evColX = [50, 115, 180, 255, 330];
+    const evColW = [60, 60, 70, 75, 80];
+    const evHeaderY = doc.y;
+    doc.text("Mês", evColX[0], evHeaderY, { width: evColW[0] });
+    doc.text("Entradas", evColX[1], evHeaderY, { width: evColW[1] });
+    doc.text("Saídas", evColX[2], evHeaderY, { width: evColW[2] });
+    doc.text("Saldo período", evColX[3], evHeaderY, { width: evColW[3] });
+    doc.text("Saldo acum.", evColX[4], evHeaderY, { width: evColW[4] });
+    doc.moveDown(0.4);
+    doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
+    doc.moveDown(0.2);
+    const evRowH = 12;
     for (const r of evolucao) {
-      if (doc.y > doc.page.height - 60) doc.addPage();
-      doc.text(String(r.mes), 50, doc.y);
-      doc.text(fmt(r.entradas), 120, doc.y);
-      doc.text(fmt(r.saidas), 180, doc.y);
-      doc.text(fmt(r.saldoPeriodo), 240, doc.y);
-      doc.text(fmt(r.saldoAcumulado), 320, doc.y);
-      doc.moveDown(0.25);
+      if (doc.y > doc.page.height - 70) {
+        doc.addPage();
+        doc.font("Helvetica").fontSize(8);
+        doc.text("Mês", evColX[0], doc.y, { width: evColW[0] });
+        doc.text("Entradas", evColX[1], doc.y, { width: evColW[1] });
+        doc.text("Saídas", evColX[2], doc.y, { width: evColW[2] });
+        doc.text("Saldo período", evColX[3], doc.y, { width: evColW[3] });
+        doc.text("Saldo acum.", evColX[4], doc.y, { width: evColW[4] });
+        doc.moveDown(0.4);
+        doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
+        doc.moveDown(0.2);
+      }
+      const rowY = doc.y;
+      doc.text(String(r.mes), evColX[0], rowY, { width: evColW[0] });
+      doc.text(fmt(r.entradas), evColX[1], rowY, { width: evColW[1] });
+      doc.text(fmt(r.saidas), evColX[2], rowY, { width: evColW[2] });
+      doc.text(fmt(r.saldoPeriodo), evColX[3], rowY, { width: evColW[3] });
+      doc.text(fmt(r.saldoAcumulado), evColX[4], rowY, { width: evColW[4] });
+      doc.y = rowY + evRowH;
     }
     doc.fontSize(10);
   }
@@ -329,31 +347,35 @@ export function gerarMargemPDF(
   doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
   doc.moveDown(0.3);
   doc.font("Helvetica");
+  const rowHeight = 14;
   for (const r of data.itens) {
     if (doc.y > doc.page.height - 80) doc.addPage();
+    const rowY = doc.y;
     const rec = Number(r.receita || 0);
     const qty = Number(r.quantidade || 1);
     const pctVend = totalReceita > 0 ? ((rec / totalReceita) * 100).toFixed(1) : "0";
     const margUnit = qty > 0 ? (Number(r.lucro || 0) / qty).toFixed(2) : "-";
-    doc.text(String(r.nome || "").slice(0, 24), 50, doc.y, { width: colW[0] });
-    doc.text(fmt(rec), 50 + colW[0], doc.y - 12, { width: colW[1] });
-    doc.text(`${pctVend}%`, 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
-    doc.text(fmt(Number(r.cogs || 0)), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
-    doc.text(fmt(Number(r.lucro || 0)), 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12, { width: colW[4] });
-    doc.text(`${Number(r.margem || 0).toFixed(1)}%`, 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y - 12, { width: colW[5] });
-    doc.text(margUnit === "-" ? "-" : fmt(Number(margUnit)), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], doc.y - 12);
-    doc.moveDown(0.4);
+    const margemStr = r.margem != null ? `${Number(r.margem).toFixed(1)}%` : "N/D";
+    doc.text(String(r.nome || "-").slice(0, 28), 50, rowY, { width: colW[0] });
+    doc.text(fmt(rec), 50 + colW[0], rowY, { width: colW[1] });
+    doc.text(`${pctVend}%`, 50 + colW[0] + colW[1], rowY, { width: colW[2] });
+    doc.text(fmt(Number(r.cogs || 0)), 50 + colW[0] + colW[1] + colW[2], rowY, { width: colW[3] });
+    doc.text(fmt(Number(r.lucro || 0)), 50 + colW[0] + colW[1] + colW[2] + colW[3], rowY, { width: colW[4] });
+    doc.text(margemStr, 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], rowY, { width: colW[5] });
+    doc.text(margUnit === "-" ? "-" : fmt(Number(margUnit)), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], rowY, { width: colW[6] });
+    doc.y = rowY + rowHeight;
   }
   doc.moveDown(0.3);
   doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
   doc.moveDown(0.2);
   doc.font("Helvetica-Bold");
-  doc.text("TOTAL", 50, doc.y);
-  doc.text(fmt(totalReceita), 50 + colW[0], doc.y - 12, { width: colW[1] });
-  doc.text("100%", 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
-  doc.text(fmt(totalCustos), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
-  doc.text(fmt(totalLucro), 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12, { width: colW[4] });
-  doc.text(totalReceita > 0 ? `${((totalLucro / totalReceita) * 100).toFixed(1)}%` : "-", 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y - 12);
+  const footerY = doc.y;
+  doc.text("TOTAL", 50, footerY);
+  doc.text(fmt(totalReceita), 50 + colW[0], footerY, { width: colW[1] });
+  doc.text("100%", 50 + colW[0] + colW[1], footerY, { width: colW[2] });
+  doc.text(fmt(totalCustos), 50 + colW[0] + colW[1] + colW[2], footerY, { width: colW[3] });
+  doc.text(fmt(totalLucro), 50 + colW[0] + colW[1] + colW[2] + colW[3], footerY, { width: colW[4] });
+  doc.text(totalReceita > 0 ? `${((totalLucro / totalReceita) * 100).toFixed(1)}%` : "-", 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], footerY, { width: colW[5] });
   doc.end();
 }
 
@@ -411,33 +433,36 @@ export function gerarRankingPDF(
   doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
   doc.moveDown(0.3);
   doc.font("Helvetica");
+  const rowHeight = 14;
   data.ranking.forEach((r, i) => {
     if (doc.y > doc.page.height - 80) doc.addPage();
+    const rowY = doc.y;
     const total = Number(r.total || 0);
     const pct = totalGeral > 0 ? ((total / totalGeral) * 100).toFixed(1) : "-";
     const ticket = Number(r.pedidos_count || 0) > 0 ? (total / Number(r.pedidos_count || 1)).toFixed(2) : "-";
     const margem = r.margemBruta != null ? `${Number(r.margemBruta).toFixed(1)}%` : "N/D";
-    doc.text(String(i + 1), 50, doc.y);
-    doc.text(String(r.nome || "").slice(0, isVendas ? 28 : 38), 50 + colW[0], doc.y - 12, { width: colW[1] });
-    doc.text(String(r.pedidos_count || 0), 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
-    doc.text(fmt(total), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
-    doc.text(`${pct}%`, 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12, { width: colW[4] });
+    doc.text(String(i + 1), 50, rowY);
+    doc.text(String(r.nome || "-").slice(0, isVendas ? 28 : 38), 50 + colW[0], rowY, { width: colW[1] });
+    doc.text(String(r.pedidos_count || 0), 50 + colW[0] + colW[1], rowY, { width: colW[2] });
+    doc.text(fmt(total), 50 + colW[0] + colW[1] + colW[2], rowY, { width: colW[3] });
+    doc.text(`${pct}%`, 50 + colW[0] + colW[1] + colW[2] + colW[3], rowY, { width: colW[4] });
     if (isVendas) {
-      doc.text(ticket === "-" ? "-" : fmt(Number(ticket)), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y - 12, { width: colW[5] });
-      doc.text(margem, 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], doc.y - 12);
+      doc.text(ticket === "-" ? "-" : fmt(Number(ticket)), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], rowY, { width: colW[5] });
+      doc.text(margem, 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], rowY, { width: 50 });
     }
-    doc.moveDown(0.4);
+    doc.y = rowY + rowHeight;
   });
   doc.moveDown(0.3);
   doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
   doc.moveDown(0.2);
   doc.font("Helvetica-Bold");
-  doc.text("TOTAL GERAL", 50, doc.y);
-  doc.text(String(totalPedidos), 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
-  doc.text(fmt(totalGeral), 50 + colW[0] + colW[1] + colW[2], doc.y - 12, { width: colW[3] });
-  doc.text("100%", 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12);
+  const footerY = doc.y;
+  doc.text("TOTAL GERAL", 50, footerY);
+  doc.text(String(totalPedidos), 50 + colW[0] + colW[1], footerY, { width: colW[2] });
+  doc.text(fmt(totalGeral), 50 + colW[0] + colW[1] + colW[2], footerY, { width: colW[3] });
+  doc.text("100%", 50 + colW[0] + colW[1] + colW[2] + colW[3], footerY);
   if (isVendas) {
-    doc.text(fmt(ticketMedio), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y - 12);
+    doc.text(fmt(ticketMedio), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], footerY, { width: colW[5] });
   }
   doc.end();
 }
