@@ -16,6 +16,9 @@ import { ViewModeToggle, type ViewMode } from "./shared/ViewModeToggle";
 
 export interface RankingViewProps {
   ranking: Array<Record<string, unknown>>;
+  totalGeral?: number;
+  totalPedidosGeral?: number;
+  ticketMedioGeral?: number;
   tipo: "vendas" | "fornecedores";
   // eslint-disable-next-line no-unused-vars -- callback type: param required by signature
   onTipoChange: (tipo: "vendas" | "fornecedores") => void;
@@ -23,7 +26,7 @@ export interface RankingViewProps {
   ano: number;
 }
 
-export function RankingView({ ranking, tipo, onTipoChange, mes, ano }: RankingViewProps) {
+export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedioGeral, tipo, onTipoChange, mes, ano }: RankingViewProps) {
   const titulo =
     tipo === "vendas" ? "Ranking de Vendas (clientes)" : "Ranking de Fornecedores";
   const colLabel = tipo === "vendas" ? "Cliente" : "Fornecedor";
@@ -34,9 +37,12 @@ export function RankingView({ ranking, tipo, onTipoChange, mes, ano }: RankingVi
       ranking.slice(0, 10).map((r) => ({
         nome: String(r.nome || "").slice(0, 25),
         total: Number(r.total || 0),
+        participacao: totalGeral && totalGeral > 0 ? Number((Number(r.total || 0) / totalGeral * 100).toFixed(1)) : 0,
       })),
-    [ranking],
+    [ranking, totalGeral],
   );
+  const totalTop10 = ranking.slice(0, 10).reduce((s, r) => s + Number(r.total || 0), 0);
+  const concentracaoTop10 = totalGeral && totalGeral > 0 ? ((totalTop10 / totalGeral) * 100).toFixed(1) : null;
 
   return (
     <div className="space-y-4">
@@ -72,7 +78,24 @@ export function RankingView({ ranking, tipo, onTipoChange, mes, ano }: RankingVi
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        {tipo === "vendas" && totalGeral != null && (
+          <KPICard
+            label="Total vendas (período)"
+            value={formatBrl(totalGeral)}
+            subtitle={totalPedidosGeral ? `${totalPedidosGeral} pedidos` : undefined}
+          />
+        )}
+        {tipo === "vendas" && ticketMedioGeral != null && ticketMedioGeral > 0 && (
+          <KPICard label="Ticket médio geral" value={formatBrl(ticketMedioGeral)} />
+        )}
+        {tipo === "vendas" && concentracaoTop10 && (
+          <KPICard
+            label="Top 10 = % do total"
+            value={`${concentracaoTop10}%`}
+            subtitle={`${formatBrl(totalTop10)} de ${formatBrl(totalGeral || 0)}`}
+          />
+        )}
         <KPICard
           label="Total Top 1"
           value={topRanking[0] ? formatBrl(topRanking[0].total) : "-"}
@@ -118,6 +141,9 @@ export function RankingView({ ranking, tipo, onTipoChange, mes, ano }: RankingVi
               <th className="py-2 text-left">{colLabel}</th>
               <th className="py-2 text-right">Pedidos</th>
               <th className="py-2 text-right">Total</th>
+              {tipo === "vendas" && <th className="py-2 text-right">% Total</th>}
+              {tipo === "vendas" && <th className="py-2 text-right">Ticket médio</th>}
+              {tipo === "vendas" && <th className="py-2 text-right">Margem %</th>}
             </tr>
           </thead>
           <tbody>
@@ -127,9 +153,36 @@ export function RankingView({ ranking, tipo, onTipoChange, mes, ano }: RankingVi
                 <td className="py-2">{String(r.nome)}</td>
                 <td className="py-2 text-right">{Number(r.pedidos_count || 0)}</td>
                 <td className="py-2 text-right">{formatBrl(Number(r.total || 0))}</td>
+                {tipo === "vendas" && (
+                  <td className="py-2 text-right">
+                    {totalGeral && totalGeral > 0
+                      ? `${((Number(r.total || 0) / totalGeral) * 100).toFixed(1)}%`
+                      : Number(r.participacaoTotal) != null
+                        ? `${Number(r.participacaoTotal).toFixed(1)}%`
+                        : "-"}
+                  </td>
+                )}
+                {tipo === "vendas" && (
+                  <td className="py-2 text-right">{formatBrl(Number(r.ticketMedio ?? 0))}</td>
+                )}
+                {tipo === "vendas" && (
+                  <td className="py-2 text-right">{Number(r.margemBruta ?? 0).toFixed(1)}%</td>
+                )}
               </tr>
             ))}
           </tbody>
+          {tipo === "vendas" && totalGeral != null && (
+            <tfoot>
+              <tr className="border-t-2 border-[var(--color-border)] font-semibold">
+                <td className="py-2" colSpan={2}>Total geral</td>
+                <td className="py-2 text-right">{totalPedidosGeral ?? ranking.reduce((s, r) => s + Number(r.pedidos_count || 0), 0)}</td>
+                <td className="py-2 text-right">{formatBrl(totalGeral)}</td>
+                <td className="py-2 text-right">100%</td>
+                <td className="py-2 text-right">{ticketMedioGeral ? formatBrl(ticketMedioGeral) : "-"}</td>
+                <td className="py-2" />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
       )}

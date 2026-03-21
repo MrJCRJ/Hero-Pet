@@ -11,7 +11,7 @@ export function periodoFilename(mes: number, ano: number): string {
 /**
  * Calcula firstDay e lastDay para relatórios.
  * mes=0 = todos os meses do ano
- * ano=0 = ano todo (todos os anos / histórico completo)
+ * ano=0 = últimos 12 meses (evita uso de datas irreais como 2000-2031)
  */
 export function getReportBounds(mes: number, ano: number): {
   firstDay: string;
@@ -20,11 +20,16 @@ export function getReportBounds(mes: number, ano: number): {
   isAllTime: boolean;
 } {
   if (ano === 0) {
+    const d = new Date();
+    const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    const start = new Date(d.getFullYear(), d.getMonth() - 11, 1);
+    const ymd = (x: Date) =>
+      `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
     return {
-      firstDay: "2000-01-01",
-      lastDay: "2031-01-01", // exclusivo
+      firstDay: ymd(start),
+      lastDay: ymd(end),
       isFullYear: false,
-      isAllTime: true,
+      isAllTime: false,
     };
   }
   if (mes === 0) {

@@ -161,7 +161,7 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
 
       {isHistorioCompleto && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-          Os indicadores de crescimento mês a mês não são exibidos no histórico completo. Selecione
+          Os indicadores de crescimento mês a mês não são exibidos em &quot;Últimos 12 meses&quot;. Selecione
           um período específico para visualizá-los.
         </p>
       )}

@@ -9,7 +9,7 @@ const MESES = [
 ];
 
 function periodoLabel(mes: number, ano: number): string {
-  if (ano === 0) return "Histórico completo";
+  if (ano === 0) return "Últimos 12 meses";
   if (mes === 0 || !mes) return `Ano ${ano} (todos os meses)`;
   return `${MESES[mes - 1]} de ${ano}`;
 }
@@ -20,7 +20,7 @@ function mesSelecionadoLabel(mes: number): string {
 }
 
 function anoSelecionadoLabel(ano: number): string {
-  if (ano === 0) return "Ano todo (histórico completo)";
+  if (ano === 0) return "Últimos 12 meses";
   return String(ano);
 }
 
@@ -115,9 +115,13 @@ export function gerarFluxoCaixaPDF(
   data: {
     periodo: { mes: number; ano: number; firstDay?: string; lastDay?: string };
     fluxo: {
+      saldoInicial?: number;
+      saldoFinal?: number;
       entradas: Record<string, number>;
       saidas: Record<string, number>;
       saldo: number;
+      fluxoOperacional?: number;
+      fluxoFinanciamento?: number;
       valorEstoque?: number;
       valorPresumidoVendaEstoque?: number;
     };
@@ -145,6 +149,10 @@ export function gerarFluxoCaixaPDF(
     doc.text(`Aportes de capital: ${fmt(e?.aportesCapital || 0)}`, { indent: 20 });
   }
   doc.text(`Total: ${fmt(e?.total || 0)}`, { indent: 20 });
+  if (data.fluxo.saldoInicial != null) {
+    doc.moveDown(0.3);
+    doc.font("Helvetica").text(`Saldo inicial: ${fmt(data.fluxo.saldoInicial)}`, { indent: 20 });
+  }
   doc.moveDown(0.5);
   doc.font("Helvetica-Bold").text("Saídas");
   doc.font("Helvetica");
@@ -153,6 +161,14 @@ export function gerarFluxoCaixaPDF(
   doc.text(`Total: ${fmt(s?.total || 0)}`, { indent: 20 });
   doc.moveDown(0.5);
   doc.font("Helvetica-Bold").text(`Saldo do período: ${fmt(data.fluxo.saldo)}`);
+  if (data.fluxo.saldoFinal != null) {
+    doc.font("Helvetica").text(`Saldo final: ${fmt(data.fluxo.saldoFinal)}`, { indent: 20 });
+  }
+  if (data.fluxo.fluxoOperacional != null || data.fluxo.fluxoFinanciamento != null) {
+    doc.moveDown(0.3);
+    doc.font("Helvetica").text(`Fluxo operacional: ${fmt(data.fluxo.fluxoOperacional ?? 0)} | Financiamento: ${fmt(data.fluxo.fluxoFinanciamento ?? 0)}`, { indent: 20 });
+  }
+  doc.moveDown(0.5);
   const valorEstoque = data.fluxo.valorEstoque ?? 0;
   const valorPresumidoVenda = data.fluxo.valorPresumidoVendaEstoque ?? 0;
   doc.moveDown(0.3);
@@ -164,6 +180,7 @@ export function gerarFluxoCaixaPDF(
   doc.text("• Vendas: vendas à vista. Parceladas entram em Promissórias recebidas quando pagas.", { indent: 10 });
   doc.text("• Valor em estoque (custo): custo médio × saldo atual.", { indent: 10 });
   doc.text("• Valor presumido de venda: preço tabela ou (custo + markup) × saldo atual.", { indent: 10 });
+  doc.text("• Diferente do DRE: aqui vendas entram quando o caixa recebe (à vista ou quando promissória é paga).", { indent: 10 });
   doc.fillColor("#000000");
   doc.end();
 }

@@ -19,7 +19,7 @@ export default async function margemProdutoHandler(
     const now = new Date();
     const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
     const ano = Number(req.query?.ano) ?? now.getFullYear();
-    const limit = Math.min(50, Math.max(5, Number(req.query?.limit) || 20));
+    const limit = Math.min(100, Math.max(5, Number(req.query?.limit) || 50));
     const { firstDay, lastDay } = getReportBounds(mes, ano);
 
     const result = await database.query({
@@ -43,11 +43,19 @@ export default async function margemProdutoHandler(
       values: [firstDay, lastDay, limit],
     });
 
+    const totalReceita = (result.rows as Array<Record<string, unknown>>).reduce(
+      (s, r) => s + Number(r.receita || 0),
+      0,
+    );
+
     const itens = (result.rows as Array<Record<string, unknown>>).map((r) => {
       const receita = Number(r.receita || 0);
       const cogs = Number(r.cogs || 0);
       const lucro = Number(r.lucro || 0);
+      const quantidade = Number(r.quantidade || 0);
       const margem = receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
+      const participacaoVendas = totalReceita > 0 ? Number(((receita / totalReceita) * 100).toFixed(2)) : 0;
+      const margemContribuicaoUnit = quantidade > 0 ? Number((lucro / quantidade).toFixed(2)) : 0;
       return {
         produto_id: r.produto_id,
         nome: r.nome,
@@ -56,12 +64,18 @@ export default async function margemProdutoHandler(
         cogs,
         lucro,
         margem,
-        quantidade: Number(r.quantidade || 0),
+        quantidade,
+        participacaoVendas,
+        margemContribuicaoUnit,
       };
     });
 
     const format = (req.query?.format as string) || "json";
-    const payload = { periodo: { mes, ano, firstDay, lastDay }, itens };
+    const payload = {
+      periodo: { mes, ano, firstDay, lastDay },
+      itens,
+      totalReceita,
+    };
 
     if (format === "pdf") {
       gerarMargemPDF(payload, res as ResWithHeaders);

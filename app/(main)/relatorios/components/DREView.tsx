@@ -70,7 +70,7 @@ export function DREView({ dre, dreAnterior, mes, ano }: DREViewProps) {
 
   const periodoLabel =
     ano === 0
-      ? "Histórico completo"
+      ? "Últimos 12 meses"
       : mes === 0 || !mes
         ? `Ano ${ano} (todos os meses)`
         : `${new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long" })}/${ano}`;
@@ -125,7 +125,7 @@ export function DREView({ dre, dreAnterior, mes, ano }: DREViewProps) {
       </div>
 
       {/* KPIs em destaque */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <KPICard
           label="Receita total"
           value={formatBrl(receitas)}
@@ -155,6 +155,11 @@ export function DREView({ dre, dreAnterior, mes, ano }: DREViewProps) {
           label="Lucro operacional"
           value={formatBrl(lucroOperacional)}
           subtitle={`Margem ${margemOperacional.toFixed(1)}%`}
+        />
+        <KPICard
+          label="Despesas / Receita"
+          value={`${Number(dre.despesasSobreReceita ?? (receitas > 0 ? (despesas / receitas) * 100 : 0)).toFixed(1)}%`}
+          subtitle="Indicador de eficiência"
         />
       </div>
 

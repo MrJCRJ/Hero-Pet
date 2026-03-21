@@ -44,13 +44,19 @@ export default async function dreHandler(
     ]);
 
     const receitas = Number((vendasR.rows[0] as Record<string, unknown>)?.total || 0);
+    const receitaBruta = receitas;
+    const receitaLiquida = receitas;
     const custosVendas = Number((cogsR.rows[0] as Record<string, unknown>)?.cogs || 0);
     const despesas = Number((despesasR.rows[0] as Record<string, unknown>)?.total || 0);
     const impostos = 0; // não há campo de impostos no modelo atual
     const lucroBruto = Number((receitas - custosVendas).toFixed(2));
     const lucroOperacional = Number((lucroBruto - despesas - impostos).toFixed(2));
+    const ebitda = lucroOperacional; // sem depreciação/amortização no modelo
     const margemBruta = receitas > 0 ? Number(((lucroBruto / receitas) * 100).toFixed(2)) : 0;
     const margemOperacional = receitas > 0 ? Number(((lucroOperacional / receitas) * 100).toFixed(2)) : 0;
+    const margemEbitda = receitas > 0 ? Number(((ebitda / receitas) * 100).toFixed(2)) : 0;
+    const despesasSobreReceita = receitas > 0 ? Number(((despesas / receitas) * 100).toFixed(2)) : 0;
+    const custosSobreReceita = receitas > 0 ? Number(((custosVendas / receitas) * 100).toFixed(2)) : 0;
 
     const format = (req.query?.format as string) || "json";
 
@@ -102,13 +108,19 @@ export default async function dreHandler(
       periodo: { mes, ano, firstDay, lastDay },
       dre: {
         receitas,
+        receitaBruta,
+        receitaLiquida,
         custosVendas,
         lucroBruto,
         despesas,
         impostos,
         lucroOperacional,
+        ebitda,
         margemBruta,
         margemOperacional,
+        margemEbitda,
+        despesasSobreReceita,
+        custosSobreReceita,
       },
       ...(format === "json" && dreAnterior ? { dreAnterior } : {}),
     };

@@ -44,10 +44,16 @@ export async function getSummaryHandler(
     let label: string;
 
     if (typeof month === "string" && month === "all") {
-      startYMD = "2000-01-01";
-      nextStartYMD = "2031-01-01";
-      prevStartYMD = "2000-01-01";
-      label = "Todos";
+      const d = new Date();
+      const start = new Date(d.getFullYear(), d.getMonth() - 11, 1);
+      const nextStart = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const prevStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+      const ymd = (x: Date) =>
+        `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-01`;
+      startYMD = ymd(start);
+      nextStartYMD = ymd(nextStart);
+      prevStartYMD = ymd(prevStart);
+      label = "Últimos 12 meses";
     } else if (typeof month === "string" && /^\d{4}$/.test(month)) {
       const y = Number(month);
       startYMD = `${y}-01-01`;

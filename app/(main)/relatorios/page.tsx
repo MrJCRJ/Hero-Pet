@@ -175,7 +175,7 @@ export default function RelatoriosPage() {
             onChange={(e) => setAno(Number(e.target.value))}
             className="rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1 text-sm"
           >
-            <option value={0}>Ano todo</option>
+            <option value={0}>Últimos 12 meses</option>
             {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((y) => (
               <option key={y} value={y}>
                 {y}
@@ -249,7 +249,8 @@ export default function RelatoriosPage() {
           )}
           {tab === "margem" && "itens" in data && (
             <MargemView
-              itens={(data as { itens: Array<Record<string, unknown>> }).itens}
+              itens={(data as { itens: Array<Record<string, unknown>>; totalReceita?: number }).itens}
+              totalReceita={(data as { totalReceita?: number }).totalReceita}
               mes={mes}
               ano={ano}
             />
@@ -257,6 +258,9 @@ export default function RelatoriosPage() {
           {tab === "ranking" && "ranking" in data && (
             <RankingView
               ranking={(data as { ranking: Array<Record<string, unknown>> }).ranking}
+              totalGeral={(data as { totalGeral?: number }).totalGeral}
+              totalPedidosGeral={(data as { totalPedidosGeral?: number }).totalPedidosGeral}
+              ticketMedioGeral={(data as { ticketMedioGeral?: number }).ticketMedioGeral}
               tipo={tipoRanking}
               onTipoChange={setTipoRanking}
               mes={mes}
