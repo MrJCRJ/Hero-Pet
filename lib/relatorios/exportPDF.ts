@@ -76,6 +76,8 @@ export function gerarDREPDF(
   data: {
     periodo: { mes: number; ano: number; firstDay?: string; lastDay?: string };
     dre: Record<string, number>;
+    dreAnterior?: Record<string, number> | null;
+    indicadores?: { pmr: number | null; pmp: number | null; giroEstoque: number | null; dve: number | null } | null;
   },
   // eslint-disable-next-line no-unused-vars -- params são parte da assinatura
   res: ApiResLike & { setHeader: (key: string, val: string) => void }
@@ -112,6 +114,28 @@ export function gerarDREPDF(
   const despPct = d.despesasSobreReceita ?? (receitas > 0 ? ((d.despesas || 0) / receitas * 100) : 0);
   doc.text(`Custos / Receita: ${Number(custosPct).toFixed(1)}%`, { indent: 20 });
   doc.text(`Despesas / Receita: ${Number(despPct).toFixed(1)}%`, { indent: 20 });
+  const ind = data.indicadores;
+  if (ind) {
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("Indicadores gerenciais");
+    doc.font("Helvetica");
+    doc.text(`PMR (prazo médio recebimento): ${ind.pmr != null ? `${ind.pmr} dias` : "N/D"}`, { indent: 20 });
+    doc.text(`PMP (prazo médio pagamento): ${ind.pmp != null ? `${ind.pmp} dias` : "N/D"}`, { indent: 20 });
+    doc.text(`Giro de estoque: ${ind.giroEstoque != null ? `${ind.giroEstoque}×/ano` : "N/D"}`, { indent: 20 });
+    doc.text(`DVE (dias venda em estoque): ${ind.dve != null ? `${ind.dve} dias` : "N/D"}`, { indent: 20 });
+  }
+  const dreAnt = data.dreAnterior;
+  if (dreAnt && dreAnt.receitas > 0) {
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("Comparação com mês anterior");
+    doc.font("Helvetica");
+    const rec = d.receitas || 0;
+    const lucOp = d.lucroOperacional || 0;
+    const varReceita = ((rec - dreAnt.receitas) / dreAnt.receitas) * 100;
+    doc.text(`Receitas: ${varReceita >= 0 ? "+" : ""}${Number(varReceita).toFixed(1)}% (anterior: ${fmt(dreAnt.receitas)})`, { indent: 20 });
+    const varLucroOp = dreAnt.lucroOperacional !== 0 ? ((lucOp - dreAnt.lucroOperacional) / Math.abs(dreAnt.lucroOperacional)) * 100 : 0;
+    doc.text(`Lucro operacional: ${varLucroOp >= 0 ? "+" : ""}${Number(varLucroOp).toFixed(1)}% (anterior: ${fmt(dreAnt.lucroOperacional)})`, { indent: 20 });
+  }
   doc.moveDown(1);
   doc.fontSize(9).font("Helvetica").fillColor("#555555");
   doc.text("Glossário:", { continued: false });
@@ -138,6 +162,8 @@ export function gerarFluxoCaixaPDF(
       valorPresumidoVendaEstoque?: number;
       evolucaoMensal?: Array<{ mes: string; entradas: number; saidas: number; saldoPeriodo: number; saldoAcumulado: number }>;
       conciliacao?: { lucroOperacional: number; variacaoContasReceber: number; variacaoEstoque: number; contasReceberInicial: number; contasReceberFinal: number };
+      fluxoAnterior?: { saldo: number; entradas: number; saidas: number };
+      indicadores?: { pmr: number | null; pmp: number | null; giroEstoque: number | null; dve: number | null };
     };
   },
   // eslint-disable-next-line no-unused-vars -- params são parte da assinatura
@@ -183,6 +209,26 @@ export function gerarFluxoCaixaPDF(
     doc.font("Helvetica").text(`Fluxo operacional: ${fmt(data.fluxo.fluxoOperacional ?? 0)} | Financiamento: ${fmt(data.fluxo.fluxoFinanciamento ?? 0)}`, { indent: 20 });
   }
   doc.moveDown(0.5);
+  const ind = data.fluxo.indicadores;
+  if (ind) {
+    doc.font("Helvetica-Bold").text("Indicadores gerenciais");
+    doc.font("Helvetica");
+    doc.text(`PMR (prazo médio recebimento): ${ind.pmr != null ? `${ind.pmr} dias` : "N/D"}`, { indent: 20 });
+    doc.text(`PMP (prazo médio pagamento): ${ind.pmp != null ? `${ind.pmp} dias` : "N/D"}`, { indent: 20 });
+    doc.text(`Giro de estoque: ${ind.giroEstoque != null ? `${ind.giroEstoque}×/ano` : "N/D"}`, { indent: 20 });
+    doc.text(`DVE (dias venda em estoque): ${ind.dve != null ? `${ind.dve} dias` : "N/D"}`, { indent: 20 });
+    doc.moveDown(0.5);
+  }
+  const fluxoAnt = data.fluxo.fluxoAnterior;
+  if (fluxoAnt) {
+    doc.font("Helvetica-Bold").text("Comparação com ano anterior");
+    doc.font("Helvetica");
+    doc.text(`Fluxo operacional ano anterior: ${fmt(fluxoAnt.saldo)}`, { indent: 20 });
+    const fluxoOp = data.fluxo.fluxoOperacional ?? 0;
+    const variacao = fluxoOp - fluxoAnt.saldo;
+    doc.text(`Variação: ${variacao >= 0 ? "+" : ""}${fmt(variacao)}`, { indent: 20 });
+    doc.moveDown(0.5);
+  }
   const valorEstoque = data.fluxo.valorEstoque ?? 0;
   const valorPresumidoVenda = data.fluxo.valorPresumidoVendaEstoque ?? 0;
   const conc = data.fluxo.conciliacao;
@@ -236,6 +282,7 @@ export function gerarMargemPDF(
     periodo: { mes: number; ano: number; firstDay?: string; lastDay?: string };
     itens: Array<Record<string, unknown>>;
     totalReceita?: number;
+    margemAnterior?: { totalReceita: number; lucroTotal: number } | null;
   },
   // eslint-disable-next-line no-unused-vars -- params são parte da assinatura
   res: ApiResLike & { setHeader: (key: string, val: string) => void }
@@ -264,6 +311,11 @@ export function gerarMargemPDF(
   const colW = [150, 70, 55, 70, 55, 55, 60];
   doc.fontSize(9).font("Helvetica");
   doc.text(`Total vendas: ${fmt(totalReceita)} | ${data.itens.length} produtos | Margem média ponderada: ${margemMediaPonderada.toFixed(1)}%`, { indent: 0 });
+  const margAnt = data.margemAnterior;
+  if (margAnt && margAnt.totalReceita > 0) {
+    const crescVendas = ((totalReceita - margAnt.totalReceita) / margAnt.totalReceita) * 100;
+    doc.text(`Crescimento vendas vs ano anterior: ${crescVendas >= 0 ? "+" : ""}${Number(crescVendas).toFixed(1)}% (anterior: ${fmt(margAnt.totalReceita)})`, { indent: 0 });
+  }
   doc.moveDown(0.4);
   doc.font("Helvetica-Bold");
   doc.text("Produto", 50, doc.y);
@@ -313,6 +365,7 @@ export function gerarRankingPDF(
     totalGeral?: number;
     totalPedidosGeral?: number;
     ticketMedioGeral?: number;
+    rankingAnterior?: { totalGeral: number } | null;
   },
   // eslint-disable-next-line no-unused-vars -- params são parte da assinatura
   res: ApiResLike & { setHeader: (key: string, val: string) => void }
@@ -336,6 +389,11 @@ export function gerarRankingPDF(
   const totalTop10 = data.ranking.slice(0, 10).reduce((s, r) => s + Number(r.total || 0), 0);
   const pctTop10 = totalGeral > 0 ? ((totalTop10 / totalGeral) * 100).toFixed(1) : "0";
   doc.text(`Top ${data.ranking.length} ${entidadeLabel} no ranking. Top 10: ${fmt(totalTop10)} (${pctTop10}% do total).`, { indent: 0 });
+  const rankAnt = data.rankingAnterior;
+  if (rankAnt && data.tipo === "vendas" && rankAnt.totalGeral > 0 && totalGeral != null) {
+    const cresc = ((totalGeral - rankAnt.totalGeral) / rankAnt.totalGeral) * 100;
+    doc.text(`Crescimento vs ano anterior: ${cresc >= 0 ? "+" : ""}${Number(cresc).toFixed(1)}% (anterior: ${fmt(rankAnt.totalGeral)})`, { indent: 0 });
+  }
   doc.moveDown(0.4);
   const isVendas = data.tipo === "vendas";
   const colW = isVendas ? [35, 160, 55, 80, 50, 65, 55] : [35, 200, 80, 100];

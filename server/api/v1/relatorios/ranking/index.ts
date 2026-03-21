@@ -124,8 +124,9 @@ export default async function rankingHandler(
 
     const format = (req.query?.format as string) || "json";
     const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
+    const incluirComparacao = (format === "json" && compare) || (format !== "json" && mes > 0 && ano > 0);
     let rankingAnterior: { totalGeral: number } | null = null;
-    if (format === "json" && compare && mes > 0 && ano > 0) {
+    if (incluirComparacao) {
       const anoAnt = ano - 1;
       const { firstDay: fa, lastDay: la } = getReportBounds(mes, anoAnt);
       const antR = await database.query({

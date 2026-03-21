@@ -21,6 +21,8 @@ function fmt(n: number) {
 export async function gerarDREExcel(data: {
   periodo: { mes: number; ano: number };
   dre: Record<string, number>;
+  dreAnterior?: Record<string, number> | null;
+  indicadores?: { pmr: number | null; pmp: number | null; giroEstoque: number | null; dve: number | null } | null;
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("DRE");
@@ -38,6 +40,25 @@ export async function gerarDREExcel(data: {
   ws.addRow(["Indicadores de eficiência"]).font = { bold: true };
   ws.addRow(["Custos / Receita", `${d.custosSobreReceita ?? 0}%`]);
   ws.addRow(["Despesas / Receita", `${d.despesasSobreReceita ?? 0}%`]);
+  const ind = data.indicadores;
+  if (ind) {
+    ws.addRow([]);
+    ws.addRow(["Indicadores gerenciais"]).font = { bold: true };
+    ws.addRow(["PMR (dias)", ind.pmr != null ? ind.pmr : "N/D"]);
+    ws.addRow(["PMP (dias)", ind.pmp != null ? ind.pmp : "N/D"]);
+    ws.addRow(["Giro estoque", ind.giroEstoque != null ? ind.giroEstoque : "N/D"]);
+    ws.addRow(["DVE (dias)", ind.dve != null ? ind.dve : "N/D"]);
+  }
+  const dreAnt = data.dreAnterior;
+  if (dreAnt && dreAnt.receitas > 0) {
+    ws.addRow([]);
+    ws.addRow(["Comparação mês anterior"]).font = { bold: true };
+    const rec = d.receitas || 0;
+    const varRec = ((rec - dreAnt.receitas) / dreAnt.receitas) * 100;
+    ws.addRow(["Variação receitas", `${varRec >= 0 ? "+" : ""}${Number(varRec).toFixed(1)}%`]);
+    ws.addRow(["Receitas anterior", fmt(dreAnt.receitas)]);
+    ws.addRow(["Lucro oper. anterior", fmt(dreAnt.lucroOperacional)]);
+  }
   ws.getColumn(2).width = 22;
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
@@ -57,6 +78,8 @@ export async function gerarFluxoCaixaExcel(data: {
     valorPresumidoVendaEstoque?: number;
     evolucaoMensal?: Array<{ mes: string; entradas: number; saidas: number; saldoPeriodo: number; saldoAcumulado: number }>;
     conciliacao?: { lucroOperacional: number; variacaoContasReceber: number; variacaoEstoque: number };
+    fluxoAnterior?: { saldo: number; entradas: number; saidas: number };
+    indicadores?: { pmr: number | null; pmp: number | null; giroEstoque: number | null; dve: number | null };
   };
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -105,6 +128,23 @@ export async function gerarFluxoCaixaExcel(data: {
   ws.addRow([]);
   ws.addRow(["Valor em estoque (custo)", fmt(data.fluxo.valorEstoque ?? 0)]);
   ws.addRow(["Valor presumido de venda do estoque", fmt(data.fluxo.valorPresumidoVendaEstoque ?? 0)]);
+  const ind = data.fluxo.indicadores;
+  if (ind) {
+    ws.addRow([]);
+    ws.addRow(["Indicadores gerenciais"]).font = { bold: true };
+    ws.addRow(["PMR (dias)", ind.pmr != null ? ind.pmr : "N/D"]);
+    ws.addRow(["PMP (dias)", ind.pmp != null ? ind.pmp : "N/D"]);
+    ws.addRow(["Giro estoque", ind.giroEstoque != null ? ind.giroEstoque : "N/D"]);
+    ws.addRow(["DVE (dias)", ind.dve != null ? ind.dve : "N/D"]);
+  }
+  const fluxoAnt = data.fluxo.fluxoAnterior;
+  if (fluxoAnt) {
+    ws.addRow([]);
+    ws.addRow(["Comparação ano anterior"]).font = { bold: true };
+    ws.addRow(["Fluxo oper. anterior", fmt(fluxoAnt.saldo)]);
+    const fluxoOp = data.fluxo.fluxoOperacional ?? 0;
+    ws.addRow(["Variação", fmt(fluxoOp - fluxoAnt.saldo)]);
+  }
   if (data.fluxo.evolucaoMensal && data.fluxo.evolucaoMensal.length > 0) {
     ws.addRow([]);
     ws.addRow(["Evolução mensal", "Entradas", "Saídas", "Saldo período", "Saldo acumulado"]).font = { bold: true };
@@ -120,12 +160,18 @@ export async function gerarMargemExcel(data: {
   periodo: { mes: number; ano: number };
   itens: Array<Record<string, unknown>>;
   totalReceita?: number;
+  margemAnterior?: { totalReceita: number; lucroTotal: number } | null;
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Margem");
   const totalRec = data.totalReceita ?? data.itens.reduce((s, r) => s + Number(r.receita || 0), 0);
   ws.addRow([`Margem por Produto — ${periodoLabel(data.periodo.mes, data.periodo.ano)}`]).font = { bold: true };
   ws.addRow([`Total vendas: ${fmt(totalRec)}`]);
+  const margAnt = data.margemAnterior;
+  if (margAnt && margAnt.totalReceita > 0) {
+    const cresc = ((totalRec - margAnt.totalReceita) / margAnt.totalReceita) * 100;
+    ws.addRow([`Crescimento vendas vs ano anterior: ${cresc >= 0 ? "+" : ""}${Number(cresc).toFixed(1)}% (anterior: ${fmt(margAnt.totalReceita)})`]);
+  }
   ws.addRow([]);
   ws.addRow(["Produto", "Categoria", "Receita", "% Vendas", "Custos", "Lucro", "Margem %", "Marg. unit."]).font = { bold: true };
   for (const r of data.itens) {
@@ -157,6 +203,7 @@ export async function gerarRankingExcel(data: {
   totalGeral?: number;
   totalPedidosGeral?: number;
   ticketMedioGeral?: number;
+  rankingAnterior?: { totalGeral: number } | null;
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Ranking");
@@ -168,6 +215,11 @@ export async function gerarRankingExcel(data: {
     const totalTop10 = data.ranking.slice(0, 10).reduce((s, r) => s + Number(r.total || 0), 0);
     const pctTop10 = data.totalGeral > 0 ? ((totalTop10 / data.totalGeral) * 100).toFixed(1) : "0";
     ws.addRow([`Top 10 representam ${pctTop10}% do total (${fmt(totalTop10)})`]);
+    const rankAnt = data.rankingAnterior;
+    if (rankAnt && rankAnt.totalGeral > 0) {
+      const cresc = ((data.totalGeral - rankAnt.totalGeral) / rankAnt.totalGeral) * 100;
+      ws.addRow([`Crescimento vs ano anterior: ${cresc >= 0 ? "+" : ""}${Number(cresc).toFixed(1)}% (anterior: ${fmt(rankAnt.totalGeral)})`]);
+    }
   }
   ws.addRow([]);
   const headers = data.tipo === "vendas"

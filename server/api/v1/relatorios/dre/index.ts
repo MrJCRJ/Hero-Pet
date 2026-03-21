@@ -2,6 +2,7 @@ import database from "infra/database.js";
 import { gerarDREPDF } from "@/lib/relatorios/exportPDF";
 import { gerarDREExcel } from "@/lib/relatorios/exportExcel";
 import { getReportBounds, periodoFilename } from "@/lib/relatorios/dateBounds";
+import { computeIndicadores } from "@/lib/relatorios/computeIndicadores";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 type ResWithHeaders = ApiResLike & { setHeader: (name: string, value: string) => void; end: (chunk?: unknown) => void };
@@ -59,10 +60,11 @@ export default async function dreHandler(
     const custosSobreReceita = receitas > 0 ? Number(((custosVendas / receitas) * 100).toFixed(2)) : 0;
 
     const format = (req.query?.format as string) || "json";
+    const incluirComparacao = mes > 0 && ano > 0;
 
-    // Buscar dados do mês anterior (apenas para JSON, não quando ano/mês todo)
+    // Buscar dados do mês anterior
     let dreAnterior: Record<string, number> | null = null;
-    if (format === "json" && mes > 0 && ano > 0) {
+    if (incluirComparacao) {
       const mesAnt = mes === 1 ? 12 : mes - 1;
       const anoAnt = mes === 1 ? ano - 1 : ano;
       const { firstDay: fda, lastDay: lda } = getReportBounds(mesAnt, anoAnt);
@@ -104,6 +106,11 @@ export default async function dreHandler(
       };
     }
 
+    let indicadores: { pmr: number | null; pmp: number | null; giroEstoque: number | null; dve: number | null } | null = null;
+    if (format === "pdf" || format === "xlsx") {
+      indicadores = await computeIndicadores(firstDay, lastDay);
+    }
+
     const payload = {
       periodo: { mes, ano, firstDay, lastDay },
       dre: {
@@ -122,7 +129,8 @@ export default async function dreHandler(
         despesasSobreReceita,
         custosSobreReceita,
       },
-      ...(format === "json" && dreAnterior ? { dreAnterior } : {}),
+      ...(dreAnterior ? { dreAnterior } : {}),
+      ...(indicadores ? { indicadores } : {}),
     };
 
     if (format === "pdf") {

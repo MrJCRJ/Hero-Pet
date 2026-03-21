@@ -72,8 +72,9 @@ export default async function margemProdutoHandler(
 
     const format = (req.query?.format as string) || "json";
     const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
+    const incluirComparacao = (format === "json" && compare) || (format !== "json" && mes > 0 && ano > 0);
     let margemAnterior: { totalReceita: number; lucroTotal: number } | null = null;
-    if (format === "json" && compare && mes > 0 && ano > 0) {
+    if (incluirComparacao) {
       const { firstDay: fa, lastDay: la } = getReportBounds(mes, ano - 1);
       const antR = await database.query({
         text: `SELECT
