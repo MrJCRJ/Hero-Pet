@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { FileText, TrendingUp, BarChart3, Award, Download, Wallet, History, LayoutDashboard } from "lucide-react";
+import { FileText, TrendingUp, BarChart3, Award, Download, Wallet, History, LayoutDashboard, FileSpreadsheet } from "lucide-react";
 import { DREView } from "./components/DREView";
 import { FluxoView } from "./components/FluxoView";
 import { MargemView } from "./components/MargemView";
@@ -35,10 +35,56 @@ export default function RelatoriosPage() {
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [alertasConsolidado, setAlertasConsolidado] = useState<Array<{ id: string; tipo: "erro" | "aviso"; msg: string; valorAtual?: string | number; acaoSugerida?: string }> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<"pdf" | "xlsx" | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [consolidadoDownloading, setConsolidadoDownloading] = useState<"pdf" | "xlsx" | null>(null);
+  const [consolidadoError, setConsolidadoError] = useState<string | null>(null);
+
+  const handleConsolidadoDownload = useCallback(
+    async (format: "pdf" | "xlsx") => {
+      setConsolidadoError(null);
+      setConsolidadoDownloading(format);
+      const params = new URLSearchParams({ mes: String(mes), ano: String(ano), format });
+      const url = `/api/v1/relatorios/consolidado?${params}`;
+      const ext = format;
+      const periodSuffix = ano === 0 ? "todos" : mes === 0 ? `${ano}` : `${ano}-${String(mes).padStart(2, "0")}`;
+      const filename = `relatorio_consolidado_${periodSuffix}.${ext}`;
+      try {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+        const res = await fetch(url, { credentials: "include", signal: controller.signal });
+        clearTimeout(id);
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!res.ok) {
+          const text = await res.text();
+          setConsolidadoError(text || `Erro ${res.status} ao gerar consolidado ${format.toUpperCase()}`);
+          return;
+        }
+        const blob = await res.blob();
+        const u = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = u;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(u);
+      } catch (e) {
+        if ((e as Error).name === "AbortError") {
+          setConsolidadoError("Tempo esgotado. Tente novamente.");
+        } else {
+          setConsolidadoError((e as Error).message || "Erro ao baixar consolidado.");
+        }
+      } finally {
+        setConsolidadoDownloading(null);
+      }
+    },
+    [mes, ano]
+  );
 
   const handleDownload = useCallback(
     async (format: "pdf" | "xlsx") => {
@@ -103,6 +149,22 @@ export default function RelatoriosPage() {
     setError(null);
     const monthStr = mes === 0 ? (ano === 0 ? "all" : String(ano)) : `${ano}-${String(mes).padStart(2, "0")}`;
     let url: string;
+    if (tab === "resumo") {
+      url = `/api/v1/pedidos/summary?month=${monthStr}`;
+      const consUrl = `/api/v1/relatorios/consolidado?mes=${mes}&ano=${ano}&format=json`;
+      fetch(consUrl)
+        .then((r) => (r.ok ? r.json() : Promise.resolve(null)))
+        .then((cons) => {
+          if (cons && Array.isArray(cons.alertas)) {
+            setAlertasConsolidado(cons.alertas as Array<{ id: string; tipo: "erro" | "aviso"; msg: string; valorAtual?: string | number; acaoSugerida?: string }>);
+          } else {
+            setAlertasConsolidado(null);
+          }
+        })
+        .catch(() => setAlertasConsolidado(null));
+    } else {
+      setAlertasConsolidado(null);
+    }
     if (tab === "resumo") {
       url = `/api/v1/pedidos/summary?month=${monthStr}`;
     } else if (tab === "top-lucro") {
@@ -211,6 +273,32 @@ export default function RelatoriosPage() {
             )}
           </div>
         )}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 border-l border-[var(--color-border)] pl-4">
+            <span className="text-sm text-[var(--color-text-secondary)]">Relatório consolidado:</span>
+            <button
+              type="button"
+              onClick={() => handleConsolidadoDownload("pdf")}
+              disabled={!!consolidadoDownloading}
+              className="flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-4 w-4" />
+              {consolidadoDownloading === "pdf" ? "Baixando..." : "PDF"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleConsolidadoDownload("xlsx")}
+              disabled={!!consolidadoDownloading}
+              className="flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              {consolidadoDownloading === "xlsx" ? "Baixando..." : "Excel"}
+            </button>
+          </div>
+          {consolidadoError && (
+            <p className="text-sm text-red-600 dark:text-red-400">{consolidadoError}</p>
+          )}
+        </div>
         </div>
       </div>
 
@@ -231,7 +319,12 @@ export default function RelatoriosPage() {
       {!loading && !error && data && tab !== "historico-custo" && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-sm">
           {tab === "resumo" && (
-            <ResumoView data={data as Record<string, unknown>} mes={mes} ano={ano} />
+            <ResumoView
+              data={data as Record<string, unknown>}
+              mes={mes}
+              ano={ano}
+              alertasConsolidado={alertasConsolidado}
+            />
           )}
           {tab === "dre" && "dre" in data && (
             <DREView

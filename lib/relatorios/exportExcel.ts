@@ -251,3 +251,151 @@ export async function gerarRankingExcel(data: {
   ws.getColumn(2).width = 35;
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
+
+export type PayloadConsolidadoExcel = {
+  periodo: { mes: number; ano: number; firstDay?: string; lastDay?: string };
+  dre: Record<string, number>;
+  fluxo: {
+    saldoInicial?: number;
+    saldoFinal?: number;
+    entradas: Record<string, number>;
+    saidas: Record<string, number>;
+    saldo: number;
+    fluxoOperacional?: number;
+    evolucaoMensal?: Array<{ mes: string; entradas: number; saidas: number; saldoPeriodo: number; saldoAcumulado: number }>;
+  };
+  indicadores?: { pmr: number | null; pmp: number | null; giroEstoque: number | null; dve: number | null } | null;
+  margem: { itens: Array<Record<string, unknown>>; totalReceita: number; margemMediaPonderada?: number };
+  ranking: { itens: Array<Record<string, unknown>>; totalGeral: number };
+  alertas?: Array<{ id: string; tipo: string; msg: string; valorAtual?: string | number; referencia?: string; acaoSugerida?: string }>;
+};
+
+export async function gerarConsolidadoExcel(data: PayloadConsolidadoExcel): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  const per = data.periodo;
+  const titulo = `Relatório Consolidado — ${periodoLabel(per.mes, per.ano)}`;
+
+  // Aba Resumo
+  const wsResumo = wb.addWorksheet("Resumo");
+  wsResumo.addRow([titulo]).font = { bold: true };
+  wsResumo.addRow([]);
+  const d = data.dre;
+  const fluxo = data.fluxo;
+  const ind = data.indicadores;
+  wsResumo.addRow(["KPIs"]).font = { bold: true };
+  wsResumo.addRow(["Saldo final de caixa", fmt(fluxo.saldoFinal ?? 0)]);
+  wsResumo.addRow(["Fluxo operacional", fmt(fluxo.fluxoOperacional ?? 0)]);
+  wsResumo.addRow(["Margem bruta (%)", d.margemBruta ?? 0]);
+  wsResumo.addRow(["Lucro operacional", fmt(d.lucroOperacional ?? 0)]);
+  wsResumo.addRow(["PMR (dias)", ind?.pmr ?? "N/D"]);
+  wsResumo.addRow(["PMP (dias)", ind?.pmp ?? "N/D"]);
+  wsResumo.addRow(["DVE (dias)", ind?.dve ?? "N/D"]);
+  wsResumo.addRow([]);
+  wsResumo.addRow(["Alertas"]).font = { bold: true };
+  const alertas = data.alertas ?? [];
+  if (alertas.length === 0) {
+    wsResumo.addRow(["Nenhum alerta no período."]);
+  } else {
+    wsResumo.addRow(["Tipo", "Mensagem", "Valor", "Ação sugerida"]);
+    for (const a of alertas) {
+      wsResumo.addRow([a.tipo, a.msg, a.valorAtual ?? "", a.acaoSugerida ?? ""]);
+    }
+  }
+  wsResumo.getColumn(2).width = 22;
+
+  // Aba DRE
+  const wsDRE = wb.addWorksheet("DRE");
+  wsDRE.addRow([`DRE — ${periodoLabel(per.mes, per.ano)}`]).font = { bold: true };
+  wsDRE.addRow([]);
+  wsDRE.addRow(["Receita bruta", fmt((d.receitaBruta ?? d.receitas) || 0)]);
+  wsDRE.addRow(["Receita líquida", fmt((d.receitaLiquida ?? d.receitas) || 0)]);
+  wsDRE.addRow(["(-) Custos (COGS)", `-${fmt(d.custosVendas || 0)}`]);
+  wsDRE.addRow(["Lucro bruto", `${fmt(d.lucroBruto || 0)} (${d.margemBruta || 0}%)`]).font = { bold: true };
+  wsDRE.addRow(["(-) Despesas operacionais", `-${fmt(d.despesas || 0)}`]);
+  wsDRE.addRow(["Lucro operacional (EBIT)", `${fmt(d.lucroOperacional || 0)} (${d.margemOperacional || 0}%)`]).font = { bold: true };
+  wsDRE.getColumn(2).width = 22;
+
+  // Aba Fluxo de Caixa
+  const wsFluxo = wb.addWorksheet("Fluxo de Caixa");
+  wsFluxo.addRow([`Fluxo de Caixa — ${periodoLabel(per.mes, per.ano)}`]).font = { bold: true };
+  wsFluxo.addRow([]);
+  const e = fluxo.entradas;
+  const s = fluxo.saidas;
+  if (fluxo.saldoInicial != null) wsFluxo.addRow(["Saldo inicial", fmt(fluxo.saldoInicial)]);
+  wsFluxo.addRow(["Entradas"]);
+  wsFluxo.addRow(["Vendas", fmt(e?.vendas || 0)]);
+  wsFluxo.addRow(["Promissórias recebidas", fmt(e?.promissoriasRecebidas || 0)]);
+  if ((e?.aportesCapital ?? 0) > 0) wsFluxo.addRow(["Aportes de capital", fmt(e?.aportesCapital || 0)]);
+  wsFluxo.addRow(["Total entradas", fmt(e?.total || 0)]).font = { bold: true };
+  wsFluxo.addRow([]);
+  wsFluxo.addRow(["Saídas"]);
+  wsFluxo.addRow(["Compras", fmt(s?.compras || 0)]);
+  wsFluxo.addRow(["Despesas", fmt(s?.despesas || 0)]);
+  wsFluxo.addRow(["Total saídas", fmt(s?.total || 0)]).font = { bold: true };
+  wsFluxo.addRow([]);
+  wsFluxo.addRow(["Saldo do período", fmt(fluxo.saldo)]).font = { bold: true };
+  if (fluxo.saldoFinal != null) wsFluxo.addRow(["Saldo final", fmt(fluxo.saldoFinal)]).font = { bold: true };
+  wsFluxo.getColumn(2).width = 18;
+
+  // Aba Margem Produto
+  const wsMargem = wb.addWorksheet("Margem Produto");
+  const totalRec = data.margem?.totalReceita ?? 0;
+  wsMargem.addRow([`Margem por Produto — ${periodoLabel(per.mes, per.ano)}`]).font = { bold: true };
+  wsMargem.addRow([`Total vendas: ${fmt(totalRec)}`]);
+  wsMargem.addRow([]);
+  wsMargem.addRow(["Produto", "Receita", "% Vendas", "Custos", "Lucro", "Margem %"]).font = { bold: true };
+  for (const r of data.margem?.itens ?? []) {
+    const rec = Number(r.receita || 0);
+    wsMargem.addRow([
+      r.nome,
+      rec,
+      totalRec > 0 ? ((rec / totalRec) * 100).toFixed(1) + "%" : "0%",
+      Number(r.cogs || 0),
+      Number(r.lucro || 0),
+      r.margem != null ? Number(r.margem) : "-",
+    ]);
+  }
+  wsMargem.getColumn(1).width = 30;
+
+  // Aba Ranking Clientes
+  const wsRanking = wb.addWorksheet("Ranking Clientes");
+  const totalGeral = data.ranking?.totalGeral ?? 0;
+  wsRanking.addRow([`Ranking de Clientes — ${periodoLabel(per.mes, per.ano)}`]).font = { bold: true };
+  wsRanking.addRow([`Total vendas: ${fmt(totalGeral)}`]);
+  wsRanking.addRow([]);
+  wsRanking.addRow(["#", "Cliente", "Total", "% Total", "Margem %"]).font = { bold: true };
+  (data.ranking?.itens ?? []).forEach((r, i) => {
+    const total = Number(r.total || 0);
+    const pct = totalGeral > 0 ? ((total / totalGeral) * 100).toFixed(1) : "-";
+    wsRanking.addRow([i + 1, r.nome, total, pct + "%", r.margemBruta != null ? r.margemBruta : "N/D"]);
+  });
+  wsRanking.getColumn(2).width = 35;
+
+  // Aba Indicadores
+  const wsInd = wb.addWorksheet("Indicadores");
+  wsInd.addRow([`Indicadores — ${periodoLabel(per.mes, per.ano)}`]).font = { bold: true };
+  wsInd.addRow([]);
+  if (ind) {
+    wsInd.addRow(["Indicador", "Valor"]);
+    wsInd.addRow(["PMR (prazo médio recebimento)", ind.pmr ?? "N/D"]);
+    wsInd.addRow(["PMP (prazo médio pagamento)", ind.pmp ?? "N/D"]);
+    wsInd.addRow(["Giro estoque", ind.giroEstoque ?? "N/D"]);
+    wsInd.addRow(["DVE (dias venda em estoque)", ind.dve ?? "N/D"]);
+  }
+  wsInd.getColumn(2).width = 18;
+
+  // Aba Evolução Mensal
+  const wsEvol = wb.addWorksheet("Evolução Mensal");
+  wsEvol.addRow([`Evolução Mensal — ${periodoLabel(per.mes, per.ano)}`]).font = { bold: true };
+  wsEvol.addRow([]);
+  const evolucao = fluxo.evolucaoMensal ?? [];
+  if (evolucao.length > 0) {
+    wsEvol.addRow(["Mês", "Entradas", "Saídas", "Saldo período", "Saldo acumulado"]).font = { bold: true };
+    for (const r of evolucao) {
+      wsEvol.addRow([r.mes, r.entradas, r.saidas, r.saldoPeriodo, r.saldoAcumulado]);
+    }
+  }
+  wsEvol.getColumn(2).width = 18;
+
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}

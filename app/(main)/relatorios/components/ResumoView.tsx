@@ -54,6 +54,14 @@ export interface TopProdutoLucro {
   quantidade: number;
 }
 
+export interface AlertaConsolidado {
+  id: string;
+  tipo: "erro" | "aviso";
+  msg: string;
+  valorAtual?: string | number;
+  acaoSugerida?: string;
+}
+
 export interface ResumoViewProps {
   data: {
     month?: string;
@@ -76,9 +84,10 @@ export interface ResumoViewProps {
   };
   mes: number;
   ano: number;
+  alertasConsolidado?: AlertaConsolidado[] | null;
 }
 
-export function ResumoView({ data, mes, ano }: ResumoViewProps) {
+export function ResumoView({ data, mes, ano, alertasConsolidado }: ResumoViewProps) {
   const isHistorioCompleto = ano === 0 && mes === 0;
 
   const periodoLabel =
@@ -100,30 +109,30 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
     monthStr?: string;
   } | null>(null);
 
-  const alertas: Array<{ msg: string; tipo?: "erro" | "aviso"; drillTipo?: DrillDownTipo }> = [];
+  const alertasLocais: Array<{ msg: string; tipo?: "erro" | "aviso"; drillTipo?: DrillDownTipo }> = [];
   if (data.lucroOperacionalMes != null && data.lucroOperacionalMes < 0) {
-    alertas.push({ msg: "Lucro operacional negativo no período.", tipo: "erro" });
+    alertasLocais.push({ msg: "Lucro operacional negativo no período.", tipo: "erro" });
   }
   const ultimos2MesesMargem = growthHistory.slice(-2);
   const margemAbaixo15Por2Meses =
     ultimos2MesesMargem.length >= 2 &&
     ultimos2MesesMargem.every((h) => h.margem > 0 && h.margem < 15);
   if (margemAbaixo15Por2Meses) {
-    alertas.push({
+    alertasLocais.push({
       msg: "Margem bruta abaixo de 15% nos últimos dois meses consecutivos.",
       tipo: "aviso",
       drillTipo: "margem",
     });
   }
   if (prom?.mesAtual?.atrasados && prom.mesAtual.atrasados.count > 0) {
-    alertas.push({
+    alertasLocais.push({
       msg: `Há ${formatBrl(prom.mesAtual.atrasados.valor)} em ${prom.mesAtual.atrasados.count} promissória(s) atrasada(s).`,
       tipo: "aviso",
       drillTipo: "promissorias",
     });
   }
   if (data.crescimentoMoMPerc != null && data.crescimentoMoMPerc < 0) {
-    alertas.push({
+    alertasLocais.push({
       msg: "Queda nas vendas em relação ao mês anterior.",
       tipo: "aviso",
       drillTipo: "vendas",
@@ -134,7 +143,7 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
     data.lucroBrutoMes != null &&
     data.despesasMes > data.lucroBrutoMes
   ) {
-    alertas.push({
+    alertasLocais.push({
       msg: "Despesas superam o lucro bruto.",
       tipo: "erro",
       drillTipo: "despesas",
@@ -145,6 +154,17 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
   const effAno = ano || new Date().getFullYear();
   const monthStr =
     ano > 0 && mes > 0 ? `${ano}-${String(mes).padStart(2, "0")}` : undefined;
+
+  const alertas =
+    alertasConsolidado && alertasConsolidado.length > 0
+      ? alertasConsolidado.map((a) => ({
+          msg: a.msg,
+          tipo: a.tipo as "erro" | "aviso",
+          valorAtual: a.valorAtual,
+          acaoSugerida: a.acaoSugerida,
+          drillTipo: undefined as DrillDownTipo | undefined,
+        }))
+      : alertasLocais;
 
   const totalReceber =
     prom
@@ -291,7 +311,7 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
             <AlertTriangle className="h-4 w-4" />
             Atenção
           </h3>
-          <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-300">
+          <ul className="space-y-1.5 text-sm text-amber-700 dark:text-amber-300">
             {alertas.map((a, i) => (
               <li key={i} className={a.tipo === "erro" ? "font-medium" : ""}>
                 {a.drillTipo ? (
@@ -311,7 +331,13 @@ export function ResumoView({ data, mes, ano }: ResumoViewProps) {
                     {a.msg}
                   </button>
                 ) : (
-                  a.msg
+                  <span>{a.msg}</span>
+                )}
+                {"valorAtual" in a && a.valorAtual != null && (
+                  <span className="ml-1 text-amber-600 dark:text-amber-400">({String(a.valorAtual)})</span>
+                )}
+                {"acaoSugerida" in a && (a as { acaoSugerida?: string }).acaoSugerida && (
+                  <p className="mt-0.5 pl-4 text-xs text-amber-600/90 dark:text-amber-400/90">{(a as { acaoSugerida: string }).acaoSugerida}</p>
                 )}
               </li>
             ))}
