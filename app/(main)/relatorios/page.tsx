@@ -110,6 +110,7 @@ export default function RelatoriosPage() {
     } else {
       const base = { dre: "/api/v1/relatorios/dre", fluxo: "/api/v1/relatorios/fluxo-caixa", margem: "/api/v1/relatorios/margem-produto", ranking: "/api/v1/relatorios/ranking" };
       url = `${base[tab]}?mes=${mes}&ano=${ano}`;
+      if ((tab === "ranking" || tab === "margem" || tab === "fluxo") && mes > 0 && ano > 0) url += "&compare=1";
     }
     const finalUrl = tab === "ranking" ? `${url}&tipo=${tipoRanking}` : url;
     fetch(finalUrl)
@@ -251,6 +252,7 @@ export default function RelatoriosPage() {
             <MargemView
               itens={(data as { itens: Array<Record<string, unknown>>; totalReceita?: number }).itens}
               totalReceita={(data as { totalReceita?: number }).totalReceita}
+              margemAnterior={(data as { margemAnterior?: { totalReceita: number; lucroTotal: number } | null }).margemAnterior ?? null}
               mes={mes}
               ano={ano}
             />
@@ -261,6 +263,7 @@ export default function RelatoriosPage() {
               totalGeral={(data as { totalGeral?: number }).totalGeral}
               totalPedidosGeral={(data as { totalPedidosGeral?: number }).totalPedidosGeral}
               ticketMedioGeral={(data as { ticketMedioGeral?: number }).ticketMedioGeral}
+              rankingAnterior={(data as { rankingAnterior?: { totalGeral: number } | null }).rankingAnterior ?? null}
               tipo={tipoRanking}
               onTipoChange={setTipoRanking}
               mes={mes}

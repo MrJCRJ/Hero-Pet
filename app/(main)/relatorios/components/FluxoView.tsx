@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -36,8 +36,27 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
   const valorEstoque = (fluxo.valorEstoque as number) ?? 0;
   const valorPresumidoVendaEstoque = (fluxo.valorPresumidoVendaEstoque as number) ?? 0;
   const evolucaoMensalRaw = fluxo.evolucaoMensal as Array<{ mes: string; entradas: number; saidas: number; saldoPeriodo: number; saldoAcumulado: number }> | undefined;
+  const conciliacao = fluxo.conciliacao as { lucroOperacional: number; variacaoContasReceber: number; variacaoEstoque: number; contasReceberInicial: number; contasReceberFinal: number } | undefined;
+  const fluxoAnterior = fluxo.fluxoAnterior as { saldo: number; entradas: number; saidas: number } | undefined;
 
   const [viewMode, setViewMode] = useState<ViewMode>("both");
+  const [indicadores, setIndicadores] = useState<{
+    pmr: { valor: number | null };
+    pmp: { valor: number | null };
+    giroEstoque: { valor: number | null };
+    dve: { valor: number | null };
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/v1/relatorios/indicadores?mes=${mes}&ano=${ano}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.indicadores) setIndicadores(data.indicadores);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [mes, ano]);
   const chartData = useMemo(
     () => [
       {
@@ -91,6 +110,17 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
           value={formatBrl(valorPresumidoVendaEstoque)}
           subtitle="Preço tabela ou custo+markup × saldo"
         />
+        {fluxoAnterior && (
+          <KPICard
+            label="Variação vs ano anterior"
+            value={
+              fluxoOperacional - fluxoAnterior.saldo >= 0
+                ? `+${formatBrl(fluxoOperacional - fluxoAnterior.saldo)}`
+                : formatBrl(fluxoOperacional - fluxoAnterior.saldo)
+            }
+            subtitle={`Ano ant.: ${formatBrl(fluxoAnterior.saldo)}`}
+          />
+        )}
       </div>
 
       {(fluxoOperacional !== 0 || fluxoFinanciamento !== 0 || fluxoInvestimento !== 0) && (
@@ -172,6 +202,7 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
         </>
       )}
       {(viewMode === "table" || viewMode === "both") && (
+      <div className="space-y-6">
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <h3 className="mb-2 font-medium text-green-600 dark:text-green-400">Entradas</h3>
@@ -206,6 +237,41 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
           </ul>
         </div>
       </div>
+
+      {evolucaoChartData.length > 0 && (
+        <div>
+          <h3 className="mb-2 font-medium text-[var(--color-text-primary)]">Evolução mensal do caixa</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--color-border)]">
+                  <th className="py-2 text-left">Mês</th>
+                  <th className="py-2 text-right">Entradas</th>
+                  <th className="py-2 text-right">Saídas</th>
+                  <th className="py-2 text-right">Saldo período</th>
+                  <th className="py-2 text-right">Saldo acumulado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evolucaoChartData.map((m) => (
+                  <tr key={m.mes} className="border-b border-[var(--color-border)]">
+                    <td className="py-2">{m.mes}</td>
+                    <td className="py-2 text-right font-mono">{formatBrl(m.entradas)}</td>
+                    <td className="py-2 text-right font-mono">{formatBrl(m.saidas)}</td>
+                    <td className={`py-2 text-right font-mono ${m.saldoPeriodo >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                      {formatBrl(m.saldoPeriodo)}
+                    </td>
+                    <td className={`py-2 text-right font-mono ${m.saldoAcumulado >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                      {formatBrl(m.saldoAcumulado)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      </div>
       )}
       <div className="border-t border-[var(--color-border)] pt-4 space-y-2">
         <p className={`text-lg font-bold ${saldo >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
@@ -219,6 +285,78 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
           <strong>Reconciliação com DRE:</strong> O fluxo de caixa registra vendas quando o dinheiro entra (à vista ou promissórias pagas). O DRE contabiliza vendas na emissão. Vendas a prazo distorcem a relação entre faturamento e caixa.
         </p>
       </div>
+
+      {indicadores && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+            Indicadores gerenciais
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">PMR (prazo médio recebimento)</p>
+              <p className="font-mono font-medium">
+                {indicadores.pmr.valor != null ? `${indicadores.pmr.valor} dias` : "N/D"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">PMP (prazo médio pagamento)</p>
+              <p className="font-mono font-medium">
+                {indicadores.pmp.valor != null ? `${indicadores.pmp.valor} dias` : "N/D"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">Giro de estoque</p>
+              <p className="font-mono font-medium">
+                {indicadores.giroEstoque.valor != null ? `${indicadores.giroEstoque.valor}×/ano` : "N/D"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">DVE (dias venda em estoque)</p>
+              <p className="font-mono font-medium">
+                {indicadores.dve.valor != null ? `${indicadores.dve.valor} dias` : "N/D"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {conciliacao && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+            Conciliação: Lucro Operacional (EBIT) x Fluxo de Caixa
+          </h3>
+          <table className="w-full text-sm">
+            <tbody>
+              <tr className="border-b border-[var(--color-border)]">
+                <td className="py-2">Lucro operacional (EBIT)</td>
+                <td className="py-2 text-right font-mono">{formatBrl(conciliacao.lucroOperacional)}</td>
+              </tr>
+              <tr className="border-b border-[var(--color-border)]">
+                <td className="py-2">(+) Variação contas a receber</td>
+                <td className={`py-2 text-right font-mono ${conciliacao.variacaoContasReceber >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                  {formatBrl(conciliacao.variacaoContasReceber)}
+                </td>
+              </tr>
+              <tr className="border-b border-[var(--color-border)]">
+                <td className="py-2">(-) Variação estoque</td>
+                <td className={`py-2 text-right font-mono ${conciliacao.variacaoEstoque <= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                  {formatBrl(conciliacao.variacaoEstoque)}
+                </td>
+              </tr>
+              <tr className="font-semibold">
+                <td className="py-2">= Fluxo de caixa operacional</td>
+                <td className={`py-2 text-right font-mono ${fluxoOperacional >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                  {formatBrl(fluxoOperacional)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+            Contas a receber: início {formatBrl(conciliacao.contasReceberInicial)} → fim {formatBrl(conciliacao.contasReceberFinal)}. 
+            A variação explica a diferença entre o resultado contábil (DRE) e o caixa efetivo.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

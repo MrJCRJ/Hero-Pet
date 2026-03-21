@@ -25,8 +25,8 @@ export default async function margemProdutoHandler(
     const result = await database.query({
       text: `SELECT
                i.produto_id,
-               p.nome,
-               p.categoria,
+               MAX(p.nome) AS nome,
+               MAX(p.categoria) AS categoria,
                COALESCE(SUM(i.total_item),0)::numeric(14,2) AS receita,
                COALESCE(SUM(i.custo_total_item),0)::numeric(14,2) AS cogs,
                (COALESCE(SUM(i.total_item),0) - COALESCE(SUM(i.custo_total_item),0))::numeric(14,2) AS lucro,
@@ -36,7 +36,7 @@ export default async function margemProdutoHandler(
              JOIN produtos p ON p.id = i.produto_id
              WHERE pdr.tipo = 'VENDA' AND pdr.status = 'confirmado'
                AND pdr.data_emissao >= $1 AND pdr.data_emissao < $2
-             GROUP BY i.produto_id, p.nome, p.categoria
+             GROUP BY i.produto_id
              HAVING COALESCE(SUM(i.total_item),0) > 0
              ORDER BY lucro DESC, receita DESC
              LIMIT $3`,
@@ -71,10 +71,31 @@ export default async function margemProdutoHandler(
     });
 
     const format = (req.query?.format as string) || "json";
+    const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
+    let margemAnterior: { totalReceita: number; lucroTotal: number } | null = null;
+    if (format === "json" && compare && mes > 0 && ano > 0) {
+      const { firstDay: fa, lastDay: la } = getReportBounds(mes, ano - 1);
+      const antR = await database.query({
+        text: `SELECT
+                 COALESCE(SUM(i.total_item),0)::numeric(14,2) AS receita,
+                 (COALESCE(SUM(i.total_item),0) - COALESCE(SUM(i.custo_total_item),0))::numeric(14,2) AS lucro
+               FROM pedido_itens i
+               JOIN pedidos pdr ON pdr.id = i.pedido_id
+               WHERE pdr.tipo = 'VENDA' AND pdr.status = 'confirmado'
+                 AND pdr.data_emissao >= $1 AND pdr.data_emissao < $2`,
+        values: [fa, la],
+      });
+      const row = antR.rows[0] as Record<string, unknown>;
+      margemAnterior = {
+        totalReceita: Number(row?.receita || 0),
+        lucroTotal: Number(row?.lucro || 0),
+      };
+    }
     const payload = {
       periodo: { mes, ano, firstDay, lastDay },
       itens,
       totalReceita,
+      ...(margemAnterior ? { margemAnterior } : {}),
     };
 
     if (format === "pdf") {

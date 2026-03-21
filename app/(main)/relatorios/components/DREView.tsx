@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Tooltip,
   ResponsiveContainer,
@@ -59,6 +59,23 @@ function VariacaoBadge({
 export function DREView({ dre, dreAnterior, mes, ano }: DREViewProps) {
   const [expandido, setExpandido] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("both");
+  const [indicadores, setIndicadores] = useState<{
+    pmr: { valor: number | null };
+    pmp: { valor: number | null };
+    giroEstoque: { valor: number | null };
+    dve: { valor: number | null };
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/v1/relatorios/indicadores?mes=${mes}&ano=${ano}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.indicadores) setIndicadores(data.indicadores);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [mes, ano]);
 
   const receitas = dre.receitas ?? 0;
   const custosVendas = dre.custosVendas ?? 0;
@@ -162,6 +179,40 @@ export function DREView({ dre, dreAnterior, mes, ano }: DREViewProps) {
           subtitle="Indicador de eficiência"
         />
       </div>
+
+      {indicadores && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+            Indicadores gerenciais
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">PMR (prazo médio recebimento)</p>
+              <p className="font-mono font-medium">
+                {indicadores.pmr.valor != null ? `${indicadores.pmr.valor} dias` : "N/D"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">PMP (prazo médio pagamento)</p>
+              <p className="font-mono font-medium">
+                {indicadores.pmp.valor != null ? `${indicadores.pmp.valor} dias` : "N/D"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">Giro de estoque</p>
+              <p className="font-mono font-medium">
+                {indicadores.giroEstoque.valor != null ? `${indicadores.giroEstoque.valor}×/ano` : "N/D"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">DVE (dias venda em estoque)</p>
+              <p className="font-mono font-medium">
+                {indicadores.dve.valor != null ? `${indicadores.dve.valor} dias` : "N/D"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fluxo visual (waterfall simplificado) */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">

@@ -56,6 +56,7 @@ export async function gerarFluxoCaixaExcel(data: {
     valorEstoque?: number;
     valorPresumidoVendaEstoque?: number;
     evolucaoMensal?: Array<{ mes: string; entradas: number; saidas: number; saldoPeriodo: number; saldoAcumulado: number }>;
+    conciliacao?: { lucroOperacional: number; variacaoContasReceber: number; variacaoEstoque: number };
   };
 }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -91,6 +92,15 @@ export async function gerarFluxoCaixaExcel(data: {
     if (data.fluxo.fluxoOperacional != null) ws.addRow(["Operacional", fmt(data.fluxo.fluxoOperacional)]);
     if (data.fluxo.fluxoFinanciamento != null) ws.addRow(["Financiamento", fmt(data.fluxo.fluxoFinanciamento)]);
     if ((data.fluxo.fluxoInvestimento ?? 0) !== 0) ws.addRow(["Investimento", fmt(data.fluxo.fluxoInvestimento ?? 0)]);
+  }
+  if (data.fluxo.conciliacao) {
+    const c = data.fluxo.conciliacao;
+    ws.addRow([]);
+    ws.addRow(["Conciliação: Lucro Operacional x Fluxo de Caixa"]).font = { bold: true };
+    ws.addRow(["Lucro operacional (EBIT)", fmt(c.lucroOperacional)]);
+    ws.addRow(["(+) Variação contas a receber", fmt(c.variacaoContasReceber)]);
+    ws.addRow(["(-) Variação estoque", fmt(c.variacaoEstoque)]);
+    ws.addRow(["= Fluxo de caixa operacional", fmt(data.fluxo.fluxoOperacional ?? 0)]).font = { bold: true };
   }
   ws.addRow([]);
   ws.addRow(["Valor em estoque (custo)", fmt(data.fluxo.valorEstoque ?? 0)]);
@@ -155,6 +165,9 @@ export async function gerarRankingExcel(data: {
   if (data.tipo === "vendas" && data.totalGeral != null) {
     ws.addRow([`Total vendas do período: ${fmt(data.totalGeral)}`]);
     if (data.ticketMedioGeral != null) ws.addRow([`Ticket médio geral: ${fmt(data.ticketMedioGeral)}`]);
+    const totalTop10 = data.ranking.slice(0, 10).reduce((s, r) => s + Number(r.total || 0), 0);
+    const pctTop10 = data.totalGeral > 0 ? ((totalTop10 / data.totalGeral) * 100).toFixed(1) : "0";
+    ws.addRow([`Top 10 representam ${pctTop10}% do total (${fmt(totalTop10)})`]);
   }
   ws.addRow([]);
   const headers = data.tipo === "vendas"
@@ -165,6 +178,7 @@ export async function gerarRankingExcel(data: {
     if (data.tipo === "vendas") {
       const total = Number(r.total || 0);
       const pct = data.totalGeral && data.totalGeral > 0 ? ((total / data.totalGeral) * 100).toFixed(1) : "-";
+      const margemVal = r.margemBruta != null ? Number(r.margemBruta) : "N/D";
       ws.addRow([
         i + 1,
         r.nome,
@@ -172,7 +186,7 @@ export async function gerarRankingExcel(data: {
         total,
         pct,
         Number(r.ticketMedio ?? 0),
-        Number(r.margemBruta ?? 0),
+        margemVal,
       ]);
     } else {
       ws.addRow([i + 1, r.nome, Number(r.pedidos_count || 0), Number(r.total || 0)]);

@@ -21,8 +21,8 @@ export default async function fluxoCaixaHandler(
     const ano = Number(req.query?.ano) ?? now.getFullYear();
     const { firstDay, lastDay } = getReportBounds(mes, ano);
 
-    // Saldo inicial: entradas - saídas acumuladas antes do período
-    const [entAntR, promAntR, aportAntR, compAntR, despAntR, vendasR, promPagosR, aportesR, comprasR, despesasR, estoqueCustoR, estoqueVendaR, evolucaoMensalR] = await Promise.all([
+    // Saldo inicial + dados para reconciliação DRE x Fluxo
+    const [entAntR, promAntR, aportAntR, compAntR, despAntR, vendasR, promPagosR, aportesR, comprasR, despesasR, estoqueCustoR, estoqueVendaR, evolucaoMensalR, receitasR, cogsR, crInicialR, crFinalR] = await Promise.all([
       database.query({
         text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
                FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado' AND data_emissao < $1
@@ -130,7 +130,35 @@ export default async function fluxoCaixaHandler(
                FROM series s
                ORDER BY s.mstart`,
         values: [firstDay, lastDay],
-      }).catch(() => ({ rows: [] })),
+      }).catch((err) => {
+        console.warn("fluxo-caixa evolucaoMensal query error:", (err as Error)?.message);
+        return { rows: [] };
+      }),
+      database.query({
+        text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+               FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
+               AND data_emissao >= $1 AND data_emissao < $2`,
+        values: [firstDay, lastDay],
+      }),
+      database.query({
+        text: `SELECT COALESCE(SUM(i.custo_total_item),0)::numeric(14,2) AS cogs
+               FROM pedido_itens i JOIN pedidos p ON p.id = i.pedido_id
+               WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
+               AND p.data_emissao >= $1 AND p.data_emissao < $2`,
+        values: [firstDay, lastDay],
+      }),
+      database.query({
+        text: `SELECT COALESCE(SUM(pp.amount),0)::numeric(14,2) AS total
+               FROM pedido_promissorias pp JOIN pedidos p ON p.id = pp.pedido_id AND p.tipo = 'VENDA'
+               WHERE pp.paid_at IS NULL OR pp.paid_at >= $1::date`,
+        values: [firstDay],
+      }),
+      database.query({
+        text: `SELECT COALESCE(SUM(pp.amount),0)::numeric(14,2) AS total
+               FROM pedido_promissorias pp JOIN pedidos p ON p.id = pp.pedido_id AND p.tipo = 'VENDA'
+               WHERE pp.paid_at IS NULL OR pp.paid_at >= $1::date`,
+        values: [lastDay],
+      }),
     ]);
 
     const entAnt = Number((entAntR.rows[0] as Record<string, unknown>)?.total || 0);
@@ -154,7 +182,24 @@ export default async function fluxoCaixaHandler(
     const fluxoFinanciamento = aportesCapital;
     const fluxoInvestimento = 0;
 
+    const receitas = Number((receitasR.rows[0] as Record<string, unknown>)?.total || 0);
+    const custosVendas = Number((cogsR.rows[0] as Record<string, unknown>)?.cogs || 0);
+    const lucroOperacional = Number((receitas - custosVendas - despesas).toFixed(2));
+
     const valorEstoque = Number((estoqueCustoR.rows[0] as Record<string, unknown>)?.total || 0);
+    const contasReceberInicial = Number((crInicialR.rows[0] as Record<string, unknown>)?.total || 0);
+    const contasReceberFinal = Number((crFinalR.rows[0] as Record<string, unknown>)?.total || 0);
+    const variacaoContasReceber = Number((contasReceberInicial - contasReceberFinal).toFixed(2));
+
+    const variacaoEstoque = Number((compras - custosVendas).toFixed(2));
+
+    const conciliacao = {
+      lucroOperacional,
+      variacaoContasReceber,
+      variacaoEstoque,
+      contasReceberInicial,
+      contasReceberFinal,
+    };
     const valorPresumidoVendaEstoque = Number((estoqueVendaR.rows[0] as Record<string, unknown>)?.total || 0);
 
     let saldoAcum = saldoInicial;
@@ -173,6 +218,42 @@ export default async function fluxoCaixaHandler(
     });
 
     const format = (req.query?.format as string) || "json";
+    const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
+    let fluxoAnterior: { saldo: number; entradas: number; saidas: number } | null = null;
+    if (format === "json" && compare && mes > 0 && ano > 0) {
+      const { firstDay: fa, lastDay: la } = getReportBounds(mes, ano - 1);
+      const [vendasAnt, promAnt, aportAnt, compAnt, despAnt] = await Promise.all([
+        database.query({
+          text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+                 FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
+                 AND data_emissao >= $1 AND data_emissao < $2
+                 AND (parcelado = false OR parcelado IS NULL)`,
+          values: [fa, la],
+        }),
+        database.query({
+          text: `SELECT COALESCE(SUM(CASE WHEN pp.paid_at >= $1::date AND pp.paid_at < $2::date THEN pp.amount ELSE 0 END),0)::numeric(14,2) AS total
+                 FROM pedido_promissorias pp JOIN pedidos p ON p.id = pp.pedido_id AND p.tipo = 'VENDA'`,
+          values: [fa, la],
+        }),
+        database.query({ text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total FROM aportes_capital WHERE data >= $1 AND data < $2`, values: [fa, la] }).catch(() => ({ rows: [{ total: 0 }] })),
+        database.query({
+          text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+                 FROM pedidos WHERE tipo = 'COMPRA' AND status = 'confirmado'
+                 AND data_emissao >= $1 AND data_emissao < $2`,
+          values: [fa, la],
+        }),
+        database.query({
+          text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total FROM despesas WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+          values: [fa, la],
+        }),
+      ]);
+      const entA = Number((vendasAnt.rows[0] as Record<string, unknown>)?.total || 0) +
+        Number((promAnt.rows[0] as Record<string, unknown>)?.total || 0) +
+        Number((aportAnt.rows[0] as Record<string, unknown>)?.total || 0);
+      const saiA = Number((compAnt.rows[0] as Record<string, unknown>)?.total || 0) +
+        Number((despAnt.rows[0] as Record<string, unknown>)?.total || 0);
+      fluxoAnterior = { saldo: Number((entA - saiA).toFixed(2)), entradas: entA, saidas: saiA };
+    }
     const payload = {
       periodo: { mes, ano, firstDay, lastDay },
       fluxo: {
@@ -187,6 +268,8 @@ export default async function fluxoCaixaHandler(
         valorEstoque,
         valorPresumidoVendaEstoque,
         evolucaoMensal,
+        conciliacao,
+        ...(fluxoAnterior ? { fluxoAnterior } : {}),
       },
     };
 

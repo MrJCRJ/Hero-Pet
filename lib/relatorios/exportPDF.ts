@@ -137,6 +137,7 @@ export function gerarFluxoCaixaPDF(
       valorEstoque?: number;
       valorPresumidoVendaEstoque?: number;
       evolucaoMensal?: Array<{ mes: string; entradas: number; saidas: number; saldoPeriodo: number; saldoAcumulado: number }>;
+      conciliacao?: { lucroOperacional: number; variacaoContasReceber: number; variacaoEstoque: number; contasReceberInicial: number; contasReceberFinal: number };
     };
   },
   // eslint-disable-next-line no-unused-vars -- params são parte da assinatura
@@ -184,7 +185,17 @@ export function gerarFluxoCaixaPDF(
   doc.moveDown(0.5);
   const valorEstoque = data.fluxo.valorEstoque ?? 0;
   const valorPresumidoVenda = data.fluxo.valorPresumidoVendaEstoque ?? 0;
-  doc.moveDown(0.3);
+  const conc = data.fluxo.conciliacao;
+  if (conc) {
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Bold").text("Conciliação: Lucro Operacional x Fluxo de Caixa");
+    doc.font("Helvetica");
+    doc.text(`Lucro operacional (EBIT): ${fmt(conc.lucroOperacional)}`, { indent: 20 });
+    doc.text(`(+) Variação contas a receber: ${fmt(conc.variacaoContasReceber)}`, { indent: 20 });
+    doc.text(`(-) Variação estoque: ${fmt(conc.variacaoEstoque)}`, { indent: 20 });
+    doc.text(`= Fluxo de caixa operacional: ${fmt(data.fluxo.fluxoOperacional ?? 0)}`, { indent: 20 });
+  }
+  doc.moveDown(0.5);
   doc.font("Helvetica").text(`Valor em estoque (custo): ${fmt(valorEstoque)}`, { indent: 20 });
   doc.text(`Valor presumido de venda do estoque: ${fmt(valorPresumidoVenda)}`, { indent: 20 });
   const evolucao = data.fluxo.evolucaoMensal ?? [];
@@ -322,7 +333,9 @@ export function gerarRankingPDF(
   const entidadeLabel = data.tipo === "vendas" ? "clientes" : "fornecedores";
   doc.fontSize(9).font("Helvetica");
   doc.text(`Total vendas do período: ${fmt(totalGeral)} (${totalPedidos} pedidos) | Ticket médio: ${fmt(ticketMedio)}`, { indent: 0 });
-  doc.text(`Top ${data.ranking.length} ${entidadeLabel} no ranking.`, { indent: 0 });
+  const totalTop10 = data.ranking.slice(0, 10).reduce((s, r) => s + Number(r.total || 0), 0);
+  const pctTop10 = totalGeral > 0 ? ((totalTop10 / totalGeral) * 100).toFixed(1) : "0";
+  doc.text(`Top ${data.ranking.length} ${entidadeLabel} no ranking. Top 10: ${fmt(totalTop10)} (${pctTop10}% do total).`, { indent: 0 });
   doc.moveDown(0.4);
   const isVendas = data.tipo === "vendas";
   const colW = isVendas ? [35, 160, 55, 80, 50, 65, 55] : [35, 200, 80, 100];
@@ -345,7 +358,7 @@ export function gerarRankingPDF(
     const total = Number(r.total || 0);
     const pct = totalGeral > 0 ? ((total / totalGeral) * 100).toFixed(1) : "-";
     const ticket = Number(r.pedidos_count || 0) > 0 ? (total / Number(r.pedidos_count || 1)).toFixed(2) : "-";
-    const margem = Number(r.margemBruta ?? 0).toFixed(1);
+    const margem = r.margemBruta != null ? `${Number(r.margemBruta).toFixed(1)}%` : "N/D";
     doc.text(String(i + 1), 50, doc.y);
     doc.text(String(r.nome || "").slice(0, isVendas ? 28 : 38), 50 + colW[0], doc.y - 12, { width: colW[1] });
     doc.text(String(r.pedidos_count || 0), 50 + colW[0] + colW[1], doc.y - 12, { width: colW[2] });
@@ -353,7 +366,7 @@ export function gerarRankingPDF(
     doc.text(`${pct}%`, 50 + colW[0] + colW[1] + colW[2] + colW[3], doc.y - 12, { width: colW[4] });
     if (isVendas) {
       doc.text(ticket === "-" ? "-" : fmt(Number(ticket)), 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4], doc.y - 12, { width: colW[5] });
-      doc.text(`${margem}%`, 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], doc.y - 12);
+      doc.text(margem, 50 + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] + colW[5], doc.y - 12);
     }
     doc.moveDown(0.4);
   });

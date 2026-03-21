@@ -27,7 +27,7 @@ export default async function rankingHandler(
       const result = await database.query({
         text: `SELECT
                  e.id AS entity_id,
-                 e.name AS nome,
+                 COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), e.name) AS nome,
                  COUNT(DISTINCT p.id)::int AS pedidos_count,
                  COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
                FROM entities e
@@ -40,12 +40,15 @@ export default async function rankingHandler(
         values: [firstDay, lastDay, limit],
       });
 
-      const ranking = (result.rows as Array<Record<string, unknown>>).map((r) => ({
-        entity_id: r.entity_id,
-        nome: r.nome,
-        pedidos_count: Number(r.pedidos_count || 0),
-        total: Number(r.total || 0),
-      }));
+      const ranking = (result.rows as Array<Record<string, unknown>>).map((r) => {
+        const nome = r.nome ?? "";
+        return {
+          entity_id: r.entity_id,
+          nome: String(nome).trim() || "Fornecedor sem nome",
+          pedidos_count: Number(r.pedidos_count || 0),
+          total: Number(r.total || 0),
+        };
+      });
 
       const format = (req.query?.format as string) || "json";
       const payload = { periodo: { mes, ano, firstDay, lastDay }, tipo: "fornecedores", ranking };
@@ -70,7 +73,7 @@ export default async function rankingHandler(
       database.query({
         text: `SELECT
                  e.id AS entity_id,
-                 e.name AS nome,
+                 COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), e.name) AS nome,
                  COUNT(DISTINCT p.id)::int AS pedidos_count,
                  COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total,
                  COALESCE(SUM(pi.custo_total_item),0)::numeric(14,2) AS cogs
@@ -102,12 +105,15 @@ export default async function rankingHandler(
       const total = Number(r.total || 0);
       const cogs = Number(r.cogs || 0);
       const pedidosCount = Number(r.pedidos_count || 0);
-      const margemBruta = total > 0 ? Number(((total - cogs) / total * 100).toFixed(2)) : 0;
+      const nome = r.nome ?? "";
+      const margemBruta = total > 0 && cogs > 0
+        ? Number(((total - cogs) / total * 100).toFixed(2))
+        : null;
       const ticketMedio = pedidosCount > 0 ? Number((total / pedidosCount).toFixed(2)) : 0;
       const participacaoTotal = totalGeral > 0 ? Number((total / totalGeral * 100).toFixed(2)) : 0;
       return {
         entity_id: r.entity_id,
-        nome: r.nome,
+        nome: String(nome).trim() || "Cliente sem nome",
         pedidos_count: pedidosCount,
         total,
         margemBruta,
@@ -117,6 +123,20 @@ export default async function rankingHandler(
     });
 
     const format = (req.query?.format as string) || "json";
+    const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
+    let rankingAnterior: { totalGeral: number } | null = null;
+    if (format === "json" && compare && mes > 0 && ano > 0) {
+      const anoAnt = ano - 1;
+      const { firstDay: fa, lastDay: la } = getReportBounds(mes, anoAnt);
+      const antR = await database.query({
+        text: `SELECT COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
+               FROM pedidos p WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
+               AND p.data_emissao >= $1 AND p.data_emissao < $2`,
+        values: [fa, la],
+      });
+      const totalAnterior = Number((antR.rows[0] as Record<string, unknown>)?.total || 0);
+      rankingAnterior = { totalGeral: totalAnterior };
+    }
     const payload = {
       periodo: { mes, ano, firstDay, lastDay },
       tipo: "vendas",
@@ -124,6 +144,7 @@ export default async function rankingHandler(
       totalGeral,
       totalPedidosGeral,
       ticketMedioGeral: totalPedidosGeral > 0 ? Number((totalGeral / totalPedidosGeral).toFixed(2)) : 0,
+      ...(rankingAnterior ? { rankingAnterior } : {}),
     };
     if (format === "pdf") {
       gerarRankingPDF(payload, res as ResWithHeaders);

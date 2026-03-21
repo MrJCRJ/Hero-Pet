@@ -8,6 +8,10 @@ import {
   YAxis,
   ResponsiveContainer,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 import { formatBrl } from "./shared/utils";
 import { ChartCard } from "./shared/ChartCard";
@@ -19,6 +23,7 @@ export interface RankingViewProps {
   totalGeral?: number;
   totalPedidosGeral?: number;
   ticketMedioGeral?: number;
+  rankingAnterior?: { totalGeral: number } | null;
   tipo: "vendas" | "fornecedores";
   // eslint-disable-next-line no-unused-vars -- callback type: param required by signature
   onTipoChange: (tipo: "vendas" | "fornecedores") => void;
@@ -26,7 +31,7 @@ export interface RankingViewProps {
   ano: number;
 }
 
-export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedioGeral, tipo, onTipoChange, mes, ano }: RankingViewProps) {
+export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedioGeral, rankingAnterior, tipo, onTipoChange, mes, ano }: RankingViewProps) {
   const titulo =
     tipo === "vendas" ? "Ranking de Vendas (clientes)" : "Ranking de Fornecedores";
   const colLabel = tipo === "vendas" ? "Cliente" : "Fornecedor";
@@ -43,6 +48,26 @@ export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedi
   );
   const totalTop10 = ranking.slice(0, 10).reduce((s, r) => s + Number(r.total || 0), 0);
   const concentracaoTop10 = totalGeral && totalGeral > 0 ? ((totalTop10 / totalGeral) * 100).toFixed(1) : null;
+
+  const pieData = useMemo(() => {
+    if (topRanking.length === 0 || !totalGeral || totalGeral <= 0) return [];
+    const outrosTotal = totalGeral - totalTop10;
+    const slices = topRanking.map((r) => ({
+      name: r.nome || "Sem nome",
+      value: Number(r.total || 0),
+      pct: Number(r.participacao || 0),
+    }));
+    if (outrosTotal > 0) {
+      slices.push({
+        name: "Outros",
+        value: outrosTotal,
+        pct: Number(((outrosTotal / totalGeral) * 100).toFixed(1)),
+      });
+    }
+    return slices;
+  }, [topRanking, totalGeral, totalTop10]);
+
+  const PIE_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#6366f1", "#94a3b8"];
 
   return (
     <div className="space-y-4">
@@ -96,6 +121,13 @@ export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedi
             subtitle={`${formatBrl(totalTop10)} de ${formatBrl(totalGeral || 0)}`}
           />
         )}
+        {tipo === "vendas" && rankingAnterior && totalGeral != null && rankingAnterior.totalGeral > 0 && (
+          <KPICard
+            label="Crescimento vs ano anterior"
+            value={`${(((totalGeral - rankingAnterior.totalGeral) / rankingAnterior.totalGeral) * 100).toFixed(1)}%`}
+            subtitle={`${formatBrl(totalGeral)} vs ${formatBrl(rankingAnterior.totalGeral)}`}
+          />
+        )}
         <KPICard
           label="Total Top 1"
           value={topRanking[0] ? formatBrl(topRanking[0].total) : "-"}
@@ -113,6 +145,7 @@ export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedi
       </div>
 
       {topRanking.length > 0 && (viewMode === "chart" || viewMode === "both") && (
+        <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
           title="Top 10 por total"
           exportFilename={`ranking-${tipo}-${mes}-${ano}`}
@@ -130,6 +163,34 @@ export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedi
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
+        {pieData.length > 0 && tipo === "vendas" && (
+          <ChartCard
+            title="Participação % nas vendas por cliente"
+            exportFilename={`ranking-pizza-${tipo}-${mes}-${ano}`}
+          >
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={({ name, pct }) => `${name}: ${pct}%`}
+                  labelLine={false}
+                >
+                  {pieData.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number) => formatBrl(v)} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
+        </div>
       )}
 
       {(viewMode === "table" || viewMode === "both") && (
@@ -166,13 +227,20 @@ export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedi
                   <td className="py-2 text-right">{formatBrl(Number(r.ticketMedio ?? 0))}</td>
                 )}
                 {tipo === "vendas" && (
-                  <td className="py-2 text-right">{Number(r.margemBruta ?? 0).toFixed(1)}%</td>
+                  <td className="py-2 text-right">
+                    {r.margemBruta != null ? `${Number(r.margemBruta).toFixed(1)}%` : "N/D"}
+                  </td>
                 )}
               </tr>
             ))}
           </tbody>
           {tipo === "vendas" && totalGeral != null && (
             <tfoot>
+              <tr className="border-t border-[var(--color-border)] font-medium text-[var(--color-text-secondary)]">
+                <td className="py-2" colSpan={2}>Top 10 representam {concentracaoTop10 ?? "0"}% do total</td>
+                <td className="py-2 text-right">{formatBrl(totalTop10)}</td>
+                <td className="py-2 text-right" colSpan={3} />
+              </tr>
               <tr className="border-t-2 border-[var(--color-border)] font-semibold">
                 <td className="py-2" colSpan={2}>Total geral</td>
                 <td className="py-2 text-right">{totalPedidosGeral ?? ranking.reduce((s, r) => s + Number(r.pedidos_count || 0), 0)}</td>

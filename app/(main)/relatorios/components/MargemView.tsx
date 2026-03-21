@@ -9,6 +9,9 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip,
+  PieChart,
+  Pie,
+  Legend,
 } from "recharts";
 import { formatBrl } from "./shared/utils";
 import { ChartCard } from "./shared/ChartCard";
@@ -18,6 +21,7 @@ import { ViewModeToggle, type ViewMode } from "./shared/ViewModeToggle";
 export interface MargemViewProps {
   itens: Array<Record<string, unknown>>;
   totalReceita?: number;
+  margemAnterior?: { totalReceita: number; lucroTotal: number } | null;
   mes: number;
   ano: number;
 }
@@ -30,7 +34,7 @@ function getColorByMargin(margem: number) {
 
 type SortMargem = "desc" | "asc";
 
-export function MargemView({ itens, totalReceita: totalReceitaProp, mes, ano }: MargemViewProps) {
+export function MargemView({ itens, totalReceita: totalReceitaProp, margemAnterior, mes, ano }: MargemViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("both");
   const [sortMargem, setSortMargem] = useState<SortMargem>("desc");
   const totalReceita = totalReceitaProp ?? itens.reduce((s, i) => s + Number(i.receita || 0), 0);
@@ -55,6 +59,24 @@ export function MargemView({ itens, totalReceita: totalReceitaProp, mes, ano }: 
         })),
     [itensOrdenados],
   );
+
+  const pieParticipacao = useMemo(() => {
+    if (totalReceita <= 0 || itens.length === 0) return [];
+    const top15 = itensOrdenados.slice(0, 15);
+    const totalTop15 = top15.reduce((s, i) => s + Number(i.receita || 0), 0);
+    const outros = totalReceita - totalTop15;
+    const slices = top15.map((i) => ({
+      name: String(i.nome || "").slice(0, 20),
+      value: Number(i.receita || 0),
+      pct: Number(((Number(i.receita || 0) / totalReceita) * 100).toFixed(1)),
+    }));
+    if (outros > 0) {
+      slices.push({ name: "Outros", value: outros, pct: Number(((outros / totalReceita) * 100).toFixed(1)) });
+    }
+    return slices;
+  }, [itensOrdenados, totalReceita]);
+
+  const PIE_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#6366f1", "#14b8a6", "#a855f7", "#e11d48", "#0d9488", "#7c3aed", "#94a3b8"];
 
   const margemMediaPonderada =
     itens.length > 0
@@ -98,6 +120,13 @@ export function MargemView({ itens, totalReceita: totalReceitaProp, mes, ano }: 
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         <KPICard label="Total vendas" value={formatBrl(totalReceita)} />
+        {margemAnterior && margemAnterior.totalReceita > 0 && (
+          <KPICard
+            label="Crescimento vendas vs ano anterior"
+            value={`${(((totalReceita - margemAnterior.totalReceita) / margemAnterior.totalReceita) * 100).toFixed(1)}%`}
+            subtitle={`${formatBrl(totalReceita)} vs ${formatBrl(margemAnterior.totalReceita)}`}
+          />
+        )}
         <KPICard label="Margem média ponderada" value={`${margemMediaPonderada.toFixed(1)}%`} />
         <KPICard
           label="Produto com maior margem"
@@ -107,6 +136,7 @@ export function MargemView({ itens, totalReceita: totalReceitaProp, mes, ano }: 
       </div>
 
       {topProducts.length > 0 && (viewMode === "chart" || viewMode === "both") && (
+        <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
         title="Top 15 produtos por margem %"
         exportFilename={`margem-${mes}-${ano}`}
@@ -131,6 +161,34 @@ export function MargemView({ itens, totalReceita: totalReceitaProp, mes, ano }: 
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
+        {pieParticipacao.length > 0 && (
+          <ChartCard
+            title="Participação % nas vendas por produto"
+            exportFilename={`margem-pizza-${mes}-${ano}`}
+          >
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={pieParticipacao}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={({ name, pct }) => `${name}: ${pct}%`}
+                  labelLine={false}
+                >
+                  {pieParticipacao.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number) => formatBrl(v)} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
+        </div>
       )}
       {(viewMode === "table" || viewMode === "both") && (
       <div className="overflow-x-auto">
