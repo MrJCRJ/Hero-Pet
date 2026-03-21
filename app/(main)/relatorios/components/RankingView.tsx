@@ -177,7 +177,10 @@ export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedi
                   cx="50%"
                   cy="50%"
                   outerRadius={90}
-                  label={({ name, pct }) => `${name}: ${pct}%`}
+                  label={(props) => {
+                    const p = props as { name?: string; payload?: { pct?: number } };
+                    return `${p.name ?? ""}: ${p.payload?.pct ?? 0}%`;
+                  }}
                   labelLine={false}
                 >
                   {pieData.map((_, i) => (

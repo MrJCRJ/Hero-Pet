@@ -61,7 +61,7 @@ export function MargemView({ itens, totalReceita: totalReceitaProp, margemAnteri
   );
 
   const pieParticipacao = useMemo(() => {
-    if (totalReceita <= 0 || itens.length === 0) return [];
+    if (totalReceita <= 0 || itensOrdenados.length === 0) return [];
     const top15 = itensOrdenados.slice(0, 15);
     const totalTop15 = top15.reduce((s, i) => s + Number(i.receita || 0), 0);
     const outros = totalReceita - totalTop15;
@@ -175,7 +175,10 @@ export function MargemView({ itens, totalReceita: totalReceitaProp, margemAnteri
                   cx="50%"
                   cy="50%"
                   outerRadius={90}
-                  label={({ name, pct }) => `${name}: ${pct}%`}
+                  label={(props) => {
+                    const p = props as { name?: string; payload?: { pct?: number } };
+                    return `${p.name ?? ""}: ${p.payload?.pct ?? 0}%`;
+                  }}
                   labelLine={false}
                 >
                   {pieParticipacao.map((_, i) => (
