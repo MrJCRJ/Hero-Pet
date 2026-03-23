@@ -80,7 +80,7 @@ export function computeAlertas(dados: DadosParaAlertas): Alerta[] {
         id: "fluxo-negativo-prolongado",
         tipo: "erro",
         msg: `Fluxo operacional negativo há ${mesesNegativosConsecutivos} meses consecutivos.`,
-        valorAtual: fmt(dados.fluxo?.fluxoOperacional ?? 0),
+        valorAtual: dados.fluxo?.fluxoOperacional ?? 0,
         referencia: "Fluxo acumulado negativo desde o período indicado",
         acaoSugerida: "Revisar prazos de recebimento e reduzir estoques",
       });
@@ -96,7 +96,7 @@ export function computeAlertas(dados: DadosParaAlertas): Alerta[] {
       id: "saldo-caixa-baixo",
       tipo: "aviso",
       msg: "Saldo de caixa abaixo do equivalente a 15 dias de despesas.",
-      valorAtual: fmt(saldoFinal),
+      valorAtual: saldoFinal,
       referencia: `Mínimo sugerido: ${fmt(minimoCaixa)} (15 dias de despesas)`,
       acaoSugerida: "Antecipar recebíveis ou ajustar desembolsos",
     });
@@ -105,7 +105,7 @@ export function computeAlertas(dados: DadosParaAlertas): Alerta[] {
       id: "saldo-caixa-negativo",
       tipo: "erro",
       msg: "Saldo de caixa negativo.",
-      valorAtual: fmt(saldoFinal),
+      valorAtual: saldoFinal,
       acaoSugerida: "Urgente: revisar fluxo e capital de giro",
     });
   }

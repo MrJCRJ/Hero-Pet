@@ -108,13 +108,6 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     margem_bruta: c.margemBruta,
   }));
 
-  const evolucaoMensal = fluxo.evolucaoMensal.map((e) => ({
-    mes: String(e.mes),
-    entradas: ensureNumber(e.entradas),
-    saidas: ensureNumber(e.saidas),
-    saldo_acumulado: ensureNumber(e.saldoAcumulado),
-  }));
-
   let cenarioLiquidacaoJson: Record<string, unknown>;
   if (!cenarioLiquidacao) {
     cenarioLiquidacaoJson = { erro: "Dados do cenário de liquidação indisponíveis" };
@@ -148,7 +141,6 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     indicadores: indicadoresJson,
     margem_produto: margemProduto,
     ranking_clientes: rankingClientes,
-    evolucao_mensal: evolucaoMensal,
     cenario_liquidacao: cenarioLiquidacaoJson,
   };
 }

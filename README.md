@@ -488,6 +488,9 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/hero_pet
 NEXT_PUBLIC_ADMIN_CODES='{"hero123":"Icaro","admin":"Jose"}'
+# Relatório consolidado - cenário de liquidação (opcional)
+# SALDO_DEVOLVER_SOCIOS=13925.09
+# COMISSAO_LIQUIDACAO_PCT=6
 ```
 
 ### Próxima Evolução Sugerida

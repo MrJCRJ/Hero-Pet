@@ -334,7 +334,9 @@ export function ResumoView({ data, mes, ano, alertasConsolidado }: ResumoViewPro
                   <span>{a.msg}</span>
                 )}
                 {"valorAtual" in a && a.valorAtual != null && (
-                  <span className="ml-1 text-amber-600 dark:text-amber-400">({String(a.valorAtual)})</span>
+                  <span className="ml-1 text-amber-600 dark:text-amber-400">
+                    ({typeof a.valorAtual === "number" ? formatBrl(a.valorAtual) : String(a.valorAtual)})
+                  </span>
                 )}
                 {"acaoSugerida" in a && (a as { acaoSugerida?: string }).acaoSugerida && (
                   <p className="mt-0.5 pl-4 text-xs text-amber-600/90 dark:text-amber-400/90">{(a as { acaoSugerida: string }).acaoSugerida}</p>
