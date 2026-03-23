@@ -1,11 +1,6 @@
 import database from "infra/database.js";
-import { gerarDREPDF } from "@/lib/relatorios/exportPDF";
-import { gerarDREExcel } from "@/lib/relatorios/exportExcel";
-import { getReportBounds, periodoFilename } from "@/lib/relatorios/dateBounds";
-import { computeIndicadores } from "@/lib/relatorios/computeIndicadores";
+import { getReportBounds } from "@/lib/relatorios/dateBounds";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
-
-type ResWithHeaders = ApiResLike & { setHeader: (name: string, value: string) => void; end: (chunk?: unknown) => void };
 
 export default async function dreHandler(
   req: ApiReqLike,
@@ -13,6 +8,13 @@ export default async function dreHandler(
 ): Promise<void> {
   if (req.method !== "GET") {
     res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+
+  const format = (req.query?.format as string) || "json";
+  if (format === "pdf" || format === "xlsx") {
+    if (res.setHeader) res.setHeader("Deprecation", "true");
+    res.status(400).json({ erro: "Use o relatório consolidado em JSON" });
     return;
   }
 
@@ -59,7 +61,6 @@ export default async function dreHandler(
     const despesasSobreReceita = receitas > 0 ? Number(((despesas / receitas) * 100).toFixed(2)) : 0;
     const custosSobreReceita = receitas > 0 ? Number(((custosVendas / receitas) * 100).toFixed(2)) : 0;
 
-    const format = (req.query?.format as string) || "json";
     const incluirComparacao = mes > 0 && ano > 0;
 
     // Buscar dados do mês anterior
@@ -106,11 +107,6 @@ export default async function dreHandler(
       };
     }
 
-    let indicadores: { pmr: number | null; pmp: number | null; giroEstoque: number | null; dve: number | null } | null = null;
-    if (format === "pdf" || format === "xlsx") {
-      indicadores = await computeIndicadores(firstDay, lastDay);
-    }
-
     const payload = {
       periodo: { mes, ano, firstDay, lastDay },
       dre: {
@@ -130,21 +126,7 @@ export default async function dreHandler(
         custosSobreReceita,
       },
       ...(dreAnterior ? { dreAnterior } : {}),
-      ...(indicadores ? { indicadores } : {}),
     };
-
-    if (format === "pdf") {
-      gerarDREPDF(payload, res as ResWithHeaders);
-      return;
-    }
-    if (format === "xlsx") {
-      const buffer = await gerarDREExcel(payload);
-      (res as ResWithHeaders).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="DRE-${periodoFilename(mes, ano)}.xlsx"`);
-      (res as ResWithHeaders).status(200);
-      (res as ResWithHeaders).end(buffer);
-      return;
-    }
 
     res.status(200).json(payload);
   } catch (e) {

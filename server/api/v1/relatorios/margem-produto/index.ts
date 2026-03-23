@@ -1,10 +1,6 @@
 import database from "infra/database.js";
-import { gerarMargemPDF } from "@/lib/relatorios/exportPDF";
-import { gerarMargemExcel } from "@/lib/relatorios/exportExcel";
-import { getReportBounds, periodoFilename } from "@/lib/relatorios/dateBounds";
+import { getReportBounds } from "@/lib/relatorios/dateBounds";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
-
-type ResWithHeaders = ApiResLike & { setHeader: (name: string, value: string) => void; end: (chunk?: unknown) => void };
 
 export default async function margemProdutoHandler(
   req: ApiReqLike,
@@ -15,12 +11,18 @@ export default async function margemProdutoHandler(
     return;
   }
 
+  const format = (req.query?.format as string) || "json";
+  if (format === "pdf" || format === "xlsx") {
+    if (res.setHeader) res.setHeader("Deprecation", "true");
+    res.status(400).json({ erro: "Use o relatório consolidado em JSON" });
+    return;
+  }
+
   try {
     const now = new Date();
     const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
     const ano = Number(req.query?.ano) ?? now.getFullYear();
-    const format = (req.query?.format as string) || "json";
-    const defaultLimit = format === "pdf" || format === "xlsx" ? 100 : 50;
+    const defaultLimit = 50;
     const limit = Math.min(100, Math.max(5, Number(req.query?.limit) || defaultLimit));
     const { firstDay, lastDay } = getReportBounds(mes, ano);
 
@@ -73,7 +75,7 @@ export default async function margemProdutoHandler(
     });
 
     const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
-    const incluirComparacao = (format === "json" && compare) || (format !== "json" && mes > 0 && ano > 0);
+    const incluirComparacao = compare;
     let margemAnterior: { totalReceita: number; lucroTotal: number } | null = null;
     if (incluirComparacao) {
       const { firstDay: fa, lastDay: la } = getReportBounds(mes, ano - 1);
@@ -99,19 +101,6 @@ export default async function margemProdutoHandler(
       totalReceita,
       ...(margemAnterior ? { margemAnterior } : {}),
     };
-
-    if (format === "pdf") {
-      gerarMargemPDF(payload, res as ResWithHeaders);
-      return;
-    }
-    if (format === "xlsx") {
-      const buffer = await gerarMargemExcel(payload);
-      (res as ResWithHeaders).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="Margem-Produto-${periodoFilename(mes, ano)}.xlsx"`);
-      (res as ResWithHeaders).status(200);
-      (res as ResWithHeaders).end(buffer);
-      return;
-    }
 
     res.status(200).json(payload);
   } catch (e) {

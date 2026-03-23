@@ -1,11 +1,8 @@
 import { fetchDadosConsolidado, payloadParaAlertas } from "@/lib/relatorios/fetchDadosConsolidado";
 import { computeAlertas } from "@/lib/relatorios/computeAlertas";
-import { gerarConsolidadoPDF } from "@/lib/relatorios/exportPDF";
-import { gerarConsolidadoExcel } from "@/lib/relatorios/exportExcel";
-import { periodoFilename } from "@/lib/relatorios/dateBounds";
+import { computeCenarioLiquidacao, getConfigLiquidacao } from "@/lib/relatorios/computeCenarioLiquidacao";
+import { buildJsonConsolidado } from "@/lib/relatorios/exportJsonConsolidado";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
-
-type ResWithHeaders = ApiResLike & { setHeader: (name: string, value: string) => void; end: (chunk?: unknown) => void };
 
 export default async function consolidadoHandler(
   req: ApiReqLike,
@@ -20,28 +17,40 @@ export default async function consolidadoHandler(
     const now = new Date();
     const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
     const ano = Number(req.query?.ano) ?? now.getFullYear();
-    const format = (req.query?.format as string) || "json";
 
     const payload = await fetchDadosConsolidado(mes, ano);
+
+    const saldoSociosParam = req.query?.saldoSocios as string | undefined;
+    if (saldoSociosParam != null && saldoSociosParam !== "") {
+      const saldoOverride = Number(saldoSociosParam);
+      if (Number.isFinite(saldoOverride) && saldoOverride >= 0) {
+        const config = getConfigLiquidacao();
+        payload.cenarioLiquidacao = computeCenarioLiquidacao({
+          saldoCaixaAtual: payload.fluxo.saldoFinal,
+          valorPresumidoVendaEstoque:
+            payload.cenarioLiquidacao?.valorPresumidoVendaBruto ?? 0,
+          promissoriasAReceber:
+            payload.cenarioLiquidacao?.promissoriasAReceber ?? 0,
+          comissaoPct: config.comissaoPct,
+          saldoDevolverSocios: saldoOverride,
+        });
+      }
+    }
+
     const dadosParaAlertas = payloadParaAlertas(payload);
     const alertas = computeAlertas(dadosParaAlertas);
-
     const resposta = { ...payload, alertas };
 
-    if (format === "pdf") {
-      gerarConsolidadoPDF(resposta, res as ResWithHeaders);
-      return;
-    }
-    if (format === "xlsx") {
-      const buffer = await gerarConsolidadoExcel(resposta);
-      (res as ResWithHeaders).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="Relatorio-Consolidado-${periodoFilename(mes, ano)}.xlsx"`);
-      (res as ResWithHeaders).status(200);
-      (res as ResWithHeaders).end(buffer);
-      return;
-    }
+    const json = buildJsonConsolidado(resposta);
+    const dataGeracao = (json.data_geracao as string) ?? new Date().toISOString();
+    const filenameDate = dataGeracao.slice(0, 10).replace(/-/g, "");
+    const filename = `relatorio_consolidado_${filenameDate}.json`;
 
-    res.status(200).json(resposta);
+    if (res.setHeader) {
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    }
+    res.status(200).json(json);
   } catch (e) {
     console.error("GET /relatorios/consolidado error", e);
     res.status(500).json({ error: "Erro ao gerar relatório consolidado" });

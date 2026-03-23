@@ -1,11 +1,6 @@
 import database from "infra/database.js";
-import { gerarFluxoCaixaPDF } from "@/lib/relatorios/exportPDF";
-import { gerarFluxoCaixaExcel } from "@/lib/relatorios/exportExcel";
-import { getReportBounds, periodoFilename } from "@/lib/relatorios/dateBounds";
-import { computeIndicadores } from "@/lib/relatorios/computeIndicadores";
+import { getReportBounds } from "@/lib/relatorios/dateBounds";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
-
-type ResWithHeaders = ApiResLike & { setHeader: (name: string, value: string) => void; end: (chunk?: unknown) => void };
 
 export default async function fluxoCaixaHandler(
   req: ApiReqLike,
@@ -13,6 +8,13 @@ export default async function fluxoCaixaHandler(
 ): Promise<void> {
   if (req.method !== "GET") {
     res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+
+  const format = (req.query?.format as string) || "json";
+  if (format === "pdf" || format === "xlsx") {
+    if (res.setHeader) res.setHeader("Deprecation", "true");
+    res.status(400).json({ erro: "Use o relatório consolidado em JSON" });
     return;
   }
 
@@ -218,9 +220,8 @@ export default async function fluxoCaixaHandler(
       };
     });
 
-    const format = (req.query?.format as string) || "json";
     const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
-    const incluirComparacao = (format === "json" && compare) || (format !== "json" && mes > 0 && ano > 0);
+    const incluirComparacao = compare;
     let fluxoAnterior: { saldo: number; entradas: number; saidas: number } | null = null;
     if (incluirComparacao) {
       const { firstDay: fa, lastDay: la } = getReportBounds(mes, ano - 1);
@@ -256,10 +257,6 @@ export default async function fluxoCaixaHandler(
         Number((despAnt.rows[0] as Record<string, unknown>)?.total || 0);
       fluxoAnterior = { saldo: Number((entA - saiA).toFixed(2)), entradas: entA, saidas: saiA };
     }
-    let indicadores: { pmr: number | null; pmp: number | null; giroEstoque: number | null; dve: number | null } | null = null;
-    if (format === "pdf" || format === "xlsx") {
-      indicadores = await computeIndicadores(firstDay, lastDay);
-    }
     const payload = {
       periodo: { mes, ano, firstDay, lastDay },
       fluxo: {
@@ -276,22 +273,8 @@ export default async function fluxoCaixaHandler(
         evolucaoMensal,
         conciliacao,
         ...(fluxoAnterior ? { fluxoAnterior } : {}),
-        ...(indicadores ? { indicadores } : {}),
       },
     };
-
-    if (format === "pdf") {
-      gerarFluxoCaixaPDF(payload, res as ResWithHeaders);
-      return;
-    }
-    if (format === "xlsx") {
-      const buffer = await gerarFluxoCaixaExcel(payload);
-      (res as ResWithHeaders).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="Fluxo-Caixa-${periodoFilename(mes, ano)}.xlsx"`);
-      (res as ResWithHeaders).status(200);
-      (res as ResWithHeaders).end(buffer);
-      return;
-    }
 
     res.status(200).json(payload);
   } catch (e) {

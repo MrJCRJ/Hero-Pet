@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { FileText, TrendingUp, BarChart3, Award, Download, Wallet, History, LayoutDashboard, FileSpreadsheet } from "lucide-react";
+import { FileText, TrendingUp, BarChart3, Award, Download, Wallet, History, LayoutDashboard } from "lucide-react";
 import { DREView } from "./components/DREView";
 import { FluxoView } from "./components/FluxoView";
 import { MargemView } from "./components/MargemView";
@@ -14,18 +14,6 @@ type TabId = "dre" | "fluxo" | "margem" | "ranking" | "top-lucro" | "historico-c
 
 const DOWNLOAD_TIMEOUT_MS = 60_000;
 
-function getReportPath(tab: TabId) {
-  if (tab === "dre") return "dre";
-  if (tab === "fluxo") return "fluxo-caixa";
-  if (tab === "margem") return "margem-produto";
-  if (tab === "ranking") return "ranking";
-  if (tab === "historico-custo") return "top-lucro"; // sem export
-  return "top-lucro";
-}
-
-function isTabWithExport(tab: TabId) {
-  return tab !== "top-lucro" && tab !== "historico-custo" && tab !== "resumo";
-}
 
 export default function RelatoriosPage() {
   const [tab, setTab] = useState<TabId>("resumo");
@@ -38,105 +26,50 @@ export default function RelatoriosPage() {
   const [alertasConsolidado, setAlertasConsolidado] = useState<Array<{ id: string; tipo: "erro" | "aviso"; msg: string; valorAtual?: string | number; acaoSugerida?: string }> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState<"pdf" | "xlsx" | null>(null);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
-  const [consolidadoDownloading, setConsolidadoDownloading] = useState<"pdf" | "xlsx" | null>(null);
+  const [consolidadoDownloading, setConsolidadoDownloading] = useState(false);
   const [consolidadoError, setConsolidadoError] = useState<string | null>(null);
 
-  const handleConsolidadoDownload = useCallback(
-    async (format: "pdf" | "xlsx") => {
-      setConsolidadoError(null);
-      setConsolidadoDownloading(format);
-      const params = new URLSearchParams({ mes: String(mes), ano: String(ano), format });
-      const url = `/api/v1/relatorios/consolidado?${params}`;
-      const ext = format;
-      const periodSuffix = ano === 0 ? "todos" : mes === 0 ? `${ano}` : `${ano}-${String(mes).padStart(2, "0")}`;
-      const filename = `relatorio_consolidado_${periodSuffix}.${ext}`;
-      try {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
-        const res = await fetch(url, { credentials: "include", signal: controller.signal });
-        clearTimeout(id);
-        if (res.status === 401) {
-          window.location.href = "/login";
-          return;
-        }
-        if (!res.ok) {
-          const text = await res.text();
-          setConsolidadoError(text || `Erro ${res.status} ao gerar consolidado ${format.toUpperCase()}`);
-          return;
-        }
-        const blob = await res.blob();
-        const u = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = u;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(u);
-      } catch (e) {
-        if ((e as Error).name === "AbortError") {
-          setConsolidadoError("Tempo esgotado. Tente novamente.");
-        } else {
-          setConsolidadoError((e as Error).message || "Erro ao baixar consolidado.");
-        }
-      } finally {
-        setConsolidadoDownloading(null);
+  const handleConsolidadoJsonDownload = useCallback(async () => {
+    setConsolidadoError(null);
+    setConsolidadoDownloading(true);
+    const params = new URLSearchParams({ mes: String(mes), ano: String(ano), format: "json" });
+    const url = `/api/v1/relatorios/consolidado?${params}`;
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+      const res = await fetch(url, { credentials: "include", signal: controller.signal });
+      clearTimeout(id);
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
       }
-    },
-    [mes, ano]
-  );
-
-  const handleDownload = useCallback(
-    async (format: "pdf" | "xlsx") => {
-      if (!isTabWithExport(tab)) return;
-      setDownloadError(null);
-      setDownloading(format);
-      const path = getReportPath(tab);
-      const ext = format;
-      const params = new URLSearchParams({ mes: String(mes), ano: String(ano) });
-      if (tab === "ranking") params.set("tipo", tipoRanking);
-      params.set("format", format);
-      const url = `/api/v1/relatorios/${path}?${params}`;
-      const slug = path.replace(/-/g, "_");
-      const tipoSuffix = tab === "ranking" ? `_${tipoRanking}` : "";
-      const periodSuffix = ano === 0 ? "todos" : mes === 0 ? `${ano}` : `${ano}-${String(mes).padStart(2, "0")}`;
-      const filename = `${slug}${tipoSuffix}_${periodSuffix}.${ext}`;
-      try {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
-        const res = await fetch(url, {
-          credentials: "include",
-          signal: controller.signal,
-        });
-        clearTimeout(id);
-        if (res.status === 401) {
-          window.location.href = "/login";
-          return;
-        }
-        if (!res.ok) {
-          const text = await res.text();
-          setDownloadError(text || `Erro ${res.status} ao gerar ${format.toUpperCase()}`);
-          return;
-        }
-        const blob = await res.blob();
-        const u = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = u;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(u);
-      } catch (e) {
-        if ((e as Error).name === "AbortError") {
-          setDownloadError("Tempo esgotado. Tente novamente.");
-        } else {
-          setDownloadError((e as Error).message || "Erro ao baixar arquivo.");
-        }
-      } finally {
-        setDownloading(null);
+      if (!res.ok) {
+        setConsolidadoError("Erro ao gerar relatório");
+        return;
       }
-    },
-    [tab, mes, ano, tipoRanking]
-  );
+      let filename = "relatorio_consolidado.json";
+      const cd = res.headers.get("Content-Disposition");
+      if (cd) {
+        const match = cd.match(/filename="?([^";\n]+)"?/);
+        if (match) filename = match[1].trim();
+      }
+      const blob = await res.blob();
+      const u = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = u;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(u);
+    } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        setConsolidadoError("Tempo esgotado. Tente novamente.");
+      } else {
+        setConsolidadoError("Erro ao gerar relatório");
+      }
+    } finally {
+      setConsolidadoDownloading(false);
+    }
+  }, [mes, ano]);
 
   useEffect(() => {
     if (skipDataFetch && !isResumoTab) {
@@ -156,7 +89,15 @@ export default function RelatoriosPage() {
         .then((r) => (r.ok ? r.json() : Promise.resolve(null)))
         .then((cons) => {
           if (cons && Array.isArray(cons.alertas)) {
-            setAlertasConsolidado(cons.alertas as Array<{ id: string; tipo: "erro" | "aviso"; msg: string; valorAtual?: string | number; acaoSugerida?: string }>);
+            setAlertasConsolidado(
+              (cons.alertas as Array<Record<string, unknown>>).map((a) => ({
+                id: String(a.id ?? ""),
+                tipo: (a.tipo as "erro" | "aviso") ?? "aviso",
+                msg: String(a.msg ?? ""),
+                valorAtual: (a.valor_atual ?? a.valorAtual) as string | number | undefined,
+                acaoSugerida: (a.acao_sugerida ?? a.acaoSugerida) as string | undefined,
+              }))
+            );
           } else {
             setAlertasConsolidado(null);
           }
@@ -246,53 +187,17 @@ export default function RelatoriosPage() {
             ))}
           </select>
         </div>
-        {!loading && data && isTabWithExport(tab) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleDownload("pdf")}
-                disabled={!!downloading}
-                className="flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-sm hover:bg-[var(--color-bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="h-4 w-4" />
-                {downloading === "pdf" ? "Baixando..." : "PDF"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDownload("xlsx")}
-                disabled={!!downloading}
-                className="flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-sm hover:bg-[var(--color-bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="h-4 w-4" />
-                {downloading === "xlsx" ? "Baixando..." : "Excel"}
-              </button>
-            </div>
-            {downloadError && (
-              <p className="text-sm text-red-600 dark:text-red-400">{downloadError}</p>
-            )}
-          </div>
-        )}
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2 border-l border-[var(--color-border)] pl-4">
             <span className="text-sm text-[var(--color-text-secondary)]">Relatório consolidado:</span>
             <button
               type="button"
-              onClick={() => handleConsolidadoDownload("pdf")}
-              disabled={!!consolidadoDownloading}
+              onClick={handleConsolidadoJsonDownload}
+              disabled={consolidadoDownloading}
               className="flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="h-4 w-4" />
-              {consolidadoDownloading === "pdf" ? "Baixando..." : "PDF"}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleConsolidadoDownload("xlsx")}
-              disabled={!!consolidadoDownloading}
-              className="flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              {consolidadoDownloading === "xlsx" ? "Baixando..." : "Excel"}
+              {consolidadoDownloading ? "Baixando..." : "Baixar JSON"}
             </button>
           </div>
           {consolidadoError && (

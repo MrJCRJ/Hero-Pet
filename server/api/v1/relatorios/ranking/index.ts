@@ -1,10 +1,6 @@
 import database from "infra/database.js";
-import { gerarRankingPDF } from "@/lib/relatorios/exportPDF";
-import { gerarRankingExcel } from "@/lib/relatorios/exportExcel";
-import { getReportBounds, periodoFilename } from "@/lib/relatorios/dateBounds";
+import { getReportBounds } from "@/lib/relatorios/dateBounds";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
-
-type ResWithHeaders = ApiResLike & { setHeader: (name: string, value: string) => void; end: (chunk?: unknown) => void };
 
 export default async function rankingHandler(
   req: ApiReqLike,
@@ -15,13 +11,19 @@ export default async function rankingHandler(
     return;
   }
 
+  const format = (req.query?.format as string) || "json";
+  if (format === "pdf" || format === "xlsx") {
+    if (res.setHeader) res.setHeader("Deprecation", "true");
+    res.status(400).json({ erro: "Use o relatório consolidado em JSON" });
+    return;
+  }
+
   try {
     const now = new Date();
     const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
     const ano = Number(req.query?.ano) ?? now.getFullYear();
     const tipo = (req.query?.tipo as string) || "vendas"; // vendas | fornecedores
-    const format = (req.query?.format as string) || "json";
-    const defaultLimit = format === "pdf" || format === "xlsx" ? 30 : 10;
+    const defaultLimit = 10;
     const limit = Math.min(100, Math.max(5, Number(req.query?.limit) || defaultLimit));
     const { firstDay, lastDay } = getReportBounds(mes, ano);
 
@@ -53,18 +55,6 @@ export default async function rankingHandler(
       });
 
       const payload = { periodo: { mes, ano, firstDay, lastDay }, tipo: "fornecedores", ranking };
-      if (format === "pdf") {
-        gerarRankingPDF(payload, res as ResWithHeaders);
-        return;
-      }
-      if (format === "xlsx") {
-        const buffer = await gerarRankingExcel(payload);
-        (res as ResWithHeaders).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="Ranking-fornecedores-${ano}-${String(mes).padStart(2, "0")}.xlsx"`);
-        (res as ResWithHeaders).status(200);
-        (res as ResWithHeaders).end(buffer);
-        return;
-      }
       res.status(200).json(payload);
       return;
     }
@@ -145,7 +135,7 @@ export default async function rankingHandler(
     });
 
     const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
-    const incluirComparacao = (format === "json" && compare) || (format !== "json" && mes > 0 && ano > 0);
+    const incluirComparacao = compare;
     let rankingAnterior: { totalGeral: number } | null = null;
     if (incluirComparacao) {
       const anoAnt = ano - 1;
@@ -168,18 +158,6 @@ export default async function rankingHandler(
       ticketMedioGeral: totalPedidosGeral > 0 ? Number((totalGeral / totalPedidosGeral).toFixed(2)) : 0,
       ...(rankingAnterior ? { rankingAnterior } : {}),
     };
-    if (format === "pdf") {
-      gerarRankingPDF(payload, res as ResWithHeaders);
-      return;
-    }
-    if (format === "xlsx") {
-      const buffer = await gerarRankingExcel(payload);
-      (res as ResWithHeaders).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      (res as ResWithHeaders).setHeader("Content-Disposition", `attachment; filename="Ranking-vendas-${periodoFilename(mes, ano)}.xlsx"`);
-      (res as ResWithHeaders).status(200);
-      (res as ResWithHeaders).end(buffer);
-      return;
-    }
     res.status(200).json(payload);
   } catch (e) {
     console.error("GET /relatorios/ranking error", e);

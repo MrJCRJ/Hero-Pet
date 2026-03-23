@@ -99,6 +99,23 @@ AUTH_SECRET=uma-chave-secreta-aleatoria-min-32-chars  # obrigatório para NextAu
 
 **Importante:** `AUTH_SECRET` é **obrigatório** para o NextAuth funcionar. Sem ele, `/api/auth/*` retorna 500 (MissingSecret). Gere um valor seguro com: `npx auth secret` ou `openssl rand -base64 32`.
 
+### Variáveis de ambiente (relatórios consolidado)
+
+O relatório consolidado em JSON inclui um **cenário de liquidação** que usa:
+
+| Variável                    | Descrição                                      | Exemplo      | Default |
+|-----------------------------|------------------------------------------------|--------------|---------|
+| `SALDO_DEVOLVER_SOCIOS`     | Valor em reais a devolver aos sócios (liquidação) | `13925.09`   | `0`     |
+| `COMISSAO_LIQUIDACAO_PCT`   | Percentual de comissão sobre venda do estoque  | `6`          | `6`     |
+
+Para testes ou situações em que o valor não esteja fixo em ambiente, use o parâmetro de requisição:
+
+```
+GET /api/v1/relatorios/consolidado?mes=3&ano=2025&saldoSocios=13925.09
+```
+
+O parâmetro `?saldoSocios=` sobrescreve `SALDO_DEVOLVER_SOCIOS` apenas naquela requisição.
+
 ### Deploy na Vercel
 
 Na Vercel, configure as **Environment Variables** em **Project Settings → Environment Variables**:
@@ -150,6 +167,11 @@ npm run test:ci
 Veja `.env.ci.sample` para variáveis mínimas de conexão.
 
 ## Endpoints principais
+
+### Relatórios
+
+- GET `/api/v1/relatorios/consolidado?mes=&ano=&format=json` — relatório consolidado em JSON (DRE, fluxo, indicadores, margem, ranking, cenário de liquidação). Suporta `?saldoSocios=` para sobrescrever saldo a devolver aos sócios. PDF/Excel descontinuados (usar consolidado JSON).
+- GET `/api/v1/relatorios/dre`, `/fluxo-caixa`, `/margem-produto`, `/ranking` — retornam JSON. Formatos PDF/Excel retornam 400 com indicação de depreciação.
 
 ### Status e Migrações
 
