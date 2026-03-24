@@ -78,8 +78,11 @@ export default async function fluxoCaixaHandler(
         values: [firstDay, lastDay],
       }),
       database.query({
-        text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total
-               FROM despesas WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+        text: `SELECT
+                 COALESCE(SUM(CASE WHEN categoria::text = 'devolucao_capital' THEN valor ELSE 0 END),0)::numeric(14,2) AS devolucao,
+                 COALESCE(SUM(CASE WHEN categoria IS NULL OR categoria::text != 'devolucao_capital' THEN valor ELSE 0 END),0)::numeric(14,2) AS operacionais
+               FROM despesas
+               WHERE data_vencimento >= $1 AND data_vencimento < $2`,
         values: [firstDay, lastDay],
       }),
       database.query({
@@ -175,19 +178,21 @@ export default async function fluxoCaixaHandler(
     const promissoriasRecebidas = Number((promPagosR.rows[0] as Record<string, unknown>)?.total || 0);
     const aportesCapital = Number((aportesR.rows[0] as Record<string, unknown>)?.total || 0);
     const compras = Number((comprasR.rows[0] as Record<string, unknown>)?.total || 0);
-    const despesas = Number((despesasR.rows[0] as Record<string, unknown>)?.total || 0);
+    const despesasOperacionais = Number((despesasR.rows[0] as Record<string, unknown>)?.operacionais || 0);
+    const devolucaoCapital = Number((despesasR.rows[0] as Record<string, unknown>)?.devolucao || 0);
+    const despesasTotal = Number((despesasOperacionais + devolucaoCapital).toFixed(2));
     const entradas = Number((vendas + promissoriasRecebidas + aportesCapital).toFixed(2));
-    const saidas = Number((compras + despesas).toFixed(2));
+    const saidas = Number((compras + despesasTotal).toFixed(2));
     const saldo = Number((entradas - saidas).toFixed(2));
     const saldoFinal = Number((saldoInicial + saldo).toFixed(2));
 
-    const fluxoOperacional = Number((vendas + promissoriasRecebidas - compras - despesas).toFixed(2));
+    const fluxoOperacional = Number((vendas + promissoriasRecebidas - compras - despesasOperacionais).toFixed(2));
     const fluxoFinanciamento = aportesCapital;
     const fluxoInvestimento = 0;
 
     const receitas = Number((receitasR.rows[0] as Record<string, unknown>)?.total || 0);
     const custosVendas = Number((cogsR.rows[0] as Record<string, unknown>)?.cogs || 0);
-    const lucroOperacional = Number((receitas - custosVendas - despesas).toFixed(2));
+    const lucroOperacional = Number((receitas - custosVendas - despesasOperacionais).toFixed(2));
 
     const valorEstoque = Number((estoqueCustoR.rows[0] as Record<string, unknown>)?.total || 0);
     const contasReceberInicial = Number((crInicialR.rows[0] as Record<string, unknown>)?.total || 0);
@@ -246,15 +251,21 @@ export default async function fluxoCaixaHandler(
           values: [fa, la],
         }),
         database.query({
-          text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total FROM despesas WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+          text: `SELECT
+                   COALESCE(SUM(CASE WHEN categoria::text = 'devolucao_capital' THEN valor ELSE 0 END),0)::numeric(14,2) AS devolucao,
+                   COALESCE(SUM(CASE WHEN categoria IS NULL OR categoria::text != 'devolucao_capital' THEN valor ELSE 0 END),0)::numeric(14,2) AS operacionais
+                 FROM despesas
+                 WHERE data_vencimento >= $1 AND data_vencimento < $2`,
           values: [fa, la],
         }),
       ]);
+      const despesasAntOper = Number((despAnt.rows[0] as Record<string, unknown>)?.operacionais || 0);
+      const devolucaoAnt = Number((despAnt.rows[0] as Record<string, unknown>)?.devolucao || 0);
       const entA = Number((vendasAnt.rows[0] as Record<string, unknown>)?.total || 0) +
         Number((promAnt.rows[0] as Record<string, unknown>)?.total || 0) +
         Number((aportAnt.rows[0] as Record<string, unknown>)?.total || 0);
       const saiA = Number((compAnt.rows[0] as Record<string, unknown>)?.total || 0) +
-        Number((despAnt.rows[0] as Record<string, unknown>)?.total || 0);
+        despesasAntOper + devolucaoAnt;
       fluxoAnterior = { saldo: Number((entA - saiA).toFixed(2)), entradas: entA, saidas: saiA };
     }
     const payload = {
@@ -263,7 +274,7 @@ export default async function fluxoCaixaHandler(
         saldoInicial,
         saldoFinal,
         entradas: { vendas, promissoriasRecebidas, aportesCapital, total: entradas },
-        saidas: { compras, despesas, total: saidas },
+        saidas: { compras, despesas: despesasOperacionais, devolucao_capital: devolucaoCapital, total: saidas },
         saldo,
         fluxoOperacional,
         fluxoFinanciamento,

@@ -233,6 +233,9 @@ export function FluxoView({ fluxo, mes, ano }: FluxoViewProps) {
           <ul className="space-y-1 text-sm">
             <li>Compras: {formatBrl(saidas?.compras || 0)}</li>
             <li>Despesas: {formatBrl(saidas?.despesas || 0)}</li>
+            {(saidas?.devolucao_capital ?? 0) > 0 && (
+              <li>Devolução de capital: {formatBrl(saidas?.devolucao_capital || 0)}</li>
+            )}
             <li className="font-medium">Total: {formatBrl(saidas?.total || 0)}</li>
           </ul>
         </div>

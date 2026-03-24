@@ -105,7 +105,7 @@ O relatório consolidado em JSON inclui um **cenário de liquidação** que usa:
 
 | Variável                    | Descrição                                      | Exemplo      | Default |
 |-----------------------------|------------------------------------------------|--------------|---------|
-| `SALDO_DEVOLVER_SOCIOS`     | Valor em reais a devolver aos sócios (liquidação) | `13925.09`   | `0`     |
+| `SALDO_DEVOLVER_SOCIOS`     | Valor em reais a devolver aos sócios (liquidação). Se não definido, calculado automaticamente (aportes − devoluções de capital) | `13925.09`   | calculado |
 | `COMISSAO_LIQUIDACAO_PCT`   | Percentual de comissão sobre venda do estoque  | `6`          | `6`     |
 
 Para testes ou situações em que o valor não esteja fixo em ambiente, use o parâmetro de requisição:
@@ -420,6 +420,8 @@ Runbook recomendado (produção):
    - `POST /api/v1/migrations` (idempotente; retorna 201 se migrou algo, 200 se nada pendente)
 2. Após migrações OK, publique o build.
 3. (Opcional) Healthcheck/readiness com `GET /api/v1/migrations` para validar ausência de pendências.
+
+**Verificação pós-migração — categoria Devolução de Capital:** Após aplicar a migration `1759610000000_add_despesa_categoria_devolucao_capital`, verifique se existem despesas que representam devolução de capital aos sócios mas estão com categoria "Outros" ou "Empréstimo". Consulte despesas com `categoria = 'outros'` e descrição contendo "Empréstimo", "Devolução" ou similar. Reclassifique manualmente via UI (Editar Despesa → Categoria: Devolução de Capital) os lançamentos que de fato são devoluções de capital. Essas despesas passam a ser excluídas do cálculo de despesas operacionais no DRE e fluxo; o `saldo_a_devolver_socios` no cenário de liquidação é calculado automaticamente (aportes − devoluções).
 
 Quando considerar habilitar MIGRATIONS_AUTO_APPLY:
 

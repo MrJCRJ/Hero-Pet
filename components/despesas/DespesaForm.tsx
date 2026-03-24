@@ -15,6 +15,7 @@ const CATEGORIAS = [
   { value: "transporte", label: "Transporte" },
   { value: "alimentacao", label: "Alimentação" },
   { value: "material_escritorio", label: "Material de Escritório" },
+  { value: "devolucao_capital", label: "Devolução de Capital" },
   { value: "outros", label: "Outros" },
 ];
 

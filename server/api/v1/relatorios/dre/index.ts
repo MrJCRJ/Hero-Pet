@@ -41,7 +41,9 @@ export default async function dreHandler(
       }),
       database.query({
         text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total
-               FROM despesas WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+               FROM despesas
+               WHERE data_vencimento >= $1 AND data_vencimento < $2
+               AND (categoria IS NULL OR categoria::text != 'devolucao_capital')`,
         values: [firstDay, lastDay],
       }),
     ]);
@@ -86,7 +88,9 @@ export default async function dreHandler(
         }),
         database.query({
           text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total
-                 FROM despesas WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+                 FROM despesas
+                 WHERE data_vencimento >= $1 AND data_vencimento < $2
+                 AND (categoria IS NULL OR categoria::text != 'devolucao_capital')`,
           values: [fda, lda],
         }),
       ]);

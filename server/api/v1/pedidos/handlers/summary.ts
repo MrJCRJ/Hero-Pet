@@ -204,7 +204,8 @@ export async function getSummaryHandler(
     const despesasQ = await database.query({
       text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total
              FROM despesas
-             WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+             WHERE data_vencimento >= $1 AND data_vencimento < $2
+             AND (categoria IS NULL OR categoria::text != 'devolucao_capital')`,
       values: [startYMD, nextStartYMD],
     });
 

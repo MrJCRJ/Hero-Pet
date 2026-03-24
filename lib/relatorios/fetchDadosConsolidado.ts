@@ -3,6 +3,7 @@ import { getReportBounds } from "@/lib/relatorios/dateBounds";
 import { computeIndicadores } from "@/lib/relatorios/computeIndicadores";
 import type { DadosParaAlertas } from "@/lib/relatorios/computeAlertas";
 import { computeCenarioLiquidacao, getConfigLiquidacao } from "@/lib/relatorios/computeCenarioLiquidacao";
+import { computeSaldoDevolverSocios } from "@/lib/relatorios/computeSaldoDevolverSocios";
 
 export interface PayloadConsolidado {
   periodo: { mes: number; ano: number; firstDay: string; lastDay: string };
@@ -23,7 +24,7 @@ export interface PayloadConsolidado {
     saldoInicial: number;
     saldoFinal: number;
     entradas: { vendas: number; promissoriasRecebidas: number; aportesCapital: number; total: number };
-    saidas: { compras: number; despesas: number; total: number };
+    saidas: { compras: number; despesas: number; devolucao_capital: number; total: number };
     saldo: number;
     fluxoOperacional: number;
     evolucaoMensal: Array<{ mes: string; entradas: number; saidas: number; saldoPeriodo: number; saldoAcumulado: number }>;
@@ -97,7 +98,9 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     }),
     database.query({
       text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total
-             FROM despesas WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+             FROM despesas
+             WHERE data_vencimento >= $1 AND data_vencimento < $2
+             AND (categoria IS NULL OR categoria::text != 'devolucao_capital')`,
       values: [firstDay, lastDay],
     }),
     database.query({
@@ -138,7 +141,11 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
       values: [firstDay, lastDay],
     }),
     database.query({
-      text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total FROM despesas WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+      text: `SELECT
+               COALESCE(SUM(CASE WHEN categoria::text = 'devolucao_capital' THEN valor ELSE 0 END),0)::numeric(14,2) AS devolucao,
+               COALESCE(SUM(CASE WHEN categoria IS NULL OR categoria::text != 'devolucao_capital' THEN valor ELSE 0 END),0)::numeric(14,2) AS operacionais
+             FROM despesas
+             WHERE data_vencimento >= $1 AND data_vencimento < $2`,
       values: [firstDay, lastDay],
     }),
     database.query({
@@ -241,12 +248,14 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
   const promissoriasRecebidas = Number((promPagosR.rows[0] as Record<string, unknown>)?.total || 0);
   const aportesCapital = Number((aportesR.rows[0] as Record<string, unknown>)?.total || 0);
   const compras = Number((comprasR.rows[0] as Record<string, unknown>)?.total || 0);
-  const despesasPeriodo = Number((despesasR2.rows[0] as Record<string, unknown>)?.total || 0);
+  const despesasOperacionaisPeriodo = Number((despesasR2.rows[0] as Record<string, unknown>)?.operacionais || 0);
+  const devolucaoCapitalPeriodo = Number((despesasR2.rows[0] as Record<string, unknown>)?.devolucao || 0);
+  const despesasPeriodoTotal = Number((despesasOperacionaisPeriodo + devolucaoCapitalPeriodo).toFixed(2));
   const entradas = Number((vendas + promissoriasRecebidas + aportesCapital).toFixed(2));
-  const saidas = Number((compras + despesasPeriodo).toFixed(2));
+  const saidas = Number((compras + despesasPeriodoTotal).toFixed(2));
   const saldo = Number((entradas - saidas).toFixed(2));
   const saldoFinal = Number((saldoInicial + saldo).toFixed(2));
-  const fluxoOperacional = Number((vendas + promissoriasRecebidas - compras - despesasPeriodo).toFixed(2));
+  const fluxoOperacional = Number((vendas + promissoriasRecebidas - compras - despesasOperacionaisPeriodo).toFixed(2));
 
   let saldoAcum = saldoInicial;
   const evolucaoMensal = ((evolucaoMensalR.rows || []) as Array<Record<string, unknown>>).map((r) => {
@@ -288,7 +297,9 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
       }),
       database.query({
         text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total
-             FROM despesas WHERE data_vencimento >= $1 AND data_vencimento < $2`,
+             FROM despesas
+             WHERE data_vencimento >= $1 AND data_vencimento < $2
+             AND (categoria IS NULL OR categoria::text != 'devolucao_capital')`,
         values: [fa, la],
       }),
       database.query({
@@ -344,12 +355,17 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
   const valorPresumidoVendaEstoque = Number((estoqueVendaR.rows[0] as Record<string, unknown>)?.total || 0);
   const promissoriasAReceber = Number((promissoriasAReceberR.rows[0] as Record<string, unknown>)?.total || 0);
   const config = getConfigLiquidacao();
+  const saldoDevolverFromEnv = Number(process.env.SALDO_DEVOLVER_SOCIOS);
+  const saldoDevolverSocios =
+    Number.isFinite(saldoDevolverFromEnv) && saldoDevolverFromEnv >= 0
+      ? saldoDevolverFromEnv
+      : await computeSaldoDevolverSocios();
   const cenarioLiquidacao = computeCenarioLiquidacao({
     saldoCaixaAtual: saldoFinal,
     valorPresumidoVendaEstoque,
     promissoriasAReceber,
     comissaoPct: config.comissaoPct,
-    saldoDevolverSocios: config.saldoDevolverSocios,
+    saldoDevolverSocios,
   });
 
   const rankingRows = rankingR.rows as Array<Record<string, unknown>>;
@@ -385,7 +401,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
       saldoInicial,
       saldoFinal,
       entradas: { vendas, promissoriasRecebidas, aportesCapital, total: entradas },
-      saidas: { compras, despesas: despesasPeriodo, total: saidas },
+      saidas: { compras, despesas: despesasOperacionaisPeriodo, devolucao_capital: devolucaoCapitalPeriodo, total: saidas },
       saldo,
       fluxoOperacional,
       evolucaoMensal,

@@ -72,6 +72,7 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     saidas: {
       compras: ensureNumber(fluxo.saidas.compras),
       despesas: ensureNumber(fluxo.saidas.despesas),
+      devolucao_capital: ensureNumber(fluxo.saidas.devolucao_capital ?? 0),
       total: ensureNumber(fluxo.saidas.total),
     },
     saldo_inicial: ensureNumber(fluxo.saldoInicial),
