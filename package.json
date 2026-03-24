@@ -29,6 +29,7 @@
     "migration:up": "node-pg-migrate -m infra/migrations --envPath .env.development up",
     "migration:up:prod": "node-pg-migrate -m infra/migrations --envPath .env.production up",
     "migration:add-produtos-columns": "node infra/scripts/run-add-produtos-columns.js",
+    "apply:devolucao-capital": "node scripts/apply-devolucao-capital-enum.js",
     "fix:user-role": "node scripts/fix-user-role.js",
     "wait-for-postgres": "node infra/scripts/wait-for-postgres.js",
     "import:orders": "node scripts/import-orders.js",
