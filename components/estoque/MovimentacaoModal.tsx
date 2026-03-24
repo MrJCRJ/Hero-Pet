@@ -15,8 +15,13 @@ type TipoMov = "ENTRADA" | "SAIDA" | "AJUSTE";
 const schema = {
   tipo: (v: string) =>
     ["ENTRADA", "SAIDA", "AJUSTE"].includes(v) ? null : "Tipo inválido",
-  quantidade: (v: number) =>
-    Number.isFinite(v) && v > 0 ? null : "Quantidade deve ser maior que 0",
+  quantidade: (v: number, tipo: TipoMov) => {
+    if (!Number.isFinite(v) || v === 0) return "Quantidade deve ser diferente de 0";
+    if ((tipo === "ENTRADA" || tipo === "SAIDA") && v < 0) {
+      return "Para entrada/saída, informe quantidade positiva";
+    }
+    return null;
+  },
   valor_unitario: (v: number, tipo: string) =>
     tipo === "ENTRADA"
       ? Number.isFinite(v) && v >= 0
@@ -47,7 +52,7 @@ export function MovimentacaoModal({
     const valor = parseFloat(valorUnitario.replace(",", "."));
 
     const errTipo = schema.tipo(tipo);
-    const errQtd = schema.quantidade(qtd);
+    const errQtd = schema.quantidade(qtd, tipo);
     const errValor = schema.valor_unitario(valor, tipo);
 
     if (errTipo || errQtd || (tipo === "ENTRADA" && errValor)) {
@@ -58,7 +63,7 @@ export function MovimentacaoModal({
     const body: Record<string, unknown> = {
       produto_id: produto.produto_id,
       tipo,
-      quantidade: Math.abs(qtd),
+      quantidade: tipo === "AJUSTE" ? qtd : Math.abs(qtd),
       documento: documento || null,
       observacao: observacao || null,
     };
@@ -127,10 +132,15 @@ export function MovimentacaoModal({
               inputMode="decimal"
               value={quantidade}
               onChange={(e) => setQuantidade(e.target.value)}
-              placeholder="Ex: 10"
+              placeholder={tipo === "AJUSTE" ? "Ex: -20 ou 20" : "Ex: 10"}
               className="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm"
               required
             />
+            {tipo === "AJUSTE" && (
+              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                Use negativo para reduzir saldo (correção de contagem) e positivo para aumentar.
+              </p>
+            )}
           </div>
 
           {tipo === "ENTRADA" && (
