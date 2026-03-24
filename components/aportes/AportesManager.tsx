@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Modal } from "components/common/Modal";
 import { ConfirmDialog } from "components/common/ConfirmDialog";
 import { Button } from "components/ui/Button";
-import { HandCoins, Trash2 } from "lucide-react";
+import { HandCoins, Pencil, Trash2 } from "lucide-react";
 
 export interface Aporte {
   id: number;
@@ -34,6 +34,7 @@ export function AportesManager() {
   const [aportes, setAportes] = useState<Aporte[]>([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<Aporte | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Aporte | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -73,6 +74,7 @@ export function AportesManager() {
   }, [fetchAportes]);
 
   const handleOpenNew = () => {
+    setEditTarget(null);
     setFormData({
       data: new Date().toISOString().slice(0, 10),
       valor: "",
@@ -81,8 +83,23 @@ export function AportesManager() {
     setShowModal(true);
   };
 
+  const handleEditClick = (aporte: Aporte) => {
+    setEditTarget(aporte);
+    const dataStr =
+      typeof aporte.data === "string"
+        ? aporte.data.slice(0, 10)
+        : new Date(aporte.data).toISOString().slice(0, 10);
+    setFormData({
+      data: dataStr,
+      valor: String(aporte.valor),
+      descricao: aporte.descricao || "",
+    });
+    setShowModal(true);
+  };
+
   const handleCloseModal = () => {
     setShowModal(false);
+    setEditTarget(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,14 +111,21 @@ export function AportesManager() {
     }
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/aportes", {
-        method: "POST",
+      const payload = {
+        data: formData.data,
+        valor: valorNum,
+        descricao: formData.descricao.trim() || null,
+      };
+
+      const url = editTarget
+        ? `/api/v1/aportes/${editTarget.id}`
+        : "/api/v1/aportes";
+      const method = editTarget ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: formData.data,
-          valor: valorNum,
-          descricao: formData.descricao.trim() || null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -236,14 +260,24 @@ export function AportesManager() {
                         {formatBrl(Number(aporte.valor))}
                       </td>
                       <td className="py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteClick(aporte)}
-                          className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 dark:text-red-400"
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleEditClick(aporte)}
+                            className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-border)] hover:text-[var(--color-text-primary)]"
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteClick(aporte)}
+                            className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 dark:text-red-400"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -255,7 +289,10 @@ export function AportesManager() {
       )}
 
       {showModal && (
-        <Modal title="Novo aporte de capital" onClose={handleCloseModal}>
+        <Modal
+          title={editTarget ? "Editar aporte de capital" : "Novo aporte de capital"}
+          onClose={handleCloseModal}
+        >
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium">
