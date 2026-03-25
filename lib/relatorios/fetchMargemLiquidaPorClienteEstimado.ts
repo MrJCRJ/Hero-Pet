@@ -32,7 +32,7 @@ export async function fetchMargemLiquidaPorClienteEstimado(
     database.query({
       text: `WITH vendas_por_entity AS (
                SELECT p.partner_entity_id AS entity_id,
-                      COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), e.name, 'Cliente sem nome') AS nome,
+                     COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), MAX(e.name), 'Cliente sem nome') AS nome,
                       COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS vendas_total,
                       COALESCE(SUM(COALESCE(p.frete_total,0)),0)::numeric(14,2) AS frete_custo
                  FROM pedidos p
