@@ -94,7 +94,9 @@ Não passa pelo agregador de relatórios; custos médios por mês vêm de `/api/
 
 ## Relatório consolidado (download)
 
-`GET /api/v1/relatorios/consolidado?mes&ano&format=json` — [`lib/relatorios/fetchDadosConsolidado.ts`](../../lib/relatorios/fetchDadosConsolidado.ts), `buildJsonConsolidado`, `computeAlertas`.
+`GET /api/v1/relatorios/consolidado?mes&ano&format=json` — [`lib/relatorios/fetchDadosConsolidado.ts`](../../lib/relatorios/fetchDadosConsolidado.ts), [`exportJsonConsolidado.ts`](../../lib/relatorios/exportJsonConsolidado.ts) (`buildJsonConsolidado`), `computeAlertas`.
+
+- **schema_version** `1.1+`: inclui `escopo_relatorio` (texto explicando o filtro da tela) e `serie_dre_mensal` com DRE **mês a mês** (ano civil completo quando `ano > 0`, ou últimos 12 meses quando `ano = 0`) mais `totais_soma_dos_meses`. Os blocos `dre` / `fluxo_caixa` / etc. continuam sendo **somente o período selecionado** no filtro.
 
 ## Período (`getReportBounds`)
 
@@ -113,4 +115,5 @@ Todas as APIs acima usam `withRole`: sessão obrigatória; papel `admin` | `oper
 | [`tests/unit/lib/relatorios/dateBounds.test.ts`](../../tests/unit/lib/relatorios/dateBounds.test.ts) | Unitário: `getReportBounds` e `periodoFilename`. |
 | [`tests/unit/lib/relatorios/computeIndicadoresNumeric.test.ts`](../../tests/unit/lib/relatorios/computeIndicadoresNumeric.test.ts) | Unitário: PMR, PMP, giro, DVE (inclui cenário de PMP “explosivo”). |
 | [`tests/unit/lib/relatorios/indicadoresDiasPeriodo.test.ts`](../../tests/unit/lib/relatorios/indicadoresDiasPeriodo.test.ts) | Unitário: `diasPeriodo` vs `getReportBounds`. |
+| [`tests/unit/lib/relatorios/fetchDreMesAMes.test.ts`](../../tests/unit/lib/relatorios/fetchDreMesAMes.test.ts) | Unitário: `somarDreMeses` (totais da série mensal). |
 | [`tests/integration/relatorios/RelatoriosPage.smoke.test.tsx`](../../tests/integration/relatorios/RelatoriosPage.smoke.test.tsx) | Smoke UI: troca de abas e fetches esperados (fetch mockado). |

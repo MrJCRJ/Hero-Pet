@@ -4,6 +4,11 @@ import { computeIndicadores } from "@/lib/relatorios/computeIndicadores";
 import type { DadosParaAlertas } from "@/lib/relatorios/computeAlertas";
 import { computeCenarioLiquidacao, getConfigLiquidacao } from "@/lib/relatorios/computeCenarioLiquidacao";
 import { computeSaldoDevolverSocios } from "@/lib/relatorios/computeSaldoDevolverSocios";
+import {
+  fetchDreMesAMes,
+  somarDreMeses,
+  type DreMesRow,
+} from "@/lib/relatorios/fetchDreMesAMes";
 
 export interface PayloadConsolidado {
   periodo: { mes: number; ano: number; firstDay: string; lastDay: string };
@@ -57,10 +62,41 @@ export interface PayloadConsolidado {
   margemAnterior?: { totalReceita: number; margemMediaPonderada: number };
   rankingAnterior?: { totalGeral: number };
   cenarioLiquidacao?: import("@/lib/relatorios/computeCenarioLiquidacao").CenarioLiquidacaoResult & { erro?: string };
+  /** DRE mês a mês (dados brutos) + totais do intervalo; independente do filtro da tela quando ano > 0 (ano civil). */
+  serieDreMensal?: {
+    tipo: string;
+    intervalo: { inicio: string; fim_exclusivo: string };
+    meses: DreMesRow[];
+    totais_soma_meses: DreMesRow;
+  };
 }
 
 export async function fetchDadosConsolidado(mes: number, ano: number): Promise<PayloadConsolidado> {
   const { firstDay, lastDay } = getReportBounds(mes, ano);
+
+  const serieDreMensalPromise: Promise<PayloadConsolidado["serieDreMensal"]> =
+    ano > 0
+      ? (async () => {
+          const yIni = `${ano}-01-01`;
+          const yFim = `${ano + 1}-01-01`;
+          const meses = await fetchDreMesAMes(yIni, yFim);
+          return {
+            tipo: `ano_calendario_${ano}`,
+            intervalo: { inicio: yIni, fim_exclusivo: yFim },
+            meses,
+            totais_soma_meses: somarDreMeses(meses),
+          };
+        })()
+      : (async () => {
+          const { firstDay: f12, lastDay: l12 } = getReportBounds(1, 0);
+          const meses = await fetchDreMesAMes(f12, l12);
+          return {
+            tipo: "ultimos_12_meses",
+            intervalo: { inicio: f12, fim_exclusivo: l12 },
+            meses,
+            totais_soma_meses: somarDreMeses(meses),
+          };
+        })();
 
   const [
     vendasR,
@@ -82,6 +118,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     totalGeralR,
     estoqueVendaR,
     promissoriasAReceberR,
+    serieDreMensal,
   ] = await Promise.all([
     database.query({
       text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
@@ -227,6 +264,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
              JOIN pedidos p ON p.id = pp.pedido_id AND p.tipo = 'VENDA'
              WHERE pp.paid_at IS NULL`,
     }).catch(() => ({ rows: [{ total: 0 }] })),
+    serieDreMensalPromise,
   ]);
 
   const receitas = Number((vendasR.rows[0] as Record<string, unknown>)?.total || 0);
@@ -413,6 +451,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     ...(margemAnterior ? { margemAnterior } : {}),
     ...(rankingAnterior ? { rankingAnterior } : {}),
     cenarioLiquidacao,
+    serieDreMensal,
   };
 }
 

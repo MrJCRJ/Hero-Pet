@@ -5,6 +5,7 @@
 
 import type { PayloadConsolidado } from "@/lib/relatorios/fetchDadosConsolidado";
 import type { Alerta } from "@/lib/relatorios/computeAlertas";
+import type { DreMesRow } from "@/lib/relatorios/fetchDreMesAMes";
 import { EMITENTE } from "@/lib/constants/company";
 
 export interface RespostaConsolidado extends PayloadConsolidado {
@@ -23,8 +24,33 @@ function periodoTipo(mes: number, ano: number): string {
   return `Mês ${ano}-${String(mes).padStart(2, "0")}`;
 }
 
+function dreMesRowSnake(row: DreMesRow): Record<string, unknown> {
+  return {
+    mes: row.mes || null,
+    periodo_inicio: row.periodo_inicio || null,
+    periodo_fim_exclusivo: row.periodo_fim_exclusivo || null,
+    receitas: ensureNumber(row.receitas),
+    custos_vendas: ensureNumber(row.custos_vendas),
+    despesas: ensureNumber(row.despesas),
+    lucro_bruto: ensureNumber(row.lucro_bruto),
+    lucro_operacional: ensureNumber(row.lucro_operacional),
+    margem_bruta_pct: ensureNumber(row.margem_bruta_pct),
+    margem_operacional_pct: ensureNumber(row.margem_operacional_pct),
+  };
+}
+
 export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<string, unknown> {
-  const { periodo, dre, fluxo, indicadores, margem, ranking, cenarioLiquidacao, alertas = [] } = resposta;
+  const {
+    periodo,
+    dre,
+    fluxo,
+    indicadores,
+    margem,
+    ranking,
+    cenarioLiquidacao,
+    alertas = [],
+    serieDreMensal,
+  } = resposta;
 
   const periodoObj = {
     inicio: periodo.firstDay,
@@ -130,9 +156,32 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     };
   }
 
+  const serieDreMensalJson =
+    serieDreMensal != null
+      ? {
+          tipo: serieDreMensal.tipo,
+          intervalo_coberto: {
+            inicio: serieDreMensal.intervalo.inicio,
+            fim_exclusivo: serieDreMensal.intervalo.fim_exclusivo,
+          },
+          meses: serieDreMensal.meses.map(dreMesRowSnake),
+          totais_soma_dos_meses: {
+            descricao:
+              "Soma aritmética dos meses acima; lucros e margens recalculados sobre os totais (não soma das margens mensais).",
+            ...dreMesRowSnake(serieDreMensal.totais_soma_meses),
+          },
+        }
+      : undefined;
+
   return {
-    schema_version: "1.0",
+    schema_version: "1.1",
     empresa: EMITENTE.razao,
+    escopo_relatorio: {
+      periodo_filtro_interativo: periodoObj,
+      explicacao:
+        "Os blocos dre, fluxo_caixa, resumo, indicadores, margem_produto e ranking_clientes referem-se exclusivamente ao periodo_filtro_interativo (o mesmo filtro da tela). " +
+        "A chave serie_dre_mensal traz, em paralelo, a DRE mês a mês no ano civil completo (quando há ano selecionado) ou na janela dos últimos 12 meses (quando ano = 'últimos 12 meses'), com totais agregados.",
+    },
     periodo: periodoObj,
     data_geracao: new Date().toISOString(),
     resumo: resumo,
@@ -143,5 +192,6 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     margem_produto: margemProduto,
     ranking_clientes: rankingClientes,
     cenario_liquidacao: cenarioLiquidacaoJson,
+    ...(serieDreMensalJson ? { serie_dre_mensal: serieDreMensalJson } : {}),
   };
 }
