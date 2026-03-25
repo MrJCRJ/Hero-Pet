@@ -12,14 +12,21 @@ export async function fetchMetasMensais(ano: number, meses: number[]): Promise<M
   const mesesUniq = [...new Set(meses)].filter((m) => m >= 1 && m <= 12);
   if (mesesUniq.length === 0) return [];
 
-  const r = await database.query({
-    text: `SELECT ano, mes,
-                  meta_receita, meta_lucro_operacional, meta_margem_operacional
-             FROM metas_mensais
-            WHERE ano = $1 AND mes = ANY($2::int[])
-            ORDER BY mes ASC`,
-    values: [ano, mesesUniq],
-  });
+  let r: { rows: unknown[] };
+  try {
+    r = await database.query({
+      text: `SELECT ano, mes,
+                    meta_receita, meta_lucro_operacional, meta_margem_operacional
+               FROM metas_mensais
+              WHERE ano = $1 AND mes = ANY($2::int[])
+              ORDER BY mes ASC`,
+      values: [ano, mesesUniq],
+    });
+  } catch (e: any) {
+    // Ambiente sem migração aplicada: não derrubar o consolidado.
+    if (e?.code === "42P01") return [];
+    throw e;
+  }
 
   const rows = r.rows as Array<Record<string, unknown>>;
   return rows.map((x) => ({
