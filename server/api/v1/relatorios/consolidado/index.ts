@@ -2,6 +2,7 @@ import { fetchDadosConsolidado, payloadParaAlertas } from "@/lib/relatorios/fetc
 import { computeAlertas } from "@/lib/relatorios/computeAlertas";
 import { computeCenarioLiquidacao, getConfigLiquidacao } from "@/lib/relatorios/computeCenarioLiquidacao";
 import { buildJsonConsolidado } from "@/lib/relatorios/exportJsonConsolidado";
+import { parseRelatorioQuery } from "@/lib/relatorios/parseRelatoriosQuery";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 export default async function consolidadoHandler(
@@ -14,27 +15,34 @@ export default async function consolidadoHandler(
   }
 
   try {
-    const now = new Date();
-    const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
-    const ano = Number(req.query?.ano) ?? now.getFullYear();
+    const parsed = parseRelatorioQuery(req.query, {
+      allowFormat: true,
+      allowSaldoSocios: true,
+    });
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const { mes, ano, format, saldoSocios } = parsed.data;
+    if (format === "pdf" || format === "xlsx") {
+      if (res.setHeader) res.setHeader("Deprecation", "true");
+      res.status(400).json({ erro: "Use o relatório consolidado em JSON" });
+      return;
+    }
 
     const payload = await fetchDadosConsolidado(mes, ano);
 
-    const saldoSociosParam = req.query?.saldoSocios as string | undefined;
-    if (saldoSociosParam != null && saldoSociosParam !== "") {
-      const saldoOverride = Number(saldoSociosParam);
-      if (Number.isFinite(saldoOverride) && saldoOverride >= 0) {
-        const config = getConfigLiquidacao();
-        payload.cenarioLiquidacao = computeCenarioLiquidacao({
-          saldoCaixaAtual: payload.fluxo.saldoFinal,
-          valorPresumidoVendaEstoque:
-            payload.cenarioLiquidacao?.valorPresumidoVendaBruto ?? 0,
-          promissoriasAReceber:
-            payload.cenarioLiquidacao?.promissoriasAReceber ?? 0,
-          comissaoPct: config.comissaoPct,
-          saldoDevolverSocios: saldoOverride,
-        });
-      }
+    if (saldoSocios != null) {
+      const config = getConfigLiquidacao();
+      payload.cenarioLiquidacao = computeCenarioLiquidacao({
+        saldoCaixaAtual: payload.fluxo.saldoFinal,
+        valorPresumidoVendaEstoque:
+          payload.cenarioLiquidacao?.valorPresumidoVendaBruto ?? 0,
+        promissoriasAReceber:
+          payload.cenarioLiquidacao?.promissoriasAReceber ?? 0,
+        comissaoPct: config.comissaoPct,
+        saldoDevolverSocios: saldoSocios,
+      });
     }
 
     const dadosParaAlertas = payloadParaAlertas(payload);

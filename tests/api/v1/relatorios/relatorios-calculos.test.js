@@ -17,6 +17,7 @@ import {
   getAuthenticatedCookie,
   BASE_URL,
 } from "tests/utils/authHelpers.js";
+import { RelatorioConsolidadoSchema } from "tests/schemas/relatorioConsolidadoSchema";
 
 jest.setTimeout(90000);
 
@@ -181,7 +182,7 @@ describe("GET /api/v1/relatorios/margem-produto", () => {
 });
 
 describe("GET /api/v1/relatorios/fluxo-caixa", () => {
-  test("retorna 200 e estrutura esperada", async () => {
+  test("retorna 200 e totais coerentes com cenário simples", async () => {
     const { mes, ano } = currentMesAno();
     const res = await fetch(
       `${BASE_URL}/api/v1/relatorios/fluxo-caixa?mes=${mes}&ano=${ano}`,
@@ -194,11 +195,13 @@ describe("GET /api/v1/relatorios/fluxo-caixa", () => {
     expect(json.fluxo).toHaveProperty("saidas");
     expect(json.fluxo).toHaveProperty("saldoInicial");
     expect(json.fluxo).toHaveProperty("saldoFinal");
+    expect(Number(json.fluxo.entradas.vendas)).toBe(60);
+    expect(Number(json.fluxo.saidas.compras)).toBe(0);
   });
 });
 
 describe("GET /api/v1/relatorios/consolidado", () => {
-  test("JSON consolidado retorna 200 e corpo parseável", async () => {
+  test("JSON consolidado retorna 200 com schema válido", async () => {
     const { mes, ano } = currentMesAno();
     const res = await fetch(
       `${BASE_URL}/api/v1/relatorios/consolidado?mes=${mes}&ano=${ano}&format=json`,
@@ -206,7 +209,10 @@ describe("GET /api/v1/relatorios/consolidado", () => {
     );
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toBeTruthy();
+    expect(Number(json.dre.receitas)).toBe(60);
+    expect(Number(json.dre.custos_vendas)).toBe(30);
+    expect(Number(json.dre.lucro_bruto)).toBe(30);
+    expect(RelatorioConsolidadoSchema.safeParse(json).success).toBe(true);
   });
 });
 
@@ -220,5 +226,26 @@ describe("GET /api/v1/relatorios/indicadores", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.indicadores).toBeDefined();
+    expect(json.periodo).toHaveProperty("diasPeriodo");
+  });
+});
+
+describe("validação de parâmetros e depreciação", () => {
+  test("retorna 400 para mes inválido", async () => {
+    const res = await fetch(
+      `${BASE_URL}/api/v1/relatorios/dre?mes=abc&ano=2025`,
+      { headers: { Cookie: cookie } },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test("retorna 400 + header de depreciação para format=pdf", async () => {
+    const { mes, ano } = currentMesAno();
+    const res = await fetch(
+      `${BASE_URL}/api/v1/relatorios/ranking?mes=${mes}&ano=${ano}&format=pdf`,
+      { headers: { Cookie: cookie } },
+    );
+    expect(res.status).toBe(400);
+    expect(res.headers.get("deprecation")).toBe("true");
   });
 });

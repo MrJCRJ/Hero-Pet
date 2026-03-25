@@ -14,7 +14,8 @@ import { fetchFretePeriodo, type FretePeriodoResult } from "@/lib/relatorios/fet
 import { fetchComprasPorFornecedor, type CompraFornecedorRow } from "@/lib/relatorios/fetchComprasPorFornecedor";
 import { fetchComparativoInteranual, type ComparativoYoYMes } from "@/lib/relatorios/fetchComparativoYoY";
 import { enrichSerieComMediasMoveis, type DreMesComMedias } from "@/lib/relatorios/enrichSerieDreMensal";
-import { computeIndicadoresDerivadosBi, type IndicadoresDerivadosBi } from "@/lib/relatorios/computeIndicadoresDerivadosBi";
+import type { IndicadoresDerivadosBi } from "@/lib/relatorios/computeIndicadoresDerivadosBi";
+import { buildIndicadoresConsolidados } from "@/lib/relatorios/buildIndicadoresConsolidados";
 import {
   fetchMargemLiquidaPorClienteEstimado,
   type MargemLiquidaPorClienteEstimado,
@@ -66,6 +67,9 @@ export interface PayloadConsolidado {
       nome: string;
       total: number;
       margemBruta: number | null;
+      pedidos_count?: number;
+      ticketMedio?: number;
+      participacaoTotal?: number;
     }>;
     totalGeral: number;
   };
@@ -289,7 +293,9 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     }),
     database.query({
       text: `WITH totais_por_entity AS (
-               SELECT p.partner_entity_id, COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
+              SELECT p.partner_entity_id,
+                COUNT(DISTINCT p.id)::int AS pedidos_count,
+                COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
                FROM pedidos p WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
                AND p.data_emissao >= $1 AND p.data_emissao < $2 AND p.partner_entity_id IS NOT NULL
                GROUP BY p.partner_entity_id
@@ -300,13 +306,13 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
                WHERE p.tipo = 'VENDA' AND p.status = 'confirmado' AND p.data_emissao >= $1 AND p.data_emissao < $2
                GROUP BY p.partner_entity_id
              )
-             SELECT e.id AS entity_id, COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), e.name) AS nome,
-               t.total, COALESCE(c.cogs, 0)::numeric(14,2) AS cogs
+            SELECT e.id AS entity_id, COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), e.name) AS nome,
+              t.pedidos_count, t.total, COALESCE(c.cogs, 0)::numeric(14,2) AS cogs
              FROM entities e JOIN totais_por_entity t ON t.partner_entity_id = e.id
              LEFT JOIN cogs_por_entity c ON c.partner_entity_id = e.id
              LEFT JOIN pedidos p ON p.partner_entity_id = e.id AND p.tipo = 'VENDA' AND p.status = 'confirmado'
                AND p.data_emissao >= $1 AND p.data_emissao < $2
-             GROUP BY e.id, e.name, t.total, c.cogs ORDER BY t.total DESC LIMIT 15`,
+            GROUP BY e.id, e.name, t.pedidos_count, t.total, c.cogs ORDER BY t.total DESC LIMIT 15`,
       values: [firstDay, lastDay],
     }),
     database.query({
@@ -393,13 +399,13 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     };
   });
 
-  const indicadoresFull = await computeIndicadores(firstDay, lastDay);
-  const indicadores = {
-    pmr: indicadoresFull.pmr,
-    pmp: indicadoresFull.pmp,
-    giroEstoque: indicadoresFull.giroEstoque,
-    dve: indicadoresFull.dve,
-  };
+  const indicadoresFull = await computeIndicadores(firstDay, lastDay, {
+    vendas: receitas,
+    compras,
+    cogs: custosVendas,
+  });
+  const { indicadores, indicadoresDerivadosBi } =
+    buildIndicadoresConsolidados(indicadoresFull);
 
   const [contasReceberAgingPorCliente, fretePeriodo, comprasPorFornecedor, comparativoInteranual] =
     await Promise.all([
@@ -418,15 +424,6 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
   const mesesComMedias = serieDreMensal
     ? enrichSerieComMediasMoveis(serieDreMensal.meses)
     : undefined;
-
-  const indicadoresDerivadosBi = computeIndicadoresDerivadosBi({
-    vendasPeriodo: indicadoresFull.vendasPeriodo,
-    comprasPeriodo: indicadoresFull.comprasPeriodo,
-    pmr: indicadoresFull.pmr,
-    pmp: indicadoresFull.pmp,
-    dve: indicadoresFull.dve,
-    mediaContasReceber: indicadoresFull.mediaContasReceber,
-  });
 
   const serieDreMensalOut =
     serieDreMensal && mesesComMedias
@@ -592,12 +589,16 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
   const itensRanking = rankingRows.map((r) => {
     const total = Number(r.total || 0);
     const cogs = Number(r.cogs || 0);
+    const pedidosCount = Number(r.pedidos_count || 0);
     const margemBrutaCliente = total > 0 && cogs > 0 ? Number(((total - cogs) / total * 100).toFixed(2)) : null;
     return {
       entity_id: r.entity_id as string | number,
       nome: String(r.nome ?? "").trim() || "Cliente sem nome",
       total,
       margemBruta: margemBrutaCliente,
+      pedidos_count: pedidosCount,
+      ticketMedio: pedidosCount > 0 ? Number((total / pedidosCount).toFixed(2)) : 0,
+      participacaoTotal: totalGeral > 0 ? Number(((total / totalGeral) * 100).toFixed(2)) : 0,
     };
   });
 

@@ -1,5 +1,5 @@
-import { getReportBounds } from "@/lib/relatorios/dateBounds";
-import { computeIndicadores } from "@/lib/relatorios/computeIndicadores";
+import { fetchDadosConsolidado } from "@/lib/relatorios/fetchDadosConsolidado";
+import { parseRelatorioQuery } from "@/lib/relatorios/parseRelatoriosQuery";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 export default async function indicadoresHandler(
@@ -12,19 +12,22 @@ export default async function indicadoresHandler(
   }
 
   try {
-    const now = new Date();
-    const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
-    const ano = Number(req.query?.ano) ?? now.getFullYear();
-    const { firstDay, lastDay } = getReportBounds(mes, ano);
+    const parsed = parseRelatorioQuery(req.query);
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const { mes, ano } = parsed.data;
+    const consolidado = await fetchDadosConsolidado(mes, ano);
+    const { firstDay, lastDay } = consolidado.periodo;
 
     const firstDate = new Date(firstDay);
     const lastDate = new Date(lastDay);
     const diasPeriodo = Math.max(1, Math.round((lastDate.getTime() - firstDate.getTime()) / (24 * 60 * 60 * 1000)));
-
-    const indicadores = await computeIndicadores(firstDay, lastDay);
+    const indicadores = consolidado.indicadores;
 
     res.status(200).json({
-      periodo: { mes, ano, firstDay, lastDay, diasPeriodo },
+      periodo: { ...consolidado.periodo, diasPeriodo },
       indicadores: {
         pmr: { valor: indicadores.pmr, label: "Prazo médio de recebimento (dias)", unidade: "dias" },
         pmp: { valor: indicadores.pmp, label: "Prazo médio de pagamento (dias)", unidade: "dias" },

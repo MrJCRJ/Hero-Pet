@@ -1,5 +1,5 @@
-import database from "infra/database.js";
-import { getReportBounds } from "@/lib/relatorios/dateBounds";
+import { fetchDadosConsolidado } from "@/lib/relatorios/fetchDadosConsolidado";
+import { parseRelatorioQuery } from "@/lib/relatorios/parseRelatoriosQuery";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 export default async function margemProdutoHandler(
@@ -11,95 +11,44 @@ export default async function margemProdutoHandler(
     return;
   }
 
-  const format = (req.query?.format as string) || "json";
-  if (format === "pdf" || format === "xlsx") {
-    if (res.setHeader) res.setHeader("Deprecation", "true");
-    res.status(400).json({ erro: "Use o relatório consolidado em JSON" });
-    return;
-  }
-
   try {
-    const now = new Date();
-    const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
-    const ano = Number(req.query?.ano) ?? now.getFullYear();
-    const defaultLimit = 50;
-    const limit = Math.min(100, Math.max(5, Number(req.query?.limit) || defaultLimit));
-    const { firstDay, lastDay } = getReportBounds(mes, ano);
-
-    const result = await database.query({
-      text: `SELECT
-               i.produto_id,
-               MAX(p.nome) AS nome,
-               MAX(p.categoria) AS categoria,
-               COALESCE(SUM(i.total_item),0)::numeric(14,2) AS receita,
-               COALESCE(SUM(i.custo_total_item),0)::numeric(14,2) AS cogs,
-               (COALESCE(SUM(i.total_item),0) - COALESCE(SUM(i.custo_total_item),0))::numeric(14,2) AS lucro,
-               COALESCE(SUM(i.quantidade),0)::numeric(14,3) AS quantidade
-             FROM pedido_itens i
-             JOIN pedidos pdr ON pdr.id = i.pedido_id
-             JOIN produtos p ON p.id = i.produto_id
-             WHERE pdr.tipo = 'VENDA' AND pdr.status = 'confirmado'
-               AND pdr.data_emissao >= $1 AND pdr.data_emissao < $2
-             GROUP BY i.produto_id
-             HAVING COALESCE(SUM(i.total_item),0) > 0
-             ORDER BY lucro DESC, receita DESC
-             LIMIT $3`,
-      values: [firstDay, lastDay, limit],
+    const parsed = parseRelatorioQuery(req.query, {
+      allowFormat: true,
+      allowLimit: true,
+      allowCompare: true,
+      defaultLimit: 50,
     });
-
-    const totalReceita = (result.rows as Array<Record<string, unknown>>).reduce(
-      (s, r) => s + Number(r.receita || 0),
-      0,
-    );
-
-    const itens = (result.rows as Array<Record<string, unknown>>).map((r) => {
-      const receita = Number(r.receita || 0);
-      const cogs = Number(r.cogs || 0);
-      const lucro = Number(r.lucro || 0);
-      const quantidade = Number(r.quantidade || 0);
-      const margem = receita > 0 ? Number(((lucro / receita) * 100).toFixed(2)) : 0;
-      const participacaoVendas = totalReceita > 0 ? Number(((receita / totalReceita) * 100).toFixed(2)) : 0;
-      const margemContribuicaoUnit = quantidade > 0 ? Number((lucro / quantidade).toFixed(2)) : 0;
-      return {
-        produto_id: r.produto_id,
-        nome: r.nome,
-        categoria: r.categoria || null,
-        receita,
-        cogs,
-        lucro,
-        margem,
-        quantidade,
-        participacaoVendas,
-        margemContribuicaoUnit,
-      };
-    });
-
-    const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
-    const incluirComparacao = compare;
-    let margemAnterior: { totalReceita: number; lucroTotal: number } | null = null;
-    if (incluirComparacao) {
-      const { firstDay: fa, lastDay: la } = getReportBounds(mes, ano - 1);
-      const antR = await database.query({
-        text: `SELECT
-                 COALESCE(SUM(i.total_item),0)::numeric(14,2) AS receita,
-                 (COALESCE(SUM(i.total_item),0) - COALESCE(SUM(i.custo_total_item),0))::numeric(14,2) AS lucro
-               FROM pedido_itens i
-               JOIN pedidos pdr ON pdr.id = i.pedido_id
-               WHERE pdr.tipo = 'VENDA' AND pdr.status = 'confirmado'
-                 AND pdr.data_emissao >= $1 AND pdr.data_emissao < $2`,
-        values: [fa, la],
-      });
-      const row = antR.rows[0] as Record<string, unknown>;
-      margemAnterior = {
-        totalReceita: Number(row?.receita || 0),
-        lucroTotal: Number(row?.lucro || 0),
-      };
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
     }
+    const { mes, ano, format, limit } = parsed.data;
+    if (format === "pdf" || format === "xlsx") {
+      if (res.setHeader) res.setHeader("Deprecation", "true");
+      res.status(400).json({ erro: "Use o relatório consolidado em JSON" });
+      return;
+    }
+    const consolidado = await fetchDadosConsolidado(mes, ano);
+    const itens = consolidado.margem.itens.slice(0, limit ?? 50);
     const payload = {
-      periodo: { mes, ano, firstDay, lastDay },
+      periodo: consolidado.periodo,
       itens,
-      totalReceita,
-      ...(margemAnterior ? { margemAnterior } : {}),
+      totalReceita: Number(
+        itens.reduce((acc, item) => acc + Number(item.receita || 0), 0).toFixed(2)
+      ),
+      ...(consolidado.margemAnterior
+        ? {
+            margemAnterior: {
+              totalReceita: consolidado.margemAnterior.totalReceita,
+              lucroTotal: Number(
+                (
+                  consolidado.margemAnterior.totalReceita *
+                  (consolidado.margemAnterior.margemMediaPonderada / 100)
+                ).toFixed(2)
+              ),
+            },
+          }
+        : {}),
     };
 
     res.status(200).json(payload);

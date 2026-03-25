@@ -1,5 +1,7 @@
 import database from "infra/database.js";
+import { fetchDadosConsolidado } from "@/lib/relatorios/fetchDadosConsolidado";
 import { getReportBounds } from "@/lib/relatorios/dateBounds";
+import { parseRelatorioQuery } from "@/lib/relatorios/parseRelatoriosQuery";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 export default async function rankingHandler(
@@ -11,20 +13,24 @@ export default async function rankingHandler(
     return;
   }
 
-  const format = (req.query?.format as string) || "json";
-  if (format === "pdf" || format === "xlsx") {
-    if (res.setHeader) res.setHeader("Deprecation", "true");
-    res.status(400).json({ erro: "Use o relatório consolidado em JSON" });
-    return;
-  }
-
   try {
-    const now = new Date();
-    const mes = Number(req.query?.mes) ?? now.getMonth() + 1;
-    const ano = Number(req.query?.ano) ?? now.getFullYear();
-    const tipo = (req.query?.tipo as string) || "vendas"; // vendas | fornecedores
-    const defaultLimit = 10;
-    const limit = Math.min(100, Math.max(5, Number(req.query?.limit) || defaultLimit));
+    const parsed = parseRelatorioQuery(req.query, {
+      allowFormat: true,
+      allowLimit: true,
+      allowTipo: true,
+      allowCompare: true,
+      defaultLimit: 10,
+    });
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const { mes, ano, tipo, limit, format } = parsed.data;
+    if (format === "pdf" || format === "xlsx") {
+      if (res.setHeader) res.setHeader("Deprecation", "true");
+      res.status(400).json({ erro: "Use o relatório consolidado em JSON" });
+      return;
+    }
     const { firstDay, lastDay } = getReportBounds(mes, ano);
 
     if (tipo === "fornecedores") {
@@ -59,104 +65,37 @@ export default async function rankingHandler(
       return;
     }
 
-    // ranking de vendas (clientes) com margem bruta
-    // Usar CTE para evitar duplicação: LEFT JOIN pedido_itens multiplica linhas e inflava totais
-    const [result, totalGeralR] = await Promise.all([
-      database.query({
-        text: `WITH totais_por_entity AS (
-                 SELECT p.partner_entity_id,
-                   COUNT(DISTINCT p.id)::int AS pedidos_count,
-                   COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
-                 FROM pedidos p
-                 WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
-                   AND p.data_emissao >= $1 AND p.data_emissao < $2
-                   AND p.partner_entity_id IS NOT NULL
-                 GROUP BY p.partner_entity_id
-               ),
-               cogs_por_entity AS (
-                 SELECT p.partner_entity_id,
-                   COALESCE(SUM(pi.custo_total_item),0)::numeric(14,2) AS cogs
-                 FROM pedido_itens pi
-                 JOIN pedidos p ON p.id = pi.pedido_id
-                 WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
-                   AND p.data_emissao >= $1 AND p.data_emissao < $2
-                 GROUP BY p.partner_entity_id
-               )
-               SELECT
-                 e.id AS entity_id,
-                 COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), e.name) AS nome,
-                 t.pedidos_count,
-                 t.total,
-                 COALESCE(c.cogs, 0)::numeric(14,2) AS cogs
-               FROM entities e
-               JOIN totais_por_entity t ON t.partner_entity_id = e.id
-               LEFT JOIN cogs_por_entity c ON c.partner_entity_id = e.id
-               LEFT JOIN pedidos p ON p.partner_entity_id = e.id
-                 AND p.tipo = 'VENDA' AND p.status = 'confirmado'
-                 AND p.data_emissao >= $1 AND p.data_emissao < $2
-               GROUP BY e.id, e.name, t.pedidos_count, t.total, c.cogs
-               ORDER BY t.total DESC
-               LIMIT $3`,
-        values: [firstDay, lastDay, limit],
-      }),
-      database.query({
-        text: `SELECT
-                 COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total,
-                 COUNT(DISTINCT p.id)::int AS pedidos_count
-               FROM pedidos p
-               WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
-                 AND p.data_emissao >= $1 AND p.data_emissao < $2`,
-        values: [firstDay, lastDay],
-      }),
-    ]);
-
-    const totalGeral = Number((totalGeralR.rows[0] as Record<string, unknown>)?.total || 0);
-    const totalPedidosGeral = Number((totalGeralR.rows[0] as Record<string, unknown>)?.pedidos_count || 0);
-
-    const ranking = (result.rows as Array<Record<string, unknown>>).map((r) => {
-      const total = Number(r.total || 0);
-      const cogs = Number(r.cogs || 0);
-      const pedidosCount = Number(r.pedidos_count || 0);
-      const nome = r.nome ?? "";
-      const margemBruta = total > 0 && cogs > 0
-        ? Number(((total - cogs) / total * 100).toFixed(2))
-        : null;
-      const ticketMedio = pedidosCount > 0 ? Number((total / pedidosCount).toFixed(2)) : 0;
-      const participacaoTotal = totalGeral > 0 ? Number((total / totalGeral * 100).toFixed(2)) : 0;
-      return {
-        entity_id: r.entity_id,
-        nome: String(nome).trim() || "Cliente sem nome",
-        pedidos_count: pedidosCount,
-        total,
-        margemBruta,
-        ticketMedio,
-        participacaoTotal,
-      };
-    });
-
-    const compare = req.query?.compare === "1" || req.query?.compare === "ano_anterior";
-    const incluirComparacao = compare;
-    let rankingAnterior: { totalGeral: number } | null = null;
-    if (incluirComparacao) {
-      const anoAnt = ano - 1;
-      const { firstDay: fa, lastDay: la } = getReportBounds(mes, anoAnt);
-      const antR = await database.query({
-        text: `SELECT COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
-               FROM pedidos p WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
-               AND p.data_emissao >= $1 AND p.data_emissao < $2`,
-        values: [fa, la],
-      });
-      const totalAnterior = Number((antR.rows[0] as Record<string, unknown>)?.total || 0);
-      rankingAnterior = { totalGeral: totalAnterior };
-    }
+    const consolidado = await fetchDadosConsolidado(mes, ano);
+    const totalGeral = consolidado.ranking.totalGeral;
+    const ranking = consolidado.ranking.itens
+      .slice(0, limit ?? 10)
+      .map((item) => ({
+        entity_id: item.entity_id,
+        nome: item.nome,
+        pedidos_count: item.pedidos_count ?? 0,
+        total: item.total,
+        margemBruta: item.margemBruta,
+        ticketMedio:
+          item.ticketMedio ??
+          (item.pedidos_count && item.pedidos_count > 0
+            ? Number((item.total / item.pedidos_count).toFixed(2))
+            : 0),
+        participacaoTotal:
+          item.participacaoTotal ??
+          (totalGeral > 0 ? Number(((item.total / totalGeral) * 100).toFixed(2)) : 0),
+      }));
+    const totalPedidosGeral = ranking.reduce(
+      (acc, item) => acc + Number(item.pedidos_count || 0),
+      0
+    );
     const payload = {
-      periodo: { mes, ano, firstDay, lastDay },
+      periodo: consolidado.periodo,
       tipo: "vendas",
       ranking,
       totalGeral,
       totalPedidosGeral,
       ticketMedioGeral: totalPedidosGeral > 0 ? Number((totalGeral / totalPedidosGeral).toFixed(2)) : 0,
-      ...(rankingAnterior ? { rankingAnterior } : {}),
+      ...(consolidado.rankingAnterior ? { rankingAnterior: consolidado.rankingAnterior } : {}),
     };
     res.status(200).json(payload);
   } catch (e) {

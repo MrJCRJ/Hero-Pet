@@ -49,3 +49,6 @@ jobs:
 
       - name: Run tests (no docker compose)
         run: npm run test:ci
+
+      - name: Run unit tests (Vitest)
+        run: npm run test:unit
