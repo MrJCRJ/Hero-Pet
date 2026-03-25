@@ -10,6 +10,7 @@ export type { IndicadoresResult };
 export interface IndicadoresComDetalhe extends IndicadoresResult {
   mediaContasReceber: number;
   vendasPeriodo: number;
+  comprasPeriodo: number;
 }
 
 export async function computeIndicadores(
@@ -26,7 +27,7 @@ export async function computeIndicadores(
   const [vendasR, comprasR, cogsR, estoqueR, crInicialR, crFinalR, cpInicialR, cpFinalR] =
     await Promise.all([
       database.query({
-        text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+        text: `SELECT COALESCE(SUM(total_liquido),0)::numeric(14,2) AS total
                FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
                AND data_emissao >= $1 AND data_emissao < $2`,
         values: [firstDay, lastDay],
@@ -119,5 +120,6 @@ export async function computeIndicadores(
     ...base,
     mediaContasReceber,
     vendasPeriodo: vendas,
+    comprasPeriodo: compras,
   };
 }

@@ -69,6 +69,8 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     comprasPorFornecedor,
     comparativoInteranual,
     indicadoresDerivadosBi,
+    margemLiquidaPorClienteEstimado,
+    metas,
   } = resposta;
 
   const periodoObj = {
@@ -183,6 +185,11 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
             inicio: serieDreMensal.intervalo.inicio,
             fim_exclusivo: serieDreMensal.intervalo.fim_exclusivo,
           },
+          ultimo_mes_com_dados: serieDreMensal.ultimo_mes_com_dados ?? null,
+          qtd_meses_sem_dados: serieDreMensal.qtd_meses_sem_dados ?? 0,
+          ...(serieDreMensal.meses_com_zero?.length
+            ? { meses_com_zero: serieDreMensal.meses_com_zero }
+            : {}),
           meses: serieDreMensal.meses.map(dreMesRowSnake),
           ...(serieDreMensal.meses_com_medias?.length
             ? {
@@ -246,6 +253,30 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     pedidos_count: c.pedidos_count,
   }));
 
+  const margemLiquidaPorClienteEstimadoJson = margemLiquidaPorClienteEstimado
+    ? {
+        totais: {
+          vendas_liquidas: ensureNumber(margemLiquidaPorClienteEstimado.totais.vendas_liquidas),
+          cogs: ensureNumber(margemLiquidaPorClienteEstimado.totais.cogs),
+          frete_custo: ensureNumber(margemLiquidaPorClienteEstimado.totais.frete_custo),
+          comissao_estimativa: ensureNumber(margemLiquidaPorClienteEstimado.totais.comissao_estimativa),
+          lucro_liquido_estimado: ensureNumber(
+            margemLiquidaPorClienteEstimado.totais.lucro_liquido_estimado
+          ),
+        },
+        top_clientes: margemLiquidaPorClienteEstimado.top_clientes.map((c) => ({
+          entity_id: c.entity_id,
+          nome: c.nome,
+          vendas_liquidas: ensureNumber(c.vendas_liquidas),
+          cogs: ensureNumber(c.cogs),
+          frete_custo: ensureNumber(c.frete_custo),
+          comissao_estimativa: ensureNumber(c.comissao_estimativa),
+          lucro_liquido_estimado: ensureNumber(c.lucro_liquido_estimado),
+          margem_liquida_pct: c.margem_liquida_pct == null ? null : ensureNumber(c.margem_liquida_pct),
+        })),
+      }
+    : undefined;
+
   const comparativoYoYJson =
     comparativoInteranual?.meses?.length
       ? {
@@ -266,12 +297,13 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     ? {
         ciclo_conversao_caixa_dias: indicadoresDerivadosBi.ciclo_conversao_caixa_dias,
         giro_contas_receber: indicadoresDerivadosBi.giro_contas_receber,
+        indicadores_contexto: indicadoresDerivadosBi.indicadores_contexto,
         formulas: indicadoresDerivadosBi.formulas,
       }
     : undefined;
 
   return {
-    schema_version: "1.2",
+    schema_version: "1.4",
     empresa: EMITENTE.razao,
     escopo_relatorio: {
       periodo_filtro_interativo: periodoObj,
@@ -289,6 +321,24 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     dre: dreJson,
     fluxo_caixa: fluxoCaixa,
     indicadores: indicadoresJson,
+    ...(metas
+      ? {
+          metas: {
+            periodo: metas.periodo,
+            receita_meta: metas.receita_meta,
+            lucro_operacional_meta: metas.lucro_operacional_meta,
+            margem_operacional_meta: metas.margem_operacional_meta,
+            receita_realizado: metas.receita_realizado,
+            lucro_operacional_realizado: metas.lucro_operacional_realizado,
+            margem_operacional_realizado: metas.margem_operacional_realizado,
+            atingimento_receita_pct: metas.atingimento_receita_pct,
+            atingimento_lucro_operacional_pct: metas.atingimento_lucro_operacional_pct,
+            variacao_receita_pct: metas.variacao_receita_pct,
+            variacao_lucro_operacional_pct: metas.variacao_lucro_operacional_pct,
+            meses_meta_count: metas.meses_meta_count,
+          },
+        }
+      : {}),
     margem_produto: margemProduto,
     ranking_clientes: rankingClientes,
     cenario_liquidacao: cenarioLiquidacaoJson,
@@ -297,6 +347,9 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     ...(agingJson ? { contas_receber_aging_por_cliente: agingJson } : {}),
     ...(freteJson ? { frete_periodo: freteJson } : {}),
     ...(comprasFornJson ? { compras_por_fornecedor: comprasFornJson } : {}),
+    ...(margemLiquidaPorClienteEstimadoJson
+      ? { margem_liquida_por_cliente_estimada: margemLiquidaPorClienteEstimadoJson }
+      : {}),
     ...(comparativoYoYJson ? { comparativo_interanual: comparativoYoYJson } : {}),
     ...(indicadoresDerivadosJson ? { indicadores_derivados: indicadoresDerivadosJson } : {}),
   };

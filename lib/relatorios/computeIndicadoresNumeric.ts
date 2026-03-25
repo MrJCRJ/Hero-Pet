@@ -62,12 +62,10 @@ export function computeIndicadoresNumeric(
       : null;
   const giroEstoque =
     estoque > 0 && cogs > 0 ? Number((cogs / estoque).toFixed(2)) : null;
-  const dve =
-    giroEstoque != null && giroEstoque > 0
-      ? Number((365 / giroEstoque).toFixed(1))
-      : estoque > 0 && cogs > 0
-        ? Number(((estoque / cogs) * diasPeriodo).toFixed(1))
-        : null;
+  // DVE deve respeitar o recorte do período selecionado.
+  // Usamos: DVE = (estoque / COGS) * diasPeriodo
+  // (estoque/cogs vira "dias de cobertura" no modelo do dataset atual).
+  const dve = estoque > 0 && cogs > 0 ? Number(((estoque / cogs) * diasPeriodo).toFixed(1)) : null;
 
   return { pmr, pmp, giroEstoque, dve };
 }

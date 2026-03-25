@@ -1,5 +1,6 @@
 import database from "infra/database.js";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
+import { fetchContasPagarAgingPorFornecedor } from "@/lib/relatorios/fetchContasPagarAgingPorFornecedor";
 
 function monthBounds(month?: string) {
   if (month === "all" || month === "") {
@@ -49,7 +50,7 @@ export default async function contasPagarHandler(
 
     const values = all ? [] : [startYMD, nextYMD];
 
-    const [promR, despesasR] = await Promise.all([
+    const [promR, despesasR, aging] = await Promise.all([
       database.query({
         text: `SELECT pp.pedido_id, pp.seq, to_char(pp.due_date, 'YYYY-MM-DD') AS due_date,
                       pp.amount, pp.paid_at,
@@ -76,6 +77,7 @@ export default async function contasPagarHandler(
                LIMIT 250`,
         values,
       }),
+      fetchContasPagarAgingPorFornecedor(),
     ]);
 
     const prom = (promR.rows as Array<Record<string, unknown>>).map((r) => ({
@@ -103,6 +105,7 @@ export default async function contasPagarHandler(
       status,
       itens,
       total: Number(total.toFixed(2)),
+      aging: aging ?? null,
     });
   } catch (e) {
     console.error("GET /financeiro/contas-pagar error", e);

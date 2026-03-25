@@ -15,6 +15,11 @@ import { fetchComprasPorFornecedor, type CompraFornecedorRow } from "@/lib/relat
 import { fetchComparativoInteranual, type ComparativoYoYMes } from "@/lib/relatorios/fetchComparativoYoY";
 import { enrichSerieComMediasMoveis, type DreMesComMedias } from "@/lib/relatorios/enrichSerieDreMensal";
 import { computeIndicadoresDerivadosBi, type IndicadoresDerivadosBi } from "@/lib/relatorios/computeIndicadoresDerivadosBi";
+import {
+  fetchMargemLiquidaPorClienteEstimado,
+  type MargemLiquidaPorClienteEstimado,
+} from "@/lib/relatorios/fetchMargemLiquidaPorClienteEstimado";
+import { fetchMetasMensais, type MetaMensalRow } from "@/lib/relatorios/fetchMetasMensais";
 
 export interface PayloadConsolidado {
   periodo: { mes: number; ano: number; firstDay: string; lastDay: string };
@@ -75,12 +80,45 @@ export interface PayloadConsolidado {
     meses: DreMesRow[];
     totais_soma_meses: DreMesRow;
     meses_com_medias?: DreMesComMedias[];
+    /** Último mês do intervalo com receitas > 0. Ajuda a interpretar meses zerados no ano civil. */
+    ultimo_mes_com_dados?: string | null;
+    /** Quantidade de meses do intervalo com receitas = 0. */
+    qtd_meses_sem_dados?: number;
+    /** Lista (limitada) dos meses com receitas = 0. */
+    meses_com_zero?: string[];
   };
   contasReceberAgingPorCliente?: { clientes: AgingClienteRow[]; totais: AgingTotais };
   fretePeriodo?: FretePeriodoResult;
   comprasPorFornecedor?: CompraFornecedorRow[];
   comparativoInteranual?: { meses: ComparativoYoYMes[] } | null;
   indicadoresDerivadosBi?: IndicadoresDerivadosBi;
+  margemLiquidaPorClienteEstimado?: MargemLiquidaPorClienteEstimado;
+  metas?: {
+    periodo: { inicio: string; fim_exclusivo: string; tipo: string };
+    receita_meta: number;
+    lucro_operacional_meta: number;
+    margem_operacional_meta: number | null;
+    receita_realizado: number;
+    lucro_operacional_realizado: number;
+    margem_operacional_realizado: number;
+    atingimento_receita_pct: number | null;
+    atingimento_lucro_operacional_pct: number | null;
+    variacao_receita_pct: number | null;
+    variacao_lucro_operacional_pct: number | null;
+    meses_meta_count: number;
+  };
+}
+
+function listMesesNoIntervalo(firstDay: string, lastDay: string): Array<{ ano: number; mes: number }> {
+  const start = new Date(firstDay);
+  const end = new Date(lastDay);
+  const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  const out: Array<{ ano: number; mes: number }> = [];
+  while (cur < end) {
+    out.push({ ano: cur.getFullYear(), mes: cur.getMonth() + 1 });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return out;
 }
 
 export async function fetchDadosConsolidado(mes: number, ano: number): Promise<PayloadConsolidado> {
@@ -92,21 +130,35 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
           const yIni = `${ano}-01-01`;
           const yFim = `${ano + 1}-01-01`;
           const meses = await fetchDreMesAMes(yIni, yFim);
+          const ultimoMesComDados =
+            [...meses].reverse().find((m) => m.receitas > 0)?.mes ?? null;
+          const qtdMesesSemDados = meses.filter((m) => m.receitas === 0).length;
+          const mesesComZero = meses.filter((m) => m.receitas === 0).map((m) => m.mes);
           return {
             tipo: `ano_calendario_${ano}`,
             intervalo: { inicio: yIni, fim_exclusivo: yFim },
             meses,
             totais_soma_meses: somarDreMeses(meses),
+            ultimo_mes_com_dados: ultimoMesComDados,
+            qtd_meses_sem_dados: qtdMesesSemDados,
+            meses_com_zero: mesesComZero,
           };
         })()
       : (async () => {
           const { firstDay: f12, lastDay: l12 } = getReportBounds(1, 0);
           const meses = await fetchDreMesAMes(f12, l12);
+          const ultimoMesComDados =
+            [...meses].reverse().find((m) => m.receitas > 0)?.mes ?? null;
+          const qtdMesesSemDados = meses.filter((m) => m.receitas === 0).length;
+          const mesesComZero = meses.filter((m) => m.receitas === 0).map((m) => m.mes);
           return {
             tipo: "ultimos_12_meses",
             intervalo: { inicio: f12, fim_exclusivo: l12 },
             meses,
             totais_soma_meses: somarDreMeses(meses),
+            ultimo_mes_com_dados: ultimoMesComDados,
+            qtd_meses_sem_dados: qtdMesesSemDados,
+            meses_com_zero: mesesComZero,
           };
         })();
 
@@ -114,6 +166,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     vendasR,
     cogsR,
     despesasR,
+    freteCustoPeriodoR,
     entAntR,
     promAntR,
     aportAntR,
@@ -133,7 +186,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     serieDreMensal,
   ] = await Promise.all([
     database.query({
-      text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+      text: `SELECT COALESCE(SUM(total_liquido),0)::numeric(14,2) AS total
              FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
              AND data_emissao >= $1 AND data_emissao < $2`,
       values: [firstDay, lastDay],
@@ -153,7 +206,13 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
       values: [firstDay, lastDay],
     }),
     database.query({
-      text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+      text: `SELECT COALESCE(SUM(COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+             FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
+               AND data_emissao >= $1 AND data_emissao < $2`,
+      values: [firstDay, lastDay],
+    }),
+    database.query({
+      text: `SELECT COALESCE(SUM(total_liquido),0)::numeric(14,2) AS total
              FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado' AND data_emissao < $1
              AND (parcelado = false OR parcelado IS NULL)`,
       values: [firstDay],
@@ -172,7 +231,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     }),
     database.query({ text: `SELECT COALESCE(SUM(valor),0)::numeric(14,2) AS total FROM despesas WHERE data_vencimento < $1`, values: [firstDay] }),
     database.query({
-      text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+      text: `SELECT COALESCE(SUM(total_liquido),0)::numeric(14,2) AS total
              FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
              AND data_emissao >= $1 AND data_emissao < $2 AND (parcelado = false OR parcelado IS NULL)`,
       values: [firstDay, lastDay],
@@ -203,7 +262,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
                  date_trunc('month',$2::date)::timestamp, interval '1 month') AS mstart
              )
              SELECT to_char(s.mstart, 'YYYY-MM') AS mes,
-               (SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0) FROM pedidos
+              (SELECT COALESCE(SUM(total_liquido),0) FROM pedidos
                 WHERE tipo='VENDA' AND status='confirmado' AND data_emissao >= s.mstart AND data_emissao < s.mstart + interval '1 month'
                 AND (parcelado = false OR parcelado IS NULL))::numeric(14,2) +
                (SELECT COALESCE(SUM(pp.amount),0) FROM pedido_promissorias pp JOIN pedidos p ON p.id=pp.pedido_id AND p.tipo='VENDA'
@@ -211,7 +270,10 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
                COALESCE((SELECT SUM(valor) FROM aportes_capital WHERE data >= s.mstart AND data < s.mstart + interval '1 month'),0)::numeric(14,2) AS entradas,
                (SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0) FROM pedidos
                 WHERE tipo='COMPRA' AND status='confirmado' AND data_emissao >= s.mstart AND data_emissao < s.mstart + interval '1 month')::numeric(14,2) +
-               COALESCE((SELECT SUM(valor) FROM despesas WHERE data_vencimento >= s.mstart AND data_vencimento < s.mstart + interval '1 month'),0)::numeric(14,2) AS saidas
+               COALESCE((SELECT SUM(valor) FROM despesas WHERE data_vencimento >= s.mstart AND data_vencimento < s.mstart + interval '1 month'),0)::numeric(14,2) +
+               (SELECT COALESCE(SUM(COALESCE(p.frete_total,0)),0) FROM pedidos p
+                WHERE p.tipo='VENDA' AND p.status='confirmado' AND p.data_emissao >= s.mstart AND p.data_emissao < s.mstart + interval '1 month'
+                  AND (p.parcelado = false OR p.parcelado IS NULL))::numeric(14,2) AS saidas
              FROM series s ORDER BY s.mstart`,
       values: [firstDay, lastDay],
     }).catch(() => ({ rows: [] })),
@@ -227,7 +289,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     }),
     database.query({
       text: `WITH totais_por_entity AS (
-               SELECT p.partner_entity_id, COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
+               SELECT p.partner_entity_id, COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
                FROM pedidos p WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
                AND p.data_emissao >= $1 AND p.data_emissao < $2 AND p.partner_entity_id IS NOT NULL
                GROUP BY p.partner_entity_id
@@ -248,7 +310,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
       values: [firstDay, lastDay],
     }),
     database.query({
-      text: `SELECT COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
+      text: `SELECT COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
              FROM pedidos p WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
              AND p.data_emissao >= $1 AND p.data_emissao < $2`,
       values: [firstDay, lastDay],
@@ -281,7 +343,11 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
 
   const receitas = Number((vendasR.rows[0] as Record<string, unknown>)?.total || 0);
   const custosVendas = Number((cogsR.rows[0] as Record<string, unknown>)?.cogs || 0);
-  const despesas = Number((despesasR.rows[0] as Record<string, unknown>)?.total || 0);
+  const despesasBase = Number((despesasR.rows[0] as Record<string, unknown>)?.total || 0);
+  const freteCustoPeriodo = Number(
+    (freteCustoPeriodoR.rows[0] as Record<string, unknown>)?.total || 0
+  );
+  const despesas = Number((despesasBase + freteCustoPeriodo).toFixed(2));
   const lucroBruto = Number((receitas - custosVendas).toFixed(2));
   const lucroOperacional = Number((lucroBruto - despesas).toFixed(2));
   const margemBruta = receitas > 0 ? Number(((lucroBruto / receitas) * 100).toFixed(2)) : 0;
@@ -298,7 +364,12 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
   const promissoriasRecebidas = Number((promPagosR.rows[0] as Record<string, unknown>)?.total || 0);
   const aportesCapital = Number((aportesR.rows[0] as Record<string, unknown>)?.total || 0);
   const compras = Number((comprasR.rows[0] as Record<string, unknown>)?.total || 0);
-  const despesasOperacionaisPeriodo = Number((despesasR2.rows[0] as Record<string, unknown>)?.operacionais || 0);
+  const despesasOperacionaisPeriodoBase = Number(
+    (despesasR2.rows[0] as Record<string, unknown>)?.operacionais || 0
+  );
+  const despesasOperacionaisPeriodo = Number(
+    (despesasOperacionaisPeriodoBase + freteCustoPeriodo).toFixed(2)
+  );
   const devolucaoCapitalPeriodo = Number((despesasR2.rows[0] as Record<string, unknown>)?.devolucao || 0);
   const despesasPeriodoTotal = Number((despesasOperacionaisPeriodo + devolucaoCapitalPeriodo).toFixed(2));
   const entradas = Number((vendas + promissoriasRecebidas + aportesCapital).toFixed(2));
@@ -350,6 +421,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
 
   const indicadoresDerivadosBi = computeIndicadoresDerivadosBi({
     vendasPeriodo: indicadoresFull.vendasPeriodo,
+    comprasPeriodo: indicadoresFull.comprasPeriodo,
     pmr: indicadoresFull.pmr,
     pmp: indicadoresFull.pmp,
     dve: indicadoresFull.dve,
@@ -368,9 +440,9 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     const mesAnt = mes === 1 ? 12 : mes - 1;
     const anoAnt = mes === 1 ? ano - 1 : ano;
     const { firstDay: fa, lastDay: la } = getReportBounds(mesAnt, anoAnt);
-    const [vAnt, cAnt, dAnt, mAnt, rAnt] = await Promise.all([
+    const [vAnt, cAnt, dAnt, freteAntR, mAnt, rAnt] = await Promise.all([
       database.query({
-        text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+        text: `SELECT COALESCE(SUM(total_liquido),0)::numeric(14,2) AS total
              FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
              AND data_emissao >= $1 AND data_emissao < $2`,
         values: [fa, la],
@@ -390,6 +462,12 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
         values: [fa, la],
       }),
       database.query({
+        text: `SELECT COALESCE(SUM(COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+               FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
+                 AND data_emissao >= $1 AND data_emissao < $2`,
+        values: [fa, la],
+      }),
+      database.query({
         text: `SELECT COALESCE(SUM(i.total_item),0)::numeric(14,2) AS receita,
              (COALESCE(SUM(i.total_item),0) - COALESCE(SUM(i.custo_total_item),0))::numeric(14,2) AS lucro
              FROM pedido_itens i JOIN pedidos pdr ON pdr.id = i.pedido_id
@@ -398,7 +476,7 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
         values: [fa, la],
       }),
       database.query({
-        text: `SELECT COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
+        text: `SELECT COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
              FROM pedidos p WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
              AND p.data_emissao >= $1 AND p.data_emissao < $2`,
         values: [fa, la],
@@ -407,7 +485,9 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     const recAnt = Number((vAnt.rows[0] as Record<string, unknown>)?.total || 0);
     const custAnt = Number((cAnt.rows[0] as Record<string, unknown>)?.cogs || 0);
     const despAnt = Number((dAnt.rows[0] as Record<string, unknown>)?.total || 0);
-    const lucOpAnt = Number((recAnt - custAnt - despAnt).toFixed(2));
+    const freteCustoAnt = Number((freteAntR.rows[0] as Record<string, unknown>)?.total || 0);
+    const despesasComFreteAnt = Number((despAnt + freteCustoAnt).toFixed(2));
+    const lucOpAnt = Number((recAnt - custAnt - despesasComFreteAnt).toFixed(2));
     const margBrAnt = recAnt > 0 ? Number(((recAnt - custAnt) / recAnt * 100).toFixed(2)) : 0;
     dreAnterior = { receitas: recAnt, lucroOperacional: lucOpAnt, margemBruta: margBrAnt };
     const mRow = mAnt.rows[0] as Record<string, unknown>;
@@ -455,6 +535,58 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     saldoDevolverSocios,
   });
 
+  const mesesNoIntervalo = listMesesNoIntervalo(firstDay, lastDay);
+  const metasPorAno = new Map<number, number[]>();
+  for (const m of mesesNoIntervalo) {
+    metasPorAno.set(m.ano, [...(metasPorAno.get(m.ano) ?? []), m.mes]);
+  }
+  const metasRows: MetaMensalRow[] = (
+    await Promise.all(
+      [...metasPorAno.entries()].map(([a, mesesArr]) => fetchMetasMensais(a, mesesArr))
+    )
+  ).flat();
+
+  const receitaMeta = Number(
+    metasRows.reduce((s, r) => s + Number(r.meta_receita || 0), 0).toFixed(2)
+  );
+  const lucroOpMeta = Number(
+    metasRows.reduce((s, r) => s + Number(r.meta_lucro_operacional || 0), 0).toFixed(2)
+  );
+  const margemOpMeta =
+    receitaMeta > 0 ? Number(((lucroOpMeta / receitaMeta) * 100).toFixed(2)) : null;
+
+  const metas =
+    metasRows.length > 0
+      ? {
+          periodo: { inicio: firstDay, fim_exclusivo: lastDay, tipo: `meses_${mesesNoIntervalo.length}` },
+          receita_meta: receitaMeta,
+          lucro_operacional_meta: lucroOpMeta,
+          margem_operacional_meta: margemOpMeta,
+          receita_realizado: receitas,
+          lucro_operacional_realizado: lucroOperacional,
+          margem_operacional_realizado: margemOperacional,
+          atingimento_receita_pct:
+            receitaMeta > 0 ? Number(((receitas / receitaMeta) * 100).toFixed(1)) : null,
+          atingimento_lucro_operacional_pct:
+            lucroOpMeta > 0 ? Number(((lucroOperacional / lucroOpMeta) * 100).toFixed(1)) : null,
+          variacao_receita_pct:
+            receitaMeta > 0 ? Number((((receitas / receitaMeta) - 1) * 100).toFixed(1)) : null,
+          variacao_lucro_operacional_pct:
+            lucroOpMeta > 0
+              ? Number((((lucroOperacional / lucroOpMeta) - 1) * 100).toFixed(1))
+              : null,
+          meses_meta_count: metasRows.length,
+        }
+      : undefined;
+
+  const margemLiquidaPorClienteEstimado =
+    await fetchMargemLiquidaPorClienteEstimado(
+      firstDay,
+      lastDay,
+      config.comissaoPct / 100,
+      10
+    );
+
   const rankingRows = rankingR.rows as Array<Record<string, unknown>>;
   const totalGeral = Number((totalGeralR.rows[0] as Record<string, unknown>)?.total || 0);
   const itensRanking = rankingRows.map((r) => {
@@ -500,6 +632,8 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     ...(margemAnterior ? { margemAnterior } : {}),
     ...(rankingAnterior ? { rankingAnterior } : {}),
     cenarioLiquidacao,
+    margemLiquidaPorClienteEstimado,
+    ...(metas ? { metas } : {}),
     serieDreMensal: serieDreMensalOut,
     contasReceberAgingPorCliente,
     fretePeriodo,

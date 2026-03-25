@@ -38,17 +38,24 @@ export async function fetchDreMesAMes(
              to_char(m.mstart, 'YYYY-MM') AS mes,
              to_char(m.mstart::date, 'YYYY-MM-DD') AS periodo_inicio,
              to_char((m.mstart + interval '1 month')::date, 'YYYY-MM-DD') AS periodo_fim_exclusivo,
-             (SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2)
+             (SELECT COALESCE(SUM(total_liquido),0)::numeric(14,2)
               FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
               AND data_emissao >= m.mstart AND data_emissao < m.mstart + interval '1 month') AS receitas,
              (SELECT COALESCE(SUM(i.custo_total_item),0)::numeric(14,2)
               FROM pedido_itens i JOIN pedidos p ON p.id = i.pedido_id
               WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
               AND p.data_emissao >= m.mstart AND p.data_emissao < m.mstart + interval '1 month') AS custos_vendas,
-             (SELECT COALESCE(SUM(valor),0)::numeric(14,2)
-              FROM despesas
-              WHERE data_vencimento >= m.mstart AND data_vencimento < m.mstart + interval '1 month'
-              AND (categoria IS NULL OR categoria::text != 'devolucao_capital')) AS despesas
+             (
+               (SELECT COALESCE(SUM(valor),0)::numeric(14,2)
+                FROM despesas
+                WHERE data_vencimento >= m.mstart AND data_vencimento < m.mstart + interval '1 month'
+                AND (categoria IS NULL OR categoria::text != 'devolucao_capital'))
+               +
+               (SELECT COALESCE(SUM(COALESCE(p.frete_total,0)),0)::numeric(14,2)
+                FROM pedidos p
+                WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
+                  AND p.data_emissao >= m.mstart AND p.data_emissao < m.mstart + interval '1 month')
+             ) AS despesas
            FROM meses m
            ORDER BY m.mstart`,
     values: [firstDay, lastDay],

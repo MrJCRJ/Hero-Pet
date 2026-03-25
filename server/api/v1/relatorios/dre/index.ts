@@ -24,9 +24,9 @@ export default async function dreHandler(
     const ano = Number(req.query?.ano) ?? now.getFullYear();
     const { firstDay, lastDay } = getReportBounds(mes, ano);
 
-    const [vendasR, cogsR, despesasR] = await Promise.all([
+    const [vendasR, cogsR, despesasR, freteR] = await Promise.all([
       database.query({
-        text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+        text: `SELECT COALESCE(SUM(total_liquido),0)::numeric(14,2) AS total
                FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
                AND data_emissao >= $1 AND data_emissao < $2`,
         values: [firstDay, lastDay],
@@ -46,6 +46,12 @@ export default async function dreHandler(
                AND (categoria IS NULL OR categoria::text != 'devolucao_capital')`,
         values: [firstDay, lastDay],
       }),
+      database.query({
+        text: `SELECT COALESCE(SUM(COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+               FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
+                 AND data_emissao >= $1 AND data_emissao < $2`,
+        values: [firstDay, lastDay],
+      }),
     ]);
 
     const receitas = Number((vendasR.rows[0] as Record<string, unknown>)?.total || 0);
@@ -53,14 +59,16 @@ export default async function dreHandler(
     const receitaLiquida = receitas;
     const custosVendas = Number((cogsR.rows[0] as Record<string, unknown>)?.cogs || 0);
     const despesas = Number((despesasR.rows[0] as Record<string, unknown>)?.total || 0);
+    const freteCusto = Number((freteR.rows[0] as Record<string, unknown>)?.total || 0);
+    const despesasComFrete = Number((despesas + freteCusto).toFixed(2));
     const impostos = 0; // não há campo de impostos no modelo atual
     const lucroBruto = Number((receitas - custosVendas).toFixed(2));
-    const lucroOperacional = Number((lucroBruto - despesas - impostos).toFixed(2));
+    const lucroOperacional = Number((lucroBruto - despesasComFrete - impostos).toFixed(2));
     const ebitda = lucroOperacional; // sem depreciação/amortização no modelo
     const margemBruta = receitas > 0 ? Number(((lucroBruto / receitas) * 100).toFixed(2)) : 0;
     const margemOperacional = receitas > 0 ? Number(((lucroOperacional / receitas) * 100).toFixed(2)) : 0;
     const margemEbitda = receitas > 0 ? Number(((ebitda / receitas) * 100).toFixed(2)) : 0;
-    const despesasSobreReceita = receitas > 0 ? Number(((despesas / receitas) * 100).toFixed(2)) : 0;
+    const despesasSobreReceita = receitas > 0 ? Number(((despesasComFrete / receitas) * 100).toFixed(2)) : 0;
     const custosSobreReceita = receitas > 0 ? Number(((custosVendas / receitas) * 100).toFixed(2)) : 0;
 
     const incluirComparacao = mes > 0 && ano > 0;
@@ -71,9 +79,9 @@ export default async function dreHandler(
       const mesAnt = mes === 1 ? 12 : mes - 1;
       const anoAnt = mes === 1 ? ano - 1 : ano;
       const { firstDay: fda, lastDay: lda } = getReportBounds(mesAnt, anoAnt);
-      const [va, ca, da] = await Promise.all([
+      const [va, ca, da, freteAntR] = await Promise.all([
         database.query({
-          text: `SELECT COALESCE(SUM(total_liquido + COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+          text: `SELECT COALESCE(SUM(total_liquido),0)::numeric(14,2) AS total
                  FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
                  AND data_emissao >= $1 AND data_emissao < $2`,
           values: [fda, lda],
@@ -93,17 +101,25 @@ export default async function dreHandler(
                  AND (categoria IS NULL OR categoria::text != 'devolucao_capital')`,
           values: [fda, lda],
         }),
+        database.query({
+          text: `SELECT COALESCE(SUM(COALESCE(frete_total,0)),0)::numeric(14,2) AS total
+                 FROM pedidos WHERE tipo = 'VENDA' AND status = 'confirmado'
+                   AND data_emissao >= $1 AND data_emissao < $2`,
+          values: [fda, lda],
+        }),
       ]);
       const recA = Number((va.rows[0] as Record<string, unknown>)?.total || 0);
       const custA = Number((ca.rows[0] as Record<string, unknown>)?.cogs || 0);
       const despA = Number((da.rows[0] as Record<string, unknown>)?.total || 0);
+      const freteCustoAnt = Number((freteAntR.rows[0] as Record<string, unknown>)?.total || 0);
+      const despesasComFreteAnt = Number((despA + freteCustoAnt).toFixed(2));
       const lucroBA = Number((recA - custA).toFixed(2));
-      const lucroOA = Number((lucroBA - despA - 0).toFixed(2));
+      const lucroOA = Number((lucroBA - despesasComFreteAnt - 0).toFixed(2));
       dreAnterior = {
         receitas: recA,
         custosVendas: custA,
         lucroBruto: lucroBA,
-        despesas: despA,
+        despesas: despesasComFreteAnt,
         impostos: 0,
         lucroOperacional: lucroOA,
         margemBruta: recA > 0 ? Number(((lucroBA / recA) * 100).toFixed(2)) : 0,

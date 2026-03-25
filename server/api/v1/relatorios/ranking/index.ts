@@ -31,9 +31,9 @@ export default async function rankingHandler(
       const result = await database.query({
         text: `SELECT
                  e.id AS entity_id,
-                 COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), e.name) AS nome,
+                COALESCE(NULLIF(TRIM(MAX(p.partner_name)), ''), e.name) AS nome,
                  COUNT(DISTINCT p.id)::int AS pedidos_count,
-                 COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
+                 COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
                FROM entities e
                JOIN pedidos p ON p.partner_entity_id = e.id
                WHERE p.tipo = 'COMPRA' AND p.status = 'confirmado'
@@ -66,7 +66,7 @@ export default async function rankingHandler(
         text: `WITH totais_por_entity AS (
                  SELECT p.partner_entity_id,
                    COUNT(DISTINCT p.id)::int AS pedidos_count,
-                   COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
+                   COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
                  FROM pedidos p
                  WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
                    AND p.data_emissao >= $1 AND p.data_emissao < $2
@@ -101,7 +101,7 @@ export default async function rankingHandler(
       }),
       database.query({
         text: `SELECT
-                 COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total,
+                 COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total,
                  COUNT(DISTINCT p.id)::int AS pedidos_count
                FROM pedidos p
                WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
@@ -141,7 +141,7 @@ export default async function rankingHandler(
       const anoAnt = ano - 1;
       const { firstDay: fa, lastDay: la } = getReportBounds(mes, anoAnt);
       const antR = await database.query({
-        text: `SELECT COALESCE(SUM(p.total_liquido + COALESCE(p.frete_total,0)),0)::numeric(14,2) AS total
+        text: `SELECT COALESCE(SUM(p.total_liquido),0)::numeric(14,2) AS total
                FROM pedidos p WHERE p.tipo = 'VENDA' AND p.status = 'confirmado'
                AND p.data_emissao >= $1 AND p.data_emissao < $2`,
         values: [fa, la],

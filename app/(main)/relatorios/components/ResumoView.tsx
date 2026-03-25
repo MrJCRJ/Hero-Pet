@@ -382,6 +382,59 @@ export function ResumoView({ data, mes, ano, alertasConsolidado, consolidadoJson
         </div>
       )}
 
+      {consolidadoJson?.margem_liquida_por_cliente_estimada != null &&
+        (consolidadoJson.margem_liquida_por_cliente_estimada as Record<string, unknown>)
+          .top_clientes != null &&
+        Array.isArray(
+          (consolidadoJson.margem_liquida_por_cliente_estimada as Record<string, unknown>)
+            .top_clientes
+        ) &&
+        (
+          (consolidadoJson.margem_liquida_por_cliente_estimada as Record<string, unknown>).top_clientes as unknown[]
+        ).length > 0 && (
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
+            <h3 className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">
+              Margem líquida estimada por cliente (frete como custo)
+            </h3>
+            <p className="mb-3 text-xs text-[var(--color-text-secondary)]">
+              lucro_líquido_estimado = vendas_liquidas − cogs − frete_custo − (vendas_liquidas × comissão estimada)
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)] text-left">
+                    <th className="py-2 pr-2 text-[var(--color-text-secondary)]">Cliente</th>
+                    <th className="py-2 text-right text-[var(--color-text-secondary)]">Lucro</th>
+                    <th className="py-2 text-right text-[var(--color-text-secondary)]">% Margem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(consolidadoJson.margem_liquida_por_cliente_estimada as any).top_clientes
+                    .slice(0, 10)
+                    .map((c: any, i: number) => (
+                      <tr
+                        key={String(c.entity_id ?? i)}
+                        className="border-b border-[var(--color-border)]/60"
+                      >
+                        <td className="py-2 pr-2">
+                          <span className="block max-w-[240px] truncate text-[var(--color-text-primary)]">
+                            {String(c.nome ?? "")}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono">
+                          {formatBrl(num(c.lucro_liquido_estimado))}
+                        </td>
+                        <td className="py-2 text-right font-mono">
+                          {c.margem_liquida_pct != null ? `${Number(c.margem_liquida_pct).toFixed(1)}%` : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
       {consolidadoJson?.contas_receber_aging_por_cliente != null && (
         <details className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
           <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-primary)]">

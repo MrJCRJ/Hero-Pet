@@ -251,6 +251,12 @@ export function DREView({ dre, dreAnterior, mes, ano, consolidadoJson }: DREView
                   : "N/D"}
               </p>
               <p className="mt-0.5 text-[10px] text-[var(--color-text-secondary)]">DVE + PMR − PMP</p>
+              {(consolidadoJson.indicadores_derivados as any).indicadores_contexto?.confianca_baixa_ciclo && (
+                <p className="mt-2 text-[10px] text-[var(--color-text-secondary)]">
+                  {(consolidadoJson.indicadores_derivados as any).indicadores_contexto
+                    .notas_confianca_baixa_ciclo?.[0] ?? "Cálculo com baixa confianca."}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-xs text-[var(--color-text-secondary)]">Giro de contas a receber</p>
@@ -264,6 +270,88 @@ export function DREView({ dre, dreAnterior, mes, ano, consolidadoJson }: DREView
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {consolidadoJson?.metas != null && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
+          <h3 className="mb-1 text-sm font-semibold text-[var(--color-text-primary)]">
+            Metas (Real vs Meta)
+          </h3>
+          <p className="mb-3 text-xs text-[var(--color-text-secondary)]">
+            Metas mensais acumuladas no intervalo do relatório (quando cadastradas).
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-xs">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-text-secondary)]">
+                  <th className="py-2 pr-2">Métrica</th>
+                  <th className="py-2 text-right">Meta</th>
+                  <th className="py-2 text-right">Realizado</th>
+                  <th className="py-2 text-right">% atingido</th>
+                  <th className="py-2 text-right">Variação</th>
+                </tr>
+              </thead>
+              <tbody className="text-[var(--color-text-primary)]">
+                <tr className="border-b border-[var(--color-border)]/60">
+                  <td className="py-2 pr-2">Receita líquida</td>
+                  <td className="py-2 text-right font-mono">
+                    {formatBrl(num((consolidadoJson.metas as any).receita_meta))}
+                  </td>
+                  <td className="py-2 text-right font-mono">
+                    {formatBrl(num((consolidadoJson.metas as any).receita_realizado))}
+                  </td>
+                  <td className="py-2 text-right font-mono">
+                    {(consolidadoJson.metas as any).atingimento_receita_pct != null
+                      ? `${num((consolidadoJson.metas as any).atingimento_receita_pct)}%`
+                      : "—"}
+                  </td>
+                  <td className="py-2 text-right font-mono">
+                    {(consolidadoJson.metas as any).variacao_receita_pct != null
+                      ? `${num((consolidadoJson.metas as any).variacao_receita_pct)}%`
+                      : "—"}
+                  </td>
+                </tr>
+                <tr className="border-b border-[var(--color-border)]/60">
+                  <td className="py-2 pr-2">Lucro operacional (EBIT)</td>
+                  <td className="py-2 text-right font-mono">
+                    {formatBrl(num((consolidadoJson.metas as any).lucro_operacional_meta))}
+                  </td>
+                  <td className="py-2 text-right font-mono">
+                    {formatBrl(num((consolidadoJson.metas as any).lucro_operacional_realizado))}
+                  </td>
+                  <td className="py-2 text-right font-mono">
+                    {(consolidadoJson.metas as any).atingimento_lucro_operacional_pct != null
+                      ? `${num((consolidadoJson.metas as any).atingimento_lucro_operacional_pct)}%`
+                      : "—"}
+                  </td>
+                  <td className="py-2 text-right font-mono">
+                    {(consolidadoJson.metas as any).variacao_lucro_operacional_pct != null
+                      ? `${num((consolidadoJson.metas as any).variacao_lucro_operacional_pct)}%`
+                      : "—"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-2">Margem operacional</td>
+                  <td className="py-2 text-right font-mono">
+                    {(consolidadoJson.metas as any).margem_operacional_meta != null
+                      ? `${num((consolidadoJson.metas as any).margem_operacional_meta)}%`
+                      : "—"}
+                  </td>
+                  <td className="py-2 text-right font-mono">
+                    {(consolidadoJson.metas as any).margem_operacional_realizado != null
+                      ? `${num((consolidadoJson.metas as any).margem_operacional_realizado)}%`
+                      : "—"}
+                  </td>
+                  <td className="py-2 text-right font-mono">—</td>
+                  <td className="py-2 text-right font-mono">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-[10px] text-[var(--color-text-secondary)]">
+            Meses com meta cadastrada no período: {Number((consolidadoJson.metas as any).meses_meta_count ?? 0)}
+          </p>
         </div>
       )}
 
@@ -353,6 +441,14 @@ export function DREView({ dre, dreAnterior, mes, ano, consolidadoJson }: DREView
                 <Line type="monotone" dataKey="mm6" name="MM6" stroke="#a855f7" strokeWidth={1.5} dot={false} connectNulls />
               </LineChart>
             </ResponsiveContainer>
+            {consolidadoJson.serie_dre_mensal != null &&
+              (consolidadoJson.serie_dre_mensal as any).qtd_meses_sem_dados != null && (
+                <p className="mt-3 text-xs text-[var(--color-text-secondary)]">
+                  Último mês com receita:{" "}
+                  {(consolidadoJson.serie_dre_mensal as any).ultimo_mes_com_dados ?? "—"} · Meses
+                  zerados: {(consolidadoJson.serie_dre_mensal as any).qtd_meses_sem_dados}
+                </p>
+              )}
           </ChartCard>
         )}
 

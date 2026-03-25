@@ -40,6 +40,7 @@ export default function FinanceiroPage() {
   const [data, setData] = useState<{
     itens: Array<Record<string, unknown>>;
     total: number;
+    aging?: Record<string, unknown> | null;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export default function FinanceiroPage() {
     const base = tab === "receber" ? "/api/v1/financeiro/contas-receber" : "/api/v1/financeiro/contas-pagar";
     fetch(`${base}?month=${month}&status=${status}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.statusText))))
-      .then((d) => setData({ itens: d.itens || [], total: d.total || 0 }))
+      .then((d) => setData({ itens: d.itens || [], total: d.total || 0, aging: d.aging ?? null }))
       .catch((e) => {
         setError(e.message || "Erro");
         setData(null);
@@ -326,6 +327,63 @@ export default function FinanceiroPage() {
               </span>
             )}
           </p>
+
+          {tab === "pagar" &&
+            (data.aging as any)?.fornecedores != null &&
+            Array.isArray((data.aging as any).fornecedores) &&
+            (data.aging as any).fornecedores.length > 0 && (
+              <details className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
+                <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-primary)]">
+                  Aging de contas a pagar por fornecedor (titulos em aberto)
+                </summary>
+                <p className="mt-2 mb-3 text-xs text-[var(--color-text-secondary)]">
+                  Faixas por dias em relação ao vencimento (relativo a CURRENT_DATE).
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-xs">
+                    <thead>
+                      <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-text-secondary)]">
+                        <th className="py-2 pr-2">Fornecedor</th>
+                        <th className="py-2 text-right">A vencer</th>
+                        <th className="py-2 text-right">0–30</th>
+                        <th className="py-2 text-right">31–60</th>
+                        <th className="py-2 text-right">61–90</th>
+                        <th className="py-2 text-right">90+</th>
+                        <th className="py-2 text-right font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(data.aging as any).fornecedores.slice(0, 20).map((c: any, i: number) => (
+                        <tr key={String(c.entity_id ?? i)} className="border-b border-[var(--color-border)]/60">
+                          <td className="max-w-[220px] truncate py-1.5 pr-2 text-[var(--color-text-primary)]">
+                            {String(c.nome ?? "")}
+                          </td>
+                          <td className="py-1.5 text-right font-mono">
+                            {formatBrl(Number(c.a_vencer || 0))}
+                          </td>
+                          <td className="py-1.5 text-right font-mono">
+                            {formatBrl(Number(c.vencido_0_30 || 0))}
+                          </td>
+                          <td className="py-1.5 text-right font-mono">
+                            {formatBrl(Number(c.vencido_31_60 || 0))}
+                          </td>
+                          <td className="py-1.5 text-right font-mono">
+                            {formatBrl(Number(c.vencido_61_90 || 0))}
+                          </td>
+                          <td className="py-1.5 text-right font-mono">
+                            {formatBrl(Number(c.vencido_mais_90 || 0))}
+                          </td>
+                          <td className="py-1.5 text-right font-mono font-medium">
+                            {formatBrl(Number(c.total_aberto || 0))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

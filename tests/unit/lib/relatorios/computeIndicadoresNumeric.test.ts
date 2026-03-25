@@ -96,7 +96,7 @@ describe("computeIndicadoresNumeric", () => {
     expect(r.giroEstoque).toBe(3);
   });
 
-  test("DVE quando giro > 0: 365 / giro", () => {
+  test("DVE usa diasPeriodo: (estoque/COGS)×dias", () => {
     const r = computeIndicadoresNumeric({
       vendas: 1,
       compras: 1,
@@ -109,8 +109,24 @@ describe("computeIndicadoresNumeric", () => {
       diasPeriodo: 365,
     });
     expect(r.giroEstoque).toBe(3.65);
-    // 365 / 3.65 = 100
+    // DVE = (estoque/cogs)×dias = (1000/3650)×365 = 100
     expect(r.dve).toBe(100);
+  });
+
+  test("DVE em período curto escala com diasPeriodo", () => {
+    const r = computeIndicadoresNumeric({
+      vendas: 1,
+      compras: 1,
+      cogs: 3650,
+      estoqueValor: 1000,
+      contasReceberInicial: 0,
+      contasReceberFinal: 0,
+      contasPagarInicial: 0,
+      contasPagarFinal: 0,
+      diasPeriodo: 30,
+    });
+    // (1000/3650)×30 = 8.219... -> toFixed(1) = 8.2
+    expect(r.dve).toBe(8.2);
   });
 
   test("DVE fallback: (estoque/COGS)×dias quando giro seria 0", () => {
