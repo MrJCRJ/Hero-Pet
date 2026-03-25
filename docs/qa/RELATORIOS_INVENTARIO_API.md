@@ -37,7 +37,18 @@ Este documento mapeia a aba **Relatórios Gerenciais** (`/relatorios`), os compo
 
 **Servidor**: [`server/api/v1/relatorios/dre/index.ts`](../../server/api/v1/relatorios/dre/index.ts) — receita = `SUM(total_liquido + frete)` em VENDA confirmada; COGS em `pedido_itens`; despesas por `data_vencimento` excluindo `devolucao_capital`.
 
-**Indicadores** (`/api/v1/relatorios/indicadores`): `pmr`, `pmp`, `giroEstoque`, `dve` — [`lib/relatorios/computeIndicadores.ts`](../../lib/relatorios/computeIndicadores.ts).
+### Indicadores gerenciais (`/api/v1/relatorios/indicadores`)
+
+Implementação: [`lib/relatorios/computeIndicadores.ts`](../../lib/relatorios/computeIndicadores.ts) (consultas SQL) + [`lib/relatorios/computeIndicadoresNumeric.ts`](../../lib/relatorios/computeIndicadoresNumeric.ts) (fórmulas testadas em unitário).
+
+| Indicador | Fórmula (resumo) | Observação |
+|-----------|------------------|------------|
+| **PMR** | `(média contas a receber / vendas do período) × dias do período` | CR = promissórias de venda em aberto (snapshot em início/fim). Vendas = faturamento do período. Se vendas forem baixas e CR alto, PMR dispara. |
+| **PMP** | `(média contas a pagar / compras do período) × dias do período` | CP = promissórias de compra + despesas em aberto (regras SQL). **Compras baixas no ano (ex.: 2026) com saldos altos → PMP enorme (ex.: milhares de dias)** — efeito da fórmula, não necessariamente bug. |
+| **Giro** | `COGS do período / valor em estoque (instantâneo)` | Na UI aparece “×/ano”, mas o número é **razão no período**, não annualizado automaticamente. |
+| **DVE** | Se giro > 0: `365 / giro`; senão `(estoque/COGS)×dias` | Mistura anual (365) com giro não anualizado; interpretar com cautela. |
+
+Testes: [`tests/unit/lib/relatorios/computeIndicadoresNumeric.test.ts`](../../tests/unit/lib/relatorios/computeIndicadoresNumeric.test.ts), [`tests/unit/lib/relatorios/indicadoresDiasPeriodo.test.ts`](../../tests/unit/lib/relatorios/indicadoresDiasPeriodo.test.ts).
 
 ## Fluxo de Caixa (`FluxoView`)
 
@@ -100,4 +111,6 @@ Todas as APIs acima usam `withRole`: sessão obrigatória; papel `admin` | `oper
 | [`tests/fixtures/relatorios-golden-dataset.sql`](../../tests/fixtures/relatorios-golden-dataset.sql) | Queries de reconciliação comentadas (referência manual / staging). |
 | [`tests/api/v1/relatorios/relatorios-calculos.test.js`](../../tests/api/v1/relatorios/relatorios-calculos.test.js) | Integração: DRE, ranking, margem, fluxo, consolidado e indicadores após seed (mesmo padrão de `tests/api/v1/pedidos/summary-lucro.test.js`). Requer Postgres acessível pelo Next (`GET /api/v1/status` 200). Com [`infra/compose.yaml`](../../infra/compose.yaml), a porta publicada é **5433** → ajuste `POSTGRES_PORT` no `.env` de teste. |
 | [`tests/unit/lib/relatorios/dateBounds.test.ts`](../../tests/unit/lib/relatorios/dateBounds.test.ts) | Unitário: `getReportBounds` e `periodoFilename`. |
+| [`tests/unit/lib/relatorios/computeIndicadoresNumeric.test.ts`](../../tests/unit/lib/relatorios/computeIndicadoresNumeric.test.ts) | Unitário: PMR, PMP, giro, DVE (inclui cenário de PMP “explosivo”). |
+| [`tests/unit/lib/relatorios/indicadoresDiasPeriodo.test.ts`](../../tests/unit/lib/relatorios/indicadoresDiasPeriodo.test.ts) | Unitário: `diasPeriodo` vs `getReportBounds`. |
 | [`tests/integration/relatorios/RelatoriosPage.smoke.test.tsx`](../../tests/integration/relatorios/RelatoriosPage.smoke.test.tsx) | Smoke UI: troca de abas e fetches esperados (fetch mockado). |

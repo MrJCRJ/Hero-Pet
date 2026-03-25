@@ -1,11 +1,10 @@
 import database from "infra/database.js";
+import {
+  computeIndicadoresNumeric,
+  type IndicadoresResult,
+} from "@/lib/relatorios/computeIndicadoresNumeric";
 
-export interface IndicadoresResult {
-  pmr: number | null;
-  pmp: number | null;
-  giroEstoque: number | null;
-  dve: number | null;
-}
+export type { IndicadoresResult };
 
 export async function computeIndicadores(
   firstDay: string,
@@ -96,21 +95,15 @@ export async function computeIndicadores(
   const contasPagarInicial = Number((cpInicialR.rows[0] as Record<string, unknown>)?.total || 0);
   const contasPagarFinal = Number((cpFinalR.rows[0] as Record<string, unknown>)?.total || 0);
 
-  const crMedia = (contasReceberInicial + contasReceberFinal) / 2;
-  const cpMedia = (contasPagarInicial + contasPagarFinal) / 2;
-
-  const pmr =
-    vendas > 0 && crMedia >= 0 ? Number(((crMedia / vendas) * diasPeriodo).toFixed(1)) : null;
-  const pmp =
-    compras > 0 && cpMedia >= 0 ? Number(((cpMedia / compras) * diasPeriodo).toFixed(1)) : null;
-  const giroEstoque =
-    estoque > 0 && cogs > 0 ? Number((cogs / estoque).toFixed(2)) : null;
-  const dve =
-    giroEstoque != null && giroEstoque > 0
-      ? Number((365 / giroEstoque).toFixed(1))
-      : estoque > 0 && cogs > 0
-        ? Number(((estoque / cogs) * diasPeriodo).toFixed(1))
-        : null;
-
-  return { pmr, pmp, giroEstoque, dve };
+  return computeIndicadoresNumeric({
+    vendas,
+    compras,
+    cogs,
+    estoqueValor: estoque,
+    contasReceberInicial,
+    contasReceberFinal,
+    contasPagarInicial,
+    contasPagarFinal,
+    diasPeriodo,
+  });
 }

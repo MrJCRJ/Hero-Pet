@@ -182,9 +182,15 @@ export function DREView({ dre, dreAnterior, mes, ano }: DREViewProps) {
 
       {indicadores && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
-          <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+          <h3 className="mb-1 text-sm font-semibold text-[var(--color-text-primary)]">
             Indicadores gerenciais
           </h3>
+          <p className="mb-3 text-xs text-[var(--color-text-secondary)]">
+            PMR e PMP relacionam saldo médio de títulos (a receber / a pagar) com vendas ou compras do período
+            selecionado. Se vendas ou compras forem baixas e os saldos em aberto forem altos, os prazos podem
+            ficar muito elevados. O giro usa COGS sobre valor de estoque atual; o sufixo “×/ano” é uma
+            convenção de exibição.
+          </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-xs text-[var(--color-text-secondary)]">PMR (prazo médio recebimento)</p>
