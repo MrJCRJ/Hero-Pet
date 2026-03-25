@@ -35,7 +35,13 @@ async function query(queryObject) {
     const res = await client.query(queryObject);
     return res;
   } catch (error) {
-    console.error("Error querying database:", error);
+    // 42P01: undefined_table. Em desenvolvimento, pode acontecer antes de aplicar migrações.
+    // Evita poluir o log como erro quando a camada acima trata com fallback.
+    if (error?.code === "42P01") {
+      console.warn("DB warn (undefined_table 42P01):", error?.message);
+    } else {
+      console.error("Error querying database:", error);
+    }
     throw error;
   } finally {
     client.release();
