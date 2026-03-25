@@ -6,6 +6,7 @@
 import type { PayloadConsolidado } from "@/lib/relatorios/fetchDadosConsolidado";
 import type { Alerta } from "@/lib/relatorios/computeAlertas";
 import type { DreMesRow } from "@/lib/relatorios/fetchDreMesAMes";
+import type { DreMesComMedias } from "@/lib/relatorios/enrichSerieDreMensal";
 import { EMITENTE } from "@/lib/constants/company";
 
 export interface RespostaConsolidado extends PayloadConsolidado {
@@ -39,6 +40,18 @@ function dreMesRowSnake(row: DreMesRow): Record<string, unknown> {
   };
 }
 
+function dreMesComMediasSnake(row: DreMesComMedias): Record<string, unknown> {
+  return {
+    ...dreMesRowSnake(row),
+    receita_media_movel_3: row.receita_media_movel_3,
+    receita_media_movel_6: row.receita_media_movel_6,
+    receita_media_movel_12: row.receita_media_movel_12,
+    lucro_op_media_movel_3: row.lucro_op_media_movel_3,
+    lucro_op_media_movel_6: row.lucro_op_media_movel_6,
+    lucro_op_media_movel_12: row.lucro_op_media_movel_12,
+  };
+}
+
 export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<string, unknown> {
   const {
     periodo,
@@ -50,6 +63,12 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     cenarioLiquidacao,
     alertas = [],
     serieDreMensal,
+    dreAnterior,
+    contasReceberAgingPorCliente,
+    fretePeriodo,
+    comprasPorFornecedor,
+    comparativoInteranual,
+    indicadoresDerivadosBi,
   } = resposta;
 
   const periodoObj = {
@@ -165,6 +184,11 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
             fim_exclusivo: serieDreMensal.intervalo.fim_exclusivo,
           },
           meses: serieDreMensal.meses.map(dreMesRowSnake),
+          ...(serieDreMensal.meses_com_medias?.length
+            ? {
+                meses_com_medias_moveis: serieDreMensal.meses_com_medias.map(dreMesComMediasSnake),
+              }
+            : {}),
           totais_soma_dos_meses: {
             descricao:
               "Soma aritmética dos meses acima; lucros e margens recalculados sobre os totais (não soma das margens mensais).",
@@ -173,14 +197,90 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
         }
       : undefined;
 
+  const dreAnteriorJson = dreAnterior
+    ? {
+        receitas: ensureNumber(dreAnterior.receitas),
+        lucro_operacional: ensureNumber(dreAnterior.lucroOperacional),
+        margem_bruta: ensureNumber(dreAnterior.margemBruta),
+      }
+    : undefined;
+
+  const agingJson = contasReceberAgingPorCliente
+    ? {
+        totais: {
+          a_vencer: ensureNumber(contasReceberAgingPorCliente.totais.a_vencer),
+          vencido_0_30: ensureNumber(contasReceberAgingPorCliente.totais.vencido_0_30),
+          vencido_31_60: ensureNumber(contasReceberAgingPorCliente.totais.vencido_31_60),
+          vencido_61_90: ensureNumber(contasReceberAgingPorCliente.totais.vencido_61_90),
+          vencido_mais_90: ensureNumber(contasReceberAgingPorCliente.totais.vencido_mais_90),
+          total_aberto: ensureNumber(contasReceberAgingPorCliente.totais.total_aberto),
+        },
+        clientes: contasReceberAgingPorCliente.clientes.map((c) => ({
+          entity_id: c.entity_id,
+          nome: c.nome,
+          a_vencer: ensureNumber(c.a_vencer),
+          vencido_0_30: ensureNumber(c.vencido_0_30),
+          vencido_31_60: ensureNumber(c.vencido_31_60),
+          vencido_61_90: ensureNumber(c.vencido_61_90),
+          vencido_mais_90: ensureNumber(c.vencido_mais_90),
+          total_aberto: ensureNumber(c.total_aberto),
+        })),
+      }
+    : undefined;
+
+  const freteJson = fretePeriodo
+    ? {
+        frete_total_periodo: ensureNumber(fretePeriodo.frete_total_periodo),
+        top_clientes_por_frete: fretePeriodo.por_cliente.map((c) => ({
+          entity_id: c.entity_id,
+          nome: c.nome,
+          frete_total: ensureNumber(c.frete_total),
+        })),
+      }
+    : undefined;
+
+  const comprasFornJson = comprasPorFornecedor?.map((c) => ({
+    entity_id: c.entity_id,
+    nome: c.nome,
+    total_compras: ensureNumber(c.total_compras),
+    pedidos_count: c.pedidos_count,
+  }));
+
+  const comparativoYoYJson =
+    comparativoInteranual?.meses?.length
+      ? {
+          tipo: "mesmo_intervalo_ano_anterior",
+          meses: comparativoInteranual.meses.map((m) => ({
+            mes: m.mes,
+            receitas: ensureNumber(m.receitas),
+            receitas_ano_anterior: ensureNumber(m.receitas_ano_anterior),
+            lucro_operacional: ensureNumber(m.lucro_operacional),
+            lucro_operacional_ano_anterior: ensureNumber(m.lucro_operacional_ano_anterior),
+            var_receita_pct: m.var_receita_pct,
+            var_lucro_operacional_pct: m.var_lucro_operacional_pct,
+          })),
+        }
+      : undefined;
+
+  const indicadoresDerivadosJson = indicadoresDerivadosBi
+    ? {
+        ciclo_conversao_caixa_dias: indicadoresDerivadosBi.ciclo_conversao_caixa_dias,
+        giro_contas_receber: indicadoresDerivadosBi.giro_contas_receber,
+        formulas: indicadoresDerivadosBi.formulas,
+      }
+    : undefined;
+
   return {
-    schema_version: "1.1",
+    schema_version: "1.2",
     empresa: EMITENTE.razao,
     escopo_relatorio: {
       periodo_filtro_interativo: periodoObj,
       explicacao:
-        "Os blocos dre, fluxo_caixa, resumo, indicadores, margem_produto e ranking_clientes referem-se exclusivamente ao periodo_filtro_interativo (o mesmo filtro da tela). " +
-        "A chave serie_dre_mensal traz, em paralelo, a DRE mês a mês no ano civil completo (quando há ano selecionado) ou na janela dos últimos 12 meses (quando ano = 'últimos 12 meses'), com totais agregados.",
+        "Os blocos dre, fluxo_caixa, resumo, indicadores, margem_produto e ranking_clientes referem-se ao periodo_filtro_interativo (filtro da tela). " +
+        "serie_dre_mensal cobre o ano civil completo (ano selecionado) ou os últimos 12 meses (ano = 'últimos 12 meses'). " +
+        "contas_receber_aging_por_cliente é snapshot de titulos em aberto (paid_at IS NULL) na data de geração. " +
+        "frete_periodo e compras_por_fornecedor usam o mesmo periodo_filtro_interativo. " +
+        "comparativo_interanual e medias_moveis alinham a janela de serie_dre_mensal ao ano anterior.",
     },
     periodo: periodoObj,
     data_geracao: new Date().toISOString(),
@@ -193,5 +293,11 @@ export function buildJsonConsolidado(resposta: RespostaConsolidado): Record<stri
     ranking_clientes: rankingClientes,
     cenario_liquidacao: cenarioLiquidacaoJson,
     ...(serieDreMensalJson ? { serie_dre_mensal: serieDreMensalJson } : {}),
+    ...(dreAnteriorJson ? { dre_periodo_anterior: dreAnteriorJson } : {}),
+    ...(agingJson ? { contas_receber_aging_por_cliente: agingJson } : {}),
+    ...(freteJson ? { frete_periodo: freteJson } : {}),
+    ...(comprasFornJson ? { compras_por_fornecedor: comprasFornJson } : {}),
+    ...(comparativoYoYJson ? { comparativo_interanual: comparativoYoYJson } : {}),
+    ...(indicadoresDerivadosJson ? { indicadores_derivados: indicadoresDerivadosJson } : {}),
   };
 }

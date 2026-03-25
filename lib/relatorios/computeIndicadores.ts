@@ -6,10 +6,16 @@ import {
 
 export type { IndicadoresResult };
 
+/** Inclui média de CR e vendas do período (para indicadores derivados BI). */
+export interface IndicadoresComDetalhe extends IndicadoresResult {
+  mediaContasReceber: number;
+  vendasPeriodo: number;
+}
+
 export async function computeIndicadores(
   firstDay: string,
   lastDay: string
-): Promise<IndicadoresResult> {
+): Promise<IndicadoresComDetalhe> {
   const firstDate = new Date(firstDay);
   const lastDate = new Date(lastDay);
   const diasPeriodo = Math.max(
@@ -95,7 +101,9 @@ export async function computeIndicadores(
   const contasPagarInicial = Number((cpInicialR.rows[0] as Record<string, unknown>)?.total || 0);
   const contasPagarFinal = Number((cpFinalR.rows[0] as Record<string, unknown>)?.total || 0);
 
-  return computeIndicadoresNumeric({
+  const mediaContasReceber = (contasReceberInicial + contasReceberFinal) / 2;
+
+  const base = computeIndicadoresNumeric({
     vendas,
     compras,
     cogs,
@@ -106,4 +114,10 @@ export async function computeIndicadores(
     contasPagarFinal,
     diasPeriodo,
   });
+
+  return {
+    ...base,
+    mediaContasReceber,
+    vendasPeriodo: vendas,
+  };
 }

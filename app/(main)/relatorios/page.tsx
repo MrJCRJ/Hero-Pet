@@ -24,6 +24,8 @@ export default function RelatoriosPage() {
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [alertasConsolidado, setAlertasConsolidado] = useState<Array<{ id: string; tipo: "erro" | "aviso"; msg: string; valorAtual?: string | number; acaoSugerida?: string }> | null>(null);
+  /** Payload JSON do consolidado (mesma fonte do download) para BI na UI. */
+  const [consolidadoJson, setConsolidadoJson] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [consolidadoDownloading, setConsolidadoDownloading] = useState(false);
@@ -72,6 +74,44 @@ export default function RelatoriosPage() {
   }, [mes, ano]);
 
   useEffect(() => {
+    let cancelled = false;
+    const consUrl = `/api/v1/relatorios/consolidado?mes=${mes}&ano=${ano}&format=json`;
+    fetch(consUrl)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((cons: Record<string, unknown> | null) => {
+        if (cancelled) return;
+        if (!cons) {
+          setConsolidadoJson(null);
+          setAlertasConsolidado(null);
+          return;
+        }
+        setConsolidadoJson(cons);
+        if (Array.isArray(cons.alertas)) {
+          setAlertasConsolidado(
+            (cons.alertas as Array<Record<string, unknown>>).map((a) => ({
+              id: String(a.id ?? ""),
+              tipo: (a.tipo as "erro" | "aviso") ?? "aviso",
+              msg: String(a.msg ?? ""),
+              valorAtual: (a.valor_atual ?? a.valorAtual) as string | number | undefined,
+              acaoSugerida: (a.acao_sugerida ?? a.acaoSugerida) as string | undefined,
+            }))
+          );
+        } else {
+          setAlertasConsolidado(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setConsolidadoJson(null);
+          setAlertasConsolidado(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mes, ano]);
+
+  useEffect(() => {
     if (skipDataFetch && !isResumoTab) {
       setLoading(false);
       setError(null);
@@ -82,30 +122,6 @@ export default function RelatoriosPage() {
     setError(null);
     const monthStr = mes === 0 ? (ano === 0 ? "all" : String(ano)) : `${ano}-${String(mes).padStart(2, "0")}`;
     let url: string;
-    if (tab === "resumo") {
-      url = `/api/v1/pedidos/summary?month=${monthStr}`;
-      const consUrl = `/api/v1/relatorios/consolidado?mes=${mes}&ano=${ano}&format=json`;
-      fetch(consUrl)
-        .then((r) => (r.ok ? r.json() : Promise.resolve(null)))
-        .then((cons) => {
-          if (cons && Array.isArray(cons.alertas)) {
-            setAlertasConsolidado(
-              (cons.alertas as Array<Record<string, unknown>>).map((a) => ({
-                id: String(a.id ?? ""),
-                tipo: (a.tipo as "erro" | "aviso") ?? "aviso",
-                msg: String(a.msg ?? ""),
-                valorAtual: (a.valor_atual ?? a.valorAtual) as string | number | undefined,
-                acaoSugerida: (a.acao_sugerida ?? a.acaoSugerida) as string | undefined,
-              }))
-            );
-          } else {
-            setAlertasConsolidado(null);
-          }
-        })
-        .catch(() => setAlertasConsolidado(null));
-    } else {
-      setAlertasConsolidado(null);
-    }
     if (tab === "resumo") {
       url = `/api/v1/pedidos/summary?month=${monthStr}`;
     } else if (tab === "top-lucro") {
@@ -229,6 +245,7 @@ export default function RelatoriosPage() {
               mes={mes}
               ano={ano}
               alertasConsolidado={alertasConsolidado}
+              consolidadoJson={consolidadoJson}
             />
           )}
           {tab === "dre" && "dre" in data && (
@@ -237,6 +254,7 @@ export default function RelatoriosPage() {
               dreAnterior={(data as { dreAnterior?: Record<string, number> | null }).dreAnterior ?? null}
               mes={mes}
               ano={ano}
+              consolidadoJson={consolidadoJson}
             />
           )}
           {tab === "fluxo" && "fluxo" in data && (

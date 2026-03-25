@@ -9,6 +9,12 @@ import {
   somarDreMeses,
   type DreMesRow,
 } from "@/lib/relatorios/fetchDreMesAMes";
+import { fetchContasReceberAgingPorCliente, type AgingTotais, type AgingClienteRow } from "@/lib/relatorios/fetchContasReceberAging";
+import { fetchFretePeriodo, type FretePeriodoResult } from "@/lib/relatorios/fetchFretePeriodo";
+import { fetchComprasPorFornecedor, type CompraFornecedorRow } from "@/lib/relatorios/fetchComprasPorFornecedor";
+import { fetchComparativoInteranual, type ComparativoYoYMes } from "@/lib/relatorios/fetchComparativoYoY";
+import { enrichSerieComMediasMoveis, type DreMesComMedias } from "@/lib/relatorios/enrichSerieDreMensal";
+import { computeIndicadoresDerivadosBi, type IndicadoresDerivadosBi } from "@/lib/relatorios/computeIndicadoresDerivadosBi";
 
 export interface PayloadConsolidado {
   periodo: { mes: number; ano: number; firstDay: string; lastDay: string };
@@ -68,7 +74,13 @@ export interface PayloadConsolidado {
     intervalo: { inicio: string; fim_exclusivo: string };
     meses: DreMesRow[];
     totais_soma_meses: DreMesRow;
+    meses_com_medias?: DreMesComMedias[];
   };
+  contasReceberAgingPorCliente?: { clientes: AgingClienteRow[]; totais: AgingTotais };
+  fretePeriodo?: FretePeriodoResult;
+  comprasPorFornecedor?: CompraFornecedorRow[];
+  comparativoInteranual?: { meses: ComparativoYoYMes[] } | null;
+  indicadoresDerivadosBi?: IndicadoresDerivadosBi;
 }
 
 export async function fetchDadosConsolidado(mes: number, ano: number): Promise<PayloadConsolidado> {
@@ -310,7 +322,44 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     };
   });
 
-  const indicadores = await computeIndicadores(firstDay, lastDay);
+  const indicadoresFull = await computeIndicadores(firstDay, lastDay);
+  const indicadores = {
+    pmr: indicadoresFull.pmr,
+    pmp: indicadoresFull.pmp,
+    giroEstoque: indicadoresFull.giroEstoque,
+    dve: indicadoresFull.dve,
+  };
+
+  const [contasReceberAgingPorCliente, fretePeriodo, comprasPorFornecedor, comparativoInteranual] =
+    await Promise.all([
+      fetchContasReceberAgingPorCliente(),
+      fetchFretePeriodo(firstDay, lastDay),
+      fetchComprasPorFornecedor(firstDay, lastDay),
+      serieDreMensal
+        ? fetchComparativoInteranual(
+            serieDreMensal.meses,
+            serieDreMensal.intervalo.inicio,
+            serieDreMensal.intervalo.fim_exclusivo
+          )
+        : Promise.resolve(null),
+    ]);
+
+  const mesesComMedias = serieDreMensal
+    ? enrichSerieComMediasMoveis(serieDreMensal.meses)
+    : undefined;
+
+  const indicadoresDerivadosBi = computeIndicadoresDerivadosBi({
+    vendasPeriodo: indicadoresFull.vendasPeriodo,
+    pmr: indicadoresFull.pmr,
+    pmp: indicadoresFull.pmp,
+    dve: indicadoresFull.dve,
+    mediaContasReceber: indicadoresFull.mediaContasReceber,
+  });
+
+  const serieDreMensalOut =
+    serieDreMensal && mesesComMedias
+      ? { ...serieDreMensal, meses_com_medias: mesesComMedias }
+      : serieDreMensal;
 
   let dreAnterior: { receitas: number; lucroOperacional: number; margemBruta: number } | null = null;
   let margemAnterior: { totalReceita: number; margemMediaPonderada: number } | null = null;
@@ -451,7 +500,12 @@ export async function fetchDadosConsolidado(mes: number, ano: number): Promise<P
     ...(margemAnterior ? { margemAnterior } : {}),
     ...(rankingAnterior ? { rankingAnterior } : {}),
     cenarioLiquidacao,
-    serieDreMensal,
+    serieDreMensal: serieDreMensalOut,
+    contasReceberAgingPorCliente,
+    fretePeriodo,
+    comprasPorFornecedor,
+    comparativoInteranual,
+    indicadoresDerivadosBi,
   };
 }
 

@@ -8,6 +8,11 @@ import {
   Pie,
   Cell,
   Legend,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
 } from "recharts";
 import { HelpCircle, ChevronDown, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import { formatBrl } from "./shared/utils";
@@ -36,6 +41,8 @@ export interface DREViewProps {
   dreAnterior?: Record<string, number> | null;
   mes: number;
   ano: number;
+  /** JSON consolidado (mesma fonte do download): indicadores derivados, YoY, médias móveis. */
+  consolidadoJson?: Record<string, unknown> | null;
 }
 
 function VariacaoBadge({
@@ -56,7 +63,12 @@ function VariacaoBadge({
   );
 }
 
-export function DREView({ dre, dreAnterior, mes, ano }: DREViewProps) {
+function num(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function DREView({ dre, dreAnterior, mes, ano, consolidadoJson }: DREViewProps) {
   const [expandido, setExpandido] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("both");
   const [indicadores, setIndicadores] = useState<{
@@ -219,6 +231,130 @@ export function DREView({ dre, dreAnterior, mes, ano }: DREViewProps) {
           </div>
         </div>
       )}
+
+      {consolidadoJson?.indicadores_derivados != null && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
+          <h3 className="mb-1 text-sm font-semibold text-[var(--color-text-primary)]">
+            Indicadores derivados (BI)
+          </h3>
+          <p className="mb-3 text-xs text-[var(--color-text-secondary)]">
+            Mesmos valores do arquivo JSON consolidado (schema 1.2). Ciclo de caixa: DVE + PMR − PMP. Giro de
+            CR: vendas do período ÷ média de contas a receber (base do PMR).
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">Ciclo de conversão de caixa (dias)</p>
+              <p className="font-mono font-medium">
+                {(consolidadoJson.indicadores_derivados as Record<string, unknown>).ciclo_conversao_caixa_dias !=
+                null
+                  ? `${num((consolidadoJson.indicadores_derivados as Record<string, unknown>).ciclo_conversao_caixa_dias)} dias`
+                  : "N/D"}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[var(--color-text-secondary)]">DVE + PMR − PMP</p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">Giro de contas a receber</p>
+              <p className="font-mono font-medium">
+                {(consolidadoJson.indicadores_derivados as Record<string, unknown>).giro_contas_receber != null
+                  ? `${num((consolidadoJson.indicadores_derivados as Record<string, unknown>).giro_contas_receber)}×`
+                  : "N/D"}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[var(--color-text-secondary)]">
+                vendas do período ÷ média de CR (mesma base do PMR)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {consolidadoJson?.comparativo_interanual != null &&
+        Array.isArray(
+          (consolidadoJson.comparativo_interanual as Record<string, unknown>).meses
+        ) &&
+        ((consolidadoJson.comparativo_interanual as Record<string, unknown>).meses as unknown[]).length >
+          0 && (
+          <ChartCard
+            title="Receita: período vs. ano anterior (mesma janela)"
+            exportFilename={`dre-yoy-${mes}-${ano}`}
+          >
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart
+                data={(
+                  (consolidadoJson.comparativo_interanual as Record<string, unknown>).meses as Array<
+                    Record<string, unknown>
+                  >
+                ).map((m) => ({
+                  mes: String(m.mes ?? ""),
+                  atual: num(m.receitas),
+                  anoAnterior: num(m.receitas_ano_anterior),
+                }))}
+                margin={{ top: 5, right: 20, left: 8, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
+                <YAxis tickFormatter={(v) => formatBrl(v)} tick={{ fontSize: 10 }} width={72} />
+                <Tooltip
+                  formatter={(v: number) => formatBrl(v)}
+                  contentStyle={{ fontSize: 12 }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="atual"
+                  name="Receita"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="anoAnterior"
+                  name="Ano anterior"
+                  stroke="#94a3b8"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
+
+      {consolidadoJson?.serie_dre_mensal != null &&
+        Array.isArray(
+          (consolidadoJson.serie_dre_mensal as Record<string, unknown>).meses_com_medias_moveis
+        ) &&
+        (
+          (consolidadoJson.serie_dre_mensal as Record<string, unknown>).meses_com_medias_moveis as unknown[]
+        ).length > 0 && (
+          <ChartCard
+            title="Receita e médias móveis (série mensal)"
+            exportFilename={`dre-medias-${mes}-${ano}`}
+          >
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart
+                data={(
+                  (consolidadoJson.serie_dre_mensal as Record<string, unknown>)
+                    .meses_com_medias_moveis as Array<Record<string, unknown>>
+                ).map((m) => ({
+                  mes: String(m.mes ?? ""),
+                  receitas: num(m.receitas),
+                  mm3: m.receita_media_movel_3 != null ? num(m.receita_media_movel_3) : null,
+                  mm6: m.receita_media_movel_6 != null ? num(m.receita_media_movel_6) : null,
+                }))}
+                margin={{ top: 5, right: 20, left: 8, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
+                <YAxis tickFormatter={(v) => formatBrl(v)} tick={{ fontSize: 10 }} width={72} />
+                <Tooltip formatter={(v: number) => formatBrl(v)} contentStyle={{ fontSize: 12 }} />
+                <Legend />
+                <Line type="monotone" dataKey="receitas" name="Receita" stroke="#22c55e" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="mm3" name="MM3" stroke="#3b82f6" strokeWidth={1.5} dot={false} connectNulls />
+                <Line type="monotone" dataKey="mm6" name="MM6" stroke="#a855f7" strokeWidth={1.5} dot={false} connectNulls />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
 
       {/* Fluxo visual (waterfall simplificado) */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">

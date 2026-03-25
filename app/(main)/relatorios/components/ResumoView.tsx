@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   BarChart,
   Bar,
@@ -63,6 +64,8 @@ export interface AlertaConsolidado {
 }
 
 export interface ResumoViewProps {
+  /** JSON do consolidado (mesma fonte do download) — aging, frete, compras por fornecedor. */
+  consolidadoJson?: Record<string, unknown> | null;
   data: {
     month?: string;
     crescimentoMoMPerc?: number | null;
@@ -87,7 +90,12 @@ export interface ResumoViewProps {
   alertasConsolidado?: AlertaConsolidado[] | null;
 }
 
-export function ResumoView({ data, mes, ano, alertasConsolidado }: ResumoViewProps) {
+function num(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function ResumoView({ data, mes, ano, alertasConsolidado, consolidadoJson }: ResumoViewProps) {
   const isHistorioCompleto = ano === 0 && mes === 0;
 
   const periodoLabel =
@@ -357,6 +365,134 @@ export function ResumoView({ data, mes, ano, alertasConsolidado }: ResumoViewPro
           onClose={() => setDrillDown(null)}
         />
       )}
+
+      {consolidadoJson?.frete_periodo != null && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
+          <h3 className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">
+            Frete no período (consolidado)
+          </h3>
+          <p className="text-lg font-semibold text-[var(--color-text-primary)]">
+            {formatBrl(
+              num((consolidadoJson.frete_periodo as Record<string, unknown>).frete_total_periodo)
+            )}
+          </p>
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+            Soma de frete em pedidos de venda confirmados no mesmo período do filtro acima.
+          </p>
+        </div>
+      )}
+
+      {consolidadoJson?.contas_receber_aging_por_cliente != null && (
+        <details className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
+          <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-primary)]">
+            Aging de contas a receber (títulos em aberto)
+          </summary>
+          <p className="mt-2 mb-3 text-xs text-[var(--color-text-secondary)]">
+            Valores por faixa de atraso em relação ao vencimento; snapshot na data de geração.{" "}
+            <Link href="/financeiro?tab=receber" className="text-[var(--color-accent)] underline">
+              Abrir Contas a Receber
+            </Link>
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-xs">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-text-secondary)]">
+                  <th className="py-2 pr-2">Cliente</th>
+                  <th className="py-2 text-right">A vencer</th>
+                  <th className="py-2 text-right">0–30</th>
+                  <th className="py-2 text-right">31–60</th>
+                  <th className="py-2 text-right">61–90</th>
+                  <th className="py-2 text-right">90+</th>
+                  <th className="py-2 text-right font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(
+                  (consolidadoJson.contas_receber_aging_por_cliente as Record<string, unknown>)
+                    .clientes as Array<Record<string, unknown>>
+                )?.slice(0, 20).map((c, i) => (
+                  <tr key={String(c.entity_id ?? i)} className="border-b border-[var(--color-border)]/60">
+                    <td className="max-w-[200px] truncate py-1.5 pr-2 text-[var(--color-text-primary)]">
+                      {String(c.nome ?? "")}
+                    </td>
+                    <td className="py-1.5 text-right font-mono">{formatBrl(num(c.a_vencer))}</td>
+                    <td className="py-1.5 text-right font-mono">{formatBrl(num(c.vencido_0_30))}</td>
+                    <td className="py-1.5 text-right font-mono">{formatBrl(num(c.vencido_31_60))}</td>
+                    <td className="py-1.5 text-right font-mono">{formatBrl(num(c.vencido_61_90))}</td>
+                    <td className="py-1.5 text-right font-mono">{formatBrl(num(c.vencido_mais_90))}</td>
+                    <td className="py-1.5 text-right font-mono font-medium">{formatBrl(num(c.total_aberto))}</td>
+                  </tr>
+                ))}
+              </tbody>
+              {(consolidadoJson.contas_receber_aging_por_cliente as Record<string, unknown>).totais != null && (
+                <tfoot>
+                  <tr className="font-medium text-[var(--color-text-primary)]">
+                    <td className="py-2">Totais</td>
+                    {["a_vencer", "vencido_0_30", "vencido_31_60", "vencido_61_90", "vencido_mais_90", "total_aberto"].map(
+                      (k) => (
+                        <td key={k} className="py-2 text-right font-mono">
+                          {formatBrl(
+                            num(
+                              (
+                                (consolidadoJson.contas_receber_aging_por_cliente as Record<string, unknown>)
+                                  .totais as Record<string, unknown>
+                              )[k]
+                            )
+                          )}
+                        </td>
+                      )
+                    )}
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </details>
+      )}
+
+      {consolidadoJson?.compras_por_fornecedor != null &&
+        Array.isArray(consolidadoJson.compras_por_fornecedor) &&
+        (consolidadoJson.compras_por_fornecedor as unknown[]).length > 0 && (
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                Compras por fornecedor (período)
+              </h3>
+              <Link
+                href="/financeiro?tab=pagar"
+                className="text-xs text-[var(--color-accent)] underline"
+              >
+                Contas a pagar
+              </Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)] text-left text-xs text-[var(--color-text-secondary)]">
+                    <th className="py-2">Fornecedor</th>
+                    <th className="py-2 text-right">Pedidos</th>
+                    <th className="py-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(consolidadoJson.compras_por_fornecedor as Array<Record<string, unknown>>)
+                    .slice(0, 15)
+                    .map((r, i) => (
+                      <tr key={String(r.entity_id ?? i)} className="border-b border-[var(--color-border)]/60">
+                        <td className="max-w-[240px] truncate py-2 text-[var(--color-text-primary)]">
+                          {String(r.nome ?? "")}
+                        </td>
+                        <td className="py-2 text-right font-mono text-[var(--color-text-secondary)]">
+                          {Number(r.pedidos_count ?? 0)}
+                        </td>
+                        <td className="py-2 text-right font-mono">{formatBrl(num(r.total_compras))}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
       {prom && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
