@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
+        image: postgres:14
         ports:
-          - 5433:5432
+          - 5432:5432
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: hero_pet
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: hero_pet_test
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 10s
@@ -25,12 +25,17 @@ jobs:
           --health-retries 5
     env:
       POSTGRES_HOST: 127.0.0.1
-      POSTGRES_PORT: 5433
+      POSTGRES_PORT: 5432
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: hero_pet
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: hero_pet_test
+      DATABASE_URL: postgresql://postgres:testpass@127.0.0.1:5432/hero_pet_test
       MIGRATIONS_AUTO_APPLY: 1
       NODE_ENV: test
+      TEST_PORT: 3100
+      BASE_URL: http://localhost:3100
+      NEXTAUTH_SECRET: test-secret-for-ci
+      NEXTAUTH_URL: http://localhost:3100
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,7 +50,7 @@ jobs:
         run: npm ci
 
       - name: Wait for Postgres
-        run: node infra/scripts/wait-for-postgres.js
+        run: until pg_isready -h 127.0.0.1 -p 5432 -U postgres; do sleep 1; done
 
       - name: Run tests (no docker compose)
         run: npm run test:ci

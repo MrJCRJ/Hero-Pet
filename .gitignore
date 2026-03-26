@@ -6,4 +6,5 @@ coverage
 .env.local
 .env.development
 .env.production
+.env.test
 .env.ci.sample

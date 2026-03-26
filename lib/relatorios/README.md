@@ -40,6 +40,20 @@ Consultas reutilizáveis de indicadores ficam em:
 - Integração/API:
   - `npm run test` (usa serviços locais)
   - `npm run test:ci` (sem `docker compose`, usado no CI)
+  - `npm run test:ci:relatorios` (somente suíte de relatórios)
+
+## Banco de teste isolado (Docker)
+
+Para evitar conflito com o Postgres de desenvolvimento (porta `5433`), o banco de teste usa `5434`.
+
+1. Subir banco isolado:
+   - `npm run testdb:up`
+2. Popular schema limpo + migrations:
+   - `npm run testdb:seed`
+3. Rodar testes:
+   - `npm run test:ci:relatorios`
+4. Remover container de teste:
+   - `npm run testdb:down`
 
 ## Variáveis de ambiente para testes
 
@@ -53,5 +67,10 @@ Variáveis principais:
 - `POSTGRES_PASSWORD`
 - `POSTGRES_DB`
 - `NODE_ENV=test`
+- `TEST_PORT` (porta do servidor Next usado nos testes, ex.: `3100`)
+- `BASE_URL` (URL base de testes, ex.: `http://localhost:3100`)
+- `NEXTAUTH_SECRET` (segredo local para autenticação em testes)
+- `NEXTAUTH_URL` (URL de callback do NextAuth em testes)
 
 O `globalSetup` bloqueia execução quando detecta banco de produção/cloud para evitar perda de dados.
+O `globalSetup` usa `TEST_PORT/BASE_URL` para evitar conflito com `npm run dev` (normalmente na `3000`).

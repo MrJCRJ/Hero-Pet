@@ -2,6 +2,8 @@ import retry from "async-retry";
 import axios from "axios";
 
 let active = true; // flag para cancelar operações se necessário no teardown
+const TEST_PORT = Number(process.env.TEST_PORT || 3100);
+const BASE_URL = process.env.BASE_URL || `http://localhost:${TEST_PORT}`;
 export function shutdownOrchestrator() {
   active = false;
 }
@@ -40,7 +42,7 @@ async function waitForAllServices() {
     async function fetchStatusPage() {
       if (!active) throw new Error("Orchestrator aborted");
       attemptCounter++;
-      const response = await axios.get("http://localhost:3000/api/v1/status", {
+      const response = await axios.get(`${BASE_URL}/api/v1/status`, {
         timeout: 4000,
       });
       if (process.env.DEBUG_ORCHESTRATOR) {

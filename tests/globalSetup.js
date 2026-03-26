@@ -34,10 +34,12 @@ function guardDestructiveDb() {
 
 module.exports = async () => {
   guardDestructiveDb();
-  const statusUrl = "http://localhost:3000/api/v1/status";
-  const migrateUrl = "http://localhost:3000/api/v1/migrations";
+  const testPort = Number(process.env.TEST_PORT || 3100);
+  const baseUrl = process.env.BASE_URL || `http://localhost:${testPort}`;
+  const statusUrl = `${baseUrl}/api/v1/status`;
+  const migrateUrl = `${baseUrl}/api/v1/migrations`;
 
-  // 1) Probe: se a porta 3000 estiver ocupada, tentamos reutilizar
+  // 1) Probe: se a porta de teste estiver ocupada, tentamos reutilizar
   const portInUse = await new Promise((resolve) => {
     const tester = net
       .createServer()
@@ -51,14 +53,14 @@ module.exports = async () => {
       .once("listening", () => {
         tester.close(() => resolve(false));
       })
-      .listen(3000);
+      .listen(testPort);
   });
 
   if (portInUse) {
     try {
       await axios.get(statusUrl, { timeout: 1500 });
       console.log(
-        "[globalSetup] Porta 3000 em uso — reutilizando servidor Next existente",
+        `[globalSetup] Porta ${testPort} em uso — reutilizando servidor Next existente`,
       );
       try {
         const res = await axios.post(migrateUrl, {}, { timeout: 8000 });
@@ -75,7 +77,7 @@ module.exports = async () => {
       return;
     } catch (_) {
       console.log(
-        "[globalSetup] Porta 3000 ocupada mas /status indisponível — seguindo para iniciar Next",
+        `[globalSetup] Porta ${testPort} ocupada mas /status indisponível — seguindo para iniciar Next`,
       );
     }
   } else {
@@ -83,7 +85,7 @@ module.exports = async () => {
     try {
       await axios.get(statusUrl, { timeout: 1200 });
       console.log(
-        "[globalSetup] Reutilizando servidor Next existente na porta 3000",
+        `[globalSetup] Reutilizando servidor Next existente na porta ${testPort}`,
       );
       try {
         const res = await axios.post(migrateUrl, {}, { timeout: 8000 });
@@ -115,19 +117,19 @@ module.exports = async () => {
     server.on("error", (err) => {
       if (err && err.code === "EADDRINUSE") {
         console.log(
-          "[globalSetup] Detected EADDRINUSE during listen — assumindo servidor externo e reutilizando",
+          `[globalSetup] Detected EADDRINUSE on ${testPort} during listen — assumindo servidor externo e reutilizando`,
         );
         resolve();
       } else {
         reject(err);
       }
     });
-    server.listen(3000, resolve);
+    server.listen(testPort, resolve);
   });
 
   global.__NEXT_TEST_SERVER__ = server;
   global.__NEXT_TEST_APP__ = app; // para fechar watchers no teardown
-  console.log("[globalSetup] Servidor Next iniciado em http://localhost:3000");
+  console.log(`[globalSetup] Servidor Next iniciado em ${baseUrl}`);
 
   // Aplica migrações antes dos testes iniciarem
   try {

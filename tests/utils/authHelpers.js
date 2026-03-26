@@ -7,8 +7,9 @@
  *   fetch(url, { headers: { Cookie: cookie } });
  */
 
+const TEST_PORT = Number(process.env.TEST_PORT || 3100);
 const BASE_URL =
-  process.env.TEST_BASE_URL || "http://localhost:3000";
+  process.env.BASE_URL || process.env.TEST_BASE_URL || `http://localhost:${TEST_PORT}`;
 const TEST_EMAIL =
   process.env.TEST_USER_EMAIL || "admin@hero-pet.local";
 const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || "admin123";
