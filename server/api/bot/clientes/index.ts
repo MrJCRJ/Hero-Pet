@@ -51,7 +51,10 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
       return;
     }
 
-    const telefone = queryParsed.data.telefone.trim();
+    const telefone = String((queryParsed.data as { telefone?: string }).telefone ?? "").trim();
+    const nomeBusca = String((queryParsed.data as { nome?: string }).nome ?? "").trim();
+    const qBusca = String((queryParsed.data as { q?: string }).q ?? "").trim();
+    const limitBusca = Number((queryParsed.data as { limit?: number }).limit ?? 20);
     const nome =
       req.method === "POST"
         ? ((queryParsed.data as { nome?: string }).nome || "Cliente WhatsApp").trim()
@@ -62,7 +65,8 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
         : "pessoa_fisica";
     console.info("[bot/clientes] payload", sanitizeForBotLogs({ telefone, nome, tipoCliente }));
 
-    const existing = await database.query({
+    const existing = telefone
+      ? await database.query({
       text: `SELECT id, name, telefone, cep, numero, observacao
                     , COALESCE(tipo_cliente, 'pessoa_juridica') AS tipo_cliente
              FROM entities
@@ -70,7 +74,8 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
              ORDER BY id DESC
              LIMIT 1`,
       values: [telefone],
-    });
+        })
+      : { rows: [] as Array<Record<string, unknown>> };
 
     if (existing.rows.length && req.method === "GET") {
       const row = existing.rows[0] as Record<string, unknown>;
@@ -144,6 +149,43 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
     }
 
     if (req.method === "GET") {
+      const searchText = qBusca || nomeBusca;
+      const onlyDigits = (qBusca || telefone).replace(/\D+/g, "");
+      const hasSearch = !!(searchText || onlyDigits);
+      if (hasSearch) {
+        const result = await database.query({
+          text: `SELECT
+                   id,
+                   name,
+                   telefone,
+                   COALESCE(tipo_cliente, 'pessoa_juridica') AS tipo_cliente
+                 FROM entities
+                 WHERE entity_type = 'PF'
+                   AND (
+                     ($1 <> '' AND name ILIKE $2)
+                     OR
+                     ($3 <> '' AND regexp_replace(COALESCE(telefone, ''), '[^0-9]', '', 'g') LIKE $4)
+                   )
+                 ORDER BY updated_at DESC, id DESC
+                 LIMIT $5`,
+          values: [
+            searchText,
+            `%${searchText}%`,
+            onlyDigits,
+            `%${onlyDigits}%`,
+            limitBusca,
+          ],
+        });
+        res.status(200).json({
+          results: (result.rows as Array<Record<string, unknown>>).map((row) => ({
+            id: Number(row.id),
+            nome: String(row.name ?? ""),
+            telefone: String(row.telefone ?? ""),
+            tipo: String(row.tipo_cliente ?? "pessoa_juridica"),
+          })),
+        });
+        return;
+      }
       res.status(404).json({ error: "Cliente não encontrado" });
       return;
     }

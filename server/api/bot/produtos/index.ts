@@ -67,6 +67,11 @@ function resolvePrecoKg(params: {
   return precoTabela;
 }
 
+function formatPrecoKg(precoKg: number): string {
+  const safe = Number.isFinite(precoKg) ? precoKg : 0;
+  return `R$ ${safe.toFixed(2).replace(".", ",")}/kg`;
+}
+
 function dedupeByNome(items: Array<{
   id: number;
   nome: string;
@@ -74,6 +79,7 @@ function dedupeByNome(items: Array<{
   ativo: boolean;
   granel: boolean;
   preco_kg: number;
+  preco_formatado: string;
   estoque_kg: number;
   margem_percentual: number;
   is_best_seller: boolean;
@@ -84,6 +90,7 @@ function dedupeByNome(items: Array<{
   ativo: boolean;
   granel: boolean;
   preco_kg: number;
+  preco_formatado: string;
   estoque_kg: number;
   margem_percentual: number;
   is_best_seller: boolean;
@@ -176,6 +183,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
             ativo: Boolean(row.ativo),
             granel: Boolean(row.venda_granel),
             preco_kg: precoKg,
+            preco_formatado: formatPrecoKg(precoKg),
             estoque_kg: Number(row.estoque_kg ?? 0),
             margem_percentual: Number(Number(row.margem_percentual ?? 0).toFixed(2)),
             is_best_seller: Boolean(row.is_best_seller),
@@ -289,6 +297,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
           ativo: Boolean(row.ativo),
           granel: isGranelProduct(nomeOriginal, String(row.categoria ?? ""), Boolean(row.venda_granel)),
           preco_kg: preco,
+          preco_formatado: formatPrecoKg(preco),
           estoque_kg: Number(row.estoque_kg ?? 0),
           margem_percentual: Number(row.margem_percentual ?? 0),
           is_best_seller: Boolean(row.is_best_seller),
@@ -303,6 +312,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
         ativo: item.ativo,
         granel: item.granel,
         preco_kg: item.preco_kg,
+        preco_formatado: item.preco_formatado,
         estoque_kg: item.estoque_kg,
         margem_percentual: Number(item.margem_percentual.toFixed(2)),
         is_best_seller: item.is_best_seller,

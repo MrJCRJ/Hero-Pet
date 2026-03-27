@@ -8,9 +8,16 @@ export const BotClienteSchema = z.object({
   tipo: BotClienteTipoEnum.optional(),
 });
 
-export const BotClienteQuerySchema = z.object({
-  telefone: z.string().min(8),
-});
+export const BotClienteQuerySchema = z
+  .object({
+    telefone: z.string().min(3).optional(),
+    nome: z.string().min(2).optional(),
+    q: z.string().min(2).optional(),
+    limit: z.coerce.number().int().positive().max(50).optional(),
+  })
+  .refine((data) => !!(data.telefone || data.nome || data.q), {
+    message: "Informe telefone, nome ou q",
+  });
 
 export const BotEnderecoSchema = z.object({
   cliente_id: z.coerce.number().int().positive(),
