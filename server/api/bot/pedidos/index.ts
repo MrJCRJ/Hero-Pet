@@ -52,7 +52,12 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
       res.status(400).json({ error: parsedGet.error.issues[0]?.message ?? "Invalid query" });
       return;
     }
-    const filters: string[] = ["p.tipo = 'VENDA'"];
+    const filters: string[] = [
+      "p.tipo = 'VENDA'",
+      "e.entity_type = 'PF'",
+      "COALESCE(e.tipo_cliente, 'pessoa_juridica') = 'pessoa_fisica'",
+      "COALESCE(p.observacao::text, '') LIKE '%\"origem\":\"BOT_WHATSAPP\"%'",
+    ];
     const values: unknown[] = [];
     if (parsedGet.data.status) {
       values.push(parsedGet.data.status);
@@ -75,6 +80,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
         text: `SELECT p.id, p.status, p.data_emissao, p.total_liquido, p.partner_entity_id, p.partner_name,
                       pi.produto_id, pi.quantidade, pi.preco_unitario, pr.nome AS produto_nome
                FROM pedidos p
+               JOIN entities e ON e.id = p.partner_entity_id
                LEFT JOIN pedido_itens pi ON pi.pedido_id = p.id
                LEFT JOIN produtos pr ON pr.id = pi.produto_id
                WHERE ${filters.join(" AND ")}

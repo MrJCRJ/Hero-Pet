@@ -44,13 +44,20 @@ export function EntityFormShell({
   onBlurDocumento,
   embedded = false,
 }: EntityFormShellProps) {
+  const profileLabel =
+    form.entityType === "reseller"
+      ? "Casa de Ração"
+      : form.entityType === "final_customer"
+        ? "Cliente Final"
+        : "Fornecedor";
+
   const content = (
     <div className="space-y-4">
       {!embedded && (
         <h2 className="text-base font-semibold">
           {editingId
-            ? `Editando ${isClient ? "Cliente" : "Fornecedor"}`
-            : `Novo ${isClient ? "Cliente" : "Fornecedor"}`}
+            ? `Editando ${profileLabel}`
+            : `Novo ${profileLabel}`}
         </h2>
       )}
       <div className="card p-2 space-y-2">
@@ -138,7 +145,7 @@ export function EntityFormShell({
 
   return (
     <FormContainer
-      title="Formulário de Cliente / Fornecedor"
+      title="Formulário de Casa de Ração / Cliente Final / Fornecedor"
       onSubmit={onSubmit}
     >
       {content}

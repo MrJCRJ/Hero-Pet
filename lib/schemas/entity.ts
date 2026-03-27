@@ -15,6 +15,9 @@ export const entitySchema = z
     entity_type: z.enum(["PF", "PJ"], {
       message: "entity_type must be PF or PJ",
     }),
+    tipo_cliente: z
+      .enum(["pessoa_fisica", "pessoa_juridica"])
+      .optional(),
     document_digits: z.string().optional().default(""),
     document_pending: z.boolean().optional().default(false),
     cep: z.string().optional().nullable(),
@@ -37,6 +40,9 @@ export const entitySchema = z
   .transform((data) => ({
     ...data,
     document_digits: stripDigits(data.document_digits || ""),
+    tipo_cliente:
+      data.tipo_cliente ||
+      (data.entity_type === "PF" ? "pessoa_juridica" : "pessoa_juridica"),
   }));
 
 export type EntityInput = z.infer<typeof entitySchema>;

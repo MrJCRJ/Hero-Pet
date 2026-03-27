@@ -53,7 +53,7 @@ export function PedidoFormHeader({
 
         <div>
           <label className="block text-xs mb-1 text-[var(--color-text-secondary)]">
-            Cliente/Fornecedor (ativo)
+            Parceiro (Casa de Ração / Cliente Final / Fornecedor)
           </label>
           <div className="flex items-center gap-2">
             <div className=" text-sm px-2 py-1 rounded   min-h-[50px]">
@@ -96,14 +96,14 @@ export function PedidoFormHeader({
       {/* Modal de seleção de parceiro */}
       {showPartnerModal && (
         <SelectionModal
-          title="Selecionar Cliente/Fornecedor"
+          title="Selecionar Parceiro"
           fetcher={fetchEntities}
           extractLabel={(it: { id: string | number; label: string }) => it.label}
           onSelect={onPartnerSelect}
           onClose={() => onShowPartnerModal(false)}
           emptyMessage={
             tipo === "VENDA"
-              ? "Nenhum cliente ativo encontrado"
+              ? "Nenhuma casa de ração/cliente final ativo encontrado"
               : "Nenhum fornecedor ativo encontrado"
           }
         />
@@ -123,7 +123,7 @@ export function PedidoFormHeader({
               </p>
               <p className="text-amber-600 dark:text-amber-400">
                 ⚠️ Esta mudança irá:
-                <br />• Limpar a seleção de cliente/fornecedor
+                <br />• Limpar a seleção de parceiro
                 <br />• Reprocessar movimentos de estoque
                 <br />• Alterar as regras de negócio aplicáveis
               </p>

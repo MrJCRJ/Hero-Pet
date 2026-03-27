@@ -12,6 +12,8 @@ interface Summary {
   total?: number;
   count_pf?: number;
   count_pj?: number;
+  count_reseller?: number;
+  count_final_customer?: number;
   by_status?: Record<string, number>;
   percent_address_fill?: Record<string, number>;
   percent_contact_fill?: Record<string, number>;
@@ -68,6 +70,8 @@ export function EntitiesSummary({ summary }: { summary: Summary | null }) {
   const total = Number(summary.total) || 0;
   const countPf = Number(summary.count_pf) ?? 0;
   const countPj = Number(summary.count_pj) ?? 0;
+  const countReseller = Number(summary.count_reseller) || countPf;
+  const countFinalCustomer = Number(summary.count_final_customer) || 0;
   const totalStatus = Object.values(summary.by_status || {}).reduce(
     (a, b) => a + b,
     0
@@ -86,7 +90,7 @@ export function EntitiesSummary({ summary }: { summary: Summary | null }) {
     Number(validPct) >= 80 ? "success" : "warning";
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       <IndicatorCard
         icon={Users}
         label="Total"
@@ -95,9 +99,15 @@ export function EntitiesSummary({ summary }: { summary: Summary | null }) {
       />
       <IndicatorCard
         icon={Users}
-        label="Clientes"
-        value={countPf}
-        tooltip="Pessoas físicas (PF) cadastradas como clientes"
+        label="Casa de Ração"
+        value={countReseller}
+        tooltip="Clientes B2B (perfil de casa de ração)"
+      />
+      <IndicatorCard
+        icon={Users}
+        label="Cliente Final"
+        value={countFinalCustomer}
+        tooltip="Clientes PF atendidos como consumidor final"
       />
       <IndicatorCard
         icon={Building2}

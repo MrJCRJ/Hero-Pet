@@ -138,7 +138,8 @@ export function EntitiesFilters({
               onChange={(e) => onProfileChange(e.target.value)}
             >
               <option value="">(todos)</option>
-              <option value="client">Cliente</option>
+              <option value="reseller">Casa de Ração</option>
+              <option value="final_customer">Cliente Final</option>
               <option value="supplier">Fornecedor</option>
             </select>
             <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--color-text-secondary)]">

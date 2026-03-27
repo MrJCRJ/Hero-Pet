@@ -67,9 +67,9 @@ export default function AdminBotPage() {
         setLoading(true);
         setError(null);
         const [rResumo, rStatus, rPedidos] = await Promise.all([
-          fetch("/api/bot/resumo", { headers: { "X-API-Key": process.env.NEXT_PUBLIC_HEROPET_API_KEY || "" } }),
-          fetch("/api/bot/status", { headers: { "X-API-Key": process.env.NEXT_PUBLIC_HEROPET_API_KEY || "" } }),
-          fetch("/api/bot/pedidos", { headers: { "X-API-Key": process.env.NEXT_PUBLIC_HEROPET_API_KEY || "" } }),
+          fetch("/api/bot/resumo"),
+          fetch("/api/bot/status"),
+          fetch("/api/bot/pedidos"),
         ]);
         if (!rResumo.ok || !rStatus.ok || !rPedidos.ok) {
           throw new Error("Falha ao carregar dados do bot");

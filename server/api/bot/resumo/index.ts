@@ -11,9 +11,13 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
       text: `SELECT
                COUNT(*) FILTER (WHERE p.data_emissao::date = CURRENT_DATE) AS pedidos_hoje,
                COALESCE(SUM(CASE WHEN p.data_emissao::date = CURRENT_DATE THEN p.total_liquido END), 0) AS total_hoje,
-               COUNT(*) FILTER (WHERE p.status IN ('rascunho')) AS pedidos_em_andamento
+               COUNT(*) FILTER (WHERE p.status::text IN ('rascunho')) AS pedidos_em_andamento
              FROM pedidos p
-             WHERE p.tipo = 'VENDA'`,
+             JOIN entities e ON e.id = p.partner_entity_id
+             WHERE p.tipo = 'VENDA'
+               AND e.entity_type = 'PF'
+               AND COALESCE(e.tipo_cliente, 'pessoa_juridica') = 'pessoa_fisica'
+               AND COALESCE(p.observacao::text, '') LIKE '%"origem":"BOT_WHATSAPP"%'`,
       values: [],
     });
     const row = result.rows[0] as Record<string, unknown>;

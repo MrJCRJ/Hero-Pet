@@ -29,7 +29,7 @@ async function getEntity(
 ): Promise<void> {
   try {
     const q = {
-      text: `SELECT id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at FROM entities WHERE id = $1 LIMIT 1`,
+      text: `SELECT id, name, entity_type, tipo_cliente, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at FROM entities WHERE id = $1 LIMIT 1`,
       values: [id],
     };
     const r = await database.query(q);
@@ -114,13 +114,14 @@ async function updateEntity(
 
     const updateQuery = {
       text: `UPDATE entities
-             SET name=$1, entity_type=$2, document_digits=$3, document_status=$4, document_pending=$5,
-                 cep=$6, telefone=$7, email=$8, numero=$9, complemento=$10, observacao=$11, ativo=$12, updated_at=NOW()
-             WHERE id=$13
-             RETURNING id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at`,
+             SET name=$1, entity_type=$2, tipo_cliente=$3, document_digits=$4, document_status=$5, document_pending=$6,
+                 cep=$7, telefone=$8, email=$9, numero=$10, complemento=$11, observacao=$12, ativo=$13, updated_at=NOW()
+             WHERE id=$14
+             RETURNING id, name, entity_type, tipo_cliente, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at`,
       values: [
         name,
         entityType,
+        data.tipo_cliente || "pessoa_juridica",
         rawDigits,
         status,
         documentPending,

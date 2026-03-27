@@ -7,7 +7,7 @@ import { Users, Package, ShoppingCart, BarChart3, FileText, Banknote, UserCog, B
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
-  { href: "/entities", label: "Cliente / Fornecedor", icon: Users },
+  { href: "/entities", label: "Casa de Ração / Cliente Final", icon: Users },
   { href: "/produtos", label: "Produtos", icon: Package },
   { href: "/orders", label: "Pedidos", icon: ShoppingCart },
   { href: "/financeiro", label: "Financeiro", icon: Banknote },

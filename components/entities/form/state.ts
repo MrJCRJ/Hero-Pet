@@ -14,11 +14,15 @@ export const DIGIT_LIMITS = Object.freeze({
 });
 export const DIGIT_FIELDS = Object.keys(DIGIT_LIMITS);
 export const UPPER_FIELDS = new Set(["nome"]);
-export const ENTITY_LABEL = { client: "Cliente", supplier: "Fornecedor" };
+export const ENTITY_LABEL = {
+  reseller: "Casa de Ração",
+  final_customer: "Cliente Final",
+  supplier: "Fornecedor",
+};
 
 export function createInitialEntityForm() {
   return {
-    entityType: "client",
+    entityType: "reseller",
     nome: "",
     documento: "",
     documento_pendente: false,
@@ -63,7 +67,7 @@ export function applyDocumentBlur(prev) {
 
 export function computeDerived(form) {
   return {
-    isClient: form.entityType === "client",
+    isClient: form.entityType !== "supplier",
     documentIsCnpj: isDocumentCnpj(form.documento),
     formatted: {
       ...form,

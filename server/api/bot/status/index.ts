@@ -10,7 +10,14 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
     const latestMsg = await database.query({
       text: `SELECT MAX(data_emissao) AS ultima_data
              FROM pedidos
-             WHERE tipo = 'VENDA'`,
+             WHERE tipo = 'VENDA'
+               AND COALESCE(observacao::text, '') LIKE '%"origem":"BOT_WHATSAPP"%'
+               AND partner_entity_id IN (
+                 SELECT id
+                 FROM entities
+                 WHERE entity_type = 'PF'
+                   AND COALESCE(tipo_cliente, 'pessoa_juridica') = 'pessoa_fisica'
+               )`,
       values: [],
     });
     const last = latestMsg.rows[0] as Record<string, unknown>;

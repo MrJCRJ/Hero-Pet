@@ -33,8 +33,8 @@ export interface RankingViewProps {
 
 export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedioGeral, rankingAnterior, tipo, onTipoChange, mes, ano }: RankingViewProps) {
   const titulo =
-    tipo === "vendas" ? "Ranking de Vendas (clientes)" : "Ranking de Fornecedores";
-  const colLabel = tipo === "vendas" ? "Cliente" : "Fornecedor";
+    tipo === "vendas" ? "Ranking de Vendas (Casa de Ração + Cliente Final)" : "Ranking de Fornecedores";
+  const colLabel = tipo === "vendas" ? "Comprador" : "Fornecedor";
 
   const [viewMode, setViewMode] = useState<ViewMode>("both");
   const topRanking = useMemo(
@@ -86,7 +86,7 @@ export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedi
                   : "hover:bg-[var(--color-bg-secondary)]"
               }`}
             >
-              Vendas (clientes)
+              Vendas (compradores)
             </button>
             <button
               type="button"
@@ -165,7 +165,7 @@ export function RankingView({ ranking, totalGeral, totalPedidosGeral, ticketMedi
         </ChartCard>
         {pieData.length > 0 && tipo === "vendas" && (
           <ChartCard
-            title="Participação % nas vendas por cliente"
+            title="Participação % nas vendas por comprador"
             exportFilename={`ranking-pizza-${tipo}-${mes}-${ano}`}
           >
             <ResponsiveContainer width="100%" height={280}>

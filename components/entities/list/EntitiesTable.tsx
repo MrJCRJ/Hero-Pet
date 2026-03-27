@@ -53,8 +53,10 @@ function formatDocumentDigits(row) {
   return "—";
 }
 
-function getProfileLabel(entity_type) {
-  if (entity_type === "PF") return "Cliente";
+function getProfileLabel(entity_type, tipo_cliente) {
+  if (entity_type === "PF" && tipo_cliente === "pessoa_fisica")
+    return "Cliente Final";
+  if (entity_type === "PF") return "Casa de Ração";
   if (entity_type === "PJ") return "Fornecedor";
   return "—";
 }
@@ -123,6 +125,7 @@ export function EntitiesTable({
       id: number;
       name?: string;
       entity_type?: string;
+      tipo_cliente?: string | null;
       document_status?: string;
       document_digits?: string | null;
       document_pending?: boolean;
@@ -180,7 +183,7 @@ export function EntitiesTable({
                     </p>
                     <p className="text-xs max-w-xs">
                       Clique em &quot;Adicionar&quot; para cadastrar um novo
-                      cliente ou fornecedor.
+                      perfil (casa de ração, cliente final ou fornecedor).
                     </p>
                   </div>
                 </td>
@@ -221,11 +224,11 @@ export function EntitiesTable({
                   <Td>
                     <span
                       className="inline-flex items-center gap-1 badge badge-soft"
-                      aria-label={getProfileLabel(r.entity_type)}
-                      title={getProfileLabel(r.entity_type)}
+                      aria-label={getProfileLabel(r.entity_type, r.tipo_cliente)}
+                      title={getProfileLabel(r.entity_type, r.tipo_cliente)}
                     >
                       <ProfileIcon entity_type={r.entity_type} />
-                      <span>{getProfileLabel(r.entity_type)}</span>
+                      <span>{getProfileLabel(r.entity_type, r.tipo_cliente)}</span>
                     </span>
                   </Td>
                   <Td>{formatDocumentDigits(r)}</Td>

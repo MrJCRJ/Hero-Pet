@@ -85,7 +85,15 @@ export function usePaginatedEntities({ limit = 20 } = {}) {
     } = debouncedFilters;
     const params = new URLSearchParams();
     if (sf) params.set("status", sf);
-    if (pf) params.set("entity_type", pf === "client" ? "PF" : "PJ");
+    if (pf === "supplier") {
+      params.set("entity_type", "PJ");
+    } else if (pf === "reseller") {
+      params.set("entity_type", "PF");
+      params.set("tipo_cliente", "pessoa_juridica");
+    } else if (pf === "final_customer") {
+      params.set("entity_type", "PF");
+      params.set("tipo_cliente", "pessoa_fisica");
+    }
     if (search) params.set("q", search);
     if (af) params.set("address_fill", af);
     if (cf) params.set("contact_fill", cf);

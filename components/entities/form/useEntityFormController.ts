@@ -27,7 +27,12 @@ export function useEntityFormController() {
   const loadForEdit = useCallback((row) => {
     if (!row) return;
     setForm({
-      entityType: row.entity_type === "PF" ? "client" : "supplier",
+      entityType:
+        row.entity_type === "PJ"
+          ? "supplier"
+          : row.tipo_cliente === "pessoa_fisica"
+            ? "final_customer"
+            : "reseller",
       nome: row.name || "",
       documento: row.document_digits || "",
       documento_pendente: row.document_pending,

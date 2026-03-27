@@ -145,7 +145,15 @@ export function EntitiesBrowser({
     (format: "csv" | "xlsx") => {
       const params = new URLSearchParams();
       if (statusFilter) params.set("status", statusFilter);
-      if (profileFilter) params.set("entity_type", profileFilter === "client" ? "PF" : "PJ");
+      if (profileFilter === "supplier") {
+        params.set("entity_type", "PJ");
+      } else if (profileFilter === "reseller") {
+        params.set("entity_type", "PF");
+        params.set("tipo_cliente", "pessoa_juridica");
+      } else if (profileFilter === "final_customer") {
+        params.set("entity_type", "PF");
+        params.set("tipo_cliente", "pessoa_fisica");
+      }
       if (searchFilter) params.set("q", searchFilter);
       if (addressFillFilter) params.set("address_fill", addressFillFilter);
       if (contactFillFilter) params.set("contact_fill", contactFillFilter);

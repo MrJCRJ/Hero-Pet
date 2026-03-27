@@ -50,7 +50,7 @@ function diasAtraso(dueDate: string) {
 const TITULOS: Record<DrillDownTipo, string> = {
   margem: "Produtos por margem (investigar baixa margem)",
   despesas: "Despesas do período",
-  promissorias: "Promissórias atrasadas por cliente",
+  promissorias: "Promissórias atrasadas por comprador",
   vendas: "Evolução de vendas",
 };
 
@@ -265,7 +265,7 @@ export function DrillDownPanel({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--color-border)]">
-                    <th className="px-2 py-2 text-left">Cliente</th>
+                    <th className="px-2 py-2 text-left">Comprador</th>
                     <th className="px-2 py-2 text-right">Valor</th>
                     <th className="px-2 py-2 text-left">Vencimento</th>
                     <th className="px-2 py-2 text-right">Dias atraso</th>

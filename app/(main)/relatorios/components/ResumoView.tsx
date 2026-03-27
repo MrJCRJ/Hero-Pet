@@ -394,7 +394,7 @@ export function ResumoView({ data, mes, ano, alertasConsolidado, consolidadoJson
         ).length > 0 && (
           <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
             <h3 className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">
-              Margem líquida estimada por cliente (frete como custo)
+              Margem líquida estimada por comprador (frete como custo)
             </h3>
             <p className="mb-3 text-xs text-[var(--color-text-secondary)]">
               lucro_líquido_estimado = vendas_liquidas − cogs − frete_custo − (vendas_liquidas × comissão estimada)
@@ -403,7 +403,7 @@ export function ResumoView({ data, mes, ano, alertasConsolidado, consolidadoJson
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-[var(--color-border)] text-left">
-                    <th className="py-2 pr-2 text-[var(--color-text-secondary)]">Cliente</th>
+                    <th className="py-2 pr-2 text-[var(--color-text-secondary)]">Comprador</th>
                     <th className="py-2 text-right text-[var(--color-text-secondary)]">Lucro</th>
                     <th className="py-2 text-right text-[var(--color-text-secondary)]">% Margem</th>
                   </tr>
@@ -438,7 +438,7 @@ export function ResumoView({ data, mes, ano, alertasConsolidado, consolidadoJson
       {consolidadoJson?.contas_receber_aging_por_cliente != null && (
         <details className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 shadow-sm">
           <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-primary)]">
-            Aging de contas a receber (títulos em aberto)
+            Aging de contas a receber por comprador (títulos em aberto)
           </summary>
           <p className="mt-2 mb-3 text-xs text-[var(--color-text-secondary)]">
             Valores por faixa de atraso em relação ao vencimento; snapshot na data de geração.{" "}
@@ -450,7 +450,7 @@ export function ResumoView({ data, mes, ano, alertasConsolidado, consolidadoJson
             <table className="w-full min-w-[640px] text-xs">
               <thead>
                 <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-text-secondary)]">
-                  <th className="py-2 pr-2">Cliente</th>
+                  <th className="py-2 pr-2">Comprador</th>
                   <th className="py-2 text-right">A vencer</th>
                   <th className="py-2 text-right">0–30</th>
                   <th className="py-2 text-right">31–60</th>

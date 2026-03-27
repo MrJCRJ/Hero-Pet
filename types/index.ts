@@ -16,6 +16,7 @@ export interface Entity {
   id: number;
   name: string;
   entity_type: "PF" | "PJ" | string;
+  tipo_cliente?: "pessoa_fisica" | "pessoa_juridica" | string | null;
   document_digits: string | null;
   document_status: string;
   document_pending: boolean;

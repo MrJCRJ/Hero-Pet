@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { auth } from "@/auth";
 
 type RouteContext = {
   params?: Promise<Record<string, string>> | Record<string, string>;
@@ -16,7 +17,12 @@ function equalsSafe(a: string, b: string): boolean {
 
 export function withBotApiKey(
   routeHandler: RouteHandler,
-  options?: { envVar?: string; headerName?: string }
+  options?: {
+    envVar?: string;
+    headerName?: string;
+    allowSessionAuth?: boolean;
+    allowedRoles?: string[];
+  }
 ): RouteHandler {
   const headerName = (options?.headerName ?? "x-api-key").toLowerCase();
 
@@ -26,10 +32,19 @@ export function withBotApiKey(
       process.env.BOT_INTERNAL_API_KEY;
     const provided = req.headers.get(headerName) ?? "";
 
-    if (!expected || !provided || !equalsSafe(provided, expected)) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (expected && provided && equalsSafe(provided, expected)) {
+      return routeHandler(req, ctx);
     }
 
-    return routeHandler(req, ctx);
+    if (options?.allowSessionAuth) {
+      const session = await auth();
+      const role = (session?.user as { role?: string } | undefined)?.role;
+      const allowedRoles = options.allowedRoles ?? ["admin"];
+      if (session?.user && role && allowedRoles.includes(role)) {
+        return routeHandler(req, ctx);
+      }
+    }
+
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   };
 }

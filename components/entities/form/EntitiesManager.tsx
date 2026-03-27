@@ -47,6 +47,10 @@ export function EntitiesManager({
       const payload = {
         name: (row.name || "").trim() + " (cópia)",
         entity_type: row.entity_type || "PF",
+        tipo_cliente:
+          row.entity_type === "PJ"
+            ? "pessoa_juridica"
+            : row.tipo_cliente || "pessoa_juridica",
         document_digits: "",
         document_pending: true,
         cep: row.cep || undefined,
@@ -183,8 +187,8 @@ export function EntitiesManager({
   return (
     <>
       <PageSection
-        title="Clientes e Fornecedores"
-        description="Gerencie clientes e fornecedores do sistema"
+        title="Casa de Ração, Cliente Final e Fornecedor"
+        description="Gerencie perfis comerciais e clientes finais do sistema"
         actions={
           <Button onClick={toggleMode} variant="primary" fullWidth={false}>
             Adicionar
@@ -217,8 +221,8 @@ export function EntitiesManager({
         <Modal
           title={
             editingId
-              ? `Editar ${form.entityType === "client" ? "Cliente" : "Fornecedor"}`
-              : `Novo ${form.entityType === "client" ? "Cliente" : "Fornecedor"}`
+              ? `Editar ${form.entityType === "reseller" ? "Casa de Ração" : form.entityType === "final_customer" ? "Cliente Final" : "Fornecedor"}`
+              : `Novo ${form.entityType === "reseller" ? "Casa de Ração" : form.entityType === "final_customer" ? "Cliente Final" : "Fornecedor"}`
           }
           onClose={handleCloseModal}
           maxWidth="max-w-2xl"
@@ -226,7 +230,7 @@ export function EntitiesManager({
           {editingId && (
             <div className="mb-4">
               <Link
-                href={`/orders?partner=${editingId}&tipo=${form.entityType === "client" ? "VENDA" : "COMPRA"}`}
+                href={`/orders?partner=${editingId}&tipo=${form.entityType === "supplier" ? "COMPRA" : "VENDA"}`}
                 className="inline-flex items-center gap-1 text-sm text-[var(--color-accent)] hover:underline"
               >
                 <ShoppingCart className="h-4 w-4" aria-hidden />

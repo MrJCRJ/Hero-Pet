@@ -62,12 +62,19 @@ export default async function summary(
     const byEntityType = await database.query({
       text: `SELECT entity_type, COUNT(*)::int AS count FROM entities GROUP BY entity_type`,
     });
+    const byCustomerType = await database.query({
+      text: `SELECT tipo_cliente, COUNT(*)::int AS count FROM entities WHERE entity_type = 'PF' GROUP BY tipo_cliente`,
+    });
     const totalRow = total.rows[0] as Record<string, unknown>;
     const totalCount = totalRow.total as number;
     const countPf =
       (byEntityType.rows.find((r) => (r as { entity_type: string }).entity_type === "PF") as { count: number } | undefined)?.count ?? 0;
     const countPj =
       (byEntityType.rows.find((r) => (r as { entity_type: string }).entity_type === "PJ") as { count: number } | undefined)?.count ?? 0;
+    const countReseller =
+      (byCustomerType.rows.find((r) => (r as { tipo_cliente: string }).tipo_cliente === "pessoa_juridica") as { count: number } | undefined)?.count ?? 0;
+    const countFinalCustomer =
+      (byCustomerType.rows.find((r) => (r as { tipo_cliente: string }).tipo_cliente === "pessoa_fisica") as { count: number } | undefined)?.count ?? 0;
     const ensureCats = (map: Record<string, number>) => ({
       completo: map.completo || 0,
       parcial: map.parcial || 0,
@@ -77,6 +84,8 @@ export default async function summary(
       total: totalRow.total,
       count_pf: countPf,
       count_pj: countPj,
+      count_reseller: countReseller,
+      count_final_customer: countFinalCustomer,
       by_status: (byStatus.rows as Array<Record<string, unknown>>).reduce(
         (acc, r) => {
           acc[r.status as string] = r.count;

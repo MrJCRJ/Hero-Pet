@@ -14,7 +14,11 @@ export function useEntitySubmit({ push }) {
       try {
         const payload = {
           name: form.nome.trim(),
-          entity_type: form.entityType === "client" ? "PF" : "PJ",
+          entity_type: form.entityType === "supplier" ? "PJ" : "PF",
+          tipo_cliente:
+            form.entityType === "final_customer"
+              ? "pessoa_fisica"
+              : "pessoa_juridica",
           document_digits: form.documento,
           document_pending: form.documento_pendente,
           cep: form.cep || undefined,

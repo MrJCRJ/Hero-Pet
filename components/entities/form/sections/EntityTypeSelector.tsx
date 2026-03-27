@@ -2,7 +2,8 @@ import React from "react";
 
 export function EntityTypeSelector({ value, onChange }) {
   const options = [
-    { value: "client", label: "Cliente" },
+    { value: "reseller", label: "Casa de Ração" },
+    { value: "final_customer", label: "Cliente Final" },
     { value: "supplier", label: "Fornecedor" },
   ];
   return (

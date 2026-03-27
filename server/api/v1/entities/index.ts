@@ -60,12 +60,13 @@ async function postEntity(req: ApiReqLike, res: ApiResLike): Promise<void> {
 
     const insertQuery = {
       text: `INSERT INTO entities
-        (name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, NOW(), NOW())
-        RETURNING id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at`,
+        (name, entity_type, tipo_cliente, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW(), NOW())
+        RETURNING id, name, entity_type, tipo_cliente, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at`,
       values: [
         name,
         entityType,
+        data.tipo_cliente || "pessoa_juridica",
         rawDigits,
         status,
         documentPending,
@@ -96,6 +97,7 @@ async function getEntities(req: ApiReqLike, res: ApiResLike): Promise<void> {
     const address_fill = q.address_fill;
     const contact_fill = q.contact_fill;
     const entity_type = q.entity_type;
+    const tipo_cliente = q.tipo_cliente;
     const has_orders = q.has_orders;
     const searchQ = q.q;
     const q_name = q.q_name;
@@ -130,6 +132,16 @@ async function getEntities(req: ApiReqLike, res: ApiResLike): Promise<void> {
       }
       values.push(entityTypeStr);
       clauses.push(`entity_type = $${values.length}`);
+    }
+    if (tipo_cliente) {
+      const allowedCustomerTypes = ["pessoa_fisica", "pessoa_juridica"];
+      const customerTypeStr = Array.isArray(tipo_cliente) ? tipo_cliente[0] : tipo_cliente;
+      if (!allowedCustomerTypes.includes(customerTypeStr as string)) {
+        res.status(400).json({ error: "Invalid tipo_cliente filter" });
+        return;
+      }
+      values.push(customerTypeStr);
+      clauses.push(`tipo_cliente = $${values.length}`);
     }
     if (ativo !== undefined) {
       if (!["true", "false"].includes(String(ativo))) {
@@ -217,7 +229,7 @@ async function getEntities(req: ApiReqLike, res: ApiResLike): Promise<void> {
 
     if (format === "csv" || format === "xlsx") {
       const exportQuery = {
-        text: `SELECT id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at
+        text: `SELECT id, name, entity_type, tipo_cliente, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at
                FROM entities
                ${where}
                ORDER BY created_at DESC`,
@@ -233,6 +245,7 @@ async function getEntities(req: ApiReqLike, res: ApiResLike): Promise<void> {
         "ID",
         "Nome",
         "Perfil",
+        "Tipo Cliente",
         "Documento",
         "Status",
         "CEP",
@@ -245,7 +258,11 @@ async function getEntities(req: ApiReqLike, res: ApiResLike): Promise<void> {
         "Endereço",
         "Contato",
       ];
-      const profileMap: Record<string, string> = { PF: "Cliente", PJ: "Fornecedor" };
+      const profileMap = (entityType: string, tipoCliente?: string) => {
+        if (entityType === "PJ") return "Fornecedor";
+        if (tipoCliente === "pessoa_fisica") return "Cliente Final";
+        return "Casa de Ração";
+      };
       const statusMap: Record<string, string> = {
         valid: "Válido",
         pending: "Pendente",
@@ -254,7 +271,8 @@ async function getEntities(req: ApiReqLike, res: ApiResLike): Promise<void> {
       const rowToArr = (r: Record<string, unknown>) => [
         r.id,
         r.name,
-        profileMap[String(r.entity_type)] ?? r.entity_type,
+        profileMap(String(r.entity_type), String(r.tipo_cliente ?? "")),
+        r.tipo_cliente === "pessoa_fisica" ? "Pessoa Física" : "Pessoa Jurídica",
         r.document_digits ?? "",
         statusMap[String(r.document_status)] ?? r.document_status,
         r.cep ?? "",
@@ -322,7 +340,7 @@ async function getEntities(req: ApiReqLike, res: ApiResLike): Promise<void> {
     const limitIdx = values.length + 1;
     const offsetIdx = values.length + 2;
     const query = {
-      text: `SELECT id, name, entity_type, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at,
+        text: `SELECT id, name, entity_type, tipo_cliente, document_digits, document_status, document_pending, cep, telefone, email, numero, complemento, observacao, ativo, created_at, updated_at,
              (SELECT COUNT(*)::int FROM pedidos WHERE partner_entity_id = entities.id) AS orders_count
              FROM entities
              ${where}
