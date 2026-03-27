@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg";
 import { aplicarConsumosFIFO } from "lib/fifo";
+import { registerSimplifiedMovement, isSimplifiedStockEnabled } from "lib/stock/simplified";
 
 type ItemPedidoMovimento = Record<string, unknown>;
 
@@ -43,6 +44,32 @@ export async function registrarMovimentosVenda({
 
     const registroConsumo = consumosPorItem.find((c) => c.produto_id === produtoId);
     if (!registroConsumo) continue;
+
+    if (isSimplifiedStockEnabled()) {
+      await client.query({
+        text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo, data_movimento, custo_unitario_rec, custo_total_rec)
+               VALUES ($1,'SAIDA',$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()), $7, $8)`,
+        values: [
+          produtoId,
+          quantidade,
+          docTag,
+          `SAIDA (SIMPLIFIED AVG COST) por criacao de pedido ${pedidoId}`,
+          "PEDIDO",
+          dataMovimento,
+          custoUnitVenda,
+          custoTotalItem,
+        ],
+      });
+      await registerSimplifiedMovement(client, {
+        produtoId,
+        tipo: "saida",
+        quantidadeKg: quantidade,
+        precoUnitarioKg: custoUnitVenda,
+        observacao: `Pedido ${pedidoId}`,
+        refPedidoId: pedidoId,
+      });
+      continue;
+    }
 
     if (registroConsumo.legacy) {
       await client.query({

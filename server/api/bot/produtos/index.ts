@@ -1,10 +1,75 @@
 import database from "infra/database";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 import { BotProdutosQuerySchema } from "@/server/api/bot/schemas";
+import { isSimplifiedStockEnabled } from "lib/stock/simplified";
 
-function isGranelProduct(nome: string, categoria: string): boolean {
+function isGranelProduct(nome: string, categoria: string, vendaGranel?: boolean): boolean {
+  if (vendaGranel === true) return true;
   const text = `${nome} ${categoria}`.toLowerCase();
-  return text.includes("granel") || text.includes("kg");
+  return text.includes("granel");
+}
+
+function normalizeCategoria(input: string): "cachorro" | "gato" | "passaro" | "peixe" | null {
+  const c = String(input || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  if (!c) return null;
+  if (
+    c.includes("cachorro") ||
+    c.includes("cao") ||
+    c.includes("caes") ||
+    c.includes("canin") ||
+    c.includes("dog")
+  ) {
+    return "cachorro";
+  }
+  if (c.includes("gato") || c.includes("felin") || c.includes("cat")) return "gato";
+  if (c.includes("passaro") || c.includes("ave") || c.includes("bird")) return "passaro";
+  if (c.includes("peixe") || c.includes("aquar") || c.includes("fish")) return "peixe";
+  return null;
+}
+
+function sanitizeNomeComercial(nome: string): string {
+  return String(nome || "")
+    .replace(/\b\d+(?:[.,]\d+)?\s?(?:kg|g)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function dedupeByNome(items: Array<{
+  id: number;
+  nome: string;
+  categoria: "cachorro" | "gato" | "passaro" | "peixe";
+  ativo: boolean;
+  granel: boolean;
+  preco_kg: number;
+  estoque_kg: number;
+  margem_percentual: number;
+  is_best_seller: boolean;
+}>): Array<{
+  id: number;
+  nome: string;
+  categoria: "cachorro" | "gato" | "passaro" | "peixe";
+  ativo: boolean;
+  granel: boolean;
+  preco_kg: number;
+  estoque_kg: number;
+  margem_percentual: number;
+  is_best_seller: boolean;
+}> {
+  const map = new Map<string, (typeof items)[number]>();
+  for (const item of items) {
+    const key = `${item.nome.toLowerCase()}::${item.categoria}`;
+    if (!map.has(key)) {
+      map.set(key, item);
+      continue;
+    }
+    const existing = map.get(key)!;
+    if (item.id < existing.id) map.set(key, item);
+  }
+  return [...map.values()];
 }
 
 export default async function handler(req: ApiReqLike, res: ApiResLike): Promise<void> {
@@ -20,37 +85,182 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
   }
 
   try {
-    const filters: string[] = ["ativo = true"];
-    const values: unknown[] = [];
+    if (isSimplifiedStockEnabled()) {
+      const resultSimple = await database.query({
+        text: `WITH vendas_30d AS (
+                 SELECT
+                   pi.produto_id,
+                   COALESCE(SUM(pi.quantidade), 0) AS vendas_kg
+                 FROM pedido_itens pi
+                 JOIN pedidos p ON p.id = pi.pedido_id
+                 WHERE p.tipo = 'VENDA'
+                   AND p.status = 'confirmado'
+                   AND p.data_emissao >= NOW() - INTERVAL '30 days'
+                 GROUP BY pi.produto_id
+               ),
+               top_sellers AS (
+                 SELECT produto_id
+                 FROM vendas_30d
+                 ORDER BY vendas_kg DESC
+                 LIMIT 10
+               )
+               SELECT
+                 p.id,
+                 p.nome,
+                 p.categoria,
+                 p.ativo,
+                 COALESCE(p.venda_granel, false) AS venda_granel,
+                 COALESCE(p.preco_kg_granel, p.preco_tabela, 0) AS preco_kg,
+                 COALESCE(p.estoque_kg, 0) AS estoque_kg,
+                 COALESCE(
+                   CASE
+                     WHEN COALESCE(p.preco_kg_granel, p.preco_tabela, 0) > 0
+                       THEN ((COALESCE(p.preco_kg_granel, p.preco_tabela, 0) - COALESCE(p.custo_medio_kg, 0))
+                           / COALESCE(p.preco_kg_granel, p.preco_tabela, 0)) * 100
+                     ELSE 0
+                   END,
+                   0
+                 ) AS margem_percentual,
+                 CASE WHEN ts.produto_id IS NOT NULL THEN true ELSE false END AS is_best_seller
+               FROM produtos p
+               LEFT JOIN top_sellers ts ON ts.produto_id = p.id
+               WHERE p.ativo = true
+               ORDER BY p.nome ASC, p.id ASC
+               LIMIT 500`,
+        values: [],
+      });
+      let produtos = (resultSimple.rows as Array<Record<string, unknown>>)
+        .map((row) => {
+          const nomeOriginal = String(row.nome ?? "");
+          const categoriaNormalizada = normalizeCategoria(String(row.categoria ?? ""));
+          const nomeComercial = sanitizeNomeComercial(nomeOriginal) || nomeOriginal.trim();
+          return {
+            id: Number(row.id),
+            nome: nomeComercial,
+            categoria: categoriaNormalizada,
+            ativo: Boolean(row.ativo),
+            granel: Boolean(row.venda_granel),
+            preco_kg: Number(row.preco_kg ?? 0),
+            estoque_kg: Number(row.estoque_kg ?? 0),
+            margem_percentual: Number(Number(row.margem_percentual ?? 0).toFixed(2)),
+            is_best_seller: Boolean(row.is_best_seller),
+          };
+        })
+        .filter((item) => item.ativo && item.granel && item.preco_kg > 0 && item.estoque_kg > 0 && item.categoria !== null)
+        .map((item) => ({ ...item, categoria: item.categoria as "cachorro" | "gato" | "passaro" | "peixe" }));
 
-    const categoria = parsed.data.categoria?.trim();
-    if (categoria) {
-      values.push(`%${categoria}%`);
-      filters.push(`categoria ILIKE $${values.length}`);
+      const categoriaQuery = normalizeCategoria(parsed.data.categoria ?? "");
+      if (categoriaQuery) produtos = produtos.filter((item) => item.categoria === categoriaQuery);
+      if (parsed.data.granel === false) produtos = [];
+      produtos = dedupeByNome(produtos);
+      res.status(200).json(produtos);
+      return;
     }
 
-    const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
     const result = await database.query({
-      text: `SELECT id, nome, categoria, preco_tabela, ativo
-             FROM produtos
-             ${where}
-             ORDER BY nome ASC
+      text: `WITH estoque AS (
+                SELECT
+                  produto_id,
+                  COALESCE(SUM(quantidade_disponivel), 0) AS estoque_kg,
+                  COALESCE(
+                    CASE
+                      WHEN SUM(quantidade_disponivel) > 0
+                        THEN SUM(quantidade_disponivel * custo_unitario) / SUM(quantidade_disponivel)
+                      ELSE 0
+                    END,
+                    0
+                  ) AS custo_medio_kg
+                FROM estoque_lote
+                GROUP BY produto_id
+             ),
+             vendas_30d AS (
+                SELECT
+                  pi.produto_id,
+                  COALESCE(SUM(pi.quantidade), 0) AS vendas_kg
+                FROM pedido_itens pi
+                JOIN pedidos p ON p.id = pi.pedido_id
+                WHERE p.tipo = 'VENDA'
+                  AND p.status = 'confirmado'
+                  AND p.data_emissao >= NOW() - INTERVAL '30 days'
+                GROUP BY pi.produto_id
+             ),
+             top_sellers AS (
+                SELECT produto_id
+                FROM vendas_30d
+                ORDER BY vendas_kg DESC
+                LIMIT 10
+             )
+             SELECT
+                p.id,
+                p.nome,
+                p.categoria,
+                p.ativo,
+                p.venda_granel,
+                COALESCE(p.preco_kg_granel, p.preco_tabela, 0) AS preco_kg,
+                COALESCE(e.estoque_kg, 0) AS estoque_kg,
+                COALESCE(
+                  CASE
+                    WHEN COALESCE(p.preco_kg_granel, p.preco_tabela, 0) > 0
+                      THEN ((COALESCE(p.preco_kg_granel, p.preco_tabela, 0) - COALESCE(e.custo_medio_kg, 0))
+                          / COALESCE(p.preco_kg_granel, p.preco_tabela, 0)) * 100
+                    ELSE 0
+                  END,
+                  0
+                ) AS margem_percentual,
+                CASE WHEN ts.produto_id IS NOT NULL THEN true ELSE false END AS is_best_seller
+             FROM produtos p
+             LEFT JOIN estoque e ON e.produto_id = p.id
+             LEFT JOIN top_sellers ts ON ts.produto_id = p.id
+             WHERE p.ativo = true
+             ORDER BY p.nome ASC, p.id ASC
              LIMIT 500`,
-      values,
+      values: [],
     });
 
-    let produtos = (result.rows as Array<Record<string, unknown>>).map((row) => ({
-      id: Number(row.id),
-      nome: String(row.nome ?? ""),
-      categoria: String(row.categoria ?? ""),
-      preco_kg: Number(row.preco_tabela ?? 0),
-      ativo: Boolean(row.ativo),
-      granel: isGranelProduct(String(row.nome ?? ""), String(row.categoria ?? "")),
-    }));
+    let produtos = (result.rows as Array<Record<string, unknown>>)
+      .map((row) => {
+        const nomeOriginal = String(row.nome ?? "");
+        const categoriaNormalizada = normalizeCategoria(String(row.categoria ?? ""));
+        const preco = Number(row.preco_kg ?? 0);
+        const nomeComercial = sanitizeNomeComercial(nomeOriginal) || nomeOriginal.trim();
+        return {
+          id: Number(row.id),
+          nome: nomeComercial,
+          categoria: categoriaNormalizada,
+          ativo: Boolean(row.ativo),
+          granel: isGranelProduct(nomeOriginal, String(row.categoria ?? ""), Boolean(row.venda_granel)),
+          preco_kg: preco,
+          estoque_kg: Number(row.estoque_kg ?? 0),
+          margem_percentual: Number(row.margem_percentual ?? 0),
+          is_best_seller: Boolean(row.is_best_seller),
+        };
+      })
+      .filter((item) => item.ativo)
+      .filter((item) => item.granel)
+      .filter((item) => item.preco_kg > 0)
+      .filter((item) => item.estoque_kg > 0)
+      .filter((item) => item.categoria !== null)
+      .map((item) => ({
+        id: item.id,
+        nome: item.nome,
+        categoria: item.categoria as "cachorro" | "gato" | "passaro" | "peixe",
+        ativo: item.ativo,
+        granel: item.granel,
+        preco_kg: item.preco_kg,
+        estoque_kg: item.estoque_kg,
+        margem_percentual: Number(item.margem_percentual.toFixed(2)),
+        is_best_seller: item.is_best_seller,
+      }));
 
-    if (typeof parsed.data.granel === "boolean") {
-      produtos = produtos.filter((item) => item.granel === parsed.data.granel);
+    const categoriaQuery = normalizeCategoria(parsed.data.categoria ?? "");
+    if (categoriaQuery) {
+      produtos = produtos.filter((item) => item.categoria === categoriaQuery);
     }
+
+    // Endpoint do bot e exclusivo para venda a granel.
+    if (parsed.data.granel === false) produtos = [];
+
+    produtos = dedupeByNome(produtos);
 
     res.status(200).json(produtos);
   } catch (error) {

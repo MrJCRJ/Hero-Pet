@@ -3,4 +3,5 @@ import { withPagesHandler } from "@/lib/server/withPagesHandler";
 import handler from "@/server/api/bot/clientes/index";
 
 const base = withPagesHandler(handler);
+export const GET = withBotApiKey(base);
 export const POST = withBotApiKey(base);

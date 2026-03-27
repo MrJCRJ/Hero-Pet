@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Users, Package, ShoppingCart, BarChart3, FileText, Banknote, UserCog } from "lucide-react";
+import { Users, Package, ShoppingCart, BarChart3, FileText, Banknote, UserCog, Bot } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
@@ -28,7 +28,12 @@ export function MainNav() {
 
   const items = [
     ...navItems,
-    ...(isAdmin ? [{ href: "/admin/usuarios", label: "Usuários", icon: UserCog }] : []),
+    ...(isAdmin
+      ? [
+          { href: "/admin/usuarios", label: "Usuários", icon: UserCog },
+          { href: "/admin/bot", label: "Bot", icon: Bot },
+        ]
+      : []),
   ];
 
   return (

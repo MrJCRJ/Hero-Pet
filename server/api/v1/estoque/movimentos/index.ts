@@ -2,6 +2,13 @@
 import database from "infra/database";
 import { isConnectionError, isRelationMissing } from "lib/errors";
 import { consumirFIFO, aplicarConsumosFIFO } from "lib/fifo";
+import {
+  computeNewAverageCost,
+  lockProdutoEstoque,
+  registerSimplifiedMovement,
+  isDualWriteStockEnabled,
+  isSimplifiedStockEnabled,
+} from "lib/stock/simplified";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 import { listMovimentos } from "./handlers/listMovimentos";
 
@@ -61,6 +68,110 @@ export default async function handler(
     if (tipo === "ENTRADA") {
       valor_total =
         quantidade * Number(b.valor_unitario || 0) + frete + outras;
+    }
+
+    if (isSimplifiedStockEnabled()) {
+      let client:
+        | {
+            query: (arg: string | Record<string, unknown>) => Promise<unknown>;
+            release: () => void;
+          }
+        | undefined;
+      try {
+        const c = await database.getClient();
+        client = c;
+        await c.query("BEGIN");
+        const produto = await lockProdutoEstoque(c as any, Number(produtoId));
+
+        const delta =
+          tipo === "ENTRADA"
+            ? quantidade
+            : tipo === "SAIDA"
+              ? -quantidade
+              : quantidade;
+        if (tipo === "SAIDA" && produto.estoqueKg < quantidade) {
+          await c.query("ROLLBACK");
+          c.release();
+          res.status(400).json({ error: "Estoque insuficiente" });
+          return;
+        }
+        if (tipo === "AJUSTE" && produto.estoqueKg + delta < 0) {
+          await c.query("ROLLBACK");
+          c.release();
+          res.status(400).json({ error: "Ajuste negativo excederia o saldo disponível" });
+          return;
+        }
+
+        const novoEstoque = produto.estoqueKg + delta;
+        const custoEntrada = tipo === "ENTRADA" ? Number(valor_unitario ?? 0) : produto.custoMedioKg;
+        const novoCusto =
+          tipo === "ENTRADA"
+            ? computeNewAverageCost({
+                estoqueAtualKg: produto.estoqueKg,
+                custoMedioAtualKg: produto.custoMedioKg,
+                quantidadeEntradaKg: quantidade,
+                custoEntradaKg: custoEntrada,
+              })
+            : produto.custoMedioKg;
+
+        await c.query({
+          text: `UPDATE produtos
+                 SET estoque_kg = $1, custo_medio_kg = $2, updated_at = NOW()
+                 WHERE id = $3`,
+          values: [novoEstoque, novoCusto, produtoId],
+        });
+
+        await registerSimplifiedMovement(c as any, {
+          produtoId: Number(produtoId),
+          tipo: tipo === "ENTRADA" ? "entrada" : "saida",
+          quantidadeKg: Math.abs(quantidade),
+          precoUnitarioKg: tipo === "ENTRADA" ? Number(valor_unitario ?? 0) : produto.custoMedioKg,
+          observacao: String(b.observacao || `Movimento ${tipo}`),
+        });
+
+        if (isDualWriteStockEnabled()) {
+          const legacyCostUnit = tipo === "SAIDA" ? produto.custoMedioKg : null;
+          const legacyCostTotal = tipo === "SAIDA" ? Number((produto.custoMedioKg * quantidade).toFixed(2)) : null;
+          await c.query({
+            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, custo_unitario_rec, custo_total_rec)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            values: [
+              produtoId,
+              tipo,
+              quantidade,
+              valor_unitario,
+              frete,
+              outras,
+              valor_total,
+              b.documento || null,
+              b.observacao || null,
+              legacyCostUnit,
+              legacyCostTotal,
+            ],
+          });
+        }
+
+        await c.query("COMMIT");
+        c.release();
+        res.status(201).json({
+          produto_id: Number(produtoId),
+          tipo,
+          quantidade,
+          estoque_kg: novoEstoque,
+          custo_medio_kg: novoCusto,
+        });
+        return;
+      } catch (err) {
+        if (client) {
+          try {
+            await client.query("ROLLBACK");
+          } catch {}
+          try {
+            client.release();
+          } catch {}
+        }
+        throw err;
+      }
     }
 
     const fifoEnv = String(process.env.FIFO_ENABLED || "").trim() === "1";

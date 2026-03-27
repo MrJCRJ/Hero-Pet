@@ -1,6 +1,7 @@
 // lib/domain/pedidos/processarItens - Processamento de itens (VENDA) com FIFO e fallback legacy.
 import type { PoolClient } from "pg";
 import { consumirFIFO } from "./fifo";
+import { lockProdutoEstoque, isSimplifiedStockEnabled } from "lib/stock/simplified";
 
 interface ItemPayload {
   produto_id: number;
@@ -31,6 +32,48 @@ export async function processarItensVenda({
     totalLiquido = 0;
 
   for (const it of itens) {
+    if (isSimplifiedStockEnabled()) {
+      const produto = await lockProdutoEstoque(client, Number(it.produto_id));
+      const qtd = Number(it.quantidade);
+      if (!Number.isFinite(qtd) || qtd <= 0) throw new Error("quantidade inválida");
+      if (produto.estoqueKg < qtd) throw new Error(`Saldo insuficiente para o produto "${it.produto_id}"`);
+      const rProd = await client.query({
+        text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`,
+        values: [it.produto_id],
+      });
+      if (!rProd.rows.length) throw new Error(`produto_id inválido: ${it.produto_id}`);
+      const preco =
+        it.preco_unitario != null
+          ? Number(it.preco_unitario)
+          : Number(rProd.rows[0].preco_tabela ?? 0);
+      const desconto = it.desconto_unitario != null ? Number(it.desconto_unitario) : 0;
+      const totalItem = (preco - desconto) * qtd;
+      totalBruto += preco * qtd;
+      descontoTotal += desconto * qtd;
+      totalLiquido += totalItem;
+
+      const novoEstoque = produto.estoqueKg - qtd;
+      await client.query({
+        text: `UPDATE produtos SET estoque_kg = $1, updated_at = NOW() WHERE id = $2`,
+        values: [novoEstoque, it.produto_id],
+      });
+      const custoUnitVenda = Number(produto.custoMedioKg.toFixed(2));
+      const custoTotalItem = Number((custoUnitVenda * qtd).toFixed(2));
+      consumosPorItem.push({ produto_id: it.produto_id, simplified: true, custo_unitario_medio: custoUnitVenda });
+      result.push({
+        produto_id: it.produto_id,
+        quantidade: qtd,
+        preco,
+        desconto,
+        total_item: totalItem,
+        custo_unit_venda: custoUnitVenda,
+        custo_total_item: custoTotalItem,
+        legacy: false,
+        simplified: true,
+      });
+      continue;
+    }
+
     const rProd = await client.query({
       text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`,
       values: [it.produto_id],

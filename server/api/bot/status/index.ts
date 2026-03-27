@@ -6,22 +6,22 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
     res.status(405).json({ error: `Method "${req.method}" not allowed` });
     return;
   }
-
   try {
-    const r = await database.query({
-      text: `SELECT COUNT(*)::int AS pedidos_ultimas_24h
+    const latestMsg = await database.query({
+      text: `SELECT MAX(data_emissao) AS ultima_data
              FROM pedidos
-             WHERE tipo = 'VENDA'
-               AND data_emissao >= NOW() - INTERVAL '24 hours'`,
+             WHERE tipo = 'VENDA'`,
       values: [],
     });
-    const row = r.rows[0] as Record<string, unknown>;
+    const last = latestMsg.rows[0] as Record<string, unknown>;
     res.status(200).json({
-      status: "ok",
       bot_conectado: true,
-      pedidos_ultimas_24h: Number(row.pedidos_ultimas_24h ?? 0),
+      ultima_mensagem_em: last.ultima_data ?? null,
+      service: "api-bot",
     });
-  } catch {
-    res.status(200).json({ status: "ok", bot_conectado: true });
+  } catch (error) {
+    console.error("[bot/status] error", error);
+    res.status(500).json({ error: "Internal error" });
   }
 }
+

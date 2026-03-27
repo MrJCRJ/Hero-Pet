@@ -4,6 +4,12 @@ import { isConnectionError, isRelationMissing } from "lib/errors";
 import { listPedidos } from "./handlers/listPedidos";
 import { processarItensVenda } from "lib/pedidos/fifo";
 import { registrarMovimentosVenda } from "lib/domain/pedidos/registrarMovimentosVenda";
+import {
+  computeNewAverageCost,
+  lockProdutoEstoque,
+  registerSimplifiedMovement,
+  isSimplifiedStockEnabled,
+} from "lib/stock/simplified";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 function parseDateYMD(ymd: unknown): string | null {
@@ -273,40 +279,80 @@ async function postPedido(
         const share = Number(shareRaw.toFixed(2));
         const valorTotal = Number((base + share).toFixed(2));
         const valorUnit = valorTotal / qtd;
-        const movEnt = await client.query({
-          text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, origem_tipo, data_movimento)
-                 VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6,$7,$8,$9, COALESCE($10::timestamptz, NOW()))
-                 RETURNING id`,
-          values: [
-            it.produto_id,
-            qtd,
-            valorUnit,
-            share > 0 ? share : 0,
-            0,
-            valorTotal,
-            docTag,
-            `ENTRADA por criação de pedido ${pedido.id}`,
-            "PEDIDO",
-            dataEmissaoStr,
-          ],
-        });
-        const movRows = movEnt.rows as Array<{ id: number }>;
-        await client.query({
-          text: `INSERT INTO estoque_lote (produto_id, quantidade_inicial, quantidade_disponivel, custo_unitario, valor_total, origem_tipo, origem_movimento_id, data_entrada, documento, observacao)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7, COALESCE($8::timestamptz, NOW()),$9,$10)`,
-          values: [
-            it.produto_id,
-            qtd,
-            qtd,
-            valorUnit,
-            valorTotal,
-            "ENTRADA",
-            movRows[0].id,
-            dataEmissaoStr,
-            docTag,
-            `LOTE gerado por pedido ${pedido.id}`,
-          ],
-        });
+        if (isSimplifiedStockEnabled()) {
+          const produto = await lockProdutoEstoque(client as any, Number(it.produto_id));
+          const novoCusto = computeNewAverageCost({
+            estoqueAtualKg: produto.estoqueKg,
+            custoMedioAtualKg: produto.custoMedioKg,
+            quantidadeEntradaKg: qtd,
+            custoEntradaKg: valorUnit,
+          });
+          await client.query({
+            text: `UPDATE produtos
+                   SET estoque_kg = estoque_kg + $1, custo_medio_kg = $2, updated_at = NOW()
+                   WHERE id = $3`,
+            values: [qtd, novoCusto, it.produto_id],
+          });
+          await registerSimplifiedMovement(client as any, {
+            produtoId: Number(it.produto_id),
+            tipo: "entrada",
+            quantidadeKg: qtd,
+            precoUnitarioKg: valorUnit,
+            observacao: `Compra pedido ${pedido.id}`,
+            refPedidoId: Number(pedido.id),
+          });
+          await client.query({
+            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, origem_tipo, data_movimento)
+                   VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6,$7,$8,$9, COALESCE($10::timestamptz, NOW()))`,
+            values: [
+              it.produto_id,
+              qtd,
+              valorUnit,
+              share > 0 ? share : 0,
+              0,
+              valorTotal,
+              docTag,
+              `ENTRADA por criação de pedido ${pedido.id}`,
+              "PEDIDO",
+              dataEmissaoStr,
+            ],
+          });
+        } else {
+          const movEnt = await client.query({
+            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, origem_tipo, data_movimento)
+                   VALUES ($1,'ENTRADA',$2,$3,$4,$5,$6,$7,$8,$9, COALESCE($10::timestamptz, NOW()))
+                   RETURNING id`,
+            values: [
+              it.produto_id,
+              qtd,
+              valorUnit,
+              share > 0 ? share : 0,
+              0,
+              valorTotal,
+              docTag,
+              `ENTRADA por criação de pedido ${pedido.id}`,
+              "PEDIDO",
+              dataEmissaoStr,
+            ],
+          });
+          const movRows = movEnt.rows as Array<{ id: number }>;
+          await client.query({
+            text: `INSERT INTO estoque_lote (produto_id, quantidade_inicial, quantidade_disponivel, custo_unitario, valor_total, origem_tipo, origem_movimento_id, data_entrada, documento, observacao)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7, COALESCE($8::timestamptz, NOW()),$9,$10)`,
+            values: [
+              it.produto_id,
+              qtd,
+              qtd,
+              valorUnit,
+              valorTotal,
+              "ENTRADA",
+              movRows[0].id,
+              dataEmissaoStr,
+              docTag,
+              `LOTE gerado por pedido ${pedido.id}`,
+            ],
+          });
+        }
       }
     }
 

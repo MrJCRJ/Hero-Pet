@@ -26,7 +26,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
   const allowed = allowedBairros();
   const bairro = data.bairro.trim().toLowerCase();
   if (allowed.length && !allowed.includes(bairro)) {
-    res.status(422).json({ error: "Bairro nao permitido" });
+    res.status(400).json({ error: "Bairro nao permitido" });
     return;
   }
 

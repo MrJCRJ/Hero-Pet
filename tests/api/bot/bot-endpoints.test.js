@@ -26,6 +26,8 @@ beforeAll(async () => {
   process.env.HEROPET_API_KEY = API_KEY;
   process.env.ALLOWED_BAIRROS = "centro,jardim europa";
   process.env.BOT_DELIVERY_WINDOW = "08:00-22:00";
+  process.env.DELIVERY_START_TIME = "08:00";
+  process.env.DELIVERY_END_TIME = "22:00";
 
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
@@ -33,8 +35,8 @@ beforeAll(async () => {
 
   const produto = await database.query({
     text: `INSERT INTO produtos
-           (nome, categoria, preco_tabela, ativo, created_at, updated_at)
-           VALUES ('Racao Granel Premium', 'RACAO_GRANEL', 25.50, true, NOW(), NOW())
+           (nome, categoria, preco_tabela, preco_kg_granel, venda_granel, ativo, created_at, updated_at)
+           VALUES ('Racao Granel Premium', 'RACAO_GRANEL', 25.50, 25.50, true, true, NOW(), NOW())
            RETURNING id`,
   });
   produtoId = Number(produto.rows[0].id);
@@ -117,7 +119,7 @@ describe("API Bot endpoints", () => {
         cep: "01001000",
       }),
     });
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "Bairro nao permitido" });
   });
 
@@ -148,7 +150,14 @@ describe("API Bot endpoints", () => {
     expect(produtosRes.status).toBe(200);
     const produtos = await produtosRes.json();
     expect(Array.isArray(produtos)).toBe(true);
-    expect(produtos.some((p) => p.id === produtoId)).toBe(true);
+    const found = produtos.find((p) => p.id === produtoId);
+    expect(found).toBeTruthy();
+    expect(found.preco_kg).toBeGreaterThan(0);
+    expect(found.estoque_kg).toBeGreaterThan(0);
+    expect(typeof found.margem_percentual).toBe("number");
+    expect(typeof found.is_best_seller).toBe("boolean");
+    expect(found.ativo).toBe(true);
+    expect(found.granel).toBe(true);
 
     const estoqueRes = await fetch(`${BASE_URL}/api/bot/estoque?produto_id=${produtoId}`, {
       headers: { "X-API-Key": API_KEY },
@@ -157,6 +166,23 @@ describe("API Bot endpoints", () => {
     const estoque = await estoqueRes.json();
     expect(estoque).toMatchObject({ produto_id: produtoId });
     expect(estoque.estoque_kg).toBeGreaterThan(0);
+  });
+
+  test("retorna cliente por telefone com historico e 404 quando inexistente", async () => {
+    const notFound = await fetch(`${BASE_URL}/api/bot/clientes?telefone=551188887777`, {
+      headers: { "X-API-Key": API_KEY },
+    });
+    expect(notFound.status).toBe(404);
+    expect(await notFound.json()).toEqual({ error: "Cliente não encontrado" });
+
+    const found = await fetch(`${BASE_URL}/api/bot/clientes?telefone=11988887777`, {
+      headers: { "X-API-Key": API_KEY },
+    });
+    expect(found.status).toBe(200);
+    const body = await found.json();
+    expect(body).toHaveProperty("id", clienteId);
+    expect(Array.isArray(body.enderecos)).toBe(true);
+    expect(Array.isArray(body.ultimos_pedidos)).toBe(true);
   });
 
   test("cria pedido com sucesso", async () => {
@@ -181,6 +207,7 @@ describe("API Bot endpoints", () => {
     const body = await response.json();
     expect(body).toHaveProperty("id");
     expect(body).toHaveProperty("status", "confirmado");
+    expect(body.total).toBeGreaterThan(0);
     expect(body.total_liquido).toBeGreaterThan(0);
   });
 
@@ -251,5 +278,63 @@ describe("API Bot endpoints", () => {
     });
     expect(response.status).toBe(422);
     expect(await response.json()).toEqual({ error: "Estoque insuficiente" });
+  });
+
+  test("retorna 400 em pedido com bairro fora da area permitida", async () => {
+    await database.query({
+      text: `UPDATE entities
+             SET observacao = $1
+             WHERE id = $2`,
+      values: [
+        `BOT_ADDR::${JSON.stringify({
+          logradouro: "Rua X",
+          numero: "10",
+          bairro: "bairro proibido",
+          cidade: "Sao Paulo",
+          uf: "SP",
+          cep: "01001000",
+        })}`,
+        clienteId,
+      ],
+    });
+    const response = await fetch(`${BASE_URL}/api/bot/pedidos`, {
+      method: "POST",
+      headers: withApiKey(),
+      body: JSON.stringify({
+        cliente_id: clienteId,
+        endereco_id: clienteId,
+        forma_pagamento: "pix",
+        horario_entrega: "20:00",
+        itens: [
+          {
+            produto_id: produtoId,
+            quantidade_kg: 1,
+            preco_unitario_kg: 30,
+          },
+        ],
+      }),
+    });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Bairro nao permitido" });
+  });
+
+  test("retorna sugestoes e lista de pedidos", async () => {
+    const sug = await fetch(`${BASE_URL}/api/bot/sugestoes`, {
+      headers: { "X-API-Key": API_KEY },
+    });
+    expect(sug.status).toBe(200);
+    const sugBody = await sug.json();
+    expect(Array.isArray(sugBody.top_vendas)).toBe(true);
+    expect(Array.isArray(sugBody.top_margem)).toBe(true);
+
+    const list = await fetch(`${BASE_URL}/api/bot/pedidos`, {
+      headers: { "X-API-Key": API_KEY },
+    });
+    expect(list.status).toBe(200);
+    const listBody = await list.json();
+    expect(Array.isArray(listBody)).toBe(true);
+    if (listBody.length) {
+      expect(listBody[0]).toHaveProperty("itens");
+    }
   });
 });

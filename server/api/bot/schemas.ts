@@ -1,8 +1,15 @@
 import { z } from "zod";
 
+export const BotClienteTipoEnum = z.enum(["pessoa_fisica", "pessoa_juridica"]);
+
 export const BotClienteSchema = z.object({
   telefone: z.string().min(8),
   nome: z.string().min(2).optional(),
+  tipo: BotClienteTipoEnum.optional(),
+});
+
+export const BotClienteQuerySchema = z.object({
+  telefone: z.string().min(8),
 });
 
 export const BotEnderecoSchema = z.object({
@@ -32,6 +39,15 @@ export const BotPedidoSchema = z.object({
 
 export const BotProdutosQuerySchema = z.object({
   categoria: z.string().optional(),
+  include_estoque: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (value == null) return undefined;
+      if (value === "true" || value === "1") return true;
+      if (value === "false" || value === "0") return false;
+      return undefined;
+    }),
   granel: z
     .string()
     .optional()
@@ -45,4 +61,11 @@ export const BotProdutosQuerySchema = z.object({
 
 export const BotEstoqueQuerySchema = z.object({
   produto_id: z.coerce.number().int().positive(),
+});
+
+export const BotPedidosQuerySchema = z.object({
+  status: z.string().optional(),
+  cliente_id: z.coerce.number().int().positive().optional(),
+  data_inicio: z.string().optional(),
+  data_fim: z.string().optional(),
 });

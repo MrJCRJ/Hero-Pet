@@ -197,6 +197,60 @@ Regras de documento, máscaras e validação agrupadas em `components/entity/uti
 
 A interface administrativa está em `/admin/usuarios` (link visível apenas para usuários com role admin).
 
+## API para o Bot WhatsApp
+
+Todas as rotas de `/api/bot/*` exigem cabeçalho `X-API-Key` com o valor de `HEROPET_API_KEY`.
+
+### Variáveis de ambiente do bot
+
+- `HEROPET_API_KEY`: chave de autenticação para `/api/bot/*`.
+- `ALLOWED_BAIRROS`: bairros permitidos para entrega, separados por vírgula.
+- `DELIVERY_START_TIME` e `DELIVERY_END_TIME`: janela de entrega em `HH:MM`.
+- `BOT_DEFAULT_TIPO_CLIENTE`: padrão recomendado para clientes do bot (`pessoa_fisica`).
+- `USE_SIMPLIFIED_STOCK`: habilita runtime de estoque simplificado (kg + custo médio).
+- `DUAL_WRITE_STOCK`: em conjunto com simplificado, mantém escrita no legado para transição segura.
+
+### Endpoints
+
+- `GET /api/bot/health`  
+  Healthcheck com estatísticas básicas.
+
+- `GET /api/bot/clientes?telefone=...`  
+  Busca cliente por telefone.  
+  `200`: cliente com `enderecos` e `ultimos_pedidos` (até 5).  
+  `404`: `{ "error": "Cliente não encontrado" }`.
+
+- `POST /api/bot/clientes`  
+  Cria/atualiza cliente por telefone (`nome` e `tipo` opcionais).
+
+- `POST /api/bot/enderecos`  
+  Salva endereço do cliente com validação de bairros permitidos.
+
+- `GET /api/bot/produtos`  
+  Lista produtos vendáveis no bot (granel, preço > 0, estoque > 0), com:
+  `id`, `nome`, `categoria`, `preco_kg`, `estoque_kg`, `margem_percentual`, `is_best_seller`, `ativo`, `granel`.
+
+- `GET /api/bot/estoque?produto_id=...`  
+  Retorna saldo em kg (`estoque_lote` com fallback em `movimento_estoque`).
+
+- `GET /api/bot/sugestoes`  
+  Retorna `top_vendas` (últimos 30 dias) e `top_margem`.
+
+- `GET /api/bot/pedidos`  
+  Lista pedidos de venda com filtros opcionais: `status`, `cliente_id`, `data_inicio`, `data_fim`.
+
+- `POST /api/bot/pedidos`  
+  Cria pedido do bot com validações de cliente/endereço/bairro/janela de entrega e consumo de estoque FIFO em transação.
+  Resposta: `{ id, status, total, total_liquido }`.
+
+- `GET /api/bot/resumo`  
+  Retorna `{ pedidos_hoje, total_hoje, pedidos_em_andamento }`.
+
+- `GET /api/bot/status`  
+  Retorna status operacional básico do serviço do bot.
+
+O painel administrativo do bot está em `/admin/bot`.
+
 ### Produtos
 
 - POST `/api/v1/produtos` — cria produto; valida fornecedor (somente PJ) e `codigo_barras` único (parcial: apenas quando não nulo).
@@ -213,11 +267,30 @@ Campos: `nome` (obrigatório), `descricao`, `codigo_barras`, `categoria`, `forne
   - SAIDA/AJUSTE: ignoram custo (armazenado como `null`), `frete/outras_despesas=0`.
 - GET `/api/v1/estoque/movimentos` — lista por `produto_id` obrigatório; filtros `tipo`, `from`, `to`; paginação `limit` (<=200) e `offset`. Quando `meta=1`, retorna `{ data, meta: { total } }`.
 - GET `/api/v1/estoque/saldos` — retorna `{ produto_id, saldo, custo_medio, ultimo_custo }` calculados sob demanda.
+- GET `/api/v1/estoque/reconciliacao` — compara saldo/custo do modelo simplificado com legado (FIFO/histórico) e lista divergências.
 
 Schema relevante em `infra/migrations`:
 
 - `1758200000000_create_produtos_table.js`
 - `1758201000000_create_movimento_estoque_table.js`
+
+### Migração segura FIFO -> custo médio
+
+Passos recomendados:
+
+1. Aplicar migrações:
+   - `npm run migration:up:safe`
+2. Executar backfill idempotente:
+   - `npm run stock:backfill:simplified`
+3. Ativar rollout seguro:
+   - `USE_SIMPLIFIED_STOCK=1`
+   - `DUAL_WRITE_STOCK=1`
+4. Monitorar divergências:
+   - `GET /api/v1/estoque/reconciliacao`
+   - `npm run stock:reconcile:report` (saída JSON; exit code 2 quando houver divergência)
+5. Após estabilização:
+   - desligar `DUAL_WRITE_STOCK`
+   - manter estruturas FIFO apenas como histórico até cleanup final.
 
 ## Documentação Adicional
 
