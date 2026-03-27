@@ -2,8 +2,8 @@
 import database from "infra/database";
 import { isConnectionError, isRelationMissing } from "lib/errors";
 import { listPedidos } from "./handlers/listPedidos";
-import { aplicarConsumosFIFO } from "lib/fifo";
 import { processarItensVenda } from "lib/pedidos/fifo";
+import { registrarMovimentosVenda } from "lib/domain/pedidos/registrarMovimentosVenda";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 function parseDateYMD(ymd: unknown): string | null {
@@ -240,9 +240,12 @@ async function postPedido(
       itensCriados.rows as Array<Record<string, unknown>>
     ).reduce((acc, it) => acc + Number(it.quantidade), 0);
 
-    for (const it of itensCriados.rows as Array<Record<string, unknown>>) {
-      if (tipo === "VENDA") {
-        const registroConsumo = (consumosPorItem as Array<{
+    if (tipo === "VENDA") {
+      await registrarMovimentosVenda({
+        client,
+        pedidoId: Number(pedido.id),
+        itens: itensCriados.rows as Array<Record<string, unknown>>,
+        consumosPorItem: consumosPorItem as Array<{
           produto_id: number;
           legacy?: boolean;
           consumo?: {
@@ -255,53 +258,11 @@ async function postPedido(
               custo_total: number;
             }>;
           };
-        }>).find((c) => c.produto_id === it.produto_id);
-        if (!registroConsumo) continue;
-        if (registroConsumo.legacy) {
-          await client.query({
-            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo, data_movimento, custo_unitario_rec, custo_total_rec)
-                   VALUES ($1,'SAIDA',$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()), $7, $8)`,
-            values: [
-              it.produto_id,
-              it.quantidade,
-              docTag,
-              `SAÍDA (LEGACY AVG COST) por criação de pedido ${pedido.id}`,
-              "PEDIDO",
-              dataEmissaoStr,
-              it.custo_unit_venda,
-              it.custo_total_item,
-            ],
-          });
-        } else {
-          const { consumo } = registroConsumo;
-          const mov = await client.query({
-            text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, documento, observacao, origem_tipo, custo_unitario_rec, custo_total_rec, data_movimento)
-                   VALUES ($1,'SAIDA',$2,$3,$4,$5,$6,$7, COALESCE($8::timestamptz, NOW()))
-                   RETURNING id`,
-            values: [
-              it.produto_id,
-              it.quantidade,
-              docTag,
-              `SAÍDA por criação de pedido ${pedido.id}`,
-              "PEDIDO",
-              consumo!.custo_unitario_medio,
-              consumo!.custo_total,
-              dataEmissaoStr,
-            ],
-          });
-          const movRows = mov.rows as Array<{ id: number }>;
-          await aplicarConsumosFIFO({
-            client,
-            movimentoId: movRows[0].id,
-            consumos: consumo!.consumos.map((c) => ({
-              lote_id: c.lote_id,
-              quantidade: c.quantidade,
-              custo_unitario: c.custo_unitario,
-              custo_total: c.custo_total,
-            })),
-          });
-        }
-      } else if (tipo === "COMPRA") {
+        }>,
+        dataMovimento: dataEmissaoStr,
+      });
+    } else if (tipo === "COMPRA") {
+      for (const it of itensCriados.rows as Array<Record<string, unknown>>) {
         const qtd = Number(it.quantidade);
         const preco = Number(it.preco_unitario);
         const base = preco * qtd;

@@ -16,6 +16,7 @@
     "test:ci": "jest --runInBand --verbose --detectOpenHandles",
     "test:with-next": "npm run services:up && concurrently -n next,jest --hide next -k -s command-jest \"next dev\" \"jest --runInBand --verbose\"",
     "test:ci:relatorios": "npm run test:ci -- tests/api/v1/relatorios/relatorios-calculos.test.js",
+    "test:ci:bot": "HEROPET_API_KEY=bot-test-key ALLOWED_BAIRROS='centro,jardim europa' BOT_DELIVERY_WINDOW='08:00-22:00' npm run test:ci -- tests/api/bot/bot-endpoints.test.js",
     "test:act-debug": "DEBUG_ACT_WARNINGS=1 npm test",
     "test:act-strict": "ACT_STRICT=1 npm test",
     "posttest": "npm run services:stop",
@@ -43,7 +44,10 @@
     "switch:prod": "node scripts/switch-env.js production",
     "lint:forms": "node scripts/check-large-forms.js",
     "lint:components": "node scripts/check-large-components.js",
-    "lint:hooks": "node scripts/check-large-hooks.js"
+    "lint:hooks": "node scripts/check-large-hooks.js",
+    "bot:dev": "npm --prefix bot run dev",
+    "bot:test": "npm --prefix bot run test",
+    "bot:typecheck": "npm --prefix bot run typecheck"
   },
   "author": "",
   "license": "MIT",

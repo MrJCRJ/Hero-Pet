@@ -6,36 +6,44 @@ on:
   pull_request:
     branches: [main]
 
+x-postgres-service: &postgres_service
+  image: postgres:14
+  ports:
+    - 5432:5432
+  env:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: testpass
+    POSTGRES_DB: hero_pet_test
+  options: >-
+    --health-cmd "pg_isready -U postgres"
+    --health-interval 10s
+    --health-timeout 5s
+    --health-retries 5
+
+x-test-env: &test_env
+  POSTGRES_HOST: 127.0.0.1
+  POSTGRES_PORT: 5432
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: testpass
+  POSTGRES_DB: hero_pet_test
+  DATABASE_URL: postgresql://postgres:testpass@127.0.0.1:5432/hero_pet_test
+  MIGRATIONS_AUTO_APPLY: 1
+  NODE_ENV: test
+  TEST_PORT: 3100
+  BASE_URL: http://localhost:3100
+  NEXTAUTH_SECRET: test-secret-for-ci
+  NEXTAUTH_URL: http://localhost:3100
+  HEROPET_API_KEY: bot-test-key
+  ALLOWED_BAIRROS: centro,jardim europa
+  BOT_DELIVERY_WINDOW: 08:00-22:00
+  BOT_LOG_HASH_SALT: ci-bot-log-salt
+
 jobs:
   test:
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgres:14
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: hero_pet_test
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      POSTGRES_HOST: 127.0.0.1
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: testpass
-      POSTGRES_DB: hero_pet_test
-      DATABASE_URL: postgresql://postgres:testpass@127.0.0.1:5432/hero_pet_test
-      MIGRATIONS_AUTO_APPLY: 1
-      NODE_ENV: test
-      TEST_PORT: 3100
-      BASE_URL: http://localhost:3100
-      NEXTAUTH_SECRET: test-secret-for-ci
-      NEXTAUTH_URL: http://localhost:3100
+      postgres: *postgres_service
+    env: *test_env
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,3 +65,33 @@ jobs:
 
       - name: Run unit tests (Vitest)
         run: npm run test:unit
+
+      - name: Install bot dependencies
+        run: npm --prefix bot install
+
+      - name: Run bot tests
+        run: npm --prefix bot run test
+
+  test-bot-api:
+    runs-on: ubuntu-latest
+    services:
+      postgres: *postgres_service
+    env: *test_env
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for Postgres
+        run: until pg_isready -h 127.0.0.1 -p 5432 -U postgres; do sleep 1; done
+
+      - name: Run bot API integration tests
+        run: npm run test:ci:bot
