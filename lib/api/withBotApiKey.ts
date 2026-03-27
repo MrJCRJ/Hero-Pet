@@ -4,6 +4,7 @@ type RouteContext = {
   params?: Promise<Record<string, string>> | Record<string, string>;
 };
 
+// eslint-disable-next-line no-unused-vars
 type RouteHandler = (req: Request, ctx?: RouteContext) => Promise<Response>;
 
 function equalsSafe(a: string, b: string): boolean {

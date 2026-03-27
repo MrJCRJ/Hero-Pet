@@ -54,6 +54,7 @@ export function ProductForm({ initial = {}, onSubmit, submitting }) {
             onChange={(e) => setFotoUrl(e.target.value)}
           />
           {fotoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={fotoUrl}
               alt="Preview"

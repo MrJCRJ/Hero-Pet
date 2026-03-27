@@ -17,6 +17,7 @@ export default function ProductRow({
     >
       <td className="p-2 w-12">
         {p.foto_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={p.foto_url}
             alt=""
