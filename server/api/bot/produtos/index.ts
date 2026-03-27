@@ -40,6 +40,33 @@ function sanitizeNomeComercial(nome: string): string {
     .trim();
 }
 
+function extractPesoKgFromNome(nome: string): number | null {
+  const text = String(nome || "").toLowerCase().replace(",", ".");
+  const match = text.match(/(\d+(?:\.\d+)?)\s?(kg|kilo|quilo)\b/i);
+  if (!match) return null;
+  const kg = Number(match[1]);
+  if (!Number.isFinite(kg) || kg <= 0) return null;
+  return kg;
+}
+
+function resolvePrecoKg(params: {
+  nome: string;
+  precoKgGranel?: unknown;
+  precoTabela?: unknown;
+}): number {
+  const precoKgGranel = Number(params.precoKgGranel ?? 0);
+  if (precoKgGranel > 0) return precoKgGranel;
+
+  const precoTabela = Number(params.precoTabela ?? 0);
+  if (precoTabela <= 0) return 0;
+
+  // Fallback: quando o preço de tabela representa o saco,
+  // converte para preço por kg usando o peso embutido no nome.
+  const pesoKg = extractPesoKgFromNome(params.nome);
+  if (pesoKg && pesoKg > 0) return Number((precoTabela / pesoKg).toFixed(2));
+  return precoTabela;
+}
+
 function dedupeByNome(items: Array<{
   id: number;
   nome: string;
@@ -112,13 +139,14 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
                  p.categoria,
                  p.ativo,
                  COALESCE(p.venda_granel, false) AS venda_granel,
-                 COALESCE(p.preco_kg_granel, p.preco_tabela, 0) AS preco_kg,
+                p.preco_kg_granel,
+                p.preco_tabela,
                  COALESCE(p.estoque_kg, 0) AS estoque_kg,
                  COALESCE(
                    CASE
-                     WHEN COALESCE(p.preco_kg_granel, p.preco_tabela, 0) > 0
-                       THEN ((COALESCE(p.preco_kg_granel, p.preco_tabela, 0) - COALESCE(p.custo_medio_kg, 0))
-                           / COALESCE(p.preco_kg_granel, p.preco_tabela, 0)) * 100
+                    WHEN COALESCE(p.preco_kg_granel, p.preco_tabela, 0) > 0
+                      THEN ((COALESCE(p.preco_kg_granel, p.preco_tabela, 0) - COALESCE(p.custo_medio_kg, 0))
+                          / COALESCE(p.preco_kg_granel, p.preco_tabela, 0)) * 100
                      ELSE 0
                    END,
                    0
@@ -136,13 +164,18 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
           const nomeOriginal = String(row.nome ?? "");
           const categoriaNormalizada = normalizeCategoria(String(row.categoria ?? ""));
           const nomeComercial = sanitizeNomeComercial(nomeOriginal) || nomeOriginal.trim();
+          const precoKg = resolvePrecoKg({
+            nome: nomeOriginal,
+            precoKgGranel: row.preco_kg_granel,
+            precoTabela: row.preco_tabela,
+          });
           return {
             id: Number(row.id),
             nome: nomeComercial,
             categoria: categoriaNormalizada,
             ativo: Boolean(row.ativo),
             granel: Boolean(row.venda_granel),
-            preco_kg: Number(row.preco_kg ?? 0),
+            preco_kg: precoKg,
             estoque_kg: Number(row.estoque_kg ?? 0),
             margem_percentual: Number(Number(row.margem_percentual ?? 0).toFixed(2)),
             is_best_seller: Boolean(row.is_best_seller),
@@ -217,7 +250,8 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
                 p.categoria,
                 p.ativo,
                 p.venda_granel,
-                COALESCE(p.preco_kg_granel, p.preco_tabela, 0) AS preco_kg,
+                p.preco_kg_granel,
+                p.preco_tabela,
                 COALESCE(e.estoque_kg, 0) AS estoque_kg,
                 COALESCE(
                   CASE
@@ -242,7 +276,11 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
       .map((row) => {
         const nomeOriginal = String(row.nome ?? "");
         const categoriaNormalizada = normalizeCategoria(String(row.categoria ?? ""));
-        const preco = Number(row.preco_kg ?? 0);
+        const preco = resolvePrecoKg({
+          nome: nomeOriginal,
+          precoKgGranel: row.preco_kg_granel,
+          precoTabela: row.preco_tabela,
+        });
         const nomeComercial = sanitizeNomeComercial(nomeOriginal) || nomeOriginal.trim();
         return {
           id: Number(row.id),
