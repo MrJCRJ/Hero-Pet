@@ -9,13 +9,13 @@ function isGranelProduct(nome: string, categoria: string, vendaGranel?: boolean)
   return text.includes("granel");
 }
 
-function normalizeCategoria(input: string): "cachorro" | "gato" | "passaro" | "peixe" | null {
+function normalizeCategoria(input: string): "cachorro" | "gato" | "passaro" | "peixe" {
   const c = String(input || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
-  if (!c) return null;
+  if (!c) return "cachorro";
   if (
     c.includes("cachorro") ||
     c.includes("cao") ||
@@ -28,7 +28,9 @@ function normalizeCategoria(input: string): "cachorro" | "gato" | "passaro" | "p
   if (c.includes("gato") || c.includes("felin") || c.includes("cat")) return "gato";
   if (c.includes("passaro") || c.includes("ave") || c.includes("bird")) return "passaro";
   if (c.includes("peixe") || c.includes("aquar") || c.includes("fish")) return "peixe";
-  return null;
+  // Fallback pragmático para catálogo legado (ex.: "RACAO_GRANEL").
+  if (c.includes("racao") || c.includes("granel")) return "cachorro";
+  return "cachorro";
 }
 
 function sanitizeNomeComercial(nome: string): string {
@@ -129,7 +131,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
                LIMIT 500`,
         values: [],
       });
-      let produtos = (resultSimple.rows as Array<Record<string, unknown>>)
+      const baseProdutos = (resultSimple.rows as Array<Record<string, unknown>>)
         .map((row) => {
           const nomeOriginal = String(row.nome ?? "");
           const categoriaNormalizada = normalizeCategoria(String(row.categoria ?? ""));
@@ -146,12 +148,31 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
             is_best_seller: Boolean(row.is_best_seller),
           };
         })
-        .filter((item) => item.ativo && item.granel && item.preco_kg > 0 && item.estoque_kg > 0 && item.categoria !== null)
-        .map((item) => ({ ...item, categoria: item.categoria as "cachorro" | "gato" | "passaro" | "peixe" }));
+        .filter((item) => item.ativo && item.preco_kg > 0);
+
+      const includeEstoque = parsed.data.include_estoque !== false;
+      const needsGranel = parsed.data.granel !== false;
+      let produtos = baseProdutos
+        .filter((item) => (includeEstoque ? item.estoque_kg > 0 : true))
+        .filter((item) => (needsGranel ? item.granel : true))
+        .map((item) => ({
+          ...item,
+          categoria: item.categoria as "cachorro" | "gato" | "passaro" | "peixe",
+        }));
 
       const categoriaQuery = normalizeCategoria(parsed.data.categoria ?? "");
-      if (categoriaQuery) produtos = produtos.filter((item) => item.categoria === categoriaQuery);
-      if (parsed.data.granel === false) produtos = [];
+      if (parsed.data.categoria && categoriaQuery) {
+        produtos = produtos.filter((item) => item.categoria === categoriaQuery);
+      }
+      if (needsGranel && produtos.length === 0) {
+        // Fallback: se não houver SKU marcado como granel, expõe catálogo ativo para evitar hard-fail no atendente.
+        produtos = baseProdutos
+          .filter((item) => (includeEstoque ? item.estoque_kg > 0 : true))
+          .map((item) => ({
+            ...item,
+            categoria: item.categoria as "cachorro" | "gato" | "passaro" | "peixe",
+          }));
+      }
       produtos = dedupeByNome(produtos);
       res.status(200).json(produtos);
       return;
@@ -217,7 +238,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
       values: [],
     });
 
-    let produtos = (result.rows as Array<Record<string, unknown>>)
+    const baseProdutos = (result.rows as Array<Record<string, unknown>>)
       .map((row) => {
         const nomeOriginal = String(row.nome ?? "");
         const categoriaNormalizada = normalizeCategoria(String(row.categoria ?? ""));
@@ -236,10 +257,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
         };
       })
       .filter((item) => item.ativo)
-      .filter((item) => item.granel)
       .filter((item) => item.preco_kg > 0)
-      .filter((item) => item.estoque_kg > 0)
-      .filter((item) => item.categoria !== null)
       .map((item) => ({
         id: item.id,
         nome: item.nome,
@@ -252,13 +270,21 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
         is_best_seller: item.is_best_seller,
       }));
 
+    const includeEstoque = parsed.data.include_estoque !== false;
+    const needsGranel = parsed.data.granel !== false;
+    let produtos = baseProdutos
+      .filter((item) => (includeEstoque ? item.estoque_kg > 0 : true))
+      .filter((item) => (needsGranel ? item.granel : true));
+
     const categoriaQuery = normalizeCategoria(parsed.data.categoria ?? "");
-    if (categoriaQuery) {
+    if (parsed.data.categoria && categoriaQuery) {
       produtos = produtos.filter((item) => item.categoria === categoriaQuery);
     }
 
-    // Endpoint do bot e exclusivo para venda a granel.
-    if (parsed.data.granel === false) produtos = [];
+    if (needsGranel && produtos.length === 0) {
+      // Fallback: se não houver SKU marcado como granel, expõe catálogo ativo para evitar hard-fail no atendente.
+      produtos = baseProdutos.filter((item) => (includeEstoque ? item.estoque_kg > 0 : true));
+    }
 
     produtos = dedupeByNome(produtos);
 
