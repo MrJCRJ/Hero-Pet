@@ -53,17 +53,20 @@ function resolvePrecoKg(params: {
   nome: string;
   precoKgGranel?: unknown;
   precoTabela?: unknown;
+  precoUltimaVendaKg?: unknown;
 }): number {
   const precoKgGranel = Number(params.precoKgGranel ?? 0);
   if (precoKgGranel > 0) return precoKgGranel;
 
   const precoTabela = Number(params.precoTabela ?? 0);
-  if (precoTabela <= 0) return 0;
+  const precoUltimaVendaKg = Number(params.precoUltimaVendaKg ?? 0);
+  if (precoTabela <= 0) return precoUltimaVendaKg > 0 ? precoUltimaVendaKg : 0;
 
   // Fallback: quando o preço de tabela representa o saco,
   // converte para preço por kg usando o peso embutido no nome.
   const pesoKg = extractPesoKgFromNome(params.nome);
   if (pesoKg && pesoKg > 0) return Number((precoTabela / pesoKg).toFixed(2));
+  if (precoUltimaVendaKg > 0) return precoUltimaVendaKg;
   return precoTabela;
 }
 
@@ -108,6 +111,73 @@ function dedupeByNome(items: Array<{
   return [...map.values()];
 }
 
+async function loadFallbackCatalog(): Promise<
+  Array<{
+    id: number;
+    nome: string;
+    categoria: "cachorro" | "gato" | "passaro" | "peixe";
+    ativo: boolean;
+    granel: boolean;
+    preco_kg: number;
+    preco_formatado: string;
+    estoque_kg: number;
+    margem_percentual: number;
+    is_best_seller: boolean;
+  }>
+> {
+  const raw = await database.query({
+    text: `SELECT
+             p.id,
+             p.nome,
+             p.categoria,
+             p.ativo,
+             COALESCE(p.venda_granel, false) AS venda_granel,
+             p.preco_kg_granel,
+             p.preco_tabela,
+             lp.preco_kg_ultima_venda,
+             COALESCE(p.estoque_kg, 0) AS estoque_kg
+           FROM produtos p
+           LEFT JOIN LATERAL (
+             SELECT AVG(pi.preco_unitario)::numeric(12,2) AS preco_kg_ultima_venda
+             FROM pedido_itens pi
+             JOIN pedidos ped ON ped.id = pi.pedido_id
+             WHERE pi.produto_id = p.id
+               AND ped.tipo = 'VENDA'
+               AND ped.status = 'confirmado'
+           ) lp ON true
+           WHERE p.ativo = true
+           ORDER BY p.nome ASC, p.id ASC
+           LIMIT 500`,
+    values: [],
+  });
+
+  return dedupeByNome(
+    (raw.rows as Array<Record<string, unknown>>)
+      .map((row) => {
+        const nomeOriginal = String(row.nome ?? "");
+        const precoKg = resolvePrecoKg({
+          nome: nomeOriginal,
+          precoKgGranel: row.preco_kg_granel,
+          precoTabela: row.preco_tabela,
+          precoUltimaVendaKg: row.preco_kg_ultima_venda,
+        });
+        return {
+          id: Number(row.id),
+          nome: sanitizeNomeComercial(nomeOriginal) || nomeOriginal.trim(),
+          categoria: normalizeCategoria(String(row.categoria ?? "")),
+          ativo: Boolean(row.ativo),
+          granel: Boolean(row.venda_granel),
+          preco_kg: precoKg,
+          preco_formatado: formatPrecoKg(precoKg),
+          estoque_kg: Number(row.estoque_kg ?? 0),
+          margem_percentual: 0,
+          is_best_seller: false,
+        };
+      })
+      .filter((item) => item.preco_kg > 0)
+  );
+}
+
 export default async function handler(req: ApiReqLike, res: ApiResLike): Promise<void> {
   if (req.method !== "GET") {
     res.status(405).json({ error: `Method "${req.method}" not allowed` });
@@ -148,6 +218,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
                  COALESCE(p.venda_granel, false) AS venda_granel,
                 p.preco_kg_granel,
                 p.preco_tabela,
+                lp.preco_kg_ultima_venda,
                  COALESCE(p.estoque_kg, 0) AS estoque_kg,
                  COALESCE(
                    CASE
@@ -160,6 +231,14 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
                  ) AS margem_percentual,
                  CASE WHEN ts.produto_id IS NOT NULL THEN true ELSE false END AS is_best_seller
                FROM produtos p
+              LEFT JOIN LATERAL (
+                SELECT AVG(pi.preco_unitario)::numeric(12,2) AS preco_kg_ultima_venda
+                FROM pedido_itens pi
+                JOIN pedidos ped ON ped.id = pi.pedido_id
+                WHERE pi.produto_id = p.id
+                  AND ped.tipo = 'VENDA'
+                  AND ped.status = 'confirmado'
+              ) lp ON true
                LEFT JOIN top_sellers ts ON ts.produto_id = p.id
                WHERE p.ativo = true
                ORDER BY p.nome ASC, p.id ASC
@@ -175,6 +254,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
             nome: nomeOriginal,
             precoKgGranel: row.preco_kg_granel,
             precoTabela: row.preco_tabela,
+            precoUltimaVendaKg: row.preco_kg_ultima_venda,
           });
           return {
             id: Number(row.id),
@@ -215,6 +295,10 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
           }));
       }
       produtos = dedupeByNome(produtos);
+      if (produtos.length === 0) {
+        // Último fallback: catálogo bruto para não retornar vazio ao atendente.
+        produtos = await loadFallbackCatalog();
+      }
       res.status(200).json(produtos);
       return;
     }
@@ -260,6 +344,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
                 p.venda_granel,
                 p.preco_kg_granel,
                 p.preco_tabela,
+                lp.preco_kg_ultima_venda,
                 COALESCE(e.estoque_kg, 0) AS estoque_kg,
                 COALESCE(
                   CASE
@@ -272,6 +357,14 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
                 ) AS margem_percentual,
                 CASE WHEN ts.produto_id IS NOT NULL THEN true ELSE false END AS is_best_seller
              FROM produtos p
+             LEFT JOIN LATERAL (
+               SELECT AVG(pi.preco_unitario)::numeric(12,2) AS preco_kg_ultima_venda
+               FROM pedido_itens pi
+               JOIN pedidos ped ON ped.id = pi.pedido_id
+               WHERE pi.produto_id = p.id
+                 AND ped.tipo = 'VENDA'
+                 AND ped.status = 'confirmado'
+             ) lp ON true
              LEFT JOIN estoque e ON e.produto_id = p.id
              LEFT JOIN top_sellers ts ON ts.produto_id = p.id
              WHERE p.ativo = true
@@ -288,6 +381,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
           nome: nomeOriginal,
           precoKgGranel: row.preco_kg_granel,
           precoTabela: row.preco_tabela,
+          precoUltimaVendaKg: row.preco_kg_ultima_venda,
         });
         const nomeComercial = sanitizeNomeComercial(nomeOriginal) || nomeOriginal.trim();
         return {
@@ -335,6 +429,10 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
     }
 
     produtos = dedupeByNome(produtos);
+    if (produtos.length === 0) {
+      // Último fallback: catálogo bruto para não retornar vazio ao atendente.
+      produtos = await loadFallbackCatalog();
+    }
 
     res.status(200).json(produtos);
   } catch (error) {
