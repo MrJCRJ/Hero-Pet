@@ -40,13 +40,23 @@ function sanitizeNomeComercial(nome: string): string {
     .trim();
 }
 
+function parsePesoKgLiteral(token: string): number | null {
+  const t = token.trim();
+  if (!t) return null;
+  let n: number;
+  if (t.includes(",") && !t.includes(".")) n = Number(t.replace(",", "."));
+  else if (t.includes(".") && t.includes(",")) n = Number(t.replace(/\./g, "").replace(",", "."));
+  else n = Number(t);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
 function extractPesoKgFromNome(nome: string): number | null {
-  const text = String(nome || "").toLowerCase().replace(",", ".");
-  const match = text.match(/(\d+(?:\.\d+)?)\s?(kg|kilo|quilo)\b/i);
+  const raw = String(nome || "");
+  // Ex.: "Chanin 10,1Kg", "Lester 10.1 kg", "Igor 25kg"
+  const match = raw.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilo|kilos|quilo|quilos)\b/i);
   if (!match) return null;
-  const kg = Number(match[1]);
-  if (!Number.isFinite(kg) || kg <= 0) return null;
-  return kg;
+  return parsePesoKgLiteral(match[1]);
 }
 
 function resolvePrecoKg(params: {
@@ -66,8 +76,9 @@ function resolvePrecoKg(params: {
   // converte para preço por kg usando o peso embutido no nome.
   const pesoKg = extractPesoKgFromNome(params.nome);
   if (pesoKg && pesoKg > 0) return Number((precoTabela / pesoKg).toFixed(2));
+  // Sem peso no nome: preco_tabela costuma ser valor do saco — não devolver como /kg.
   if (precoUltimaVendaKg > 0) return precoUltimaVendaKg;
-  return precoTabela;
+  return 0;
 }
 
 function formatPrecoKg(precoKg: number): string {
@@ -138,7 +149,7 @@ async function loadFallbackCatalog(): Promise<
              COALESCE(p.estoque_kg, 0) AS estoque_kg
            FROM produtos p
            LEFT JOIN LATERAL (
-             SELECT AVG(pi.preco_unitario)::numeric(12,2) AS preco_kg_ultima_venda
+             SELECT (SUM(pi.total_item) / NULLIF(SUM(pi.quantidade), 0))::numeric(12,2) AS preco_kg_ultima_venda
              FROM pedido_itens pi
              JOIN pedidos ped ON ped.id = pi.pedido_id
              WHERE pi.produto_id = p.id
@@ -232,7 +243,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
                  CASE WHEN ts.produto_id IS NOT NULL THEN true ELSE false END AS is_best_seller
                FROM produtos p
               LEFT JOIN LATERAL (
-                SELECT AVG(pi.preco_unitario)::numeric(12,2) AS preco_kg_ultima_venda
+                SELECT (SUM(pi.total_item) / NULLIF(SUM(pi.quantidade), 0))::numeric(12,2) AS preco_kg_ultima_venda
                 FROM pedido_itens pi
                 JOIN pedidos ped ON ped.id = pi.pedido_id
                 WHERE pi.produto_id = p.id
@@ -358,7 +369,7 @@ export default async function handler(req: ApiReqLike, res: ApiResLike): Promise
                 CASE WHEN ts.produto_id IS NOT NULL THEN true ELSE false END AS is_best_seller
              FROM produtos p
              LEFT JOIN LATERAL (
-               SELECT AVG(pi.preco_unitario)::numeric(12,2) AS preco_kg_ultima_venda
+               SELECT (SUM(pi.total_item) / NULLIF(SUM(pi.quantidade), 0))::numeric(12,2) AS preco_kg_ultima_venda
                FROM pedido_itens pi
                JOIN pedidos ped ON ped.id = pi.pedido_id
                WHERE pi.produto_id = p.id
