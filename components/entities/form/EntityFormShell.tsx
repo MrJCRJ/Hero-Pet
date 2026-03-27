@@ -33,7 +33,6 @@ export function EntityFormShell({
   form,
   formatted,
   documentIsCnpj,
-  isClient,
   editingId,
   submitting,
   error,
