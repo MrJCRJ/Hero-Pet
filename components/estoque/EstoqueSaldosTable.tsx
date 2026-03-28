@@ -14,10 +14,7 @@ import {
 } from "components/common/tableStyles";
 import { EstoqueAlertaBadge } from "./EstoqueAlertaBadge";
 import { extractPesoKgFromNome } from "lib/domain/produtos/extractPesoKgFromNome";
-import {
-  precoUnitarioVendaEstoque,
-  diferencaEquivGranelMenosSacoFechado,
-} from "lib/domain/produtos/precoUnitarioVendaEstoque";
+import { precoUnitarioVendaEstoque } from "lib/domain/produtos/precoUnitarioVendaEstoque";
 
 export interface SaldoRow {
   produto_id: number;
@@ -72,12 +69,6 @@ export function EstoqueSaldosTable({
             <th className={TH_BASE}>Categoria</th>
             <th className="text-right px-3 py-1.5 font-semibold">Preço compra</th>
             <th className="text-right px-3 py-1.5 font-semibold">Preço venda</th>
-            <th
-              className="text-right px-3 py-1.5 font-semibold max-w-[9rem]"
-              title="Quanto o equivalente a granel (kg × R$/kg) difere do preço de tabela do saco fechado"
-            >
-              Granel − fechado
-            </th>
             <th className="text-right px-3 py-1.5 font-semibold">
               P. médio venda
             </th>
@@ -146,46 +137,6 @@ export function EstoqueSaldosTable({
                     return <span title={granelTooltip}>{inner}</span>;
                   }
                   return inner;
-                })()}
-              </td>
-              <td className="px-3 py-2 text-right text-sm">
-                {(() => {
-                  const d = diferencaEquivGranelMenosSacoFechado({
-                    nome: row.nome,
-                    venda_granel: row.venda_granel,
-                    preco_kg_granel: row.preco_kg_granel,
-                    preco_tabela: row.preco_tabela,
-                    custo_medio: row.custo_medio,
-                    peso_kg_nome: row.peso_kg_nome,
-                  });
-                  if (d == null) return <span className="text-[var(--color-text-secondary)]">—</span>;
-                  const peso =
-                    row.peso_kg_nome ?? extractPesoKgFromNome(row.nome);
-                  const pkg = Number(row.preco_kg_granel ?? 0);
-                  const pt = row.preco_tabela;
-                  const tip =
-                    peso != null &&
-                    peso > 0 &&
-                    pkg > 0 &&
-                    pt != null &&
-                    Number.isFinite(pt)
-                      ? `Saco fechado (tabela): ${formatBRL(pt)}\nEquivalente granel (${String(peso).replace(".", ",")} kg × ${formatBRL(pkg)}/kg): ${formatBRL(peso * pkg)}\nDiferença (granel − fechado): ${formatBRL(d)}`
-                      : undefined;
-                  return (
-                    <span
-                      title={tip}
-                      className={
-                        d > 0
-                          ? "text-emerald-700 dark:text-emerald-400"
-                          : d < 0
-                            ? "text-amber-800 dark:text-amber-300"
-                            : ""
-                      }
-                    >
-                      {d > 0 ? "+" : ""}
-                      {formatBRL(d)}
-                    </span>
-                  );
                 })()}
               </td>
               <td className="px-3 py-2 text-right">

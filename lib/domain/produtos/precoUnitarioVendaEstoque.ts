@@ -29,6 +29,18 @@ export function precoUnitarioVendaEstoque(row: PrecoVendaEstoqueInput): number |
 }
 
 /**
+ * Preço por unidade (saco) usando só **preço de tabela** ou custo × 1,2 — sem regra de kg × R$/kg granel.
+ * Usado para comparar valor potencial “saco fechado” vs. granel no card de estoque.
+ */
+export function precoUnitarioSacoFechadoEstoque(row: PrecoVendaEstoqueInput): number | null {
+  const pv = row.preco_tabela;
+  const cm = row.custo_medio;
+  if (pv != null && Number.isFinite(pv) && pv >= 0) return Number(pv);
+  if (cm != null && Number.isFinite(cm) && cm > 0) return Number((cm * 1.2).toFixed(2));
+  return null;
+}
+
+/**
  * Diferença entre vender pelo equivalente a granel (peso do nome × R$/kg) e o preço de tabela do saco fechado.
  * Positivo: o “saco” a preço kg fica mais caro que o preço de tabela; negativo: granel equiv. fica mais barato que a tabela.
  */

@@ -20,7 +20,7 @@ import { formatBrl } from "@/app/(main)/relatorios/components/shared/utils";
 import { formatQtyBR } from "components/common/format";
 import {
   precoUnitarioVendaEstoque,
-  diferencaEquivGranelMenosSacoFechado,
+  precoUnitarioSacoFechadoEstoque,
 } from "lib/domain/produtos/precoUnitarioVendaEstoque";
 
 type Movimento = {
@@ -113,7 +113,6 @@ export function EstoquePageClient() {
             "Mínimo",
             "Preço compra",
             "Preço venda",
-            "Granel menos fechado (R$)",
             "P. médio venda",
           ];
           const lines = [
@@ -129,14 +128,6 @@ export function EstoquePageClient() {
                       preco_tabela: r.preco_tabela,
                       custo_medio: r.custo_medio,
                     });
-              const diffGf = diferencaEquivGranelMenosSacoFechado({
-                nome: r.nome,
-                venda_granel: r.venda_granel,
-                preco_kg_granel: r.preco_kg_granel,
-                preco_tabela: r.preco_tabela,
-                custo_medio: r.custo_medio,
-                peso_kg_nome: r.peso_kg_nome,
-              });
               return [
                 String(r.nome ?? "").replace(/;/g, ","),
                 String(r.categoria ?? ""),
@@ -144,7 +135,6 @@ export function EstoquePageClient() {
                 (r.minimo_efetivo ?? r.min_hint) ?? "",
                 r.custo_medio ?? "",
                 pvUnit ?? "",
-                diffGf ?? "",
                 r.preco_medio_venda ?? "",
               ].join(";");
             }),
@@ -167,11 +157,6 @@ export function EstoquePageClient() {
             { header: "Mínimo (30d)", key: "minimo_efetivo", width: 12 },
             { header: "Preço compra", key: "custo_medio", width: 12 },
             { header: "Preço venda (unit.)", key: "preco_venda_unitario", width: 14 },
-            {
-              header: "Granel menos fechado (R$)",
-              key: "diff_granel_fechado",
-              width: 16,
-            },
             { header: "P. médio venda", key: "preco_medio_venda", width: 14 },
           ];
           arr.forEach((r: SaldoRow) => {
@@ -185,14 +170,6 @@ export function EstoquePageClient() {
                     preco_tabela: r.preco_tabela,
                     custo_medio: r.custo_medio,
                   });
-            const diffGf = diferencaEquivGranelMenosSacoFechado({
-              nome: r.nome,
-              venda_granel: r.venda_granel,
-              preco_kg_granel: r.preco_kg_granel,
-              preco_tabela: r.preco_tabela,
-              custo_medio: r.custo_medio,
-              peso_kg_nome: r.peso_kg_nome,
-            });
             ws.addRow({
               nome: r.nome,
               categoria: r.categoria,
@@ -200,7 +177,6 @@ export function EstoquePageClient() {
               minimo_efetivo: r.minimo_efetivo ?? r.min_hint,
               custo_medio: r.custo_medio ?? "",
               preco_venda_unitario: pvUnit ?? "",
-              diff_granel_fechado: diffGf ?? "",
               preco_medio_venda: r.preco_medio_venda ?? "",
             });
           });
@@ -265,20 +241,30 @@ export function EstoquePageClient() {
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("pt-BR");
   const fmtQty = (n: number) => (n >= 0 ? `+${n}` : String(n));
 
-  const valorPotencialVendas = useMemo(() => {
+  const rowInput = (r: (typeof rows)[number]) => ({
+    nome: r.nome,
+    venda_granel: r.venda_granel,
+    preco_kg_granel: r.preco_kg_granel,
+    preco_tabela: r.preco_tabela,
+    custo_medio: r.custo_medio,
+  });
+
+  /** Saldo × preço (granel: kg×R$/kg quando aplicável; senão tabela ou custo+20%). */
+  const valorPotencialGranel = useMemo(() => {
     return rows.reduce((acc, r) => {
       const unit =
         r.preco_venda_unitario != null
           ? r.preco_venda_unitario
-          : precoUnitarioVendaEstoque({
-              nome: r.nome,
-              venda_granel: r.venda_granel,
-              preco_kg_granel: r.preco_kg_granel,
-              preco_tabela: r.preco_tabela,
-              custo_medio: r.custo_medio,
-            });
-      const precoVenda = unit ?? 0;
-      return acc + r.saldo * precoVenda;
+          : precoUnitarioVendaEstoque(rowInput(r));
+      return acc + r.saldo * (unit ?? 0);
+    }, 0);
+  }, [rows]);
+
+  /** Saldo × preço de tabela do saco (ou custo+20%); ignora regra kg×R$/kg granel. */
+  const valorPotencialSacoFechado = useMemo(() => {
+    return rows.reduce((acc, r) => {
+      const unit = precoUnitarioSacoFechadoEstoque(rowInput(r));
+      return acc + r.saldo * (unit ?? 0);
     }, 0);
   }, [rows]);
 
@@ -336,13 +322,32 @@ export function EstoquePageClient() {
               </div>
             </div>
             <div
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 flex items-center gap-3"
-              title="Saldo × preço por unidade: granel usa kg do nome × R$/kg; senão preço de tabela ou custo + 20%"
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 flex items-start gap-3 min-w-0"
+              title="Granel: saldo × (kg do nome × R$/kg) quando o produto é granel; senão preço de tabela ou custo + 20%. Saco fechado: sempre saldo × preço de tabela do saco (ou custo + 20%)."
             >
-              <Wallet className="h-8 w-8 shrink-0 text-[var(--color-text-secondary)]" />
-              <div>
-                <div className="text-xl font-bold">{formatBrl(valorPotencialVendas)}</div>
-                <div className="text-xs text-[var(--color-text-secondary)]">Valor potencial de vendas</div>
+              <Wallet className="h-8 w-8 shrink-0 text-[var(--color-text-secondary)] mt-0.5" />
+              <div className="min-w-0 space-y-1.5">
+                <div className="text-xs text-[var(--color-text-secondary)] leading-tight">
+                  Valor potencial de vendas
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0">
+                    <span className="text-[11px] uppercase tracking-wide text-[var(--color-text-secondary)]">
+                      Granel
+                    </span>
+                    <span className="text-lg font-bold tabular-nums">
+                      {formatBrl(valorPotencialGranel)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0">
+                    <span className="text-[11px] uppercase tracking-wide text-[var(--color-text-secondary)]">
+                      Saco fechado
+                    </span>
+                    <span className="text-lg font-bold tabular-nums">
+                      {formatBrl(valorPotencialSacoFechado)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
             <button
