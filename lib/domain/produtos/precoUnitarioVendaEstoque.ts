@@ -27,3 +27,19 @@ export function precoUnitarioVendaEstoque(row: PrecoVendaEstoqueInput): number |
   if (cm != null && Number.isFinite(cm) && cm > 0) return Number((cm * 1.2).toFixed(2));
   return null;
 }
+
+/**
+ * Diferença entre vender pelo equivalente a granel (peso do nome × R$/kg) e o preço de tabela do saco fechado.
+ * Positivo: o “saco” a preço kg fica mais caro que o preço de tabela; negativo: granel equiv. fica mais barato que a tabela.
+ */
+export function diferencaEquivGranelMenosSacoFechado(
+  row: PrecoVendaEstoqueInput & { peso_kg_nome?: number | null }
+): number | null {
+  if (row.venda_granel !== true) return null;
+  const peso = row.peso_kg_nome ?? extractPesoKgFromNome(row.nome);
+  const pkg = Number(row.preco_kg_granel ?? 0);
+  const pt = row.preco_tabela;
+  if (peso == null || peso <= 0 || pkg <= 0) return null;
+  if (pt == null || !Number.isFinite(pt) || pt < 0) return null;
+  return Number((peso * pkg - pt).toFixed(2));
+}

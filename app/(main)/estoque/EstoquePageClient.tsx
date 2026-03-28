@@ -18,7 +18,10 @@ import {
 } from "recharts";
 import { formatBrl } from "@/app/(main)/relatorios/components/shared/utils";
 import { formatQtyBR } from "components/common/format";
-import { precoUnitarioVendaEstoque } from "lib/domain/produtos/precoUnitarioVendaEstoque";
+import {
+  precoUnitarioVendaEstoque,
+  diferencaEquivGranelMenosSacoFechado,
+} from "lib/domain/produtos/precoUnitarioVendaEstoque";
 
 type Movimento = {
   id: number;
@@ -110,6 +113,7 @@ export function EstoquePageClient() {
             "Mínimo",
             "Preço compra",
             "Preço venda",
+            "Granel menos fechado (R$)",
             "P. médio venda",
           ];
           const lines = [
@@ -125,6 +129,14 @@ export function EstoquePageClient() {
                       preco_tabela: r.preco_tabela,
                       custo_medio: r.custo_medio,
                     });
+              const diffGf = diferencaEquivGranelMenosSacoFechado({
+                nome: r.nome,
+                venda_granel: r.venda_granel,
+                preco_kg_granel: r.preco_kg_granel,
+                preco_tabela: r.preco_tabela,
+                custo_medio: r.custo_medio,
+                peso_kg_nome: r.peso_kg_nome,
+              });
               return [
                 String(r.nome ?? "").replace(/;/g, ","),
                 String(r.categoria ?? ""),
@@ -132,6 +144,7 @@ export function EstoquePageClient() {
                 (r.minimo_efetivo ?? r.min_hint) ?? "",
                 r.custo_medio ?? "",
                 pvUnit ?? "",
+                diffGf ?? "",
                 r.preco_medio_venda ?? "",
               ].join(";");
             }),
@@ -154,6 +167,11 @@ export function EstoquePageClient() {
             { header: "Mínimo (30d)", key: "minimo_efetivo", width: 12 },
             { header: "Preço compra", key: "custo_medio", width: 12 },
             { header: "Preço venda (unit.)", key: "preco_venda_unitario", width: 14 },
+            {
+              header: "Granel menos fechado (R$)",
+              key: "diff_granel_fechado",
+              width: 16,
+            },
             { header: "P. médio venda", key: "preco_medio_venda", width: 14 },
           ];
           arr.forEach((r: SaldoRow) => {
@@ -167,6 +185,14 @@ export function EstoquePageClient() {
                     preco_tabela: r.preco_tabela,
                     custo_medio: r.custo_medio,
                   });
+            const diffGf = diferencaEquivGranelMenosSacoFechado({
+              nome: r.nome,
+              venda_granel: r.venda_granel,
+              preco_kg_granel: r.preco_kg_granel,
+              preco_tabela: r.preco_tabela,
+              custo_medio: r.custo_medio,
+              peso_kg_nome: r.peso_kg_nome,
+            });
             ws.addRow({
               nome: r.nome,
               categoria: r.categoria,
@@ -174,6 +200,7 @@ export function EstoquePageClient() {
               minimo_efetivo: r.minimo_efetivo ?? r.min_hint,
               custo_medio: r.custo_medio ?? "",
               preco_venda_unitario: pvUnit ?? "",
+              diff_granel_fechado: diffGf ?? "",
               preco_medio_venda: r.preco_medio_venda ?? "",
             });
           });
