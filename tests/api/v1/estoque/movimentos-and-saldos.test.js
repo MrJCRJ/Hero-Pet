@@ -39,7 +39,7 @@ beforeAll(async () => {
     body: JSON.stringify({
       nome: "Teste Estoque",
       categoria: "TESTE",
-      fornecedor_id: fornecedor.id,
+      suppliers: [fornecedor.id],
     }),
   });
   if (![200, 201].includes(p.status)) {

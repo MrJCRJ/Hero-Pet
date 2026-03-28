@@ -13,11 +13,6 @@ export const productSchema = z
     categoria: z.string().optional().nullable(),
     fabricante: z.string().optional().nullable(),
     foto_url: z.string().optional().nullable(),
-    fornecedor_id: z
-      .union([z.number(), z.string()])
-      .optional()
-      .nullable()
-      .transform((v) => (v == null ? null : Number(v))),
     suppliers: z
       .array(z.union([z.number(), z.string()]).transform((v) => Number(v)))
       .optional()
@@ -46,15 +41,9 @@ export const productSchema = z
       .optional()
       .transform((v) => (v == null || v === "" ? 0 : Number(v))),
   })
-  .refine(
-    (data) =>
-      data.fornecedor_id != null ||
-      (data.suppliers && data.suppliers.length > 0),
-    {
-      message:
-        "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])",
-    }
-  );
+  .refine((data) => data.suppliers && data.suppliers.length > 0, {
+    message: "Pelo menos um fornecedor em suppliers[] é obrigatório",
+  });
 
 export type ProductInput = z.infer<typeof productSchema>;
 

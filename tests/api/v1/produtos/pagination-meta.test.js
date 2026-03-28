@@ -42,7 +42,7 @@ beforeAll(async () => {
     const r = await fetch("http://localhost:3100/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...p, fornecedor_id: fornecedor.id }),
+      body: JSON.stringify({ ...p, suppliers: [fornecedor.id] }),
     });
     if (![200, 201].includes(r.status)) {
       const t = await r.text();

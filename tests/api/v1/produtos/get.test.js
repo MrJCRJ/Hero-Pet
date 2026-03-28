@@ -4,20 +4,14 @@
 // tests/api/v1/produtos/get.test.js
 import orchestrator from "tests/orchestrator.js";
 import database from "infra/database.js";
+import { runMigrations } from "tests/utils/runMigrations.js";
 
 jest.setTimeout(45000);
 
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
-    method: "POST",
-  });
-  if (![200, 201].includes(mig.status)) {
-    throw new Error(
-      `Falha ao aplicar migrações para testes de produtos (GET). Status: ${mig.status}`,
-    );
-  }
+  await runMigrations();
 
   // Cria fornecedor PJ para associar aos produtos
   const fornResp = await fetch("http://localhost:3100/api/v1/entities", {
@@ -54,7 +48,7 @@ beforeAll(async () => {
     const resp = await fetch("http://localhost:3100/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...p, fornecedor_id: fornecedor.id }),
+      body: JSON.stringify({ ...p, suppliers: [fornecedor.id] }),
     });
     if (![200, 201].includes(resp.status)) {
       const err = await resp.text();

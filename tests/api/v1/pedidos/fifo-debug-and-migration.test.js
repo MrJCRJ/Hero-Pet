@@ -82,7 +82,7 @@ describe("FIFO debug + migration job", () => {
       body: JSON.stringify({
         nome: "Produto FIFO Debug",
         preco_tabela: 50,
-        fornecedor_id: fornecedor.id,
+        suppliers: [fornecedor.id],
       }),
     });
     const pj = await pr.json();

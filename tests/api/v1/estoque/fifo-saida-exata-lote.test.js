@@ -29,7 +29,7 @@ beforeAll(async () => {
     body: JSON.stringify({
       nome: "Produto Exato",
       categoria: "TESTE",
-      fornecedor_id: fornecedor.id,
+      suppliers: [fornecedor.id],
     }),
   });
   produto = await p.json();

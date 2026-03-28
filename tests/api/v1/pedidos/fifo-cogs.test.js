@@ -49,7 +49,7 @@ async function criaProduto(nome = "Produto FIFO", precoTabela = 100) {
     nome,
     preco_tabela: precoTabela,
     ativo: true,
-    fornecedor_id: fornecedor.id,
+    suppliers: [fornecedor.id],
   });
   return data;
 }

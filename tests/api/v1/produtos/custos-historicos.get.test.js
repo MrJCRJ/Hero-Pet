@@ -22,7 +22,7 @@ async function createProduto(nome = "Produto Teste", preco = 10) {
     body: JSON.stringify({
       nome,
       preco_tabela: preco,
-      fornecedor_id: fornecedorId,
+      suppliers: [fornecedorId],
     }),
   });
   const j = await r.json();

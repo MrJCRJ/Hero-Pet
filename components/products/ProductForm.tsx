@@ -146,7 +146,7 @@ export function ProductForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-3 max-h-[min(80vh,720px)] overflow-y-auto pr-1"
+      className="space-y-3 pr-1"
     >
       <div className="grid grid-cols-1 gap-3">
         <SectionTitle>Identificação</SectionTitle>

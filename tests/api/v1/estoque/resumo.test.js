@@ -40,7 +40,7 @@ beforeAll(async () => {
     },
     body: JSON.stringify({
       nome: "Prod Resumo Test",
-      fornecedor_id: fornecedor.id,
+      suppliers: [fornecedor.id],
     }),
   });
   if (![200, 201].includes(p.status)) throw new Error("seed produto fail");

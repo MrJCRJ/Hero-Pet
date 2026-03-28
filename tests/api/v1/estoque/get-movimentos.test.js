@@ -31,7 +31,7 @@ beforeAll(async () => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       nome: "Prod Lista Mov",
-      fornecedor_id: fornecedor.id,
+      suppliers: [fornecedor.id],
     }),
   });
   if (![200, 201].includes(p.status)) throw new Error("seed produto fail");

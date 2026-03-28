@@ -61,7 +61,7 @@ async function criaProduto(nome, preco) {
       nome,
       preco_tabela: preco,
       ativo: true,
-      fornecedor_id: forn.id,
+      suppliers: [forn.id],
     }),
   });
   expect([200, 201]).toContain(resp.status);

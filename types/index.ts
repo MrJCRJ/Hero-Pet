@@ -51,7 +51,6 @@ export interface Product {
   categoria?: string | null;
   fabricante?: string | null;
   foto_url?: string | null;
-  fornecedor_id?: number | null;
   preco_tabela?: number | null;
   venda_granel?: boolean;
   preco_kg_granel?: number | null;

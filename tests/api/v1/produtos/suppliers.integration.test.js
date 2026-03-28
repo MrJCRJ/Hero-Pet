@@ -63,12 +63,12 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
     pj2 = await createEntityPJ("FORN PJ 2 LTDA", "22334455000106");
     pf1 = await createEntityPF("CLIENTE PF 1", "39053344705");
 
-    // Produto A: legacy fornecedor_id = pj1
+    // Produto A: suppliers = [pj1]
     {
       const resp = await fetch("http://localhost:3100/api/v1/produtos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome: "Produto A", fornecedor_id: pj1.id }),
+        body: JSON.stringify({ nome: "Produto A", suppliers: [pj1.id] }),
       });
       if (![200, 201].includes(resp.status)) {
         const t = await resp.text();
@@ -92,15 +92,14 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
       await resp.json();
     }
 
-    // Produto C: fornecedor_id = pj1 + suppliers = [pj2]
+    // Produto C: suppliers = [pj1, pj2]
     {
       const resp = await fetch("http://localhost:3100/api/v1/produtos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome: "Produto C",
-          fornecedor_id: pj1.id,
-          suppliers: [pj2.id],
+          suppliers: [pj1.id, pj2.id],
         }),
       });
       if (![200, 201].includes(resp.status)) {
@@ -141,7 +140,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
     ).toBe(true);
   });
 
-  test("GET filtra por supplier_id (legacy ou junção)", async () => {
+  test("GET filtra por supplier_id (produto_fornecedores)", async () => {
     const r1 = await fetch(
       `http://localhost:3100/api/v1/produtos?supplier_id=${pj1.id}`,
     );
@@ -175,7 +174,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
     const resp = await fetch(`http://localhost:3100/api/v1/produtos/${pA.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fornecedor_id: null, suppliers: [] }),
+      body: JSON.stringify({ suppliers: [] }),
     });
     expect(resp.status).toBe(400);
     const body = await resp.json();
@@ -186,7 +185,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
     const resp = await fetch(`http://localhost:3100/api/v1/produtos/${pA.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fornecedor_id: null, suppliers: [pj2.id] }),
+      body: JSON.stringify({ suppliers: [pj2.id] }),
     });
     expect(resp.status).toBe(200);
     const updated = await resp.json();

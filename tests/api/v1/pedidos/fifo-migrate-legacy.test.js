@@ -31,7 +31,7 @@ async function criaProduto(nome, fornecedorId) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       nome,
-      fornecedor_id: fornecedorId,
+      suppliers: [fornecedorId],
       preco_tabela: 100,
     }),
   });

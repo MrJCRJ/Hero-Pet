@@ -30,7 +30,7 @@ test("SAIDA legacy preenche custo reconhecido (média)", async () => {
     body: JSON.stringify({
       nome: "Prod Legacy",
       preco_tabela: 50,
-      fornecedor_id: fornJson.id,
+      suppliers: [fornJson.id],
     }),
   });
   expect([200, 201]).toContain(prodResp.status);

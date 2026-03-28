@@ -3,6 +3,7 @@
  */
 import orchestrator from "tests/orchestrator.js";
 import database from "infra/database.js";
+import { runMigrations } from "tests/utils/runMigrations.js";
 
 jest.setTimeout(45000);
 
@@ -19,22 +20,16 @@ async function postProduto(body) {
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
-    method: "POST",
-  });
-  if (![200, 201].includes(mig.status)) {
-    throw new Error(
-      `Falha ao aplicar migrações para testes de produtos (PUT/DELETE). Status: ${mig.status}`,
-    );
-  }
-  // fornecedor PJ para associar
+  await runMigrations();
+
+  // Cria fornecedor PJ
   const forn = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: "FORNECEDOR PUT LTDA",
       entity_type: "PJ",
-      document_digits: "11222333000182",
+      document_digits: "99887766000100",
       document_pending: false,
       ativo: true,
     }),
@@ -49,7 +44,7 @@ describe("PUT/DELETE /api/v1/produtos/:id", () => {
     const created = await postProduto({
       nome: "Produto X",
       categoria: "X",
-      fornecedor_id: global.__FORN_ID__,
+      suppliers: [global.__FORN_ID__],
     });
     expect([200, 201]).toContain(created.status);
     const id = created.json.id;
@@ -68,7 +63,7 @@ describe("PUT/DELETE /api/v1/produtos/:id", () => {
   test("DELETE inativa (soft delete)", async () => {
     const created = await postProduto({
       nome: "Para Deletar",
-      fornecedor_id: global.__FORN_ID__,
+      suppliers: [global.__FORN_ID__],
     });
     const id = created.json.id;
     const del = await fetch(`http://localhost:3100/api/v1/produtos/${id}`, {

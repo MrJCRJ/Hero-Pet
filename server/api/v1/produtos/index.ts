@@ -28,24 +28,8 @@ async function postProduto(
     }
     const b = parsed.data;
     const nome = b.nome;
-    let fornecedorId = b.fornecedor_id ?? null;
     const suppliers = (b.suppliers || []) as number[];
 
-    if (fornecedorId != null) {
-      const r = await database.query({
-        text: `SELECT id, entity_type FROM entities WHERE id = $1 LIMIT 1`,
-        values: [fornecedorId],
-      });
-      if (!r.rows.length) {
-        res.status(400).json({ error: "fornecedor_id inválido" });
-        return;
-      }
-      const row = r.rows[0] as Record<string, unknown>;
-      if (row.entity_type !== "PJ") {
-        res.status(400).json({ error: "fornecedor deve ser PJ" });
-        return;
-      }
-    }
     if (suppliers.length) {
       const r = await database.query({
         text: `SELECT id, entity_type FROM entities WHERE id = ANY($1::int[])`,
@@ -66,17 +50,16 @@ async function postProduto(
 
     const nowFields = `NOW(), NOW()`;
     const insert = {
-      text: `INSERT INTO produtos (nome, descricao, categoria, fabricante, fornecedor_id, preco_tabela, ativo, foto_url,
+      text: `INSERT INTO produtos (nome, descricao, categoria, fabricante, preco_tabela, ativo, foto_url,
               venda_granel, preco_kg_granel, estoque_kg, custo_medio_kg, created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, ${nowFields})
-             RETURNING id, nome, descricao, categoria, fabricante, fornecedor_id, preco_tabela, ativo, foto_url,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, ${nowFields})
+             RETURNING id, nome, descricao, categoria, fabricante, preco_tabela, ativo, foto_url,
                venda_granel, preco_kg_granel, estoque_kg, custo_medio_kg, created_at, updated_at`,
       values: [
         nome,
         b.descricao || null,
         b.categoria || null,
         b.fabricante ?? null,
-        fornecedorId,
         b.preco_tabela ?? null,
         b.ativo === false ? false : true,
         b.foto_url ?? null,
@@ -96,6 +79,7 @@ async function postProduto(
         text: `INSERT INTO produto_fornecedores (produto_id, entity_id) VALUES ${rows} ON CONFLICT DO NOTHING`,
         values: [product.id, ...suppliers],
       });
+      product.suppliers = suppliers;
     }
     res.status(201).json(product);
   } catch (e) {
@@ -165,7 +149,7 @@ async function getProdutos(
       values.push(supplierId);
       const idx = values.length;
       clauses.push(
-        `(fornecedor_id = $${idx} OR id IN (SELECT produto_id FROM produto_fornecedores WHERE entity_id = $${idx}))`
+        `id IN (SELECT produto_id FROM produto_fornecedores WHERE entity_id = $${idx})`
       );
     }
 
@@ -182,7 +166,7 @@ async function getProdutos(
     if (String(fields) === "id-nome") {
       baseSelect = `SELECT id, nome FROM produtos`;
     } else {
-      baseSelect = `SELECT id, nome, descricao, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, ativo,
+      baseSelect = `SELECT id, nome, descricao, categoria, fabricante, foto_url, preco_tabela, ativo,
         venda_granel, preco_kg_granel, estoque_kg, custo_medio_kg, created_at, updated_at FROM produtos`;
     }
     const listQuery = {
@@ -196,9 +180,7 @@ async function getProdutos(
       const produtoIds = rows.map((r) => r.id);
       const prodToSupplierIds = new Map<number, number[]>();
       for (const p of rows) {
-        const base: number[] = [];
-        if (p.fornecedor_id != null) base.push(p.fornecedor_id as number);
-        if (base.length) prodToSupplierIds.set(p.id as number, base);
+        prodToSupplierIds.set(p.id as number, []);
       }
       if (produtoIds.length) {
         const r2 = await database.query({
@@ -206,9 +188,8 @@ async function getProdutos(
           values: [produtoIds],
         });
         for (const row of r2.rows as Array<{ produto_id: number; entity_id: number }>) {
-          if (!prodToSupplierIds.has(row.produto_id))
-            prodToSupplierIds.set(row.produto_id, []);
-          prodToSupplierIds.get(row.produto_id)!.push(row.entity_id);
+          const list = prodToSupplierIds.get(row.produto_id);
+          if (list) list.push(row.entity_id);
         }
       }
       const allSupplierIds = Array.from(

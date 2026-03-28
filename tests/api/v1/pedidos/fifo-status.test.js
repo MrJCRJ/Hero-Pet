@@ -29,7 +29,7 @@ async function criaProduto(nome, fornId) {
   const r = await fetch(`${base}/produtos`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nome, fornecedor_id: fornId, preco_tabela: 100 }),
+    body: JSON.stringify({ nome, suppliers: [fornId], preco_tabela: 100 }),
   });
   const j = await r.json();
   if (!r.ok) throw new Error("prod " + JSON.stringify(j));

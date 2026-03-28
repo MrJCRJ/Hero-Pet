@@ -24,26 +24,6 @@ async function putProduto(
     }
     const b = (req.body || {}) as Record<string, unknown>;
 
-    let fornecedorId: unknown = undefined;
-    if (Object.prototype.hasOwnProperty.call(b, "fornecedor_id")) {
-      fornecedorId = b.fornecedor_id;
-    }
-    if (fornecedorId !== undefined && fornecedorId !== null) {
-      const r = await database.query({
-        text: `SELECT entity_type FROM entities WHERE id = $1 LIMIT 1`,
-        values: [fornecedorId],
-      });
-      if (!r.rows.length) {
-        res.status(400).json({ error: "fornecedor_id inválido" });
-        return;
-      }
-      const row = r.rows[0] as Record<string, unknown>;
-      if (row.entity_type !== "PJ") {
-        res.status(400).json({ error: "fornecedor deve ser PJ" });
-        return;
-      }
-    }
-
     let suppliers: number[] | undefined;
     if (Array.isArray(b.suppliers)) {
       suppliers = b.suppliers
@@ -80,7 +60,6 @@ async function putProduto(
     if (b.categoria !== undefined) set("categoria", b.categoria || null);
     if (b.fabricante !== undefined) set("fabricante", b.fabricante || null);
     if (b.foto_url !== undefined) set("foto_url", b.foto_url || null);
-    if (fornecedorId !== undefined) set("fornecedor_id", fornecedorId);
     if (b.preco_tabela !== undefined)
       set("preco_tabela", b.preco_tabela === null ? null : b.preco_tabela);
     if (b.ativo !== undefined)
@@ -114,7 +93,7 @@ async function putProduto(
 
     const query = {
       text: `UPDATE produtos SET ${sets.join(", ")} WHERE id = $${values.length + 1}
-             RETURNING id, nome, descricao, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, ativo,
+             RETURNING id, nome, descricao, categoria, fabricante, foto_url, preco_tabela, ativo,
                venda_granel, preco_kg_granel, estoque_kg, custo_medio_kg, created_at, updated_at`,
       values: [...values, id],
     };
@@ -141,24 +120,15 @@ async function putProduto(
       }
     }
 
-    const check = await database.query({
-      text: `SELECT fornecedor_id FROM produtos WHERE id = $1`,
+    const rpf = await database.query({
+      text: `SELECT 1 FROM produto_fornecedores WHERE produto_id = $1 LIMIT 1`,
       values: [id],
     });
-    const fornecedorAtual = (check.rows[0] as Record<string, unknown>)
-      ?.fornecedor_id ?? null;
-    if (fornecedorAtual == null) {
-      const rpf = await database.query({
-        text: `SELECT 1 FROM produto_fornecedores WHERE produto_id = $1 LIMIT 1`,
-        values: [id],
+    if (!rpf.rows.length) {
+      res.status(400).json({
+        error: "Pelo menos um fornecedor é obrigatório (suppliers[])",
       });
-      if (!rpf.rows.length) {
-        res.status(400).json({
-          error:
-            "Pelo menos um fornecedor é obrigatório (fornecedor_id ou suppliers[])",
-        });
-        return;
-      }
+      return;
     }
 
     res.status(200).json(product);
@@ -266,7 +236,7 @@ async function deleteProduto(
     } else {
       const q = {
         text: `UPDATE produtos SET ativo = false, updated_at = NOW() WHERE id = $1
-               RETURNING id, nome, descricao, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, ativo, created_at, updated_at`,
+               RETURNING id, nome, descricao, categoria, fabricante, foto_url, preco_tabela, ativo, created_at, updated_at`,
         values: [id],
       };
       const r = await database.query(q);

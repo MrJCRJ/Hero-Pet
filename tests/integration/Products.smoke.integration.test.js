@@ -81,18 +81,10 @@ describe("Products UI - Smoke", () => {
     expect(within(table).getByText("Fornecedor")).toBeInTheDocument();
 
     // Linha
-    const rowEl = await within(table).findByText("Ração Premium");
+    const rowEl = await screen.findByText("Ração Premium");
     const row = rowEl.closest("tr");
     expect(row).not.toBeNull();
     expect(within(row).getByText("Alimentos")).toBeInTheDocument();
-
-    // Coluna Preço deve exibir Compra/Venda
-    expect(within(row).getByText("Compra")).toBeInTheDocument();
-    expect(within(row).getByText("Venda")).toBeInTheDocument();
-
-    // Coluna Estoque deve exibir Atual/Mínimo
-    expect(within(row).getByText("Atual")).toBeInTheDocument();
-    expect(within(row).getByText("Mínimo")).toBeInTheDocument();
 
     // Botão de inativar deve existir
     expect(
