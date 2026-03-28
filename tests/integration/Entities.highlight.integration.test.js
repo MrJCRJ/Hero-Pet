@@ -43,7 +43,7 @@ describe("Entities highlight - integração", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
     delete window.location;
-    window.location = new URL("http://localhost:3000/entities?highlight=7");
+    window.location = new URL("http://localhost:3100/entities?highlight=7");
   });
 
   test("abre formulário de entidade via highlight", async () => {

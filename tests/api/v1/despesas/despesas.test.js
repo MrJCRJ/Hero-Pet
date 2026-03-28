@@ -9,7 +9,7 @@ jest.setTimeout(60000);
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -19,7 +19,7 @@ beforeAll(async () => {
 
 describe("GET /api/v1/despesas", () => {
   test("Retorna lista vazia inicialmente", async () => {
-    const response = await fetch("http://localhost:3000/api/v1/despesas");
+    const response = await fetch("http://localhost:3100/api/v1/despesas");
     expect(response.status).toBe(200);
     const result = await response.json();
     expect(result.data).toEqual([]);
@@ -37,7 +37,7 @@ describe("POST /api/v1/despesas", () => {
       status: "pendente",
     };
 
-    const response = await fetch("http://localhost:3000/api/v1/despesas", {
+    const response = await fetch("http://localhost:3100/api/v1/despesas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(despesa),
@@ -59,7 +59,7 @@ describe("POST /api/v1/despesas", () => {
       data_vencimento: "2025-01-15",
     };
 
-    const response = await fetch("http://localhost:3000/api/v1/despesas", {
+    const response = await fetch("http://localhost:3100/api/v1/despesas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(despesa),
@@ -78,7 +78,7 @@ describe("POST /api/v1/despesas", () => {
       data_vencimento: "2025-01-15",
     };
 
-    const response = await fetch("http://localhost:3000/api/v1/despesas", {
+    const response = await fetch("http://localhost:3100/api/v1/despesas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(despesa),
@@ -119,7 +119,7 @@ describe("GET /api/v1/despesas com filtros", () => {
     ];
 
     for (const d of despesas) {
-      await fetch("http://localhost:3000/api/v1/despesas", {
+      await fetch("http://localhost:3100/api/v1/despesas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(d),
@@ -129,7 +129,7 @@ describe("GET /api/v1/despesas com filtros", () => {
 
   test("Filtra despesas por categoria", async () => {
     const response = await fetch(
-      "http://localhost:3000/api/v1/despesas?categoria=energia",
+      "http://localhost:3100/api/v1/despesas?categoria=energia",
     );
     expect(response.status).toBe(200);
     const result = await response.json();
@@ -139,7 +139,7 @@ describe("GET /api/v1/despesas com filtros", () => {
 
   test("Filtra despesas por status", async () => {
     const response = await fetch(
-      "http://localhost:3000/api/v1/despesas?status=pago",
+      "http://localhost:3100/api/v1/despesas?status=pago",
     );
     expect(response.status).toBe(200);
     const result = await response.json();
@@ -149,7 +149,7 @@ describe("GET /api/v1/despesas com filtros", () => {
 
   test("Filtra despesas por mês/ano", async () => {
     const response = await fetch(
-      "http://localhost:3000/api/v1/despesas?mes=2&ano=2025",
+      "http://localhost:3100/api/v1/despesas?mes=2&ano=2025",
     );
     expect(response.status).toBe(200);
     const result = await response.json();
@@ -161,7 +161,7 @@ describe("PUT /api/v1/despesas/:id", () => {
   let despesaId;
 
   beforeAll(async () => {
-    const response = await fetch("http://localhost:3000/api/v1/despesas", {
+    const response = await fetch("http://localhost:3100/api/v1/despesas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -178,7 +178,7 @@ describe("PUT /api/v1/despesas/:id", () => {
 
   test("Atualiza despesa com sucesso", async () => {
     const response = await fetch(
-      `http://localhost:3000/api/v1/despesas/${despesaId}`,
+      `http://localhost:3100/api/v1/despesas/${despesaId}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -198,7 +198,7 @@ describe("PUT /api/v1/despesas/:id", () => {
 
   test("Formatos de data são consistentes", async () => {
     const getResponse = await fetch(
-      `http://localhost:3000/api/v1/despesas/${despesaId}`,
+      `http://localhost:3100/api/v1/despesas/${despesaId}`,
     );
     expect(getResponse.status).toBe(200);
     const despesa = await getResponse.json();
@@ -221,7 +221,7 @@ describe("DELETE /api/v1/despesas/:id", () => {
   test("Exclui despesa com sucesso", async () => {
     // Criar despesa para excluir
     const createResponse = await fetch(
-      "http://localhost:3000/api/v1/despesas",
+      "http://localhost:3100/api/v1/despesas",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -236,7 +236,7 @@ describe("DELETE /api/v1/despesas/:id", () => {
     const created = await createResponse.json();
 
     const deleteResponse = await fetch(
-      `http://localhost:3000/api/v1/despesas/${created.id}`,
+      `http://localhost:3100/api/v1/despesas/${created.id}`,
       {
         method: "DELETE",
       },
@@ -246,7 +246,7 @@ describe("DELETE /api/v1/despesas/:id", () => {
 
     // Verificar que foi excluída
     const getResponse = await fetch(
-      `http://localhost:3000/api/v1/despesas/${created.id}`,
+      `http://localhost:3100/api/v1/despesas/${created.id}`,
     );
     expect(getResponse.status).toBe(404);
   });

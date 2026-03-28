@@ -44,17 +44,6 @@ async function putProduto(
       }
     }
 
-    if (b.codigo_barras) {
-      const dup = await database.query({
-        text: `SELECT id FROM produtos WHERE codigo_barras = $1 AND id <> $2 LIMIT 1`,
-        values: [b.codigo_barras, id],
-      });
-      if (dup.rows.length) {
-        res.status(409).json({ error: "codigo_barras já cadastrado" });
-        return;
-      }
-    }
-
     let suppliers: number[] | undefined;
     if (Array.isArray(b.suppliers)) {
       suppliers = b.suppliers
@@ -88,26 +77,27 @@ async function putProduto(
     };
     if (b.nome !== undefined) set("nome", (b.nome || "").toString().trim());
     if (b.descricao !== undefined) set("descricao", b.descricao || null);
-    if (b.codigo_barras !== undefined)
-      set("codigo_barras", b.codigo_barras || null);
     if (b.categoria !== undefined) set("categoria", b.categoria || null);
     if (b.fabricante !== undefined) set("fabricante", b.fabricante || null);
     if (b.foto_url !== undefined) set("foto_url", b.foto_url || null);
     if (fornecedorId !== undefined) set("fornecedor_id", fornecedorId);
     if (b.preco_tabela !== undefined)
       set("preco_tabela", b.preco_tabela === null ? null : b.preco_tabela);
-    if (b.markup_percent_default !== undefined)
-      set(
-        "markup_percent_default",
-        b.markup_percent_default === null ? null : b.markup_percent_default
-      );
-    if (b.estoque_minimo !== undefined)
-      set(
-        "estoque_minimo",
-        b.estoque_minimo === null ? null : b.estoque_minimo
-      );
     if (b.ativo !== undefined)
       set("ativo", b.ativo === false ? false : true);
+    if (b.venda_granel !== undefined)
+      set("venda_granel", b.venda_granel === false ? false : true);
+    if (b.preco_kg_granel !== undefined)
+      set(
+        "preco_kg_granel",
+        b.preco_kg_granel === null || b.preco_kg_granel === ""
+          ? null
+          : Number(b.preco_kg_granel)
+      );
+    if (b.estoque_kg !== undefined && b.estoque_kg !== null && b.estoque_kg !== "")
+      set("estoque_kg", Number(b.estoque_kg));
+    if (b.custo_medio_kg !== undefined && b.custo_medio_kg !== null && b.custo_medio_kg !== "")
+      set("custo_medio_kg", Number(b.custo_medio_kg));
 
     sets.push(`updated_at = NOW()`);
 
@@ -124,7 +114,8 @@ async function putProduto(
 
     const query = {
       text: `UPDATE produtos SET ${sets.join(", ")} WHERE id = $${values.length + 1}
-             RETURNING id, nome, descricao, codigo_barras, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,
+             RETURNING id, nome, descricao, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, ativo,
+               venda_granel, preco_kg_granel, estoque_kg, custo_medio_kg, created_at, updated_at`,
       values: [...values, id],
     };
     const r = await database.query(query);
@@ -191,10 +182,6 @@ async function putProduto(
         host: process.env.POSTGRES_HOST,
         port: process.env.POSTGRES_PORT,
       });
-      return;
-    }
-    if (err?.code === "23505") {
-      res.status(409).json({ error: "codigo_barras já cadastrado" });
       return;
     }
     res.status(500).json({ error: "Internal error" });
@@ -279,7 +266,7 @@ async function deleteProduto(
     } else {
       const q = {
         text: `UPDATE produtos SET ativo = false, updated_at = NOW() WHERE id = $1
-               RETURNING id, nome, descricao, codigo_barras, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at`,
+               RETURNING id, nome, descricao, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, ativo, created_at, updated_at`,
         values: [id],
       };
       const r = await database.query(q);

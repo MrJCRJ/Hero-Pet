@@ -14,7 +14,7 @@ beforeAll(async () => {
     await database.query("TRUNCATE TABLE entities RESTART IDENTITY CASCADE;");
   } catch (_) {
     // se tabela não existe (primeira execução), chama endpoint para aplicar
-    const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+    const mig = await fetch("http://localhost:3100/api/v1/migrations", {
       method: "POST",
     });
     if (![200, 201].includes(mig.status))
@@ -24,7 +24,7 @@ beforeAll(async () => {
 
 describe("Entities edge cases", () => {
   test("Filtro status inválido deve retornar 400", async () => {
-    const res = await fetch("http://localhost:3000/api/v1/entities?status=foo");
+    const res = await fetch("http://localhost:3100/api/v1/entities?status=foo");
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body).toHaveProperty("error");
@@ -32,7 +32,7 @@ describe("Entities edge cases", () => {
 
   test("Filtro pending inválido deve retornar 400", async () => {
     const res = await fetch(
-      "http://localhost:3000/api/v1/entities?pending=maybe",
+      "http://localhost:3100/api/v1/entities?pending=maybe",
     );
     expect(res.status).toBe(400);
   });
@@ -44,7 +44,7 @@ describe("Entities edge cases", () => {
       document_digits: "11111111111", // dígitos repetidos -> inválido
       document_pending: false,
     };
-    const res = await fetch("http://localhost:3000/api/v1/entities", {
+    const res = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -61,7 +61,7 @@ describe("Entities edge cases", () => {
       document_digits: "11111111000111", // estrutura 14 mas inválido
       document_pending: false,
     };
-    const res = await fetch("http://localhost:3000/api/v1/entities", {
+    const res = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -79,14 +79,14 @@ describe("Entities edge cases", () => {
       document_pending: false,
     };
     // primeiro create
-    const first = await fetch("http://localhost:3000/api/v1/entities", {
+    const first = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     expect(first.status).toBe(201);
     // segundo igual
-    const second = await fetch("http://localhost:3000/api/v1/entities", {
+    const second = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

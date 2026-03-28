@@ -13,7 +13,7 @@ beforeAll(async () => {
 describe("GET /api/v1/pedidos/:id/nf", () => {
   test("responde coerente: 200 com PDF ou códigos esperados (400/404/503)", async () => {
     // ID 1 é arbitrário; em dev pode não existir/ter schema ausente
-    const res = await axios.get("http://localhost:3000/api/v1/pedidos/1/nf", {
+    const res = await axios.get("http://localhost:3100/api/v1/pedidos/1/nf", {
       responseType: "arraybuffer",
       validateStatus: () => true,
     });

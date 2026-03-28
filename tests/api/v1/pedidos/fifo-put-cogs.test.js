@@ -11,7 +11,7 @@
 //  (4) Múltiplos itens independentes (isolamento de consumo).
 // Implementação futura deve: apagar movimentos SAIDA anteriores do pedido, reconstituir consumos FIFO e atualizar pedido_itens.
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:3100";
 async function api(method, path, body, expectOk = true) {
   const headers = { "Content-Type": "application/json" };
   const res = await fetch(`${BASE_URL}${path}`, {

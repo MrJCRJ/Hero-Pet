@@ -12,17 +12,17 @@ beforeAll(async () => {
   process.env.FIFO_ENABLED = "1";
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) throw new Error("migracoes falharam");
-  const f = await fetch("http://localhost:3000/api/v1/entities", {
+  const f = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "FORN ZERO", entity_type: "PJ" }),
   });
   fornecedor = await f.json();
-  const p = await fetch("http://localhost:3000/api/v1/produtos", {
+  const p = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -33,7 +33,7 @@ beforeAll(async () => {
   });
   produto = await p.json();
   // Entrada total 4
-  await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+  await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -52,7 +52,7 @@ beforeAll(async () => {
 describe("FIFO - Zera estoque e falha após", () => {
   test("Duas saídas que zeram + terceira falha", async () => {
     // Primeira saída 1
-    const s1 = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    const s1 = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -65,7 +65,7 @@ describe("FIFO - Zera estoque e falha após", () => {
     });
     expect([200, 201]).toContain(s1.status);
     // Segunda saída 3 (zera)
-    const s2 = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    const s2 = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -85,7 +85,7 @@ describe("FIFO - Zera estoque e falha após", () => {
     expect(Number(lote.rows[0].quantidade_disponivel)).toBeCloseTo(0, 3);
 
     // Terceira saída falha
-    const s3 = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    const s3 = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

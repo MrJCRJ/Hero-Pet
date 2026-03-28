@@ -74,7 +74,7 @@ export async function getPedido(
       return;
     }
     const itens = await database.query({
-      text: `SELECT i.*, p.nome AS produto_nome, p.codigo_barras FROM pedido_itens i JOIN produtos p ON p.id = i.produto_id WHERE i.pedido_id = $1 ORDER BY i.id`,
+      text: `SELECT i.*, p.nome AS produto_nome FROM pedido_itens i JOIN produtos p ON p.id = i.produto_id WHERE i.pedido_id = $1 ORDER BY i.id`,
       values: [id],
     });
     const promissorias = await database.query({

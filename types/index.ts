@@ -48,12 +48,15 @@ export interface Product {
   id: number;
   nome: string;
   descricao?: string | null;
-  codigo_barras?: string | null;
   categoria?: string | null;
+  fabricante?: string | null;
+  foto_url?: string | null;
   fornecedor_id?: number | null;
   preco_tabela?: number | null;
-  markup_percent_default?: number | null;
-  estoque_minimo?: number | null;
+  venda_granel?: boolean;
+  preco_kg_granel?: number | null;
+  estoque_kg?: number;
+  custo_medio_kg?: number;
   ativo: boolean;
   created_at: string;
   updated_at: string;

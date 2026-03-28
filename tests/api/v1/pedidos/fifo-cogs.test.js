@@ -7,7 +7,7 @@
 // e não a média histórica global das entradas. Este teste irá falhar até implementarmos a lógica FIFO
 // na criação de pedidos (POST /api/v1/pedidos) substituindo o cálculo atual baseado em SUM(valor_total)/SUM(qtd).
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:3100";
 
 async function api(method, path, body, expectOk = true, extraHeaders = {}) {
   const headers = { "Content-Type": "application/json", ...extraHeaders };

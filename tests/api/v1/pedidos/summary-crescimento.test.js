@@ -29,7 +29,7 @@ beforeAll(async () => {
   await orchestrator.waitForAllServices();
   // Reset schema for isolation
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -38,7 +38,7 @@ beforeAll(async () => {
 });
 
 async function criaPF(nome = "Cliente MoM") {
-  const resp = await fetch("http://localhost:3000/api/v1/entities", {
+  const resp = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -53,7 +53,7 @@ async function criaPF(nome = "Cliente MoM") {
 }
 
 async function criaPJ(nome = "Fornecedor MoM") {
-  const resp = await fetch("http://localhost:3000/api/v1/entities", {
+  const resp = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: nome, entity_type: "PJ" }),
@@ -64,7 +64,7 @@ async function criaPJ(nome = "Fornecedor MoM") {
 
 async function criaProduto(nome = "Prod MoM", preco = 100) {
   const forn = await criaPJ("FORN MoM");
-  const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+  const resp = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -90,7 +90,7 @@ describe("Summary Crescimento MoM", () => {
 
     // Garantir estoque para as vendas
     const entrada = await fetch(
-      "http://localhost:3000/api/v1/estoque/movimentos",
+      "http://localhost:3100/api/v1/estoque/movimentos",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -105,7 +105,7 @@ describe("Summary Crescimento MoM", () => {
     expect([200, 201]).toContain(entrada.status);
 
     // Uma venda no mês anterior: 200
-    const vendaPrev = await fetch("http://localhost:3000/api/v1/pedidos", {
+    const vendaPrev = await fetch("http://localhost:3100/api/v1/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -119,7 +119,7 @@ describe("Summary Crescimento MoM", () => {
     expect([200, 201]).toContain(vendaPrev.status);
 
     // Duas vendas no mês atual: 300
-    const vendaCur = await fetch("http://localhost:3000/api/v1/pedidos", {
+    const vendaCur = await fetch("http://localhost:3100/api/v1/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -132,14 +132,14 @@ describe("Summary Crescimento MoM", () => {
     expect([200, 201]).toContain(vendaCur.status);
 
     const sumPrev = await fetch(
-      `http://localhost:3000/api/v1/pedidos/summary?month=${prevMonth}&nocache=1`,
+      `http://localhost:3100/api/v1/pedidos/summary?month=${prevMonth}&nocache=1`,
     );
     expect(sumPrev.status).toBe(200);
     const jsPrev = await sumPrev.json();
     expect(Number(jsPrev.vendasMes)).toBe(200);
 
     const sumCur = await fetch(
-      `http://localhost:3000/api/v1/pedidos/summary?month=${curMonth}&nocache=1`,
+      `http://localhost:3100/api/v1/pedidos/summary?month=${curMonth}&nocache=1`,
     );
     expect(sumCur.status).toBe(200);
     const jsCur = await sumCur.json();

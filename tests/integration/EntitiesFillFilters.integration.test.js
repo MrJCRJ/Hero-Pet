@@ -4,7 +4,7 @@ import { ThemeProvider } from "contexts/ThemeContext";
 import { ToastProvider } from "components/entities/shared/toast";
 import { EntitiesBrowser } from "components/entities/list/EntitiesBrowser";
 
-const API = "http://localhost:3000/api/v1/entities";
+const API = "http://localhost:3100/api/v1/entities";
 
 async function create(entity) {
   const res = await fetch(API, {

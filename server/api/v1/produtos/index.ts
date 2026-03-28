@@ -64,35 +64,26 @@ async function postProduto(
       }
     }
 
-    const codigo_barras = b.codigo_barras || null;
-    if (codigo_barras) {
-      const dup = await database.query({
-        text: `SELECT id FROM produtos WHERE codigo_barras = $1 LIMIT 1`,
-        values: [codigo_barras],
-      });
-      if (dup.rows.length) {
-        res.status(409).json({ error: "codigo_barras já cadastrado" });
-        return;
-      }
-    }
-
     const nowFields = `NOW(), NOW()`;
     const insert = {
-      text: `INSERT INTO produtos (nome, descricao, codigo_barras, categoria, fabricante, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, foto_url, created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, ${nowFields})
-             RETURNING id, nome, descricao, codigo_barras, categoria, fabricante, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, foto_url, created_at, updated_at`,
+      text: `INSERT INTO produtos (nome, descricao, categoria, fabricante, fornecedor_id, preco_tabela, ativo, foto_url,
+              venda_granel, preco_kg_granel, estoque_kg, custo_medio_kg, created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, ${nowFields})
+             RETURNING id, nome, descricao, categoria, fabricante, fornecedor_id, preco_tabela, ativo, foto_url,
+               venda_granel, preco_kg_granel, estoque_kg, custo_medio_kg, created_at, updated_at`,
       values: [
         nome,
         b.descricao || null,
-        codigo_barras,
         b.categoria || null,
         b.fabricante ?? null,
         fornecedorId,
         b.preco_tabela ?? null,
-        b.markup_percent_default ?? null,
-        b.estoque_minimo ?? null,
         b.ativo === false ? false : true,
         b.foto_url ?? null,
+        b.venda_granel === true,
+        b.preco_kg_granel ?? null,
+        b.estoque_kg ?? 0,
+        b.custo_medio_kg ?? 0,
       ],
     };
     const r = await database.query(insert);
@@ -129,10 +120,6 @@ async function postProduto(
       });
       return;
     }
-    if (err?.code === "23505") {
-      res.status(409).json({ error: "codigo_barras já cadastrado" });
-      return;
-    }
     res.status(500).json({ error: "Internal error" });
   }
 }
@@ -145,7 +132,6 @@ async function getProdutos(
     const q = req.query || {};
     const searchQ = q.q;
     const categoria = q.categoria;
-    const codigo_barras = q.codigo_barras;
     const ativo = q.ativo;
     const limit = q.limit;
     const offset = q.offset;
@@ -164,10 +150,6 @@ async function getProdutos(
     if (categoriaFilter) {
       values.push(`%${categoriaFilter}%`);
       clauses.push(`categoria ILIKE $${values.length}`);
-    }
-    if (codigo_barras) {
-      values.push(codigo_barras);
-      clauses.push(`codigo_barras = $${values.length}`);
     }
     if (ativo !== undefined) {
       if (!["true", "false"].includes(String(ativo))) {
@@ -200,7 +182,8 @@ async function getProdutos(
     if (String(fields) === "id-nome") {
       baseSelect = `SELECT id, nome FROM produtos`;
     } else {
-      baseSelect = `SELECT id, nome, descricao, codigo_barras, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, markup_percent_default, estoque_minimo, ativo, created_at, updated_at FROM produtos`;
+      baseSelect = `SELECT id, nome, descricao, categoria, fabricante, foto_url, fornecedor_id, preco_tabela, ativo,
+        venda_granel, preco_kg_granel, estoque_kg, custo_medio_kg, created_at, updated_at FROM produtos`;
     }
     const listQuery = {
       text: `${baseSelect} ${where} ORDER BY created_at DESC LIMIT ${effectiveLimit} OFFSET ${effectiveOffset}`,

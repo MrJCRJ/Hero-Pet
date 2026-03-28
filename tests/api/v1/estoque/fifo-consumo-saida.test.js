@@ -21,13 +21,13 @@ beforeAll(async () => {
   await orchestrator.waitForAllServices();
   // recria schema limpo
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) throw new Error("Falha migrações");
 
   // fornecedor
-  const f = await fetch("http://localhost:3000/api/v1/entities", {
+  const f = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "FORNECEDOR FIFO SAIDA", entity_type: "PJ" }),
@@ -36,7 +36,7 @@ beforeAll(async () => {
   fornecedor = await f.json();
 
   // produto
-  const p = await fetch("http://localhost:3000/api/v1/produtos", {
+  const p = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -49,7 +49,7 @@ beforeAll(async () => {
   produto = await p.json();
 
   // ENTRADA inicial de 10 unidades a R$20 (sem frete) -> custo_unitario esperado 20.0000
-  const ent = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+  const ent = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -73,7 +73,7 @@ describe("FIFO - consumo em SAIDA (RED)", () => {
   test("SAIDA deve consumir lote, reduzir quantidade_disponivel e gerar movimento_consumo_lote", async () => {
     // Executa SAIDA de 4 unidades
     const saidaResp = await fetch(
-      "http://localhost:3000/api/v1/estoque/movimentos",
+      "http://localhost:3100/api/v1/estoque/movimentos",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

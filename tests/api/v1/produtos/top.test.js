@@ -19,7 +19,7 @@ function yyyyMM(d = new Date()) {
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status))
@@ -31,7 +31,7 @@ async function criaParceiro(tipo = "PF", nome = "Cliente Top API") {
     tipo === "PF"
       ? { name: nome, entity_type: "PF", document_digits: randomDigits(11) }
       : { name: nome, entity_type: "PJ" };
-  const resp = await fetch("http://localhost:3000/api/v1/entities", {
+  const resp = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -41,7 +41,7 @@ async function criaParceiro(tipo = "PF", nome = "Cliente Top API") {
 }
 async function criaProduto(nome, preco) {
   const forn = await criaParceiro("PJ", "FORN TOP API");
-  const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+  const resp = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -55,7 +55,7 @@ async function criaProduto(nome, preco) {
   return resp.json();
 }
 async function entrada(produto_id, quantidade, valor_unitario) {
-  const r = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+  const r = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -75,7 +75,7 @@ async function venda(cliente, itens, data_emissao) {
     itens,
   };
   if (data_emissao) body.data_emissao = data_emissao;
-  const r = await fetch("http://localhost:3000/api/v1/pedidos", {
+  const r = await fetch("http://localhost:3100/api/v1/pedidos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -124,7 +124,7 @@ describe("GET /api/v1/produtos/top", () => {
 
     const month = yyyyMM(now);
     const resp = await fetch(
-      `http://localhost:3000/api/v1/produtos/top?month=${month}&topN=10&productMonths=6`,
+      `http://localhost:3100/api/v1/produtos/top?month=${month}&topN=10&productMonths=6`,
     );
     expect(resp.status).toBe(200);
     const json = await resp.json();
@@ -147,7 +147,7 @@ describe("GET /api/v1/produtos/top", () => {
   test("Respeita cap topN=50", async () => {
     const month = yyyyMM(new Date());
     const resp = await fetch(
-      `http://localhost:3000/api/v1/produtos/top?month=${month}&topN=999`,
+      `http://localhost:3100/api/v1/produtos/top?month=${month}&topN=999`,
     );
     expect(resp.status).toBe(200);
     const json = await resp.json();

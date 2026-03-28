@@ -25,17 +25,34 @@ export default async function handler(
     const semMovimento =
       typeof q.sem_movimento === "string" && q.sem_movimento === "1";
     const categoria = typeof q.categoria === "string" ? q.categoria.trim() : "";
+    const produtoIdRaw = q.produto_id;
+    const produtoIdParsed = parseInt(String(produtoIdRaw ?? ""), 10);
+    const filterProduto =
+      Number.isFinite(produtoIdParsed) && produtoIdParsed > 0;
+
+    const values: unknown[] = [];
+    const pushParam = (v: unknown): string => {
+      values.push(v);
+      return `$${values.length}`;
+    };
 
     const searchClause = search
-      ? `AND (p.nome ILIKE $${1} OR p.codigo_barras ILIKE $${1})`
+      ? `AND p.nome ILIKE ${pushParam(`%${search}%`)}`
       : "";
-    const searchParam = search ? `%${search}%` : null;
-    const categoriaClause = categoria ? `AND p.categoria = $${(searchParam ? 2 : 1)}` : "";
-    const values: unknown[] = searchParam ? [searchParam] : [];
-    if (categoria) values.push(categoria);
+    const categoriaClause = categoria
+      ? `AND p.categoria = ${pushParam(categoria)}`
+      : "";
+    const produtoClause = filterProduto
+      ? `AND p.id = ${pushParam(produtoIdParsed)}`
+      : "";
 
     const minHintSubquery = `(SELECT COALESCE(SUM(m2.quantidade), 0)::numeric FROM movimento_estoque m2 WHERE m2.produto_id = p.id AND m2.tipo = 'SAIDA' AND m2.data_movimento >= NOW() - INTERVAL '30 days')`;
-    const minimoEfetivoExpr = `COALESCE(p.estoque_minimo, ${minHintSubquery})`;
+    const minimoEfetivoExpr = minHintSubquery;
+
+    const precoMedioVendaSub = `(SELECT (COALESCE(SUM(pi.total_item), 0) / NULLIF(SUM(pi.quantidade), 0))::numeric(14,2)
+             FROM pedido_itens pi
+             INNER JOIN pedidos pdr ON pdr.id = pi.pedido_id
+             WHERE pi.produto_id = p.id AND pdr.status = 'confirmado')`;
 
     const havingAlerta = alerta
       ? `HAVING ${minimoEfetivoExpr} IS NOT NULL AND ${minimoEfetivoExpr} > 0 AND COALESCE(SUM(CASE WHEN m.tipo='ENTRADA' THEN m.quantidade WHEN m.tipo='SAIDA' THEN -m.quantidade ELSE m.quantidade END), 0) < ${minimoEfetivoExpr}`
@@ -50,14 +67,15 @@ export default async function handler(
       : "";
 
     const query = {
-      text: `SELECT p.id AS produto_id, p.nome, p.codigo_barras, p.categoria, p.estoque_minimo, p.preco_tabela,
+      text: `SELECT p.id AS produto_id, p.nome, p.categoria, p.preco_tabela,
              ${minHintSubquery} AS min_hint,
+             ${precoMedioVendaSub} AS preco_medio_venda,
              COALESCE(SUM(CASE WHEN m.tipo='ENTRADA' THEN m.quantidade WHEN m.tipo='SAIDA' THEN -m.quantidade ELSE m.quantidade END), 0)::numeric(14,3) AS saldo,
              (SELECT COALESCE(SUM(valor_total),0)/NULLIF(SUM(quantidade),0) FROM movimento_estoque WHERE produto_id = p.id AND tipo = 'ENTRADA')::numeric(14,2) AS custo_medio
              FROM produtos p
              LEFT JOIN movimento_estoque m ON m.produto_id = p.id
-             WHERE p.ativo = true ${searchClause} ${categoriaClause} ${semMovimentoClause}
-             GROUP BY p.id, p.nome, p.codigo_barras, p.categoria, p.estoque_minimo, p.preco_tabela
+             WHERE p.ativo = true ${searchClause} ${categoriaClause} ${produtoClause} ${semMovimentoClause}
+             GROUP BY p.id, p.nome, p.categoria, p.preco_tabela
              ${havingAlerta}
              ORDER BY p.nome
              LIMIT ${limit} OFFSET ${offset}`,
@@ -72,20 +90,18 @@ export default async function handler(
     };
 
     const rows = (result.rows as Array<Record<string, unknown>>).map((r) => {
-      const em = toNum(r.estoque_minimo);
       const mh = toNum(r.min_hint);
-      const minimoEfetivo = em != null ? em : (mh != null && mh >= 0 ? mh : null);
+      const minimoEfetivo = mh != null && mh >= 0 ? mh : null;
       return {
         produto_id: r.produto_id,
         nome: r.nome,
-        codigo_barras: r.codigo_barras,
         categoria: r.categoria,
-        estoque_minimo: em,
         min_hint: mh,
         minimo_efetivo: minimoEfetivo,
         saldo: Number(r.saldo ?? 0),
         custo_medio: toNum(r.custo_medio),
         preco_tabela: toNum(r.preco_tabela),
+        preco_medio_venda: toNum(r.preco_medio_venda),
       };
     });
 

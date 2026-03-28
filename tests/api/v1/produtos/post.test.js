@@ -12,7 +12,7 @@ beforeAll(async () => {
   // Reset total do schema para previsibilidade
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
   // Aplica todas as migrações conhecidas (entities + futuras de produtos)
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -27,11 +27,10 @@ describe("POST /api/v1/produtos (TDD)", () => {
     const payload = {
       nome: "Ração Premium 10kg",
       categoria: "RACOES",
-      codigo_barras: null,
       ativo: true,
     };
 
-    const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+    const resp = await fetch("http://localhost:3100/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -42,7 +41,7 @@ describe("POST /api/v1/produtos (TDD)", () => {
   test("Cria produto com fornecedor PJ válido (201)", async () => {
     // Prepara fornecedor PJ via endpoint existente de entities
     const fornecedor = await (
-      await fetch("http://localhost:3000/api/v1/entities", {
+      await fetch("http://localhost:3100/api/v1/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -59,10 +58,9 @@ describe("POST /api/v1/produtos (TDD)", () => {
       categoria: "HIGIENE",
       fornecedor_id: fornecedor.id,
       preco_tabela: 29.9,
-      markup_percent_default: 30.0,
     };
 
-    const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+    const resp = await fetch("http://localhost:3100/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -73,12 +71,11 @@ describe("POST /api/v1/produtos (TDD)", () => {
     expect(body).toHaveProperty("id");
     expect(body).toHaveProperty("fornecedor_id", fornecedor.id);
     expect(body).toHaveProperty("preco_tabela", "29.90");
-    expect(body).toHaveProperty("markup_percent_default", "30.00");
   });
 
   test("Cria produto com múltiplos fornecedores (201)", async () => {
     const f1 = await (
-      await fetch("http://localhost:3000/api/v1/entities", {
+      await fetch("http://localhost:3100/api/v1/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -90,7 +87,7 @@ describe("POST /api/v1/produtos (TDD)", () => {
       })
     ).json();
     const f2 = await (
-      await fetch("http://localhost:3000/api/v1/entities", {
+      await fetch("http://localhost:3100/api/v1/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -103,20 +100,24 @@ describe("POST /api/v1/produtos (TDD)", () => {
     ).json();
 
     const payload = { nome: "Tapete Higiênico", suppliers: [f1.id, f2.id] };
-    const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+    const resp = await fetch("http://localhost:3100/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     expect([200, 201]).toContain(resp.status);
+
     const body = await resp.json();
     expect(body).toHaveProperty("id");
+    expect(body).toHaveProperty("suppliers");
+    expect(body.suppliers).toContain(f1.id);
+    expect(body.suppliers).toContain(f2.id);
   });
 
   test("Rejeita fornecedor PF (400)", async () => {
     // Cria uma pessoa física
     const pf = await (
-      await fetch("http://localhost:3000/api/v1/entities", {
+      await fetch("http://localhost:3100/api/v1/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -128,54 +129,14 @@ describe("POST /api/v1/produtos (TDD)", () => {
       })
     ).json();
 
-    const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+    const resp = await fetch("http://localhost:3100/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nome: "Brinquedo", fornecedor_id: pf.id }),
     });
-
     expect(resp.status).toBe(400);
     const body = await resp.json();
     expect(body).toHaveProperty("error");
-  });
-
-  test("Unique parcial de codigo_barras (409)", async () => {
-    // fornecedor obrigatório
-    const fornecedor = await (
-      await fetch("http://localhost:3000/api/v1/entities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: "FORNECEDOR UNIQ",
-          entity_type: "PJ",
-          document_digits: "33333333000177",
-          document_pending: false,
-        }),
-      })
-    ).json();
-
-    const p1 = await fetch("http://localhost:3000/api/v1/produtos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nome: "Coleira A",
-        codigo_barras: "789000000001",
-        fornecedor_id: fornecedor.id,
-      }),
-    });
-    expect([200, 201]).toContain(p1.status);
-
-    const p2 = await fetch("http://localhost:3000/api/v1/produtos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nome: "Coleira B",
-        codigo_barras: "789000000001",
-        fornecedor_id: fornecedor.id,
-      }),
-    });
-    expect(p2.status).toBe(409);
-    const body2 = await p2.json();
-    expect(body2).toHaveProperty("error");
+    expect(body.error).toContain("PJ");
   });
 });

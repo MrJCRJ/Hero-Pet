@@ -10,7 +10,7 @@ jest.setTimeout(35000);
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -44,7 +44,7 @@ describe("GET /api/v1/entities filtros", () => {
       },
     ];
     for (const r of registros) {
-      await fetch("http://localhost:3000/api/v1/entities", {
+      await fetch("http://localhost:3100/api/v1/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(r),
@@ -54,7 +54,7 @@ describe("GET /api/v1/entities filtros", () => {
 
   test("Filtro status=pending retorna apenas pending", async () => {
     const res = await fetch(
-      "http://localhost:3000/api/v1/entities?status=pending",
+      "http://localhost:3100/api/v1/entities?status=pending",
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -64,7 +64,7 @@ describe("GET /api/v1/entities filtros", () => {
 
   test("Filtro status=provisional retorna apenas provisional", async () => {
     const res = await fetch(
-      "http://localhost:3000/api/v1/entities?status=provisional",
+      "http://localhost:3100/api/v1/entities?status=provisional",
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -74,7 +74,7 @@ describe("GET /api/v1/entities filtros", () => {
 
   test("Filtro status=valid retorna apenas valid", async () => {
     const res = await fetch(
-      "http://localhost:3000/api/v1/entities?status=valid",
+      "http://localhost:3100/api/v1/entities?status=valid",
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -84,7 +84,7 @@ describe("GET /api/v1/entities filtros", () => {
 
   test("Filtro pending=true retorna apenas document_pending true", async () => {
     const res = await fetch(
-      "http://localhost:3000/api/v1/entities?pending=true",
+      "http://localhost:3100/api/v1/entities?pending=true",
     );
     expect(res.status).toBe(200);
     const body = await res.json();

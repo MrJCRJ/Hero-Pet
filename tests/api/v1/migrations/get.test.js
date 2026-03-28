@@ -17,7 +17,7 @@ beforeAll(async () => {
 
 describe("GET /api/v1/migrations", () => {
   test("Deve retornar 200 com um array de migrações pendentes", async () => {
-    const response = await fetch("http://localhost:3000/api/v1/migrations");
+    const response = await fetch("http://localhost:3100/api/v1/migrations");
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toMatch(/application\/json/);
@@ -39,7 +39,7 @@ describe("GET /api/v1/migrations", () => {
   test("Deve retornar array vazio quando não há migrações pendentes", async () => {
     // Executa todas as migrações primeiro
     const postResponse = await fetch(
-      "http://localhost:3000/api/v1/migrations",
+      "http://localhost:3100/api/v1/migrations",
       {
         method: "POST",
       },
@@ -48,7 +48,7 @@ describe("GET /api/v1/migrations", () => {
     expect([201, 200]).toContain(postResponse.status);
 
     // Agora verifica que GET retorna array vazio
-    const getResponse = await fetch("http://localhost:3000/api/v1/migrations");
+    const getResponse = await fetch("http://localhost:3100/api/v1/migrations");
 
     expect(getResponse.status).toBe(200);
 
@@ -60,7 +60,7 @@ describe("GET /api/v1/migrations", () => {
 
   // Teste comentado - CORS não está implementado
   // tests("Deve retornar headers CORS apropriados", async () => {
-  //   const response = await fetch("http://localhost:3000/api/v1/migrations");
+  //   const response = await fetch("http://localhost:3100/api/v1/migrations");
   //   expect(response.headers.get("access-control-allow-origin")).toBe("*");
   //   expect(response.headers.get("access-control-allow-methods")).toContain("GET");
   // });
@@ -69,7 +69,7 @@ describe("GET /api/v1/migrations", () => {
     const methods = ["PUT", "DELETE", "PATCH"];
 
     for (const method of methods) {
-      const response = await fetch("http://localhost:3000/api/v1/migrations", {
+      const response = await fetch("http://localhost:3100/api/v1/migrations", {
         method: method,
       });
 

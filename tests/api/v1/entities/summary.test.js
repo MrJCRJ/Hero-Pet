@@ -10,7 +10,7 @@ jest.setTimeout(35000);
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status))
@@ -43,7 +43,7 @@ beforeAll(async () => {
     },
   ];
   for (const r of registros) {
-    await fetch("http://localhost:3000/api/v1/entities", {
+    await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(r),
@@ -53,7 +53,7 @@ beforeAll(async () => {
 
 describe("GET /api/v1/entities/summary", () => {
   test("Deve retornar agregados incluindo completeness e percentuais", async () => {
-    const res = await fetch("http://localhost:3000/api/v1/entities/summary");
+    const res = await fetch("http://localhost:3100/api/v1/entities/summary");
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty("total", 4);

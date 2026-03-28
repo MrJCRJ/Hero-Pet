@@ -6,7 +6,7 @@ import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 const DIAS_SEM_MOVIMENTO = 30;
 
 const MIN_HINT_SUB = `(SELECT COALESCE(SUM(m2.quantidade), 0)::numeric FROM movimento_estoque m2 WHERE m2.produto_id = p.id AND m2.tipo = 'SAIDA' AND m2.data_movimento >= NOW() - INTERVAL '30 days')`;
-const MINIMO_EFETIVO = `COALESCE(p.estoque_minimo, ${MIN_HINT_SUB})`;
+const MINIMO_EFETIVO = MIN_HINT_SUB;
 
 export default async function handler(
   req: ApiReqLike,

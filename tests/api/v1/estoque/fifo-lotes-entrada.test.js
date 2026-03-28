@@ -17,7 +17,7 @@ beforeAll(async () => {
   process.env.FIFO_ENABLED = "1"; // força flag ativa no ambiente de teste
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -25,7 +25,7 @@ beforeAll(async () => {
   }
 
   // cria fornecedor PJ
-  const f = await fetch("http://localhost:3000/api/v1/entities", {
+  const f = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "FORNECEDOR FIFO", entity_type: "PJ" }),
@@ -37,7 +37,7 @@ beforeAll(async () => {
   fornecedor = await f.json();
 
   // cria produto
-  const p = await fetch("http://localhost:3000/api/v1/produtos", {
+  const p = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -56,7 +56,7 @@ describe("FIFO - criação de lote na ENTRADA", () => {
   test("Ao inserir ENTRADA deve existir 1 lote com quantidade_disponivel igual à quantidade", async () => {
     // executa ENTRADA
     const resp = await fetch(
-      "http://localhost:3000/api/v1/estoque/movimentos",
+      "http://localhost:3100/api/v1/estoque/movimentos",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

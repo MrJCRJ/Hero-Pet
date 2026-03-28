@@ -1,10 +1,10 @@
 import migrationRunner from "node-pg-migrate";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import database from "infra/database.js";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 const ALLOWED_METHODS = ["GET", "POST"];
-const MIGRATIONS_DIR = join("infra", "migrations");
+const MIGRATIONS_DIR = resolve(process.cwd(), "infra", "migrations");
 const MIGRATIONS_TABLE = "pgmigrations";
 
 const DEFAULT_MIGRATION_OPTIONS = {

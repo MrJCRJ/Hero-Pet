@@ -13,7 +13,7 @@ let fornecedor;
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -21,7 +21,7 @@ beforeAll(async () => {
   }
 
   // cria fornecedor PJ para satisfazer regra obrigatória
-  const f = await fetch("http://localhost:3000/api/v1/entities", {
+  const f = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "FORNECEDOR TESTE", entity_type: "PJ" }),
@@ -33,7 +33,7 @@ beforeAll(async () => {
   fornecedor = await f.json();
 
   // cria produto base
-  const p = await fetch("http://localhost:3000/api/v1/produtos", {
+  const p = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -51,7 +51,7 @@ beforeAll(async () => {
 describe("Movimentos de Estoque e Saldos (TDD)", () => {
   test("ENTRADA compõe custo e aumenta saldo; SAIDA reduz; AJUSTE altera saldo; saldos consistentes", async () => {
     // ENTRADA 1: 10 un x 10.00 + frete 20 => valor_total=120, custo=12
-    let resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    let resp = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -69,7 +69,7 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
     expect(m1).toHaveProperty("valor_total", "120.00");
 
     // ENTRADA 2: 5 un x 12.00 => valor_total=60, custo segue 12
-    resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    resp = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -85,7 +85,7 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
     expect(m2).toHaveProperty("valor_total", "60.00");
 
     // SAIDA: 3 un => saldo 12, custo_medio permanece 12
-    resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    resp = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -97,7 +97,7 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
     expect([200, 201]).toContain(resp.status);
 
     // AJUSTE: -2 => saldo 10
-    resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    resp = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -110,7 +110,7 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
 
     // Consulta saldos
     const saldoResp = await fetch(
-      `http://localhost:3000/api/v1/estoque/saldos?produto_id=${produto.id}`,
+      `http://localhost:3100/api/v1/estoque/saldos?produto_id=${produto.id}`,
     );
     expect(saldoResp.status).toBe(200);
     const saldo = await saldoResp.json();
@@ -122,7 +122,7 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
 
   test("Valida tipo inválido e quantidade para SAIDA", async () => {
     // tipo inválido
-    let resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    let resp = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -134,7 +134,7 @@ describe("Movimentos de Estoque e Saldos (TDD)", () => {
     expect(resp.status).toBe(400);
 
     // SAIDA com quantidade negativa é inválido
-    resp = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    resp = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

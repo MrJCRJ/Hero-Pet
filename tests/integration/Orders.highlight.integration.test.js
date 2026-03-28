@@ -46,7 +46,7 @@ describe("Orders highlight - integração", () => {
 
     // Simular URL com highlight=123
     delete window.location;
-    window.location = new URL("http://localhost:3000/app?highlight=123");
+    window.location = new URL("http://localhost:3100/app?highlight=123");
   });
 
   test("abre formulário de edição ao detectar highlight", async () => {

@@ -17,14 +17,14 @@ beforeAll(async () => {
   await orchestrator.waitForAllServices();
   // recria schema para ambiente limpo
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
     throw new Error(`Falha ao aplicar migrações. Status: ${mig.status}`);
   }
   // cria registro inicial
-  const createRes = await fetch("http://localhost:3000/api/v1/entities", {
+  const createRes = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -53,7 +53,7 @@ describe("PUT /api/v1/entities/:id atualização de numero/complemento/ativo", (
       ativo: false,
     };
 
-    const res = await fetch(`http://localhost:3000/api/v1/entities/${baseId}`, {
+    const res = await fetch(`http://localhost:3100/api/v1/entities/${baseId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -78,7 +78,7 @@ describe("PUT /api/v1/entities/:id atualização de numero/complemento/ativo", (
       ativo: true,
     };
 
-    const res = await fetch(`http://localhost:3000/api/v1/entities/${baseId}`, {
+    const res = await fetch(`http://localhost:3100/api/v1/entities/${baseId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

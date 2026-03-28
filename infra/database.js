@@ -5,7 +5,7 @@ import { Client, Pool } from "pg";
 // causando erro "migrationRunner is not a function" quando chamado.
 // Para manter compatibilidade CJS/ESM usamos fallback para .default.
 import pgMigrate from "node-pg-migrate";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 // --- Pool singleton ---
 let pool;
@@ -133,7 +133,7 @@ async function safeRollback(client) {
 }
 
 // --- Auto-apply de migrações (opcional) ---
-const MIGRATIONS_DIR = join("infra", "migrations");
+const MIGRATIONS_DIR = resolve(process.cwd(), "infra", "migrations");
 const MIGRATIONS_TABLE = "pgmigrations";
 let MIGRATIONS_ENSURED = false;
 let MIGRATIONS_ENSURING = null;

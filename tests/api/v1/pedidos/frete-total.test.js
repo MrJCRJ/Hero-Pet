@@ -11,7 +11,7 @@ beforeAll(async () => {
   await orchestrator.waitForAllServices();
   // schema isolado
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -20,7 +20,7 @@ beforeAll(async () => {
 });
 
 async function criaParceiroPJ(nome = "Fornecedor Frete") {
-  const resp = await fetch("http://localhost:3000/api/v1/entities", {
+  const resp = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: nome, entity_type: "PJ" }),
@@ -31,7 +31,7 @@ async function criaParceiroPJ(nome = "Fornecedor Frete") {
 
 async function criaProduto(nome = "Produto Frete", preco = 10) {
   const forn = await criaParceiroPJ("FORN FRETE BASE");
-  const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+  const resp = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -50,7 +50,7 @@ describe("Pedido COMPRA com frete_total agregado", () => {
     const forn = await criaParceiroPJ("Fornecedor X");
     const prod = await criaProduto("Insumo", 50);
 
-    const resp = await fetch("http://localhost:3000/api/v1/pedidos", {
+    const resp = await fetch("http://localhost:3100/api/v1/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -70,7 +70,7 @@ describe("Pedido COMPRA com frete_total agregado", () => {
     expect(body.total_liquido).toBe("80.00");
     expect(body.frete_total).toBe("20.00");
     // busca novamente para garantir persistência
-    const get = await fetch(`http://localhost:3000/api/v1/pedidos/${body.id}`);
+    const get = await fetch(`http://localhost:3100/api/v1/pedidos/${body.id}`);
     const full = await get.json();
     expect(full.frete_total).toBe("20.00");
   });
@@ -79,7 +79,7 @@ describe("Pedido COMPRA com frete_total agregado", () => {
     const forn = await criaParceiroPJ("Fornecedor Y");
     const prod = await criaProduto("Item Y", 30);
 
-    const post = await fetch("http://localhost:3000/api/v1/pedidos", {
+    const post = await fetch("http://localhost:3100/api/v1/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -95,7 +95,7 @@ describe("Pedido COMPRA com frete_total agregado", () => {
     const pedido = await post.json();
 
     const put = await fetch(
-      `http://localhost:3000/api/v1/pedidos/${pedido.id}`,
+      `http://localhost:3100/api/v1/pedidos/${pedido.id}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -105,7 +105,7 @@ describe("Pedido COMPRA com frete_total agregado", () => {
     expect(put.status).toBe(200);
     // GET final
     const get = await fetch(
-      `http://localhost:3000/api/v1/pedidos/${pedido.id}`,
+      `http://localhost:3100/api/v1/pedidos/${pedido.id}`,
     );
     const final = await get.json();
     expect(final.frete_total).toBe("15.00");

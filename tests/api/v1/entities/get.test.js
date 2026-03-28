@@ -10,7 +10,7 @@ jest.setTimeout(35000);
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -22,7 +22,7 @@ beforeAll(async () => {
 
 describe("GET /api/v1/entities", () => {
   test("Deve retornar 200 e array vazio inicialmente", async () => {
-    const response = await fetch("http://localhost:3000/api/v1/entities");
+    const response = await fetch("http://localhost:3100/api/v1/entities");
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(Array.isArray(body)).toBe(true);
@@ -36,7 +36,7 @@ describe("GET /api/v1/entities", () => {
       { name: "BETA", doc: "11144477735" }, // outro CPF válido
     ];
     for (const p of payloads) {
-      const res = await fetch("http://localhost:3000/api/v1/entities", {
+      const res = await fetch("http://localhost:3100/api/v1/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -53,7 +53,7 @@ describe("GET /api/v1/entities", () => {
         );
       }
     }
-    const response = await fetch("http://localhost:3000/api/v1/entities");
+    const response = await fetch("http://localhost:3100/api/v1/entities");
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.length).toBeGreaterThanOrEqual(2);
@@ -64,7 +64,7 @@ describe("GET /api/v1/entities", () => {
 
   test("Deve retornar objeto com data e total quando meta=1", async () => {
     const response = await fetch(
-      "http://localhost:3000/api/v1/entities?meta=1",
+      "http://localhost:3100/api/v1/entities?meta=1",
     );
     expect(response.status).toBe(200);
     const body = await response.json();

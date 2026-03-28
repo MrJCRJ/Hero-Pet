@@ -17,14 +17,13 @@ import { EstoqueAlertaBadge } from "./EstoqueAlertaBadge";
 export interface SaldoRow {
   produto_id: number;
   nome: string;
-  codigo_barras: string | null;
   categoria: string | null;
-  estoque_minimo: number | null;
   min_hint?: number | null;
   minimo_efetivo?: number | null;
   saldo: number;
   custo_medio: number | null;
   preco_tabela?: number | null;
+  preco_medio_venda?: number | null;
 }
 
 interface EstoqueSaldosTableProps {
@@ -63,6 +62,9 @@ export function EstoqueSaldosTable({
             <th className={TH_BASE}>Categoria</th>
             <th className="text-right px-3 py-1.5 font-semibold">Preço compra</th>
             <th className="text-right px-3 py-1.5 font-semibold">Preço venda</th>
+            <th className="text-right px-3 py-1.5 font-semibold">
+              P. médio venda
+            </th>
             <th className="text-right px-3 py-1.5 font-semibold">Saldo atual</th>
             <th className="text-right px-3 py-1.5 font-semibold">Mínimo</th>
             <th className={ACTION_TH}>Ação</th>
@@ -73,15 +75,10 @@ export function EstoqueSaldosTable({
             <tr key={row.produto_id} className={ROW_HOVER}>
               <td className="px-3 py-2">
                 <div className="font-medium">{row.nome}</div>
-                {row.codigo_barras && (
-                  <div className="text-[10px] text-[var(--color-text-secondary)]">
-                    {row.codigo_barras}
-                  </div>
-                )}
                 <div className="mt-1">
                   <EstoqueAlertaBadge
                     saldo={row.saldo}
-                    estoqueMinimo={row.minimo_efetivo ?? row.estoque_minimo}
+                    estoqueMinimo={row.minimo_efetivo ?? row.min_hint}
                   />
                 </div>
               </td>
@@ -100,24 +97,31 @@ export function EstoqueSaldosTable({
                   if (pv != null && Number.isFinite(pv) && pv >= 0)
                     return formatBRL(pv);
                   if (cm != null && Number.isFinite(cm) && cm > 0)
-                    return <span title="Estimado (custo + 20%)">{formatBRL(cm * 1.2)}</span>;
+                    return (
+                      <span title="Estimado (custo + 20%)">
+                        {formatBRL(cm * 1.2)}
+                      </span>
+                    );
                   return "-";
                 })()}
+              </td>
+              <td className="px-3 py-2 text-right">
+                {row.preco_medio_venda != null &&
+                Number.isFinite(row.preco_medio_venda)
+                  ? formatBRL(row.preco_medio_venda)
+                  : "-"}
               </td>
               <td className="px-3 py-2 text-right font-medium">
                 {formatQtyBR(row.saldo)}
               </td>
               <td className="px-3 py-2 text-right">
                 {(() => {
-                  const min = row.minimo_efetivo ?? row.estoque_minimo;
+                  const min = row.minimo_efetivo ?? row.min_hint;
                   if (min != null && Number.isFinite(min)) {
-                    const isSugerido = row.estoque_minimo == null;
                     return (
-                      <span title={isSugerido ? "Sugerido (consumo 30 dias)" : undefined}>
+                      <span title="Sugerido (consumo 30 dias)">
                         {formatQtyBR(min)}
-                        {isSugerido && (
-                          <span className="text-[10px] opacity-60 ml-1">(30d)</span>
-                        )}
+                        <span className="text-[10px] opacity-60 ml-1">(30d)</span>
                       </span>
                     );
                   }

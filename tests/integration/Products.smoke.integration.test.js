@@ -33,7 +33,6 @@ describe("Products UI - Smoke", () => {
         nome: "Ração Premium",
         categoria: "Alimentos",
         preco_tabela: "30.00",
-        estoque_minimo: 5,
         suppliers: [1],
         supplier_labels: [
           { id: 1, name: "FORN 1" },
@@ -41,7 +40,6 @@ describe("Products UI - Smoke", () => {
           { id: 3, name: "FORN 3" },
         ],
         ativo: true,
-        markup_percent_default: 30,
       },
     ];
 
@@ -80,7 +78,7 @@ describe("Products UI - Smoke", () => {
     // Cabeçalho
     expect(within(table).getByText("Nome")).toBeInTheDocument();
     expect(within(table).getByText("Categoria")).toBeInTheDocument();
-    expect(within(table).getByText("Fornecedores")).toBeInTheDocument();
+    expect(within(table).getByText("Fornecedor")).toBeInTheDocument();
 
     // Linha
     const rowEl = await within(table).findByText("Ração Premium");

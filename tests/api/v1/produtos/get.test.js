@@ -10,7 +10,7 @@ jest.setTimeout(45000);
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -20,7 +20,7 @@ beforeAll(async () => {
   }
 
   // Cria fornecedor PJ para associar aos produtos
-  const fornResp = await fetch("http://localhost:3000/api/v1/entities", {
+  const fornResp = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -42,18 +42,16 @@ beforeAll(async () => {
     {
       nome: "Ração Filhote 2kg",
       categoria: "RACOES",
-      codigo_barras: "789100000001",
     },
     { nome: "Ração Adulto 10kg", categoria: "RACOES" },
     { nome: "Areia Fina 4kg", categoria: "HIGIENE", ativo: false },
     {
       nome: "Shampoo Neutro 500ml",
       categoria: "HIGIENE",
-      codigo_barras: "789200000001",
     },
   ];
   for (const p of base) {
-    const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+    const resp = await fetch("http://localhost:3100/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...p, fornecedor_id: fornecedor.id }),
@@ -67,7 +65,7 @@ beforeAll(async () => {
 
 describe("GET /api/v1/produtos", () => {
   test("Lista sem filtros (limite padrão)", async () => {
-    const resp = await fetch("http://localhost:3000/api/v1/produtos");
+    const resp = await fetch("http://localhost:3100/api/v1/produtos");
     expect(resp.status).toBe(200);
     const list = await resp.json();
     expect(Array.isArray(list)).toBe(true);
@@ -76,7 +74,7 @@ describe("GET /api/v1/produtos", () => {
 
   test("Filtra por nome (q) e categoria", async () => {
     const resp = await fetch(
-      "http://localhost:3000/api/v1/produtos?q=Ração&categoria=RACOES",
+      "http://localhost:3100/api/v1/produtos?q=Ração&categoria=RACOES",
     );
     expect(resp.status).toBe(200);
     const list = await resp.json();
@@ -84,9 +82,9 @@ describe("GET /api/v1/produtos", () => {
     expect(list.some((p) => p.nome.includes("Ração"))).toBe(true);
   });
 
-  test("Filtra por codigo_barras", async () => {
+  test("Filtra por nome (q) — Shampoo", async () => {
     const resp = await fetch(
-      "http://localhost:3000/api/v1/produtos?codigo_barras=789200000001",
+      "http://localhost:3100/api/v1/produtos?q=Shampoo",
     );
     expect(resp.status).toBe(200);
     const list = await resp.json();
@@ -96,7 +94,7 @@ describe("GET /api/v1/produtos", () => {
 
   test("Filtra por ativo=false", async () => {
     const resp = await fetch(
-      "http://localhost:3000/api/v1/produtos?ativo=false",
+      "http://localhost:3100/api/v1/produtos?ativo=false",
     );
     expect(resp.status).toBe(200);
     const list = await resp.json();

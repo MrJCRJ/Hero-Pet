@@ -7,7 +7,7 @@ import database from "infra/database.js";
 jest.setTimeout(60000);
 
 async function createEntityPJ(name, cnpjDigits) {
-  const resp = await fetch("http://localhost:3000/api/v1/entities", {
+  const resp = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -26,7 +26,7 @@ async function createEntityPJ(name, cnpjDigits) {
 }
 
 async function createEntityPF(name, cpfDigits) {
-  const resp = await fetch("http://localhost:3000/api/v1/entities", {
+  const resp = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -47,7 +47,7 @@ async function createEntityPF(name, cpfDigits) {
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status))
@@ -65,7 +65,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
 
     // Produto A: legacy fornecedor_id = pj1
     {
-      const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+      const resp = await fetch("http://localhost:3100/api/v1/produtos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nome: "Produto A", fornecedor_id: pj1.id }),
@@ -79,7 +79,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
 
     // Produto B: suppliers = [pj2]
     {
-      const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+      const resp = await fetch("http://localhost:3100/api/v1/produtos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nome: "Produto B", suppliers: [pj2.id] }),
@@ -94,7 +94,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
 
     // Produto C: fornecedor_id = pj1 + suppliers = [pj2]
     {
-      const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+      const resp = await fetch("http://localhost:3100/api/v1/produtos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -113,7 +113,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
   });
 
   test("POST rejeita suppliers contendo PF (400)", async () => {
-    const bad = await fetch("http://localhost:3000/api/v1/produtos", {
+    const bad = await fetch("http://localhost:3100/api/v1/produtos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nome: "Produto X", suppliers: [pf1.id] }),
@@ -124,7 +124,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
   });
 
   test("GET sem fields expande suppliers e supplier_labels", async () => {
-    const resp = await fetch("http://localhost:3000/api/v1/produtos");
+    const resp = await fetch("http://localhost:3100/api/v1/produtos");
     expect(resp.status).toBe(200);
     const list = await resp.json();
     const byName = Object.fromEntries(list.map((x) => [x.nome, x]));
@@ -143,7 +143,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
 
   test("GET filtra por supplier_id (legacy ou junção)", async () => {
     const r1 = await fetch(
-      `http://localhost:3000/api/v1/produtos?supplier_id=${pj1.id}`,
+      `http://localhost:3100/api/v1/produtos?supplier_id=${pj1.id}`,
     );
     expect(r1.status).toBe(200);
     const l1 = await r1.json();
@@ -151,7 +151,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
     expect(l1.every((p) => (p.suppliers || []).includes(pj1.id))).toBe(true);
 
     const r2 = await fetch(
-      `http://localhost:3000/api/v1/produtos?supplier_id=${pj2.id}`,
+      `http://localhost:3100/api/v1/produtos?supplier_id=${pj2.id}`,
     );
     expect(r2.status).toBe(200);
     const l2 = await r2.json();
@@ -161,7 +161,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
 
   test("GET fields=id-nome retorna somente id e nome", async () => {
     const resp = await fetch(
-      "http://localhost:3000/api/v1/produtos?fields=id-nome&limit=5",
+      "http://localhost:3100/api/v1/produtos?fields=id-nome&limit=5",
     );
     expect(resp.status).toBe(200);
     const list = await resp.json();
@@ -172,7 +172,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
   });
 
   test("PUT não permite remover todos os fornecedores (regra mínima)", async () => {
-    const resp = await fetch(`http://localhost:3000/api/v1/produtos/${pA.id}`, {
+    const resp = await fetch(`http://localhost:3100/api/v1/produtos/${pA.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fornecedor_id: null, suppliers: [] }),
@@ -183,7 +183,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
   });
 
   test("PUT atualiza suppliers corretamente (troca pj1 -> pj2)", async () => {
-    const resp = await fetch(`http://localhost:3000/api/v1/produtos/${pA.id}`, {
+    const resp = await fetch(`http://localhost:3100/api/v1/produtos/${pA.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fornecedor_id: null, suppliers: [pj2.id] }),
@@ -193,7 +193,7 @@ describe("Produtos - suppliers e fields=id-nome (integração)", () => {
     expect(updated).toHaveProperty("id", pA.id);
 
     const check = await fetch(
-      `http://localhost:3000/api/v1/produtos?supplier_id=${pj2.id}`,
+      `http://localhost:3100/api/v1/produtos?supplier_id=${pj2.id}`,
     );
     const list = await check.json();
     expect(list.some((p) => p.id === pA.id)).toBe(true);

@@ -18,17 +18,17 @@ beforeAll(async () => {
   process.env.FIFO_ENABLED = "1";
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) throw new Error("migracoes");
-  const f = await fetch("http://localhost:3000/api/v1/entities", {
+  const f = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "FORN SALDOS", entity_type: "PJ" }),
   });
   fornecedor = await f.json();
-  const pa = await fetch("http://localhost:3000/api/v1/produtos", {
+  const pa = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -43,7 +43,7 @@ beforeAll(async () => {
 describe("FIFO - saldos agregados", () => {
   test("(1) Sem lotes retorna zeros e custo_medio null", async () => {
     const r = await fetch(
-      `http://localhost:3000/api/v1/estoque/saldos_fifo?produto_id=${produtoA.id}`,
+      `http://localhost:3100/api/v1/estoque/saldos_fifo?produto_id=${produtoA.id}`,
     );
     expect(r.status).toBe(200); // RED: endpoint não existe ainda (404 esperado inicialmente)
     const body = await r.json();
@@ -54,7 +54,7 @@ describe("FIFO - saldos agregados", () => {
 
   test("(2) Dois lotes agrega corretamente", async () => {
     // Cria ENTRADA lote1 5 un a 10
-    await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -69,7 +69,7 @@ describe("FIFO - saldos agregados", () => {
       }),
     });
     // Cria ENTRADA lote2 3 un a 12, frete 2 => valor_total = 3*12 + 2 = 38 => custo_unit 12.666666..., mas armazenado com 4 casas
-    await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -85,7 +85,7 @@ describe("FIFO - saldos agregados", () => {
     });
 
     const r = await fetch(
-      `http://localhost:3000/api/v1/estoque/saldos_fifo?produto_id=${produtoA.id}`,
+      `http://localhost:3100/api/v1/estoque/saldos_fifo?produto_id=${produtoA.id}`,
     );
     expect(r.status).toBe(200);
     const b = await r.json();
@@ -99,7 +99,7 @@ describe("FIFO - saldos agregados", () => {
 
   test("(3) include_lotes retorna lista ordenada", async () => {
     const r = await fetch(
-      `http://localhost:3000/api/v1/estoque/saldos_fifo?produto_id=${produtoA.id}&include_lotes=1`,
+      `http://localhost:3100/api/v1/estoque/saldos_fifo?produto_id=${produtoA.id}&include_lotes=1`,
     );
     expect(r.status).toBe(200);
     const b = await r.json();
@@ -112,13 +112,13 @@ describe("FIFO - saldos agregados", () => {
 
   test("(4) Produto inexistente -> 404", async () => {
     const r = await fetch(
-      "http://localhost:3000/api/v1/estoque/saldos_fifo?produto_id=999999",
+      "http://localhost:3100/api/v1/estoque/saldos_fifo?produto_id=999999",
     );
     expect(r.status).toBe(404);
   });
 
   test("(5) Sem produto_id -> 400", async () => {
-    const r = await fetch("http://localhost:3000/api/v1/estoque/saldos_fifo");
+    const r = await fetch("http://localhost:3100/api/v1/estoque/saldos_fifo");
     expect(r.status).toBe(400);
   });
 });

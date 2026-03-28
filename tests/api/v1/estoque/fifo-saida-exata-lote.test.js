@@ -13,17 +13,17 @@ beforeAll(async () => {
   process.env.FIFO_ENABLED = "1";
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) throw new Error("migracoes");
-  const f = await fetch("http://localhost:3000/api/v1/entities", {
+  const f = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "FORN EXATO", entity_type: "PJ" }),
   });
   fornecedor = await f.json();
-  const p = await fetch("http://localhost:3000/api/v1/produtos", {
+  const p = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -34,7 +34,7 @@ beforeAll(async () => {
   });
   produto = await p.json();
   // Entrada de 3 unidades custo 15 cada
-  const ent = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+  const ent = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -59,7 +59,7 @@ beforeAll(async () => {
 describe("FIFO - SAIDA exata de um lote", () => {
   test("SAIDA 3 deve zerar quantidade_disponivel do lote", async () => {
     const saida = await fetch(
-      "http://localhost:3000/api/v1/estoque/movimentos",
+      "http://localhost:3100/api/v1/estoque/movimentos",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

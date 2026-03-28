@@ -7,7 +7,7 @@
 //  (B) Redução libera lotes e outro item (produto diferente) aumenta consumindo seus próprios lotes sem interferência.
 //  (C) PUT sem enviar itens não deve recriar movimentos.
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:3100";
 async function api(method, path, body, expectOk = true) {
   const headers = { "Content-Type": "application/json" };
   const res = await fetch(`${BASE_URL}${path}`, {

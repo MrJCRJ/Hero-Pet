@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:3100";
 
 async function apiRaw(path) {
   const res = await fetch(`${BASE_URL}${path}`);

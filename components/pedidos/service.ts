@@ -109,7 +109,6 @@ export async function fetchProdutos({
     id: number;
     label: string;
     preco_tabela?: number | null;
-    markup_percent_default?: number | null;
   }>
 > {
   const supplierFilter =
@@ -125,13 +124,11 @@ export async function fetchProdutos({
       id: number;
       nome: string;
       preco_tabela?: number | null;
-      markup_percent_default?: number | null;
     }>
   ).map((p) => ({
     id: p.id,
     label: p.nome,
     preco_tabela: p.preco_tabela,
-    markup_percent_default: p.markup_percent_default,
   }));
 }
 

@@ -100,6 +100,7 @@ export function ProductsManager({ linkSupplierId = undefined } = {}) {
           title={editing ? "Editar Produto" : "Novo Produto"}
         >
           <ProductForm
+            key={editing?.id != null ? `edit-${editing.id}` : "novo-produto"}
             initial={editing || { ativo: true, suppliers: [] }}
             onSubmit={handleSubmit}
             submitting={submitting}

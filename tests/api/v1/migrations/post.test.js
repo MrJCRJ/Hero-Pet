@@ -13,7 +13,7 @@ beforeAll(async () => {
 describe("POST /api/v1/migrations", () => {
   test("Deve retornar 201 ao executar migrações pela primeira vez", async () => {
     const primeiraResposta = await fetch(
-      "http://localhost:3000/api/v1/migrations",
+      "http://localhost:3100/api/v1/migrations",
       {
         method: "POST",
       },
@@ -32,7 +32,7 @@ describe("POST /api/v1/migrations", () => {
 
   test("Deve retornar 200 quando não há migrações pendentes", async () => {
     // Tenta executar novamente - não deve ter migrações pendentes
-    const resposta = await fetch("http://localhost:3000/api/v1/migrations", {
+    const resposta = await fetch("http://localhost:3100/api/v1/migrations", {
       method: "POST",
     });
 
@@ -83,7 +83,7 @@ describe("POST /api/v1/migrations", () => {
     const metodosNaoPermitidos = ["PUT", "DELETE", "PATCH"];
 
     for (const metodo of metodosNaoPermitidos) {
-      const resposta = await fetch("http://localhost:3000/api/v1/migrations", {
+      const resposta = await fetch("http://localhost:3100/api/v1/migrations", {
         method: metodo,
       });
 

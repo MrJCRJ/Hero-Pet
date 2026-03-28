@@ -102,18 +102,29 @@ export function EstoquePageClient() {
         const arr = Array.isArray(data) ? data : [];
         const filename = `estoque_${new Date().toISOString().slice(0, 10)}.${format}`;
         if (format === "csv") {
-          const headers = ["Produto", "Código", "Categoria", "Saldo", "Mínimo", "Custo médio", "Preço"];
-          const lines = [headers.join(";"), ...arr.map((r: SaldoRow) =>
-            [
-              String(r.nome ?? "").replace(/;/g, ","),
-              String(r.codigo_barras ?? ""),
-              String(r.categoria ?? ""),
-              r.saldo,
-              (r.minimo_efetivo ?? r.estoque_minimo) ?? "",
-              r.custo_medio ?? "",
-              r.preco_tabela ?? "",
-            ].join(";")
-          )];
+          const headers = [
+            "Produto",
+            "Categoria",
+            "Saldo",
+            "Mínimo",
+            "Preço compra",
+            "Preço venda",
+            "P. médio venda",
+          ];
+          const lines = [
+            headers.join(";"),
+            ...arr.map((r: SaldoRow) =>
+              [
+                String(r.nome ?? "").replace(/;/g, ","),
+                String(r.categoria ?? ""),
+                r.saldo,
+                (r.minimo_efetivo ?? r.min_hint) ?? "",
+                r.custo_medio ?? "",
+                r.preco_tabela ?? "",
+                r.preco_medio_venda ?? "",
+              ].join(";")
+            ),
+          ];
           const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
           const u = URL.createObjectURL(blob);
           const a = document.createElement("a");
@@ -127,14 +138,19 @@ export function EstoquePageClient() {
           const ws = wb.addWorksheet("Estoque");
           ws.columns = [
             { header: "Produto", key: "nome", width: 30 },
-            { header: "Código", key: "codigo_barras", width: 15 },
             { header: "Categoria", key: "categoria", width: 15 },
             { header: "Saldo", key: "saldo", width: 10 },
-            { header: "Mínimo (efetivo)", key: "minimo_efetivo", width: 12 },
-            { header: "Custo médio", key: "custo_medio", width: 12 },
-            { header: "Preço", key: "preco_tabela", width: 12 },
+            { header: "Mínimo (30d)", key: "minimo_efetivo", width: 12 },
+            { header: "Preço compra", key: "custo_medio", width: 12 },
+            { header: "Preço venda", key: "preco_tabela", width: 12 },
+            { header: "P. médio venda", key: "preco_medio_venda", width: 14 },
           ];
-          arr.forEach((r: SaldoRow) => ws.addRow({ ...r, minimo_efetivo: r.minimo_efetivo ?? r.estoque_minimo }));
+          arr.forEach((r: SaldoRow) =>
+            ws.addRow({
+              ...r,
+              minimo_efetivo: r.minimo_efetivo ?? r.min_hint,
+            })
+          );
           const buf = await wb.xlsx.writeBuffer();
           const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
           const u = URL.createObjectURL(blob);
@@ -211,7 +227,7 @@ export function EstoquePageClient() {
 
   const rowsEmAlerta = useMemo(() => {
     return rows.filter((r) => {
-      const min = r.minimo_efetivo ?? r.estoque_minimo;
+      const min = r.minimo_efetivo ?? r.min_hint;
       return min != null && Number.isFinite(min) && r.saldo < Number(min);
     });
   }, [rows]);
@@ -317,7 +333,7 @@ export function EstoquePageClient() {
                     <tr key={row.produto_id} className="border-b border-[var(--color-border)] last:border-b-0">
                       <td className="px-3 py-2 font-medium">{row.nome}</td>
                       <td className="px-3 py-2 text-right">{formatQtyBR(row.saldo)}</td>
-                      <td className="px-3 py-2 text-right">{(row.minimo_efetivo ?? row.estoque_minimo) != null ? formatQtyBR(row.minimo_efetivo ?? row.estoque_minimo ?? 0) : "-"}</td>
+                      <td className="px-3 py-2 text-right">{(row.minimo_efetivo ?? row.min_hint) != null ? formatQtyBR(row.minimo_efetivo ?? row.min_hint ?? 0) : "-"}</td>
                       <td className="px-3 py-2 text-center">
                         <button
                           type="button"

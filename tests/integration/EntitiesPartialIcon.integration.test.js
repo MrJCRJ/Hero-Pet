@@ -10,7 +10,7 @@ describe("EntitiesBrowser ícone parcial", () => {
   test("exibe ícone de atenção quando endereço parcial", async () => {
     // Usa nome único para evitar colisão entre execuções/suites reutilizando o mesmo banco.
     const uniqueName = `Parcial Icone ${Date.now()}`;
-    const resp = await fetch("http://localhost:3000/api/v1/entities", {
+    const resp = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

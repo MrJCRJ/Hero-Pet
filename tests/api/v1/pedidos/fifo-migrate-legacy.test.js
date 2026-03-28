@@ -3,7 +3,7 @@
 // Testa migração de pedido legacy (sem lotes) para FIFO usando PUT com migrar_fifo=true sem reenviar itens.
 import database from "infra/database";
 
-const base = "http://localhost:3000/api/v1";
+const base = "http://localhost:3100/api/v1";
 
 async function criaEntityPJ(nome = "FORN MIG") {
   const r = await fetch(`${base}/entities`, {

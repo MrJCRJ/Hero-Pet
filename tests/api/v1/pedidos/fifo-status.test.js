@@ -3,7 +3,7 @@
 // Verifica exposição de flag fifo_aplicado em pedidos (GET lista e GET /:id) antes e depois de migrar_fifo.
 import database from "infra/database";
 
-const base = "http://localhost:3000/api/v1";
+const base = "http://localhost:3100/api/v1";
 
 async function criaEntity(nome = "CLI FIFO FLAG") {
   const r = await fetch(`${base}/entities`, {

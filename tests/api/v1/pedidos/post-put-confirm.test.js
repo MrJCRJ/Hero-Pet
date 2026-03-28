@@ -17,7 +17,7 @@ beforeAll(async () => {
   await orchestrator.waitForAllServices();
   // Reset schema for isolation
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -28,7 +28,7 @@ beforeAll(async () => {
 async function criaProduto(nome = "Produto Teste", preco = 10.5) {
   // garante fornecedor PJ obrigatório
   const forn = await criaParceiroPJ("FORN PEDIDOS");
-  const resp = await fetch("http://localhost:3000/api/v1/produtos", {
+  const resp = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -43,7 +43,7 @@ async function criaProduto(nome = "Produto Teste", preco = 10.5) {
 }
 
 async function criaParceiroPF(nome = "Cliente PF Teste") {
-  const resp = await fetch("http://localhost:3000/api/v1/entities", {
+  const resp = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -60,7 +60,7 @@ async function criaParceiroPF(nome = "Cliente PF Teste") {
 
 // helper para PJ não é necessário neste conjunto de testes
 async function criaParceiroPJ(nome = "Fornecedor Teste") {
-  const resp = await fetch("http://localhost:3000/api/v1/entities", {
+  const resp = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: nome, entity_type: "PJ" }),
@@ -76,7 +76,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     const p2 = await criaProduto("Areia 4kg", 15);
 
     // entrada para garantir saldo suficiente
-    await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -86,7 +86,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
         valor_unitario: 18,
       }),
     });
-    await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -113,7 +113,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
       observacao: "Primeira venda",
     };
 
-    const resp = await fetch("http://localhost:3000/api/v1/pedidos", {
+    const resp = await fetch("http://localhost:3100/api/v1/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -132,7 +132,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     const p1 = await criaProduto("Brinquedo", 50);
 
     // cria pedido inicial (confirmado) com 1 item via COMPRA para não exigir saldo
-    const resp1 = await fetch("http://localhost:3000/api/v1/pedidos", {
+    const resp1 = await fetch("http://localhost:3100/api/v1/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -148,7 +148,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     // editar itens deve funcionar (200) e recriar movimentos
     const p2 = await criaProduto("Shampoo", 25);
     const putItens = await fetch(
-      `http://localhost:3000/api/v1/pedidos/${pedido.id}`,
+      `http://localhost:3100/api/v1/pedidos/${pedido.id}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -163,7 +163,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
 
     // lê para verificar itens e cabeçalho atualizados
     const get = await fetch(
-      `http://localhost:3000/api/v1/pedidos/${pedido.id}`,
+      `http://localhost:3100/api/v1/pedidos/${pedido.id}`,
     );
     const body = await get.json();
     expect(body).toHaveProperty("observacao", "editado");
@@ -174,7 +174,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
 
     // verifica que movimentos foram reprocessados (documento do pedido nos movimentos do produto2)
     const movs = await fetch(
-      `http://localhost:3000/api/v1/estoque/movimentos?produto_id=${p2.id}`,
+      `http://localhost:3100/api/v1/estoque/movimentos?produto_id=${p2.id}`,
     );
     const movList = await movs.json();
     expect(
@@ -187,7 +187,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
     const prod = await criaProduto("Petisco", 10);
 
     // entrada para ter saldo
-    await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -198,7 +198,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
       }),
     });
 
-    const resp = await fetch("http://localhost:3000/api/v1/pedidos", {
+    const resp = await fetch("http://localhost:3100/api/v1/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -213,7 +213,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
 
     // editar itens com quantidade válida deve funcionar (200)
     const putOk = await fetch(
-      `http://localhost:3000/api/v1/pedidos/${pedido.id}`,
+      `http://localhost:3100/api/v1/pedidos/${pedido.id}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -227,7 +227,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
 
     // tentativa de vender acima do saldo deve falhar (400)
     const putBad = await fetch(
-      `http://localhost:3000/api/v1/pedidos/${pedido.id}`,
+      `http://localhost:3100/api/v1/pedidos/${pedido.id}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -241,7 +241,7 @@ describe("Pedidos: POST, PUT e Confirm", () => {
 
     // verifica que o saldo reduziu para o produto após o POST (movimento de SAIDA aplicado)
     const listaMov = await fetch(
-      `http://localhost:3000/api/v1/estoque/movimentos?produto_id=${prod.id}`,
+      `http://localhost:3100/api/v1/estoque/movimentos?produto_id=${prod.id}`,
     );
     const movimentos = await listaMov.json();
     expect(Array.isArray(movimentos)).toBe(true);

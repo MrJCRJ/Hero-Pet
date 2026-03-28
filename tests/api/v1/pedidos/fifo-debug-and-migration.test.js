@@ -1,7 +1,7 @@
 /* @jest-environment node */
 
 function api(path, init = {}) {
-  return fetch(`http://localhost:3000${path}`, {
+  return fetch(`http://localhost:3100${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init.headers || {}) },
   });

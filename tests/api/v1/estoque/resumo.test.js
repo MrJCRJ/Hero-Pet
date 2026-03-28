@@ -41,7 +41,6 @@ beforeAll(async () => {
     body: JSON.stringify({
       nome: "Prod Resumo Test",
       fornecedor_id: fornecedor.id,
-      estoque_minimo: 5,
     }),
   });
   if (![200, 201].includes(p.status)) throw new Error("seed produto fail");
@@ -59,6 +58,7 @@ test("GET /api/v1/estoque/resumo retorna array de saldos", async () => {
     expect(row).toHaveProperty("produto_id");
     expect(row).toHaveProperty("nome");
     expect(row).toHaveProperty("saldo");
-    expect(row).toHaveProperty("estoque_minimo");
+    expect(row).toHaveProperty("min_hint");
+    expect(row).toHaveProperty("preco_medio_venda");
   }
 });

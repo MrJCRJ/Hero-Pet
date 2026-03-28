@@ -1,7 +1,7 @@
 // tests/api/v1/produtos/custos-historicos.get.test.js
 // @jest-environment node
 
-const base = "http://localhost:3000/api/v1";
+const base = "http://localhost:3100/api/v1";
 
 async function criaFornecedorPJ(nome = "FORN HIST") {
   const f = await fetch(`${base}/entities`, {

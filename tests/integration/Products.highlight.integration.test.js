@@ -39,7 +39,7 @@ describe("Products highlight - integração", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
     delete window.location;
-    window.location = new URL("http://localhost:3000/produtos?highlight=55");
+    window.location = new URL("http://localhost:3100/produtos?highlight=55");
   });
 
   test("abre modal de edição via highlight", async () => {

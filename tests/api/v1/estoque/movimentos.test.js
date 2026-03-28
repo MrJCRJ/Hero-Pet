@@ -48,7 +48,6 @@ beforeAll(async () => {
   const prodRes = await api("POST", "/api/v1/produtos", {
     nome: "Prod Mov Test",
     fornecedor_id: fornecedor.id,
-    estoque_minimo: 0,
   });
   if (![200, 201].includes(prodRes.status))
     throw new Error("seed produto fail: " + (await prodRes.text()));

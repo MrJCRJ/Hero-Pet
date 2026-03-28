@@ -2,7 +2,7 @@
 
 // Verifica que contato permanece 'parcial' quando existe algum dado inválido (telefone inválido ou email inválido)
 
-const BASE = "http://localhost:3000/api/v1/entities";
+const BASE = "http://localhost:3100/api/v1/entities";
 
 async function create(data) {
   const res = await fetch(BASE, {

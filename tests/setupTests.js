@@ -47,7 +47,7 @@ if (typeof global.fetch === "function") {
   const ORIGINAL_FETCH = global.fetch;
   global.fetch = (input, init) => {
     if (typeof input === "string" && input.startsWith("/")) {
-      input = "http://localhost:3000" + input;
+      input = "http://localhost:3100" + input;
     }
     return ORIGINAL_FETCH(input, init);
   };

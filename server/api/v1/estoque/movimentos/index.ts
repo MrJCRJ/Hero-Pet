@@ -372,7 +372,7 @@ export default async function handler(
         values: [produtoId],
       });
       const saldoRow = await c.query({
-        text: `SELECT COALESCE(SUM(quantidade),0)::numeric AS saldo
+        text: `SELECT COALESCE(SUM(CASE WHEN tipo='ENTRADA' THEN quantidade WHEN tipo='SAIDA' THEN -quantidade ELSE quantidade END),0)::numeric AS saldo
                FROM movimento_estoque
                WHERE produto_id = $1`,
         values: [produtoId],

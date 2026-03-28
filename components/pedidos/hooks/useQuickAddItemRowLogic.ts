@@ -10,9 +10,7 @@ interface UseQuickAddItemRowLogicParams {
   itens: FormItem[];
   fetchProdutos: (
     q: string
-  ) => Promise<
-    Array<{ id: string | number; label: string; markup_percent_default?: number }>
-  >;
+  ) => Promise<Array<{ id: string | number; label: string }>>;
   onAppend: (item: Partial<FormItem>) => void;
 }
 
@@ -155,9 +153,9 @@ export function useQuickAddItemRowLogic({
       });
   }
 
-  function openSuggestionForVenda(
-    prod: { id: string | number; label?: string; markup_percent_default?: number }
-  ) {
+  const MARKUP_SUGESTAO_PADRAO = 30;
+
+  function openSuggestionForVenda(prod: { id: string | number; label?: string }) {
     const cached = saleCacheRef.current.get(prod.id);
     if (cached) {
       setSuggestionModal({
@@ -191,11 +189,7 @@ export function useQuickAddItemRowLogic({
             : Number.isFinite(ultimoCusto) && ultimoCusto > 0
               ? ultimoCusto
               : null;
-        const markupDefault =
-          Number.isFinite(Number(prod.markup_percent_default)) &&
-          Number(prod.markup_percent_default) > 0
-            ? Number(prod.markup_percent_default)
-            : 30;
+        const markupDefault = MARKUP_SUGESTAO_PADRAO;
         let suggested: number | null = null;
         if (base != null)
           suggested = Number((base * (1 + markupDefault / 100)).toFixed(2));

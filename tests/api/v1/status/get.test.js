@@ -14,7 +14,7 @@ beforeAll(async () => {
 
 // Helper para evitar repetição de request
 const getStatus = (queryParams = "") =>
-  axios.get(`http://localhost:3000/api/v1/status${queryParams}`);
+  axios.get(`http://localhost:3100/api/v1/status${queryParams}`);
 
 // Helper para validar timestamp ISO 8601 estrito
 const isValidISO8601 = (dateString) => {
@@ -116,7 +116,7 @@ describe("GET /api/v1/status", () => {
     const corsHeader = response.headers["access-control-allow-origin"];
 
     expect(corsHeader).toBeDefined();
-    expect(["*", "http://localhost:3000", "https://yourdomain.com"]).toContain(
+    expect(["*", "http://localhost:3100", "https://yourdomain.com"]).toContain(
       corsHeader,
     );
   });

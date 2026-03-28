@@ -2,7 +2,7 @@
 
 /** @jest-environment node */
 
-const base = `http://localhost:3000`;
+const base = `http://localhost:3100`;
 
 async function criaParceiroPJ(nome = "Fornecedor Frete Movimentos") {
   const randDoc = String(

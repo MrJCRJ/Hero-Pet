@@ -3,7 +3,7 @@
 // Testa filtros address_fill/contact_fill e a classificação retornada pelo endpoint
 // Cria várias entidades com combinações de endereço/contato
 
-const BASE = "http://localhost:3000/api/v1/entities";
+const BASE = "http://localhost:3100/api/v1/entities";
 
 async function post(entity) {
   const res = await fetch(BASE, {

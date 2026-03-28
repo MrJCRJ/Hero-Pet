@@ -12,7 +12,7 @@ async function createEntity({ name, type }) {
     document_digits: "",
     document_pending: true,
   };
-  const res = await fetch("http://localhost:3000/api/v1/entities", {
+  const res = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

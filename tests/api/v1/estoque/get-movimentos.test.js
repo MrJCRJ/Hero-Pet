@@ -12,12 +12,12 @@ let fornecedor;
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) throw new Error("migrations fail");
 
-  const f = await fetch("http://localhost:3000/api/v1/entities", {
+  const f = await fetch("http://localhost:3100/api/v1/entities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "FORN MOV", entity_type: "PJ" }),
@@ -26,7 +26,7 @@ beforeAll(async () => {
     throw new Error(`seed fornecedor fail: ${f.status}`);
   fornecedor = await f.json();
 
-  const p = await fetch("http://localhost:3000/api/v1/produtos", {
+  const p = await fetch("http://localhost:3100/api/v1/produtos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -44,7 +44,7 @@ beforeAll(async () => {
     { tipo: "AJUSTE", quantidade: 5, documento: "AJ1" },
   ];
   for (const m of seq) {
-    const r = await fetch("http://localhost:3000/api/v1/estoque/movimentos", {
+    const r = await fetch("http://localhost:3100/api/v1/estoque/movimentos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ produto_id: produto.id, ...m }),
@@ -58,7 +58,7 @@ beforeAll(async () => {
 
 test("GET /api/v1/estoque/movimentos lista por produto_id em ordem desc", async () => {
   const resp = await fetch(
-    `http://localhost:3000/api/v1/estoque/movimentos?produto_id=${produto.id}`,
+    `http://localhost:3100/api/v1/estoque/movimentos?produto_id=${produto.id}`,
   );
   expect(resp.status).toBe(200);
   const list = await resp.json();

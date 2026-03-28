@@ -13,7 +13,7 @@ beforeAll(async () => {
   // Isola ambiente limpando schema para previsibilidade
   await database.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
   // Aplica migrações (cria tabela entities)
-  const mig = await fetch("http://localhost:3000/api/v1/migrations", {
+  const mig = await fetch("http://localhost:3100/api/v1/migrations", {
     method: "POST",
   });
   if (![200, 201].includes(mig.status)) {
@@ -38,7 +38,7 @@ describe("POST /api/v1/entities (TDD inicial)", () => {
       ativo: true,
     };
 
-    const response = await fetch("http://localhost:3000/api/v1/entities", {
+    const response = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -79,7 +79,7 @@ describe("POST /api/v1/entities (TDD inicial)", () => {
       ativo: true,
     };
 
-    const response = await fetch("http://localhost:3000/api/v1/entities", {
+    const response = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -104,7 +104,7 @@ describe("POST /api/v1/entities (TDD inicial)", () => {
       document_pending: false,
     };
 
-    const response = await fetch("http://localhost:3000/api/v1/entities", {
+    const response = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -124,7 +124,7 @@ describe("POST /api/v1/entities (TDD inicial)", () => {
       document_pending: true,
     };
 
-    const response = await fetch("http://localhost:3000/api/v1/entities", {
+    const response = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -143,7 +143,7 @@ describe("POST /api/v1/entities (TDD inicial)", () => {
       document_pending: true,
     };
 
-    const response = await fetch("http://localhost:3000/api/v1/entities", {
+    const response = await fetch("http://localhost:3100/api/v1/entities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

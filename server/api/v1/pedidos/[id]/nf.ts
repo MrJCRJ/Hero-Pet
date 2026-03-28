@@ -75,7 +75,7 @@ async function getNF(
     }
 
     const itensQ = await database.query({
-      text: `SELECT i.*, p.nome AS produto_nome, p.codigo_barras
+      text: `SELECT i.*, p.nome AS produto_nome
              FROM pedido_itens i
              JOIN produtos p ON p.id = i.produto_id
              WHERE i.pedido_id = $1
