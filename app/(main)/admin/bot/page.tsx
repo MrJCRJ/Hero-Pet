@@ -4,17 +4,29 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PageSection } from "@/components/layout/PageSection";
+import { BotMessagesTable } from "@/components/admin/BotMessagesTable";
 
 type BotResumo = {
   pedidos_hoje: number;
   total_hoje: number;
   pedidos_em_andamento: number;
+  ultima_mensagem?: string | null;
+  status_bot?: string;
 };
 
-type BotStatus = {
-  bot_conectado: boolean;
-  ultima_mensagem_em?: string | null;
-  service?: string;
+type BotStats = {
+  bot: {
+    conectado: boolean | null;
+    redis_disponivel: boolean;
+    ultima_atividade_bot?: string | null;
+    total_conversas: number | null;
+  };
+  pedidos: {
+    pedidos_hoje: number;
+    receita_hoje: number;
+    pedidos_em_andamento: number;
+    ultima_mensagem: string | null;
+  };
 };
 
 type PedidoItem = {
@@ -42,13 +54,30 @@ function formatDate(value: string | null | undefined): string {
   return d.toLocaleString("pt-BR");
 }
 
+function StatusBadge({ conectado }: { conectado: boolean | null }) {
+  if (conectado === null) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm">
+        <span className="h-2.5 w-2.5 rounded-full bg-gray-400" />
+        <span className="text-[var(--color-text-secondary)]">Desconhecido</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm">
+      <span className={`h-2.5 w-2.5 rounded-full ${conectado ? "bg-green-500" : "bg-red-500"}`} />
+      <span>{conectado ? "Sim" : "Nao"}</span>
+    </span>
+  );
+}
+
 export default function AdminBotPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [resumo, setResumo] = React.useState<BotResumo | null>(null);
-  const [botStatus, setBotStatus] = React.useState<BotStatus | null>(null);
+  const [stats, setStats] = React.useState<BotStats | null>(null);
   const [pedidos, setPedidos] = React.useState<BotPedido[]>([]);
 
   React.useEffect(() => {
@@ -66,17 +95,20 @@ export default function AdminBotPage() {
       try {
         setLoading(true);
         setError(null);
-        const [rResumo, rStatus, rPedidos] = await Promise.all([
+        const [rResumo, rStats, rPedidos] = await Promise.all([
           fetch("/api/bot/resumo"),
-          fetch("/api/bot/status"),
+          fetch("/api/admin/bot/stats"),
           fetch("/api/bot/pedidos"),
         ]);
-        if (!rResumo.ok || !rStatus.ok || !rPedidos.ok) {
-          throw new Error("Falha ao carregar dados do bot");
-        }
+        if (!rResumo.ok) throw new Error("Falha ao carregar resumo");
+        if (!rPedidos.ok) throw new Error("Falha ao carregar pedidos");
+
         setResumo(await rResumo.json());
-        setBotStatus(await rStatus.json());
         setPedidos(await rPedidos.json());
+
+        if (rStats.ok) {
+          setStats(await rStats.json());
+        }
       } catch (e) {
         setError((e as Error).message || "Erro ao carregar");
       } finally {
@@ -88,7 +120,7 @@ export default function AdminBotPage() {
 
   if (status === "loading" || loading) {
     return (
-      <PageSection title="Administração do Bot" description="Painel operacional do WhatsApp Bot">
+      <PageSection title="Administracao do Bot" description="Painel operacional do WhatsApp Bot">
         <div className="text-sm text-[var(--color-text-secondary)]">Carregando...</div>
       </PageSection>
     );
@@ -97,13 +129,19 @@ export default function AdminBotPage() {
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (role !== "admin") return null;
 
+  const conectado = stats?.bot.conectado ?? null;
+  const ultimaMensagem = stats?.pedidos.ultima_mensagem ?? resumo?.ultima_mensagem ?? null;
+  const totalConversas = stats?.bot.total_conversas ?? null;
+
   return (
-    <PageSection title="Administração do Bot" description="Monitoramento operacional e pedidos do canal WhatsApp">
+    <PageSection title="Administracao do Bot" description="Monitoramento operacional e pedidos do canal WhatsApp">
       {error ? (
         <div className="rounded border border-red-200 bg-red-50 p-3 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </div>
       ) : null}
+
+      {/* Metric cards */}
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
           <div className="text-xs text-[var(--color-text-secondary)]">Pedidos hoje</div>
@@ -119,6 +157,7 @@ export default function AdminBotPage() {
         </div>
       </div>
 
+      {/* Bot status card */}
       <div className="mt-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Status do Bot</h3>
@@ -126,16 +165,31 @@ export default function AdminBotPage() {
             type="button"
             disabled
             className="rounded border border-[var(--color-border)] px-3 py-1.5 text-xs opacity-60"
-            title="Reinício de sessão será integrado ao worker do bot"
+            title="Integracao futura"
           >
-            Reiniciar sessão
+            Reiniciar sessao
           </button>
         </div>
-        <div className="mt-2 text-sm text-[var(--color-text-secondary)]">
-          Conectado: {botStatus?.bot_conectado ? "sim" : "não"} | Última mensagem: {formatDate(botStatus?.ultima_mensagem_em)}
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div>
+            <div className="text-xs text-[var(--color-text-secondary)] mb-1">Conectado</div>
+            <StatusBadge conectado={conectado} />
+          </div>
+          <div>
+            <div className="text-xs text-[var(--color-text-secondary)] mb-1">Ultima mensagem</div>
+            <div className="text-sm">{formatDate(ultimaMensagem)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-[var(--color-text-secondary)] mb-1">Total de conversas</div>
+            <div className="text-sm">{totalConversas !== null ? totalConversas : "-"}</div>
+          </div>
         </div>
       </div>
 
+      {/* Messages table */}
+      <BotMessagesTable />
+
+      {/* Recent orders */}
       <div className="mt-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
         <h3 className="mb-3 font-semibold">Pedidos recentes</h3>
         {!pedidos.length ? (
@@ -145,7 +199,12 @@ export default function AdminBotPage() {
             {pedidos.slice(0, 20).map((p) => (
               <div key={p.id} className="rounded border border-[var(--color-border)] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span className="font-medium">#{p.id} - {p.cliente_nome || "Cliente"}</span>
+                  <a
+                    href={`/pedidos/${p.id}`}
+                    className="font-medium hover:underline text-[var(--color-text-primary)]"
+                  >
+                    #{p.id} - {p.cliente_nome || "Cliente"}
+                  </a>
                   <span>{formatMoney(p.total)}</span>
                 </div>
                 <div className="text-xs text-[var(--color-text-secondary)]">
@@ -166,4 +225,3 @@ export default function AdminBotPage() {
     </PageSection>
   );
 }
-

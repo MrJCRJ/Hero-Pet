@@ -105,7 +105,7 @@ describe("API Bot endpoints", () => {
     expect(existing.id).toBe(clienteId);
   });
 
-  test("bloqueia bairro nao permitido", async () => {
+  test("aceita bairro divergente com warning (nao bloqueia no cadastro)", async () => {
     const response = await fetch(`${BASE_URL}/api/bot/enderecos`, {
       method: "POST",
       headers: withApiKey(),
@@ -113,17 +113,22 @@ describe("API Bot endpoints", () => {
         cliente_id: clienteId,
         logradouro: "Rua A",
         numero: "100",
-        bairro: "bairro proibido",
+        bairro: "bairro divergente",
         cidade: "Sao Paulo",
         uf: "SP",
         cep: "01001000",
       }),
     });
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "Bairro nao permitido" });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.cliente_id).toBe(clienteId);
+    expect(body.bairro).toBe("bairro divergente");
+    if (body.warning) {
+      expect(["BAIRRO_SUGGESTION", "VIACEP_UNAVAILABLE"]).toContain(body.warning.code);
+    }
   });
 
-  test("salva endereco permitido", async () => {
+  test("salva endereco com sucesso", async () => {
     const response = await fetch(`${BASE_URL}/api/bot/enderecos`, {
       method: "POST",
       headers: withApiKey(),
@@ -134,13 +139,14 @@ describe("API Bot endpoints", () => {
         bairro: "Centro",
         cidade: "Sao Paulo",
         uf: "SP",
-        cep: "01002000",
+        cep: "01001000",
       }),
     });
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.cliente_id).toBe(clienteId);
     expect(body.bairro).toBe("Centro");
+    expect(body.complemento).toBeDefined();
   });
 
   test("lista produtos e consulta estoque", async () => {
@@ -233,7 +239,7 @@ describe("API Bot endpoints", () => {
         bairro: "Centro",
         cidade: "Sao Paulo",
         uf: "SP",
-        cep: "01003000",
+        cep: "01001000",
       }),
     });
 

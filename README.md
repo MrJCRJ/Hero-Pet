@@ -42,10 +42,16 @@ AUTH_SECRET=uma-chave-secreta-aleatoria-min-32-chars
 # NFE_PROVIDER=test
 ```
 
-3. Subir Postgres (opcional em dev, os testes sobem/param automaticamente)
+3. Subir Postgres e Redis (opcional em dev, os testes sobem/param automaticamente)
 
 ```bash
 docker compose -f infra/compose.yaml up -d
+```
+
+O compose sobe Postgres (porta 5433) e Redis (porta 6379). Para usar Redis, adicione ao `.env.development`:
+
+```env
+REDIS_URL=redis://localhost:6379
 ```
 
 4. Rodar app em dev
@@ -204,11 +210,13 @@ Todas as rotas de `/api/bot/*` exigem cabeçalho `X-API-Key` com o valor de `HER
 ### Variáveis de ambiente do bot
 
 - `HEROPET_API_KEY`: chave de autenticação para `/api/bot/*`.
-- `ALLOWED_BAIRROS`: bairros permitidos para entrega, separados por vírgula.
+- `ALLOWED_BAIRROS`: bairros permitidos para entrega, separados por vírgula (validado no momento do pedido, não no cadastro de endereço).
 - `DELIVERY_START_TIME` e `DELIVERY_END_TIME`: janela de entrega em `HH:MM`.
 - `BOT_DEFAULT_TIPO_CLIENTE`: padrão recomendado para clientes do bot (`pessoa_fisica`).
 - `USE_SIMPLIFIED_STOCK`: habilita runtime de estoque simplificado (kg + custo médio).
 - `DUAL_WRITE_STOCK`: em conjunto com simplificado, mantém escrita no legado para transição segura.
+- `REDIS_URL`: URL de conexão Redis (ex.: `redis://localhost:6379`). Alternativa: `REDIS_HOST` + `REDIS_PORT` + `REDIS_PASSWORD`.
+- `VIACEP_TIMEOUT`: timeout em ms para chamadas ao ViaCEP (default: 3000).
 
 ### Endpoints
 
@@ -224,7 +232,7 @@ Todas as rotas de `/api/bot/*` exigem cabeçalho `X-API-Key` com o valor de `HER
   Cria/atualiza cliente por telefone (`nome` e `tipo` opcionais).
 
 - `POST /api/bot/enderecos`  
-  Salva endereço do cliente com validação de bairros permitidos.
+  Salva endereço do cliente. Consulta ViaCEP para validar o CEP e comparar o bairro. Se o bairro informado divergir do ViaCEP, aceita o cadastro e retorna `warning: { code: "BAIRRO_SUGGESTION" }`. Registra cada tentativa na tabela `bot_address_log`.
 
 - `GET /api/bot/produtos`  
   Lista produtos vendáveis no bot (granel, preço > 0, estoque > 0), com:
@@ -244,10 +252,20 @@ Todas as rotas de `/api/bot/*` exigem cabeçalho `X-API-Key` com o valor de `HER
   Resposta: `{ id, status, total, total_liquido }`.
 
 - `GET /api/bot/resumo`  
-  Retorna `{ pedidos_hoje, total_hoje, pedidos_em_andamento }`.
+  Retorna `{ pedidos_hoje, total_hoje, pedidos_em_andamento, ultima_mensagem, status_bot }`.
 
 - `GET /api/bot/status`  
-  Retorna status operacional básico do serviço do bot.
+  Retorna status operacional do bot com heartbeat real via Redis (`bot_conectado`, `heartbeat_source`, `ultima_mensagem_em`).
+
+### Endpoints administrativos do bot
+
+Acessíveis com sessão admin ou `X-API-Key`. Requerem Redis configurado para funcionalidades de mensagens.
+
+- `GET /api/admin/bot/messages?limit=50&offset=0&phone=&date_from=&date_to=`  
+  Retorna últimas mensagens trocadas pelo bot (lidas do Redis). Telefones mascarados para LGPD. Retorna 503 se Redis não configurado.
+
+- `GET /api/admin/bot/stats`  
+  Retorna estatísticas consolidadas: status de conexão do bot (via heartbeat `heropet-bot:heartbeat`), total de conversas, pedidos hoje, receita hoje. O bot deve atualizar `heropet-bot:heartbeat` a cada ~30s com `SET heropet-bot:heartbeat <timestamp> EX 120`.
 
 O painel administrativo do bot está em `/admin/bot`.
 

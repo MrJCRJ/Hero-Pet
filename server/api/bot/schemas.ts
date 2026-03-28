@@ -23,6 +23,7 @@ export const BotEnderecoSchema = z.object({
   cliente_id: z.coerce.number().int().positive(),
   logradouro: z.string().min(3),
   numero: z.string().min(1),
+  complemento: z.string().optional(),
   bairro: z.string().min(2),
   cidade: z.string().min(2),
   uf: z.string().length(2),
