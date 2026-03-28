@@ -2,6 +2,8 @@
 // GET /api/v1/estoque/resumo
 import database from "infra/database";
 import { isConnectionError, isRelationMissing } from "lib/errors";
+import { extractPesoKgFromNome } from "lib/domain/produtos/extractPesoKgFromNome";
+import { precoUnitarioVendaEstoque } from "lib/domain/produtos/precoUnitarioVendaEstoque";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 export default async function handler(
@@ -68,6 +70,7 @@ export default async function handler(
 
     const query = {
       text: `SELECT p.id AS produto_id, p.nome, p.categoria, p.preco_tabela,
+             p.venda_granel, p.preco_kg_granel,
              ${minHintSubquery} AS min_hint,
              ${precoMedioVendaSub} AS preco_medio_venda,
              COALESCE(SUM(CASE WHEN m.tipo='ENTRADA' THEN m.quantidade WHEN m.tipo='SAIDA' THEN -m.quantidade ELSE m.quantidade END), 0)::numeric(14,3) AS saldo,
@@ -75,7 +78,7 @@ export default async function handler(
              FROM produtos p
              LEFT JOIN movimento_estoque m ON m.produto_id = p.id
              WHERE p.ativo = true ${searchClause} ${categoriaClause} ${produtoClause} ${semMovimentoClause}
-             GROUP BY p.id, p.nome, p.categoria, p.preco_tabela
+             GROUP BY p.id, p.nome, p.categoria, p.preco_tabela, p.venda_granel, p.preco_kg_granel
              ${havingAlerta}
              ORDER BY p.nome
              LIMIT ${limit} OFFSET ${offset}`,
@@ -92,6 +95,19 @@ export default async function handler(
     const rows = (result.rows as Array<Record<string, unknown>>).map((r) => {
       const mh = toNum(r.min_hint);
       const minimoEfetivo = mh != null && mh >= 0 ? mh : null;
+      const nomeStr = String(r.nome ?? "");
+      const pesoKgNome = extractPesoKgFromNome(nomeStr);
+      const vendaGranel = r.venda_granel === true;
+      const precoKgGranel = toNum(r.preco_kg_granel);
+      const precoTabela = toNum(r.preco_tabela);
+      const custoMedio = toNum(r.custo_medio);
+      const precoVendaUnitario = precoUnitarioVendaEstoque({
+        nome: nomeStr,
+        venda_granel: vendaGranel,
+        preco_kg_granel: precoKgGranel,
+        preco_tabela: precoTabela,
+        custo_medio: custoMedio,
+      });
       return {
         produto_id: r.produto_id,
         nome: r.nome,
@@ -99,9 +115,13 @@ export default async function handler(
         min_hint: mh,
         minimo_efetivo: minimoEfetivo,
         saldo: Number(r.saldo ?? 0),
-        custo_medio: toNum(r.custo_medio),
-        preco_tabela: toNum(r.preco_tabela),
+        custo_medio: custoMedio,
+        preco_tabela: precoTabela,
         preco_medio_venda: toNum(r.preco_medio_venda),
+        venda_granel: vendaGranel,
+        preco_kg_granel: precoKgGranel,
+        peso_kg_nome: pesoKgNome,
+        preco_venda_unitario: precoVendaUnitario,
       };
     });
 

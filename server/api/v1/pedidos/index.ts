@@ -10,6 +10,10 @@ import {
   registerSimplifiedMovement,
   isSimplifiedStockEnabled,
 } from "lib/stock/simplified";
+import {
+  quantidadeUnidadesParaKgEstoque,
+  valorUnitarioUnidadeParaCustoKg,
+} from "lib/domain/produtos/simplifiedStockConversions";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 
 function parseDateYMD(ymd: unknown): string | null {
@@ -281,23 +285,29 @@ async function postPedido(
         const valorUnit = valorTotal / qtd;
         if (isSimplifiedStockEnabled()) {
           const produto = await lockProdutoEstoque(client as any, Number(it.produto_id));
+          const meta = {
+            nome: produto.nome,
+            venda_granel: produto.vendaGranel,
+          };
+          const qtdKg = quantidadeUnidadesParaKgEstoque(qtd, meta);
+          const custoKg = valorUnitarioUnidadeParaCustoKg(valorUnit, meta);
           const novoCusto = computeNewAverageCost({
             estoqueAtualKg: produto.estoqueKg,
             custoMedioAtualKg: produto.custoMedioKg,
-            quantidadeEntradaKg: qtd,
-            custoEntradaKg: valorUnit,
+            quantidadeEntradaKg: qtdKg,
+            custoEntradaKg: custoKg,
           });
           await client.query({
             text: `UPDATE produtos
                    SET estoque_kg = estoque_kg + $1, custo_medio_kg = $2, updated_at = NOW()
                    WHERE id = $3`,
-            values: [qtd, novoCusto, it.produto_id],
+            values: [qtdKg, novoCusto, it.produto_id],
           });
           await registerSimplifiedMovement(client as any, {
             produtoId: Number(it.produto_id),
             tipo: "entrada",
-            quantidadeKg: qtd,
-            precoUnitarioKg: valorUnit,
+            quantidadeKg: qtdKg,
+            precoUnitarioKg: custoKg,
             observacao: `Compra pedido ${pedido.id}`,
             refPedidoId: Number(pedido.id),
           });

@@ -2,6 +2,7 @@ import database from "infra/database";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 import { BotProdutosQuerySchema } from "@/server/api/bot/schemas";
 import { isSimplifiedStockEnabled } from "lib/stock/simplified";
+import { extractPesoKgFromNome } from "lib/domain/produtos/extractPesoKgFromNome";
 
 function isGranelProduct(nome: string, categoria: string, vendaGranel?: boolean): boolean {
   if (vendaGranel === true) return true;
@@ -38,25 +39,6 @@ function sanitizeNomeComercial(nome: string): string {
     .replace(/\b\d+(?:[.,]\d+)?\s?(?:kg|g)\b/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
-}
-
-function parsePesoKgLiteral(token: string): number | null {
-  const t = token.trim();
-  if (!t) return null;
-  let n: number;
-  if (t.includes(",") && !t.includes(".")) n = Number(t.replace(",", "."));
-  else if (t.includes(".") && t.includes(",")) n = Number(t.replace(/\./g, "").replace(",", "."));
-  else n = Number(t);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return n;
-}
-
-function extractPesoKgFromNome(nome: string): number | null {
-  const raw = String(nome || "");
-  // Ex.: "Chanin 10,1Kg", "Lester 10.1 kg", "Igor 25kg"
-  const match = raw.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilo|kilos|quilo|quilos)\b/i);
-  if (!match) return null;
-  return parsePesoKgLiteral(match[1]);
 }
 
 function resolvePrecoKg(params: {

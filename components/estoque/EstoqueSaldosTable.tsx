@@ -13,6 +13,8 @@ import {
   ROW_HOVER,
 } from "components/common/tableStyles";
 import { EstoqueAlertaBadge } from "./EstoqueAlertaBadge";
+import { extractPesoKgFromNome } from "lib/domain/produtos/extractPesoKgFromNome";
+import { precoUnitarioVendaEstoque } from "lib/domain/produtos/precoUnitarioVendaEstoque";
 
 export interface SaldoRow {
   produto_id: number;
@@ -24,6 +26,11 @@ export interface SaldoRow {
   custo_medio: number | null;
   preco_tabela?: number | null;
   preco_medio_venda?: number | null;
+  venda_granel?: boolean;
+  preco_kg_granel?: number | null;
+  peso_kg_nome?: number | null;
+  /** Calculado no servidor; o cliente recalcula com a mesma função se ausente. */
+  preco_venda_unitario?: number | null;
 }
 
 interface EstoqueSaldosTableProps {
@@ -92,17 +99,44 @@ export function EstoqueSaldosTable({
               </td>
               <td className="px-3 py-2 text-right">
                 {(() => {
+                  const unit =
+                    row.preco_venda_unitario != null
+                      ? row.preco_venda_unitario
+                      : precoUnitarioVendaEstoque({
+                          nome: row.nome,
+                          venda_granel: row.venda_granel,
+                          preco_kg_granel: row.preco_kg_granel,
+                          preco_tabela: row.preco_tabela,
+                          custo_medio: row.custo_medio,
+                        });
+                  if (unit == null) return "-";
+                  const pesoKg =
+                    row.peso_kg_nome ?? extractPesoKgFromNome(row.nome);
+                  const pkg = Number(row.preco_kg_granel ?? 0);
+                  const granelTooltip =
+                    row.venda_granel === true &&
+                    pkg > 0 &&
+                    pesoKg != null &&
+                    pesoKg > 0
+                      ? `Saco: ${String(pesoKg).replace(".", ",")} kg × ${formatBRL(pkg)}/kg`
+                      : undefined;
                   const pv = row.preco_tabela;
                   const cm = row.custo_medio;
-                  if (pv != null && Number.isFinite(pv) && pv >= 0)
-                    return formatBRL(pv);
-                  if (cm != null && Number.isFinite(cm) && cm > 0)
-                    return (
-                      <span title="Estimado (custo + 20%)">
-                        {formatBRL(cm * 1.2)}
-                      </span>
-                    );
-                  return "-";
+                  const showEstimadoCusto =
+                    (pv == null || !Number.isFinite(pv) || pv < 0) &&
+                    cm != null &&
+                    Number.isFinite(cm) &&
+                    cm > 0 &&
+                    !(row.venda_granel === true && pkg > 0 && pesoKg != null && pesoKg > 0);
+                  const inner = showEstimadoCusto ? (
+                    <span title="Estimado (custo + 20%)">{formatBRL(unit)}</span>
+                  ) : (
+                    formatBRL(unit)
+                  );
+                  if (granelTooltip) {
+                    return <span title={granelTooltip}>{inner}</span>;
+                  }
+                  return inner;
                 })()}
               </td>
               <td className="px-3 py-2 text-right">

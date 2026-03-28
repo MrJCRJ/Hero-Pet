@@ -9,6 +9,10 @@ import {
   isDualWriteStockEnabled,
   isSimplifiedStockEnabled,
 } from "lib/stock/simplified";
+import {
+  quantidadeUnidadesParaKgEstoque,
+  valorUnitarioUnidadeParaCustoKg,
+} from "lib/domain/produtos/simplifiedStockConversions";
 import type { ApiReqLike, ApiResLike } from "@/server/api/v1/types";
 import { listMovimentos } from "./handlers/listMovimentos";
 
@@ -82,34 +86,42 @@ export default async function handler(
         client = c;
         await c.query("BEGIN");
         const produto = await lockProdutoEstoque(c as any, Number(produtoId));
-
-        const delta =
+        const meta = {
+          nome: produto.nome,
+          venda_granel: produto.vendaGranel,
+        };
+        const qtdKgEntradaSaida = quantidadeUnidadesParaKgEstoque(quantidade, meta);
+        const deltaKg =
           tipo === "ENTRADA"
-            ? quantidade
+            ? qtdKgEntradaSaida
             : tipo === "SAIDA"
-              ? -quantidade
-              : quantidade;
-        if (tipo === "SAIDA" && produto.estoqueKg < quantidade) {
+              ? -qtdKgEntradaSaida
+              : Math.sign(quantidade) *
+                quantidadeUnidadesParaKgEstoque(Math.abs(quantidade), meta);
+        if (tipo === "SAIDA" && produto.estoqueKg < qtdKgEntradaSaida) {
           await c.query("ROLLBACK");
           c.release();
           res.status(400).json({ error: "Estoque insuficiente" });
           return;
         }
-        if (tipo === "AJUSTE" && produto.estoqueKg + delta < 0) {
+        if (tipo === "AJUSTE" && produto.estoqueKg + deltaKg < 0) {
           await c.query("ROLLBACK");
           c.release();
           res.status(400).json({ error: "Ajuste negativo excederia o saldo disponível" });
           return;
         }
 
-        const novoEstoque = produto.estoqueKg + delta;
-        const custoEntrada = tipo === "ENTRADA" ? Number(valor_unitario ?? 0) : produto.custoMedioKg;
+        const novoEstoque = produto.estoqueKg + deltaKg;
+        const custoEntrada =
+          tipo === "ENTRADA"
+            ? valorUnitarioUnidadeParaCustoKg(Number(valor_unitario ?? 0), meta)
+            : produto.custoMedioKg;
         const novoCusto =
           tipo === "ENTRADA"
             ? computeNewAverageCost({
                 estoqueAtualKg: produto.estoqueKg,
                 custoMedioAtualKg: produto.custoMedioKg,
-                quantidadeEntradaKg: quantidade,
+                quantidadeEntradaKg: qtdKgEntradaSaida,
                 custoEntradaKg: custoEntrada,
               })
             : produto.custoMedioKg;
@@ -121,17 +133,40 @@ export default async function handler(
           values: [novoEstoque, novoCusto, produtoId],
         });
 
+        const regTipo: "entrada" | "saida" =
+          tipo === "ENTRADA"
+            ? "entrada"
+            : tipo === "SAIDA"
+              ? "saida"
+              : deltaKg >= 0
+                ? "entrada"
+                : "saida";
+        const regQtdKg =
+          tipo === "AJUSTE" ? Math.abs(deltaKg) : Math.abs(qtdKgEntradaSaida);
         await registerSimplifiedMovement(c as any, {
           produtoId: Number(produtoId),
-          tipo: tipo === "ENTRADA" ? "entrada" : "saida",
-          quantidadeKg: Math.abs(quantidade),
-          precoUnitarioKg: tipo === "ENTRADA" ? Number(valor_unitario ?? 0) : produto.custoMedioKg,
+          tipo: regTipo,
+          quantidadeKg: regQtdKg,
+          precoUnitarioKg:
+            tipo === "ENTRADA" ? custoEntrada : produto.custoMedioKg,
           observacao: String(b.observacao || `Movimento ${tipo}`),
         });
 
         if (isDualWriteStockEnabled()) {
-          const legacyCostUnit = tipo === "SAIDA" ? produto.custoMedioKg : null;
-          const legacyCostTotal = tipo === "SAIDA" ? Number((produto.custoMedioKg * quantidade).toFixed(2)) : null;
+          const legacyCostUnit =
+            tipo === "SAIDA" || (tipo === "AJUSTE" && deltaKg < 0)
+              ? produto.custoMedioKg
+              : null;
+          const kgSaidaLegacy =
+            tipo === "SAIDA"
+              ? qtdKgEntradaSaida
+              : tipo === "AJUSTE" && deltaKg < 0
+                ? Math.abs(deltaKg)
+                : 0;
+          const legacyCostTotal =
+            tipo === "SAIDA" || (tipo === "AJUSTE" && deltaKg < 0)
+              ? Number((produto.custoMedioKg * kgSaidaLegacy).toFixed(2))
+              : null;
           await c.query({
             text: `INSERT INTO movimento_estoque (produto_id, tipo, quantidade, valor_unitario, frete, outras_despesas, valor_total, documento, observacao, custo_unitario_rec, custo_total_rec)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,

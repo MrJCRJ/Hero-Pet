@@ -60,5 +60,9 @@ test("GET /api/v1/estoque/resumo retorna array de saldos", async () => {
     expect(row).toHaveProperty("saldo");
     expect(row).toHaveProperty("min_hint");
     expect(row).toHaveProperty("preco_medio_venda");
+    expect(row).toHaveProperty("venda_granel");
+    expect(row).toHaveProperty("preco_kg_granel");
+    expect(row).toHaveProperty("peso_kg_nome");
+    expect(row).toHaveProperty("preco_venda_unitario");
   }
 });

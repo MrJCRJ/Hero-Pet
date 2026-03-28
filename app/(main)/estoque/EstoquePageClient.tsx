@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { formatBrl } from "@/app/(main)/relatorios/components/shared/utils";
 import { formatQtyBR } from "components/common/format";
+import { precoUnitarioVendaEstoque } from "lib/domain/produtos/precoUnitarioVendaEstoque";
 
 type Movimento = {
   id: number;
@@ -113,17 +114,27 @@ export function EstoquePageClient() {
           ];
           const lines = [
             headers.join(";"),
-            ...arr.map((r: SaldoRow) =>
-              [
+            ...arr.map((r: SaldoRow) => {
+              const pvUnit =
+                r.preco_venda_unitario != null
+                  ? r.preco_venda_unitario
+                  : precoUnitarioVendaEstoque({
+                      nome: r.nome,
+                      venda_granel: r.venda_granel,
+                      preco_kg_granel: r.preco_kg_granel,
+                      preco_tabela: r.preco_tabela,
+                      custo_medio: r.custo_medio,
+                    });
+              return [
                 String(r.nome ?? "").replace(/;/g, ","),
                 String(r.categoria ?? ""),
                 r.saldo,
                 (r.minimo_efetivo ?? r.min_hint) ?? "",
                 r.custo_medio ?? "",
-                r.preco_tabela ?? "",
+                pvUnit ?? "",
                 r.preco_medio_venda ?? "",
-              ].join(";")
-            ),
+              ].join(";");
+            }),
           ];
           const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
           const u = URL.createObjectURL(blob);
@@ -142,15 +153,30 @@ export function EstoquePageClient() {
             { header: "Saldo", key: "saldo", width: 10 },
             { header: "Mínimo (30d)", key: "minimo_efetivo", width: 12 },
             { header: "Preço compra", key: "custo_medio", width: 12 },
-            { header: "Preço venda", key: "preco_tabela", width: 12 },
+            { header: "Preço venda (unit.)", key: "preco_venda_unitario", width: 14 },
             { header: "P. médio venda", key: "preco_medio_venda", width: 14 },
           ];
-          arr.forEach((r: SaldoRow) =>
+          arr.forEach((r: SaldoRow) => {
+            const pvUnit =
+              r.preco_venda_unitario != null
+                ? r.preco_venda_unitario
+                : precoUnitarioVendaEstoque({
+                    nome: r.nome,
+                    venda_granel: r.venda_granel,
+                    preco_kg_granel: r.preco_kg_granel,
+                    preco_tabela: r.preco_tabela,
+                    custo_medio: r.custo_medio,
+                  });
             ws.addRow({
-              ...r,
+              nome: r.nome,
+              categoria: r.categoria,
+              saldo: r.saldo,
               minimo_efetivo: r.minimo_efetivo ?? r.min_hint,
-            })
-          );
+              custo_medio: r.custo_medio ?? "",
+              preco_venda_unitario: pvUnit ?? "",
+              preco_medio_venda: r.preco_medio_venda ?? "",
+            });
+          });
           const buf = await wb.xlsx.writeBuffer();
           const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
           const u = URL.createObjectURL(blob);
@@ -214,11 +240,17 @@ export function EstoquePageClient() {
 
   const valorPotencialVendas = useMemo(() => {
     return rows.reduce((acc, r) => {
-      const precoVenda = r.preco_tabela != null && Number.isFinite(r.preco_tabela) && r.preco_tabela > 0
-        ? Number(r.preco_tabela)
-        : (r.custo_medio != null && Number.isFinite(r.custo_medio) && r.custo_medio > 0
-          ? Number(r.custo_medio) * 1.2
-          : 0);
+      const unit =
+        r.preco_venda_unitario != null
+          ? r.preco_venda_unitario
+          : precoUnitarioVendaEstoque({
+              nome: r.nome,
+              venda_granel: r.venda_granel,
+              preco_kg_granel: r.preco_kg_granel,
+              preco_tabela: r.preco_tabela,
+              custo_medio: r.custo_medio,
+            });
+      const precoVenda = unit ?? 0;
       return acc + r.saldo * precoVenda;
     }, 0);
   }, [rows]);
@@ -276,7 +308,10 @@ export function EstoquePageClient() {
                 <div className="text-xs text-[var(--color-text-secondary)]">Valor total em estoque</div>
               </div>
             </div>
-            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 flex items-center gap-3" title="Saldo × preço de venda (ou custo + 20% quando preço não cadastrado)">
+            <div
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 flex items-center gap-3"
+              title="Saldo × preço por unidade: granel usa kg do nome × R$/kg; senão preço de tabela ou custo + 20%"
+            >
               <Wallet className="h-8 w-8 shrink-0 text-[var(--color-text-secondary)]" />
               <div>
                 <div className="text-xl font-bold">{formatBrl(valorPotencialVendas)}</div>

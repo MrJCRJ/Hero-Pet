@@ -2,6 +2,7 @@
 import type { PoolClient } from "pg";
 import { consumirFIFO } from "./fifo";
 import { lockProdutoEstoque, isSimplifiedStockEnabled } from "lib/stock/simplified";
+import { quantidadeUnidadesParaKgEstoque } from "lib/domain/produtos/simplifiedStockConversions";
 
 interface ItemPayload {
   produto_id: number;
@@ -36,7 +37,12 @@ export async function processarItensVenda({
       const produto = await lockProdutoEstoque(client, Number(it.produto_id));
       const qtd = Number(it.quantidade);
       if (!Number.isFinite(qtd) || qtd <= 0) throw new Error("quantidade inválida");
-      if (produto.estoqueKg < qtd) throw new Error(`Saldo insuficiente para o produto "${it.produto_id}"`);
+      const qtdKg = quantidadeUnidadesParaKgEstoque(qtd, {
+        nome: produto.nome,
+        venda_granel: produto.vendaGranel,
+      });
+      if (produto.estoqueKg < qtdKg)
+        throw new Error(`Saldo insuficiente para o produto "${it.produto_id}"`);
       const rProd = await client.query({
         text: `SELECT id, preco_tabela FROM produtos WHERE id = $1`,
         values: [it.produto_id],
@@ -52,13 +58,13 @@ export async function processarItensVenda({
       descontoTotal += desconto * qtd;
       totalLiquido += totalItem;
 
-      const novoEstoque = produto.estoqueKg - qtd;
+      const novoEstoque = produto.estoqueKg - qtdKg;
       await client.query({
         text: `UPDATE produtos SET estoque_kg = $1, updated_at = NOW() WHERE id = $2`,
         values: [novoEstoque, it.produto_id],
       });
       const custoUnitVenda = Number(produto.custoMedioKg.toFixed(2));
-      const custoTotalItem = Number((custoUnitVenda * qtd).toFixed(2));
+      const custoTotalItem = Number((custoUnitVenda * qtdKg).toFixed(2));
       consumosPorItem.push({ produto_id: it.produto_id, simplified: true, custo_unitario_medio: custoUnitVenda });
       result.push({
         produto_id: it.produto_id,
